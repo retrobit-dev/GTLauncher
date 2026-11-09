@@ -52,8 +52,8 @@
     {
       baseline: CLOUD_SEA_BASE - 4,
       height: 22,
-      drift: 1.1,
-      parallax: 0.45,
+      drift: 0.35,
+      parallax: 0.40,
       alpha: 0.92,
       tint: 0.58,
       tintColor: '#b6c8da',
@@ -62,8 +62,8 @@
     {
       baseline: CLOUD_SEA_BASE + 8,
       height: 31,
-      drift: 2.9,
-      parallax: 0.85,
+      drift: 0.75,
+      parallax: 0.80,
       alpha: 1,
       tint: 0.28,
       tintColor: '#c9d9e7',
@@ -72,14 +72,26 @@
     {
       baseline: CLOUD_SEA_BASE + 30,
       height: 48,
-      drift: 6.2,
-      parallax: 1.35,
+      drift: 1.55,
+      parallax: 1.30,
       alpha: 1,
       tint: 0,
       tintColor: '#dde9f3',
       salt: 43
     }
   ];
+  // Near-camera clouds sit in front of the island: two hug the left and right flanks and
+  // two drift across the front, each covering only a sliver of the grass tiles.
+  const CLOUD_NEAR_TINT = '#eef4fa';
+  // Each puff grows out of the cloud sea; the flanking pair grazes the island's side
+  // tiles and the front pair overlaps only the outermost front tiles.
+  const CLOUD_NEAR_FRONTS = [
+    { x: -40, top: 94, height: 54, drift: 0.20, parallax: 1.45, tint: 0.10, mirror: false },
+    { x: 282, top: 98, height: 52, drift: 0.28, parallax: 1.55, tint: 0.10, mirror: true },
+    { x: 24, top: 124, height: 48, drift: 0.38, parallax: 1.80, tint: 0.05, mirror: false },
+    { x: 196, top: 130, height: 46, drift: 0.46, parallax: 1.90, tint: 0.05, mirror: true },
+    { x: 126, top: 158, height: 40, drift: 0.60, parallax: 2.10, tint: 0, mirror: false }
+  ].map(front => ({ ...front, tintColor: CLOUD_NEAR_TINT }));
   const CLOUD_SPRITE_SOURCES = {
     bank: './assets/cloud-bank.png',
     mass: './assets/cloud-mass.png'
@@ -1672,6 +1684,8 @@
     drawSmoothIslandLine(leftX, middleY, centerX, bottomY, topRim, 0.60);
     drawSmoothIslandLine(centerX, bottomY, rightX, middleY, topRim, 0.60);
     ctx.restore();
+    // Foreground clouds overlap the island's lower tile edges, so they draw after it.
+    drawCloudFronts(getSceneWeather(), sunAltitude);
   }
 
   function cloudSprite(name) {
@@ -1785,6 +1799,50 @@
     ctx.fillStyle = shadow;
     ctx.fillRect(centerX - radiusX, shadowY - radiusX, radiusX * 2, radiusX * 2);
     ctx.restore();
+  }
+
+  // Weather-driven cloud colour: night cools, storm deepens, low sun warms the crests.
+  function cloudWeatherTint(sceneWeather, sunAltitude, layer) {
+    const storm = weatherCodeIsStorm(sceneWeather.weatherCode);
+    const cover = clamp(sceneWeather.cloudCover / 100, 0, 1);
+    const quantise = value => Math.round(value * 16) / 16;
+    const night = quantise(clamp(1 - sunAltitude / 8, 0, 1) * 0.85);
+    const gloom = quantise(clamp(cover * 0.20 + (storm ? 0.22 : 0), 0, 0.55));
+    const warm = quantise(clamp(sunAltitude / 40, 0, 1) * (1 - cover) * 0.35);
+    return {
+      night,
+      gloom,
+      tintColor: blendColor(blendColor(blendColor(CLOUD_WARM_TINT, CLOUD_NIGHT_TINT, night),
+        CLOUD_STORM_TINT, gloom), layer.tintColor, layer.tint * 0.6),
+      tintAmount: clamp(layer.tint + night * 0.55 + gloom * 0.45 + warm * 0.25, 0, 0.92)
+    };
+  }
+
+  // Foreground puffs that overlap the island: the left and right pairs frame its flanks,
+  // the front pair drifts across the bottom so the island sits inside the cloud sea.
+  function drawCloudFronts(sceneWeather, sunAltitude) {
+    const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
+    CLOUD_NEAR_FRONTS.forEach((front, index) => {
+      const tint = cloudWeatherTint(sceneWeather, sunAltitude, front);
+      const sprite = tintedCloudSprite(index % 2 ? 'mass' : 'bank', tint.tintColor,
+        tint.tintAmount);
+      if (!sprite) return;
+      const cloud = cloudSprite(index % 2 ? 'mass' : 'bank');
+      const scale = front.height / cloud.height;
+      const width = cloud.width * scale;
+      const drift = elapsed * front.drift + cloudDragUnits * front.parallax;
+      const x = front.x - (drift % 18);
+      const y = front.top;
+      ctx.save();
+      if (front.mirror) {
+        ctx.translate(x + width, y);
+        ctx.scale(-1, 1);
+        ctx.drawImage(sprite, 0, 0, width, front.height);
+      } else {
+        ctx.drawImage(sprite, x, y, width, front.height);
+      }
+      ctx.restore();
+    });
   }
 
   function drawCloudSea(sceneWeather, sunAltitude) {
