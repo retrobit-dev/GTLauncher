@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GTLauncher</string>
+    <string name="blank_home_accessibility">Layar utama menampilkan langit pixel art sesuai waktu dan cuaca. Geser ke atas untuk membuka semua aplikasi.</string>
+    <string name="home_badge_set_default">JADIKAN DEFAULT</string>
+    <string name="home_badge_default">DEFAULT AKTIF</string>
+    <string name="home_set_default_accessibility">Jadikan GTLauncher sebagai launcher default</string>
+    <string name="home_default_accessibility">GTLauncher sudah menjadi launcher default</string>
+    <string name="home_settings_unavailable">Pengaturan aplikasi Home tidak tersedia pada perangkat ini.</string>
+    <string name="search_hint">Cari aplikasi</string>
+    <string name="apps_title">Semua aplikasi</string>
+    <string name="apps_section_label">APLIKASI TERPASANG</string>
+    <string name="app_count">%1$d aplikasi</string>
+    <string name="empty_apps">Belum ada aplikasi yang bisa ditampilkan.</string>
+    <string name="empty_search">Aplikasi tidak ditemukan.</string>
+    <string name="usage_hint">Ketuk untuk membuka · tahan untuk info aplikasi</string>
+    <string name="weather_source_credit">Cuaca Open-Meteo · visualisasi GTLauncher</string>
+    <string name="weather_license_credit">CC BY 4.0</string>
+    <string name="open_app_accessibility">Buka %1$s</string>
+    <string name="app_launch_failed">Aplikasi tidak dapat dibuka.</string>
+    <string name="app_info_failed">Info aplikasi tidak tersedia.</string>
+</resources>

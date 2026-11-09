@@ -1,0 +1,126 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  background: #e2e4e1;
+  color: #34413b;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.preview-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(8px, 1.6vh, 14px);
+  width: min(94vw, calc(155vh - 162px));
+}
+
+.device-frame {
+  width: 100%;
+  padding: clamp(8px, 1.4vmin, 18px);
+  border: 1px solid rgba(255, 255, 255, .24);
+  border-radius: clamp(18px, 2.8vmin, 34px);
+  background: linear-gradient(145deg, #353b3c 0%, #202526 42%, #14191a 100%);
+  box-shadow:
+    0 24px 64px rgba(23, 29, 27, .24),
+    0 4px 12px rgba(23, 29, 27, .14),
+    inset 0 1px 0 rgba(255, 255, 255, .15);
+}
+
+.device-display {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: clamp(10px, 1.8vmin, 22px);
+  background: #536582;
+  box-shadow: inset 0 0 0 1px rgba(9, 13, 14, .12);
+}
+
+.sky-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.camera-punch-hole {
+  position: absolute;
+  z-index: 2;
+  top: 3%;
+  left: 2.7%;
+  width: 1.8%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(89, 103, 107, .72);
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 34%, #263035 0 13%, #0a0e10 35%, #030506 76%);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .12);
+}
+
+.preview-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 14px;
+  max-width: 100%;
+  min-height: 44px;
+}
+
+.weather-mode-label {
+  margin: 0;
+  color: #59645d;
+  font-size: clamp(12px, 1.45vmin, 15px);
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.weather-cycle-button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 255, 255, .32);
+  border-radius: 999px;
+  background: linear-gradient(145deg, #526b59, #34463b);
+  box-shadow: 0 5px 14px rgba(37, 52, 42, .2), inset 0 1px 0 rgba(255, 255, 255, .16);
+  color: #f6f5e9;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease;
+}
+
+.weather-cycle-button:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.weather-cycle-button:active {
+  box-shadow: 0 2px 7px rgba(37, 52, 42, .18), inset 0 1px 0 rgba(255, 255, 255, .12);
+  transform: translateY(0);
+}
+
+.weather-cycle-button:focus-visible {
+  outline: 3px solid #8aa875;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weather-cycle-button {
+    transition: none;
+  }
+}
