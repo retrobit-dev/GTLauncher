@@ -44,6 +44,73 @@
   const ISLAND_BASE_BOTTOM_MARGIN = 8;
   const ISLAND_VERTICAL_LIFT = 22;
   const ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
+  // The island's lowest point rests above this cloud sea, which fills the sky beneath it.
+  // Three sprite layers drift at different speeds, which reads as 3D parallax.
+  const CLOUD_SEA_BASE = HEIGHT - ISLAND_BOTTOM_MARGIN;
+  const CLOUD_SEA_MARGIN = 34;
+  const CLOUD_LAYERS = [
+    {
+      baseline: CLOUD_SEA_BASE - 4,
+      height: 22,
+      drift: 1.1,
+      parallax: 0.45,
+      alpha: 0.92,
+      tint: 0.58,
+      tintColor: '#b6c8da',
+      salt: 11
+    },
+    {
+      baseline: CLOUD_SEA_BASE + 8,
+      height: 31,
+      drift: 2.9,
+      parallax: 0.85,
+      alpha: 1,
+      tint: 0.28,
+      tintColor: '#c9d9e7',
+      salt: 27
+    },
+    {
+      baseline: CLOUD_SEA_BASE + 30,
+      height: 48,
+      drift: 6.2,
+      parallax: 1.35,
+      alpha: 1,
+      tint: 0,
+      tintColor: '#dde9f3',
+      salt: 43
+    }
+  ];
+  const CLOUD_SPRITE_SOURCES = {
+    bank: './assets/cloud-bank.png',
+    mass: './assets/cloud-mass.png'
+  };
+  // Night cools the clouds, storm cover deepens them, and low sun warms the crests.
+  const CLOUD_NIGHT_TINT = '#33436a';
+  const CLOUD_STORM_TINT = '#65758c';
+  const CLOUD_WARM_TINT = '#ffe2bd';
+  const CLOUD_TINT_CACHE_LIMIT = 24;
+
+  function loadCloudSprites() {
+    const sprites = {};
+    Object.entries(CLOUD_SPRITE_SOURCES).forEach(([name, source]) => {
+      if (typeof Image === 'undefined') return;
+      const image = new Image();
+      image.src = source;
+      sprites[name] = image;
+    });
+    return sprites;
+  }
+  const CLOUD_SPRITES = loadCloudSprites();
+  // Tinted copies are cached, so only a weather or lighting change costs a repaint.
+  const CLOUD_TINT_CACHE = new Map();
+  function cloudSeaRandom(seed) {
+    return () => {
+      let state = seed = (seed + 0x6D2B79F5) | 0;
+      state = Math.imul(state ^ (state >>> 15), state | 1);
+      state ^= state + Math.imul(state ^ (state >>> 7), state | 61);
+      return ((state ^ (state >>> 14)) >>> 0) / 4294967296;
+    };
+  }
   let islandTop = HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH
     - ISLAND_GRID_SIZE * islandTileHeight;
   let islandCenterY = islandTop + ISLAND_GRID_SIZE * islandTileHeight / 2;
@@ -1559,7 +1626,11 @@
     const soilLeftX = leftX + ISLAND_GRASS_OVERHANG;
     const soilRightX = rightX - ISLAND_GRASS_OVERHANG;
 
-    drawIslandShadow(centerX, lowerY, sunAltitude, cloudCover, code);
+    // The cloud sea acts as the ground plane, so the island shadow is a soft patch
+    // brushed onto the cloud tops instead of a hard diamond in the open sky.
+    updateCloudParallax();
+    drawCloudSea(getSceneWeather(), sunAltitude);
+    drawIslandShadowOnClouds(centerX, sunAltitude, cloudCover, code);
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.
     drawIslandSoilBody(soilLeftX, centerX, soilRightX,
       middleY, soilFrontY, grassBandDepth, palette);
@@ -1601,6 +1672,152 @@
     drawSmoothIslandLine(leftX, middleY, centerX, bottomY, topRim, 0.60);
     drawSmoothIslandLine(centerX, bottomY, rightX, middleY, topRim, 0.60);
     ctx.restore();
+  }
+
+  function cloudSprite(name) {
+    const sprite = CLOUD_SPRITES[name];
+    if (!sprite || !sprite.complete || !sprite.naturalWidth) return null;
+    return sprite;
+  }
+
+  function tintedCloudSprite(name, tintColor, tintAmount) {
+    const sprite = cloudSprite(name);
+    if (!sprite) return null;
+    const key = `${name}|${tintColor}|${tintAmount.toFixed(2)}`;
+    if (CLOUD_TINT_CACHE.has(key)) return CLOUD_TINT_CACHE.get(key);
+    const width = sprite.naturalWidth;
+    const height = sprite.naturalHeight;
+    const buffer = document.createElement('canvas');
+    buffer.width = width;
+    buffer.height = height;
+    const bufferCtx = buffer.getContext('2d');
+    bufferCtx.imageSmoothingEnabled = true;
+    bufferCtx.drawImage(sprite, 0, 0);
+    if (tintAmount > 0.01) {
+      bufferCtx.globalCompositeOperation = 'source-atop';
+      bufferCtx.globalAlpha = tintAmount;
+      bufferCtx.fillStyle = tintColor;
+      bufferCtx.fillRect(0, 0, width, height);
+    }
+    if (CLOUD_TINT_CACHE.size >= CLOUD_TINT_CACHE_LIMIT) CLOUD_TINT_CACHE.clear();
+    CLOUD_TINT_CACHE.set(key, buffer);
+    return buffer;
+  }
+
+  function createCloudField(layer) {
+    const random = cloudSeaRandom(layer.salt);
+    const fields = [];
+    let cursor = -40;
+    while (cursor < WIDTH + 40) {
+      const variant = random() < 0.55 ? 'bank' : 'mass';
+      const height = layer.height * (0.82 + random() * 0.36);
+      fields.push({
+        x: cursor,
+        y: layer.baseline - height * (0.86 + random() * 0.18),
+        height,
+        variant,
+        mirror: random() < 0.5,
+        lean: (random() - 0.5) * 2
+      });
+      cursor += height * (1.0 + random() * 0.55);
+    }
+    return { layer, fields };
+  }
+  const CLOUD_SEA = CLOUD_LAYERS.map(createCloudField);
+
+  // Drag parallax: the view offset eases back to centre after the pointer is released.
+  const CLOUD_PARALLAX_LIMIT = 9;
+  let cloudDragUnits = 0;
+  let cloudDragTarget = 0;
+  let cloudDragPointer = null;
+
+  function updateCloudParallax() {
+    cloudDragUnits += (cloudDragTarget - cloudDragUnits) * 0.12;
+    if (Math.abs(cloudDragTarget - cloudDragUnits) < 0.01) cloudDragUnits = cloudDragTarget;
+  }
+
+  function drawCloudField(field, layer, sprite) {
+    const scale = field.height / sprite.height;
+    const width = sprite.width * scale;
+    const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
+    const drift = elapsed * layer.drift + cloudDragUnits * layer.parallax;
+    const span = WIDTH + CLOUD_SEA_MARGIN * 2;
+    const startX = ((field.x - drift + CLOUD_SEA_MARGIN) % span + span) % span
+      - CLOUD_SEA_MARGIN + field.lean;
+    ctx.save();
+    ctx.globalAlpha = layer.alpha;
+    for (const offset of [0, -span, span]) {
+      const x = startX + offset;
+      if (x > WIDTH + 4 || x + width < -4) continue;
+      if (field.mirror) {
+        ctx.save();
+        ctx.translate(x + width, field.y);
+        ctx.scale(-1, 1);
+        ctx.drawImage(sprite, 0, 0, width, field.height);
+        ctx.restore();
+      } else {
+        ctx.drawImage(sprite, x, field.y, width, field.height);
+      }
+    }
+    ctx.restore();
+  }
+
+  const CLOUD_SEA_TOP = CLOUD_SEA_BASE - 10;
+
+  // A soft contact shadow where the island's mass darkens the cloud tops beneath it.
+  function drawIslandShadowOnClouds(centerX, sunAltitude, cloudCover, code) {
+    const directLight = clamp((sunAltitude + 8) / 28, 0, 1);
+    let cloudFilter = 1 - clamp(cloudCover / 100 * 0.45, 0, 0.45);
+    if (weatherCodeIsStorm(code)) cloudFilter *= 0.82;
+    const opacity = (0.10 + directLight * 0.26) * cloudFilter;
+    const shadowY = CLOUD_SEA_BASE + 2;
+    const radiusX = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.52;
+    const radiusY = 11;
+    const shadow = ctx.createRadialGradient(centerX, shadowY, 0,
+      centerX, shadowY, radiusX);
+    shadow.addColorStop(0, `rgba(48, 68, 96, ${opacity})`);
+    shadow.addColorStop(0.55, `rgba(52, 74, 104, ${opacity * 0.55})`);
+    shadow.addColorStop(1, 'rgba(52, 74, 104, 0)');
+    ctx.save();
+    ctx.translate(centerX, shadowY);
+    ctx.scale(1, radiusY / radiusX);
+    ctx.translate(-centerX, -shadowY);
+    ctx.fillStyle = shadow;
+    ctx.fillRect(centerX - radiusX, shadowY - radiusX, radiusX * 2, radiusX * 2);
+    ctx.restore();
+  }
+
+  function drawCloudSea(sceneWeather, sunAltitude) {
+    const storm = weatherCodeIsStorm(sceneWeather.weatherCode);
+    const cover = clamp(sceneWeather.cloudCover / 100, 0, 1);
+    const quantise = value => Math.round(value * 16) / 16;
+    const night = quantise(clamp(1 - sunAltitude / 8, 0, 1) * 0.85);
+    const gloom = quantise(clamp(cover * 0.30 + (storm ? 0.26 : 0), 0, 0.55));
+    const warm = quantise(clamp(sunAltitude / 40, 0, 1) * (1 - cover) * 0.35);
+    // A soft cloud-toned body under the sprites hides sky gaps between puffs. It fades in
+    // from transparent at its top edge so the sea has no hard horizon line.
+    const bodyTop = Math.round(CLOUD_SEA_TOP);
+    const body = ctx.createLinearGradient(0, bodyTop, 0, HEIGHT);
+    body.addColorStop(0, 'rgba(220, 232, 242, 0)');
+    body.addColorStop(0.35, blendColor(blendColor('#c4d6e5', CLOUD_NIGHT_TINT, night),
+      CLOUD_STORM_TINT, gloom * 0.6));
+    body.addColorStop(1, blendColor(blendColor('#9fb6cc', CLOUD_NIGHT_TINT, night),
+      CLOUD_STORM_TINT, gloom * 0.7));
+    ctx.fillStyle = body;
+    ctx.fillRect(0, bodyTop, WIDTH, HEIGHT - bodyTop);
+    CLOUD_SEA.forEach(({ layer, fields }) => {
+      const tintColor = blendColor(
+        blendColor(blendColor(CLOUD_WARM_TINT, CLOUD_NIGHT_TINT, night), CLOUD_STORM_TINT, gloom),
+        layer.tintColor, layer.tint * 0.6
+      );
+      const tintAmount = clamp(layer.tint + night * 0.5 + gloom * 0.45 + warm * 0.25, 0, 0.92);
+      const bank = tintedCloudSprite('bank', tintColor, tintAmount);
+      const mass = tintedCloudSprite('mass', tintColor, tintAmount);
+      fields.forEach(field => {
+        const sprite = field.variant === 'mass' ? mass : bank;
+        if (sprite) drawCloudField(field, layer, sprite);
+      });
+    });
   }
 
   function rebuildParticles(sceneWeather) {
@@ -1826,6 +2043,29 @@
       updateWeatherModeControls();
       drawFrame();
     });
+  }
+
+  if (canvas) {
+    const releaseDrag = () => {
+      cloudDragPointer = null;
+      cloudDragTarget = 0;
+    };
+    canvas.addEventListener('pointerdown', event => {
+      cloudDragPointer = event.clientX;
+    });
+    canvas.addEventListener('pointermove', event => {
+      if (cloudDragPointer === null) return;
+      const delta = (event.clientX - cloudDragPointer) / canvas.clientWidth;
+      cloudDragTarget = clamp(-delta * CLOUD_PARALLAX_LIMIT * 2, -CLOUD_PARALLAX_LIMIT,
+        CLOUD_PARALLAX_LIMIT);
+      if (REDUCED_MOTION) {
+        cloudDragUnits = cloudDragTarget;
+        drawFrame();
+      }
+    });
+    canvas.addEventListener('pointerup', releaseDrag);
+    canvas.addEventListener('pointercancel', releaseDrag);
+    canvas.addEventListener('pointerleave', releaseDrag);
   }
 
   if ('DeviceOrientationEvent' in window) {
