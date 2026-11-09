@@ -48,11 +48,12 @@
   // Three sprite layers drift at different speeds, which reads as 3D parallax.
   const CLOUD_SEA_BASE = HEIGHT - ISLAND_BOTTOM_MARGIN;
   const CLOUD_SEA_MARGIN = 34;
+  // Clouds are static for now: no drift, no drag parallax, no per-frame motion.
+  const CLOUD_NEAR_TINT = '#eef4fa';
   const CLOUD_LAYERS = [
     {
       baseline: CLOUD_SEA_BASE - 4,
-      height: 22,
-      drift: 0.35,
+      height: 24,
       parallax: 0.40,
       alpha: 0.92,
       tint: 0.58,
@@ -61,8 +62,7 @@
     },
     {
       baseline: CLOUD_SEA_BASE + 8,
-      height: 31,
-      drift: 0.75,
+      height: 34,
       parallax: 0.80,
       alpha: 1,
       tint: 0.28,
@@ -71,8 +71,7 @@
     },
     {
       baseline: CLOUD_SEA_BASE + 30,
-      height: 48,
-      drift: 1.55,
+      height: 52,
       parallax: 1.30,
       alpha: 1,
       tint: 0,
@@ -80,18 +79,20 @@
       salt: 43
     }
   ];
-  // Near-camera clouds sit in front of the island: two hug the left and right flanks and
-  // two drift across the front, each covering only a sliver of the grass tiles.
-  const CLOUD_NEAR_TINT = '#eef4fa';
-  // Each puff grows out of the cloud sea; the flanking pair grazes the island's side
-  // tiles and the front pair overlaps only the outermost front tiles.
-  const CLOUD_NEAR_FRONTS = [
-    { x: -40, top: 94, height: 54, drift: 0.20, parallax: 1.45, tint: 0.10, mirror: false },
-    { x: 282, top: 98, height: 52, drift: 0.28, parallax: 1.55, tint: 0.10, mirror: true },
-    { x: 24, top: 124, height: 48, drift: 0.38, parallax: 1.80, tint: 0.05, mirror: false },
-    { x: 196, top: 130, height: 46, drift: 0.46, parallax: 1.90, tint: 0.05, mirror: true },
-    { x: 126, top: 158, height: 40, drift: 0.60, parallax: 2.10, tint: 0, mirror: false }
-  ].map(front => ({ ...front, tintColor: CLOUD_NEAR_TINT }));
+  // High side banks climb the left and right flanks so the island is surrounded by cloud
+  // rather than sitting on a flat floor; the outer front banks then close the bottom.
+  const CLOUD_SIDE_BANKS = [
+    { x: -62, top: 104, height: 96, tint: 0.12, mirror: false, sprite: 'bank' },
+    { x: -30, top: 118, height: 80, tint: 0.06, mirror: true, sprite: 'mass' },
+    { x: 232, top: 120, height: 82, tint: 0.06, mirror: false, sprite: 'bank' },
+    { x: 266, top: 106, height: 98, tint: 0.12, mirror: true, sprite: 'mass' }
+  ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
+  const CLOUD_FRONT_BANKS = [
+    { x: -50, top: 142, height: 74, tint: 0.04, mirror: false, sprite: 'mass' },
+    { x: 190, top: 146, height: 76, tint: 0.04, mirror: true, sprite: 'bank' },
+    { x: 62, top: 158, height: 58, tint: 0, mirror: false, sprite: 'mass' },
+    { x: 252, top: 160, height: 56, tint: 0, mirror: true, sprite: 'bank' }
+  ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   const CLOUD_SPRITE_SOURCES = {
     bank: './assets/cloud-bank.png',
     mass: './assets/cloud-mass.png'
@@ -1640,7 +1641,6 @@
 
     // The cloud sea acts as the ground plane, so the island shadow is a soft patch
     // brushed onto the cloud tops instead of a hard diamond in the open sky.
-    updateCloudParallax();
     drawCloudSea(getSceneWeather(), sunAltitude);
     drawIslandShadowOnClouds(centerX, sunAltitude, cloudCover, code);
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.
@@ -1684,8 +1684,8 @@
     drawSmoothIslandLine(leftX, middleY, centerX, bottomY, topRim, 0.60);
     drawSmoothIslandLine(centerX, bottomY, rightX, middleY, topRim, 0.60);
     ctx.restore();
-    // Foreground clouds overlap the island's lower tile edges, so they draw after it.
-    drawCloudFronts(getSceneWeather(), sunAltitude);
+    // Side and front banks overlap the island's tiles, so they draw after it.
+    drawCloudBanks(getSceneWeather(), sunAltitude);
   }
 
   function cloudSprite(name) {
@@ -1716,64 +1716,6 @@
     if (CLOUD_TINT_CACHE.size >= CLOUD_TINT_CACHE_LIMIT) CLOUD_TINT_CACHE.clear();
     CLOUD_TINT_CACHE.set(key, buffer);
     return buffer;
-  }
-
-  function createCloudField(layer) {
-    const random = cloudSeaRandom(layer.salt);
-    const fields = [];
-    let cursor = -40;
-    while (cursor < WIDTH + 40) {
-      const variant = random() < 0.55 ? 'bank' : 'mass';
-      const height = layer.height * (0.82 + random() * 0.36);
-      fields.push({
-        x: cursor,
-        y: layer.baseline - height * (0.86 + random() * 0.18),
-        height,
-        variant,
-        mirror: random() < 0.5,
-        lean: (random() - 0.5) * 2
-      });
-      cursor += height * (1.0 + random() * 0.55);
-    }
-    return { layer, fields };
-  }
-  const CLOUD_SEA = CLOUD_LAYERS.map(createCloudField);
-
-  // Drag parallax: the view offset eases back to centre after the pointer is released.
-  const CLOUD_PARALLAX_LIMIT = 9;
-  let cloudDragUnits = 0;
-  let cloudDragTarget = 0;
-  let cloudDragPointer = null;
-
-  function updateCloudParallax() {
-    cloudDragUnits += (cloudDragTarget - cloudDragUnits) * 0.12;
-    if (Math.abs(cloudDragTarget - cloudDragUnits) < 0.01) cloudDragUnits = cloudDragTarget;
-  }
-
-  function drawCloudField(field, layer, sprite) {
-    const scale = field.height / sprite.height;
-    const width = sprite.width * scale;
-    const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
-    const drift = elapsed * layer.drift + cloudDragUnits * layer.parallax;
-    const span = WIDTH + CLOUD_SEA_MARGIN * 2;
-    const startX = ((field.x - drift + CLOUD_SEA_MARGIN) % span + span) % span
-      - CLOUD_SEA_MARGIN + field.lean;
-    ctx.save();
-    ctx.globalAlpha = layer.alpha;
-    for (const offset of [0, -span, span]) {
-      const x = startX + offset;
-      if (x > WIDTH + 4 || x + width < -4) continue;
-      if (field.mirror) {
-        ctx.save();
-        ctx.translate(x + width, field.y);
-        ctx.scale(-1, 1);
-        ctx.drawImage(sprite, 0, 0, width, field.height);
-        ctx.restore();
-      } else {
-        ctx.drawImage(sprite, x, field.y, width, field.height);
-      }
-    }
-    ctx.restore();
   }
 
   const CLOUD_SEA_TOP = CLOUD_SEA_BASE - 10;
@@ -1818,32 +1760,52 @@
     };
   }
 
-  // Foreground puffs that overlap the island: the left and right pairs frame its flanks,
-  // the front pair drifts across the bottom so the island sits inside the cloud sea.
-  function drawCloudFronts(sceneWeather, sunAltitude) {
-    const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
-    CLOUD_NEAR_FRONTS.forEach((front, index) => {
-      const tint = cloudWeatherTint(sceneWeather, sunAltitude, front);
-      const sprite = tintedCloudSprite(index % 2 ? 'mass' : 'bank', tint.tintColor,
-        tint.tintAmount);
-      if (!sprite) return;
-      const cloud = cloudSprite(index % 2 ? 'mass' : 'bank');
-      const scale = front.height / cloud.height;
-      const width = cloud.width * scale;
-      const drift = elapsed * front.drift + cloudDragUnits * front.parallax;
-      const x = front.x - (drift % 18);
-      const y = front.top;
-      ctx.save();
-      if (front.mirror) {
-        ctx.translate(x + width, y);
-        ctx.scale(-1, 1);
-        ctx.drawImage(sprite, 0, 0, width, front.height);
-      } else {
-        ctx.drawImage(sprite, x, y, width, front.height);
-      }
-      ctx.restore();
+  function drawCloudSpriteAt(sprite, x, y, height, mirror) {
+    const scale = height / sprite.height;
+    const width = sprite.width * scale;
+    ctx.save();
+    if (mirror) {
+      ctx.translate(x + width, y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(sprite, 0, 0, width, height);
+    } else {
+      ctx.drawImage(sprite, x, y, width, height);
+    }
+    ctx.restore();
+  }
+
+  // A static bank of cloud: enough puffs to bury every gap between its neighbours.
+  function drawCloudRow(sceneWeather, sunAltitude, baseline, puffs) {
+    puffs.forEach(puff => {
+      const tint = cloudWeatherTint(sceneWeather, sunAltitude, puff);
+      const sprite = tintedCloudSprite(puff.sprite, tint.tintColor, tint.tintAmount);
+      if (sprite) drawCloudSpriteAt(sprite, puff.x, puff.y, puff.height, puff.mirror);
     });
   }
+
+  function buildCloudRow(layer, scale) {
+    const random = cloudSeaRandom(layer.salt);
+    const puffs = [];
+    const step = layer.height * 0.62;
+    for (let x = -step; x < WIDTH + step; x += step) {
+      const height = layer.height * scale * (0.9 + random() * 0.22);
+      puffs.push({
+        x: x - step * 0.25 + random() * step * 0.5,
+        y: layer.baseline - height * (0.9 + random() * 0.12),
+        height,
+        sprite: random() < 0.5 ? 'bank' : 'mass',
+        mirror: random() < 0.5,
+        tint: layer.tint,
+        tintColor: layer.tintColor
+      });
+    }
+    return puffs;
+  }
+
+  const CLOUD_ROWS = CLOUD_LAYERS.map((layer, index) => ({
+    layer,
+    puffs: buildCloudRow(layer, [1, 1.06, 1.12][index] || 1)
+  }));
 
   function drawCloudSea(sceneWeather, sunAltitude) {
     const storm = weatherCodeIsStorm(sceneWeather.weatherCode);
@@ -1851,7 +1813,6 @@
     const quantise = value => Math.round(value * 16) / 16;
     const night = quantise(clamp(1 - sunAltitude / 8, 0, 1) * 0.85);
     const gloom = quantise(clamp(cover * 0.30 + (storm ? 0.26 : 0), 0, 0.55));
-    const warm = quantise(clamp(sunAltitude / 40, 0, 1) * (1 - cover) * 0.35);
     // A soft cloud-toned body under the sprites hides sky gaps between puffs. It fades in
     // from transparent at its top edge so the sea has no hard horizon line.
     const bodyTop = Math.round(CLOUD_SEA_TOP);
@@ -1863,18 +1824,20 @@
       CLOUD_STORM_TINT, gloom * 0.7));
     ctx.fillStyle = body;
     ctx.fillRect(0, bodyTop, WIDTH, HEIGHT - bodyTop);
-    CLOUD_SEA.forEach(({ layer, fields }) => {
-      const tintColor = blendColor(
-        blendColor(blendColor(CLOUD_WARM_TINT, CLOUD_NIGHT_TINT, night), CLOUD_STORM_TINT, gloom),
-        layer.tintColor, layer.tint * 0.6
-      );
-      const tintAmount = clamp(layer.tint + night * 0.5 + gloom * 0.45 + warm * 0.25, 0, 0.92);
-      const bank = tintedCloudSprite('bank', tintColor, tintAmount);
-      const mass = tintedCloudSprite('mass', tintColor, tintAmount);
-      fields.forEach(field => {
-        const sprite = field.variant === 'mass' ? mass : bank;
-        if (sprite) drawCloudField(field, layer, sprite);
-      });
+    CLOUD_ROWS.forEach(({ layer, puffs }) => {
+      ctx.save();
+      ctx.globalAlpha = layer.alpha;
+      drawCloudRow(sceneWeather, sunAltitude, layer.baseline, puffs);
+      ctx.restore();
+    });
+  }
+
+  // Side and front banks overlap the island itself, so they draw after it.
+  function drawCloudBanks(sceneWeather, sunAltitude) {
+    [...CLOUD_SIDE_BANKS, ...CLOUD_FRONT_BANKS].forEach(bank => {
+      const tint = cloudWeatherTint(sceneWeather, sunAltitude, bank);
+      const sprite = tintedCloudSprite(bank.sprite, tint.tintColor, tint.tintAmount);
+      if (sprite) drawCloudSpriteAt(sprite, bank.x, bank.top, bank.height, bank.mirror);
     });
   }
 
@@ -2101,29 +2064,6 @@
       updateWeatherModeControls();
       drawFrame();
     });
-  }
-
-  if (canvas) {
-    const releaseDrag = () => {
-      cloudDragPointer = null;
-      cloudDragTarget = 0;
-    };
-    canvas.addEventListener('pointerdown', event => {
-      cloudDragPointer = event.clientX;
-    });
-    canvas.addEventListener('pointermove', event => {
-      if (cloudDragPointer === null) return;
-      const delta = (event.clientX - cloudDragPointer) / canvas.clientWidth;
-      cloudDragTarget = clamp(-delta * CLOUD_PARALLAX_LIMIT * 2, -CLOUD_PARALLAX_LIMIT,
-        CLOUD_PARALLAX_LIMIT);
-      if (REDUCED_MOTION) {
-        cloudDragUnits = cloudDragTarget;
-        drawFrame();
-      }
-    });
-    canvas.addEventListener('pointerup', releaseDrag);
-    canvas.addEventListener('pointercancel', releaseDrag);
-    canvas.addEventListener('pointerleave', releaseDrag);
   }
 
   if ('DeviceOrientationEvent' in window) {
