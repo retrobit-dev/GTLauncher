@@ -118,6 +118,16 @@
   ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   // The cradle holds the island: these crowns sit directly under its soil slab and hide
   // the lowest tip, which is what makes the island look settled on the cloud tops.
+  // Blanket crowns that climb high enough to cover the outermost tiles on every side, so the
+  // cloud really does embrace the ground slab instead of stopping at its edge.
+  const CLOUD_BLANKET_BANKS = [
+    { cx: 0.02, top: 94, height: 104, tint: 0.14, sprite: 'mass' },
+    { cx: 0.98, top: 94, height: 104, tint: 0.14, sprite: 'mass' },
+    { cx: 0.10, top: 104, height: 96, tint: 0.10, sprite: 'bank' },
+    { cx: 0.90, top: 104, height: 96, tint: 0.10, sprite: 'bank' },
+    { cx: 0.26, top: 150, height: 74, tint: 0.06, sprite: 'bank' },
+    { cx: 0.74, top: 150, height: 74, tint: 0.06, sprite: 'bank' }
+  ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   const CLOUD_CRADLE_BANKS = [
     { cx: 0.33, top: 140, height: 72, tint: 0.02, sprite: 'mass' },
     { cx: 0.67, top: 140, height: 72, tint: 0.02, sprite: 'mass' },
@@ -131,6 +141,15 @@
     { cx: 0.24, top: 164, height: 58, tint: 0.02, sprite: 'bank' },
     { cx: 0.76, top: 164, height: 58, tint: 0.02, sprite: 'bank' },
     { cx: 0.50, top: 172, height: 48, tint: 0, sprite: 'mass' }
+  ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
+  // A distant cloud band behind the island, level with the middle of the screen. The island
+  // is drawn over it, so this reads as the far side of the sky the island floats in.
+  const CLOUD_BACK_BANKS = [
+    // Level with the middle of the screen: these sit behind the island's lateral corners.
+    { cx: 0.005, top: 112, height: 62, tint: 0.50, sprite: 'mass' },
+    { cx: 0.095, top: 106, height: 54, tint: 0.44, sprite: 'bank' },
+    { cx: 0.905, top: 106, height: 54, tint: 0.44, sprite: 'bank' },
+    { cx: 0.995, top: 112, height: 62, tint: 0.50, sprite: 'mass' }
   ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   const CLOUD_SPRITE_SOURCES = {
     bank: './assets/cloud-bank.png',
@@ -1681,6 +1700,7 @@
     // The cloud sea acts as the ground plane, so the island shadow is a soft patch
     // brushed onto the cloud tops instead of a hard diamond in the open sky.
     drawDistantCloudHaze(getSceneWeather(), sunAltitude);
+    drawBackCloudBanks(getSceneWeather(), sunAltitude);
     drawCloudSea(getSceneWeather(), sunAltitude);
     drawIslandShadowOnClouds(centerX, sunAltitude, cloudCover, code);
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.
@@ -1882,8 +1902,25 @@
   }
 
   // Side and front banks overlap the island itself, so they draw after it.
+  // Far-side clouds behind the island; the island and its foreground banks then cover them.
+  function drawBackCloudBanks(sceneWeather, sunAltitude) {
+    CLOUD_BACK_BANKS.forEach(bank => {
+      const tint = cloudWeatherTint(sceneWeather, sunAltitude, bank);
+      const sprite = tintedCloudSprite(bank.sprite, tint.tintColor, tint.tintAmount);
+      if (!sprite) return;
+      const scale = bank.height / sprite.height;
+      const width = sprite.width * scale;
+      ctx.save();
+      ctx.globalAlpha = 0.92;
+      drawCloudSpriteAt(sprite, bank.cx * WIDTH - width / 2, bank.top, bank.height,
+        bank.cx < 0.5);
+      ctx.restore();
+    });
+  }
+
   function drawCloudBanks(sceneWeather, sunAltitude) {
-    [...CLOUD_GAP_FILLERS, ...CLOUD_SIDE_BANKS, ...CLOUD_CRADLE_BANKS, ...CLOUD_FRONT_BANKS].forEach(bank => {
+    [...CLOUD_GAP_FILLERS, ...CLOUD_SIDE_BANKS, ...CLOUD_BLANKET_BANKS, ...CLOUD_CRADLE_BANKS,
+      ...CLOUD_FRONT_BANKS].forEach(bank => {
       const tint = cloudWeatherTint(sceneWeather, sunAltitude, bank);
       const sprite = tintedCloudSprite(bank.sprite, tint.tintColor, tint.tintAmount);
       if (!sprite) return;

@@ -119,6 +119,24 @@ public final class WeatherSkyView extends View {
             new CloudBank(0.76f, 164.0f, 58.0f, 0.02f, true),
             new CloudBank(0.50f, 172.0f, 48.0f, 0.0f, false)
     };
+    // A distant cloud band behind the island, level with the middle of the screen. The island
+    // is drawn over it, so this reads as the far side of the sky the island floats in.
+    private static final CloudBank[] CLOUD_BACK_BANKS = {
+            new CloudBank(0.005f, 112.0f, 62.0f, 0.50f, false),
+            new CloudBank(0.095f, 106.0f, 54.0f, 0.44f, true),
+            new CloudBank(0.905f, 106.0f, 54.0f, 0.44f, true),
+            new CloudBank(0.995f, 112.0f, 62.0f, 0.50f, false)
+    };
+    // Blanket crowns that climb high enough to cover the outermost tiles on every side, so the
+    // cloud really does embrace the ground slab instead of stopping at its edge.
+    private static final CloudBank[] CLOUD_BLANKET_BANKS = {
+            new CloudBank(0.02f, 94.0f, 104.0f, 0.14f, false),
+            new CloudBank(0.98f, 94.0f, 104.0f, 0.14f, false),
+            new CloudBank(0.10f, 104.0f, 96.0f, 0.10f, true),
+            new CloudBank(0.90f, 104.0f, 96.0f, 0.10f, true),
+            new CloudBank(0.26f, 150.0f, 74.0f, 0.06f, true),
+            new CloudBank(0.74f, 150.0f, 74.0f, 0.06f, true)
+    };
     private static final String CLOUD_BANK_SPRITE = "cloud-bank";
     private static final String CLOUD_MASS_SPRITE = "cloud-mass";
     // Night cools the clouds, storm cover deepens them, and low sun warms the crests.
@@ -1819,9 +1837,26 @@ public final class WeatherSkyView extends View {
     }
 
     // Side and front banks overlap the island itself, so they draw after it.
+    // Far-side clouds behind the island; the island and its foreground banks then cover them.
+    private void drawBackCloudBanks(Canvas canvas, double sunAltitude, double cloudCover,
+                                    int code) {
+        for (CloudBank bank : CLOUD_BACK_BANKS) {
+            CloudTint tint = cloudWeatherTint(sunAltitude, cloudCover, code,
+                    bank.tint, CLOUD_NEAR_TINT);
+            Bitmap sprite = tintedCloudSprite(bank.bank, tint.color, tint.amount);
+            if (sprite == null) continue;
+            float scale = bank.height / sprite.getHeight();
+            float width = sprite.getWidth() * scale;
+            cloudPaint.setAlpha(235);
+            drawCloudSpriteAt(canvas, sprite, bank.cx * SCENE_WIDTH - width / 2.0f,
+                    bank.top, bank.height, bank.cx < 0.5f);
+        }
+        cloudPaint.setAlpha(255);
+    }
+
     private void drawCloudBanks(Canvas canvas, double sunAltitude, double cloudCover, int code) {
         for (CloudBank[] banks : new CloudBank[][] {CLOUD_GAP_FILLERS, CLOUD_SIDE_BANKS,
-                CLOUD_CRADLE_BANKS, CLOUD_FRONT_BANKS}) {
+                CLOUD_BLANKET_BANKS, CLOUD_CRADLE_BANKS, CLOUD_FRONT_BANKS}) {
             for (CloudBank bank : banks) {
                 CloudTint tint = cloudWeatherTint(sunAltitude, cloudCover, code,
                         bank.tint, CLOUD_NEAR_TINT);
