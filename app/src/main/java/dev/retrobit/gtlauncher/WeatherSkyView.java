@@ -69,30 +69,37 @@ public final class WeatherSkyView extends View {
     // Three static sprite rows build the sea; side and front banks overlap the island.
     private static final float CLOUD_SEA_BASE = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN;
     private static final float CLOUD_SEA_MARGIN = 34.0f;
-    private static final float CLOUD_SEA_TOP = CLOUD_SEA_BASE - 10.0f;
+    private static final float CLOUD_SEA_TOP = CLOUD_SEA_BASE + 20.0f;
     // Clouds are static for now: no drift and no drag parallax.
+    // The sea sinks into a shallow valley beneath the island. Distant rows dip least, so the
+    // sea stays visible below the island while the nearer rows frame it from the sides.
+    private static final float CLOUD_VALLEY_DEPTH = 22.0f;
     private static final CloudLayer[] CLOUD_LAYERS = {
-            new CloudLayer(CLOUD_SEA_BASE - 4.0f, 24.0f, 0.92f, 0.58f,
-                    Color.rgb(182, 200, 218), 11, 1.0f),
-            new CloudLayer(CLOUD_SEA_BASE + 8.0f, 34.0f, 1.0f, 0.28f,
-                    Color.rgb(201, 217, 231), 27, 1.06f),
-            new CloudLayer(CLOUD_SEA_BASE + 30.0f, 52.0f, 1.0f, 0.0f,
-                    Color.rgb(221, 233, 243), 43, 1.12f)
+            new CloudLayer(CLOUD_SEA_BASE + 14.0f, 24.0f, 0.88f, 0.55f,
+                    Color.rgb(182, 200, 218), 11, 1.0f, 0.35f),
+            new CloudLayer(CLOUD_SEA_BASE + 28.0f, 32.0f, 1.0f, 0.26f,
+                    Color.rgb(201, 217, 231), 27, 1.04f, 0.72f),
+            new CloudLayer(CLOUD_SEA_BASE + 44.0f, 42.0f, 1.0f, 0.0f,
+                    Color.rgb(221, 233, 243), 43, 1.1f, 1.0f)
     };
     private static final int CLOUD_NEAR_TINT = Color.rgb(238, 244, 250);
-    // High side banks climb the left and right flanks so the island is surrounded by cloud
-    // rather than sitting on a flat floor; the outer front banks then close the bottom.
+    // Each flank is a stack of overlapping clouds rather than one scaled blob, so the lobes
+    // stay visible and the wall of cloud still reads as many separate puffs.
     private static final CloudBank[] CLOUD_SIDE_BANKS = {
-            new CloudBank(-62.0f, 104.0f, 96.0f, 0.12f, false, true),
-            new CloudBank(-30.0f, 118.0f, 80.0f, 0.06f, true, false),
-            new CloudBank(232.0f, 120.0f, 82.0f, 0.06f, false, true),
-            new CloudBank(266.0f, 106.0f, 98.0f, 0.12f, true, false)
+            new CloudBank(0.045f, 128.0f, 78.0f, 0.12f, true),
+            new CloudBank(0.115f, 112.0f, 84.0f, 0.08f, false),
+            new CloudBank(0.175f, 138.0f, 64.0f, 0.05f, true),
+            new CloudBank(0.075f, 96.0f, 70.0f, 0.16f, false),
+            new CloudBank(0.955f, 128.0f, 78.0f, 0.12f, true),
+            new CloudBank(0.885f, 112.0f, 84.0f, 0.08f, false),
+            new CloudBank(0.825f, 138.0f, 64.0f, 0.05f, true),
+            new CloudBank(0.925f, 96.0f, 70.0f, 0.16f, false)
     };
     private static final CloudBank[] CLOUD_FRONT_BANKS = {
-            new CloudBank(-50.0f, 142.0f, 74.0f, 0.04f, false, false),
-            new CloudBank(190.0f, 146.0f, 76.0f, 0.04f, true, true),
-            new CloudBank(62.0f, 158.0f, 58.0f, 0.0f, false, false),
-            new CloudBank(252.0f, 160.0f, 56.0f, 0.0f, true, true)
+            new CloudBank(0.10f, 152.0f, 62.0f, 0.04f, false),
+            new CloudBank(0.90f, 152.0f, 62.0f, 0.04f, false),
+            new CloudBank(0.30f, 166.0f, 48.0f, 0.02f, true),
+            new CloudBank(0.70f, 166.0f, 48.0f, 0.02f, true)
     };
     private static final String CLOUD_BANK_SPRITE = "cloud-bank";
     private static final String CLOUD_MASS_SPRITE = "cloud-mass";
@@ -1728,6 +1735,12 @@ public final class WeatherSkyView extends View {
         return new CloudTint(tintColor, tintAmount);
     }
 
+    private static float cloudValleyOffset(float x, float scale) {
+        float normalized = (float) clamp((x - SCENE_WIDTH / 2.0f) / (SCENE_WIDTH * 0.66f),
+                -1.0, 1.0);
+        return CLOUD_VALLEY_DEPTH * scale * (1.0f - normalized * normalized);
+    }
+
     private void drawCloudSea(Canvas canvas, double sunAltitude, double cloudCover, int code) {
         paint.setStyle(Paint.Style.FILL);
         boolean storm = code >= 95;
@@ -1763,7 +1776,8 @@ public final class WeatherSkyView extends View {
                 boolean useMass = random.nextFloat() < 0.5f;
                 boolean mirror = random.nextFloat() < 0.5f;
                 float puffX = x - step * 0.25f + random.nextFloat() * step * 0.5f;
-                float puffY = layer.baseline - height * (0.9f + random.nextFloat() * 0.12f);
+                float puffY = layer.baseline - height * (0.9f + random.nextFloat() * 0.12f)
+                        + cloudValleyOffset(puffX, layer.valley);
                 drawCloudSpriteAt(canvas, useMass ? mass : bank, puffX, puffY, height, mirror);
             }
         }
@@ -1778,8 +1792,11 @@ public final class WeatherSkyView extends View {
                         bank.tint, CLOUD_NEAR_TINT);
                 Bitmap sprite = tintedCloudSprite(bank.bank, tint.color, tint.amount);
                 if (sprite == null) continue;
+                float scale = bank.height / sprite.getHeight();
+                float width = sprite.getWidth() * scale;
                 cloudPaint.setAlpha(255);
-                drawCloudSpriteAt(canvas, sprite, bank.x, bank.top, bank.height, bank.mirror);
+                drawCloudSpriteAt(canvas, sprite, bank.cx * SCENE_WIDTH - width / 2.0f,
+                        bank.top, bank.height, bank.cx < 0.5f);
             }
         }
     }
@@ -1824,9 +1841,10 @@ public final class WeatherSkyView extends View {
         final int tintColor;
         final int salt;
         final float rowScale;
+        final float valley;
 
         CloudLayer(float baseline, float height, float alpha, float tint, int tintColor,
-                   int salt, float rowScale) {
+                   int salt, float rowScale, float valley) {
             this.baseline = baseline;
             this.height = height;
             this.alpha = alpha;
@@ -1834,6 +1852,7 @@ public final class WeatherSkyView extends View {
             this.tintColor = tintColor;
             this.salt = salt;
             this.rowScale = rowScale;
+            this.valley = valley;
         }
     }
 
@@ -1848,20 +1867,18 @@ public final class WeatherSkyView extends View {
     }
 
     private static final class CloudBank {
-        final float x;
+        final float cx;
         final float top;
         final float height;
         final float tint;
-        final boolean mirror;
         /** true = cloud bank sprite, false = cloud mass sprite. */
         final boolean bank;
 
-        CloudBank(float x, float top, float height, float tint, boolean mirror, boolean bank) {
-            this.x = x;
+        CloudBank(float cx, float top, float height, float tint, boolean bank) {
+            this.cx = cx;
             this.top = top;
             this.height = height;
             this.tint = tint;
-            this.mirror = mirror;
             this.bank = bank;
         }
     }

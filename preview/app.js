@@ -47,51 +47,60 @@
   // The island's lowest point rests above this cloud sea, which fills the sky beneath it.
   // Three sprite layers drift at different speeds, which reads as 3D parallax.
   const CLOUD_SEA_BASE = HEIGHT - ISLAND_BOTTOM_MARGIN;
-  const CLOUD_SEA_MARGIN = 34;
   // Clouds are static for now: no drift, no drag parallax, no per-frame motion.
   const CLOUD_NEAR_TINT = '#eef4fa';
+  // A deeper, finer-grained sea so the island reads as small and high above it.
   const CLOUD_LAYERS = [
     {
-      baseline: CLOUD_SEA_BASE - 4,
+      baseline: CLOUD_SEA_BASE + 14,
       height: 24,
-      parallax: 0.40,
-      alpha: 0.92,
-      tint: 0.58,
+      alpha: 0.88,
+      tint: 0.55,
       tintColor: '#b6c8da',
-      salt: 11
+      salt: 11,
+      valley: 0.35,
+      rowScale: 1
     },
     {
-      baseline: CLOUD_SEA_BASE + 8,
-      height: 34,
-      parallax: 0.80,
+      baseline: CLOUD_SEA_BASE + 28,
+      height: 32,
       alpha: 1,
-      tint: 0.28,
+      tint: 0.26,
       tintColor: '#c9d9e7',
-      salt: 27
+      salt: 27,
+      valley: 0.72,
+      rowScale: 1.04
     },
     {
-      baseline: CLOUD_SEA_BASE + 30,
-      height: 52,
-      parallax: 1.30,
+      baseline: CLOUD_SEA_BASE + 44,
+      height: 42,
       alpha: 1,
       tint: 0,
       tintColor: '#dde9f3',
-      salt: 43
+      salt: 43,
+      valley: 1.0,
+      rowScale: 1.1
     }
   ];
-  // High side banks climb the left and right flanks so the island is surrounded by cloud
-  // rather than sitting on a flat floor; the outer front banks then close the bottom.
+  // Banks are anchored by their centre fraction of the width, so mirrored pairs stay
+  // symmetrical. Side banks climb the flanks; front banks close the lower foreground.
+  // Each flank is a stack of overlapping clouds rather than one scaled blob, so the lobes
+  // stay visible and the wall of cloud still reads as many separate puffs.
   const CLOUD_SIDE_BANKS = [
-    { x: -62, top: 104, height: 96, tint: 0.12, mirror: false, sprite: 'bank' },
-    { x: -30, top: 118, height: 80, tint: 0.06, mirror: true, sprite: 'mass' },
-    { x: 232, top: 120, height: 82, tint: 0.06, mirror: false, sprite: 'bank' },
-    { x: 266, top: 106, height: 98, tint: 0.12, mirror: true, sprite: 'mass' }
+    { cx: 0.045, top: 128, height: 78, tint: 0.12, sprite: 'bank' },
+    { cx: 0.115, top: 112, height: 84, tint: 0.08, sprite: 'mass' },
+    { cx: 0.175, top: 138, height: 64, tint: 0.05, sprite: 'bank' },
+    { cx: 0.075, top: 96, height: 70, tint: 0.16, sprite: 'mass' },
+    { cx: 0.955, top: 128, height: 78, tint: 0.12, sprite: 'bank' },
+    { cx: 0.885, top: 112, height: 84, tint: 0.08, sprite: 'mass' },
+    { cx: 0.825, top: 138, height: 64, tint: 0.05, sprite: 'bank' },
+    { cx: 0.925, top: 96, height: 70, tint: 0.16, sprite: 'mass' }
   ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   const CLOUD_FRONT_BANKS = [
-    { x: -50, top: 142, height: 74, tint: 0.04, mirror: false, sprite: 'mass' },
-    { x: 190, top: 146, height: 76, tint: 0.04, mirror: true, sprite: 'bank' },
-    { x: 62, top: 158, height: 58, tint: 0, mirror: false, sprite: 'mass' },
-    { x: 252, top: 160, height: 56, tint: 0, mirror: true, sprite: 'bank' }
+    { cx: 0.10, top: 152, height: 62, tint: 0.04, sprite: 'mass' },
+    { cx: 0.90, top: 152, height: 62, tint: 0.04, sprite: 'mass' },
+    { cx: 0.30, top: 166, height: 48, tint: 0.02, sprite: 'bank' },
+    { cx: 0.70, top: 166, height: 48, tint: 0.02, sprite: 'bank' }
   ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   const CLOUD_SPRITE_SOURCES = {
     bank: './assets/cloud-bank.png',
@@ -1718,7 +1727,7 @@
     return buffer;
   }
 
-  const CLOUD_SEA_TOP = CLOUD_SEA_BASE - 10;
+  const CLOUD_SEA_TOP = CLOUD_SEA_BASE + 20;
 
   // A soft contact shadow where the island's mass darkens the cloud tops beneath it.
   function drawIslandShadowOnClouds(centerX, sunAltitude, cloudCover, code) {
@@ -1783,15 +1792,26 @@
     });
   }
 
+  // The sea sinks into a shallow valley beneath the island. Distant rows dip least, so the
+  // sea stays visible below the island while the nearer rows frame it from the sides.
+  const CLOUD_VALLEY_DEPTH = 22;
+
+  function cloudValleyOffset(x, scale) {
+    const normalized = clamp((x - WIDTH / 2) / (WIDTH * 0.66), -1, 1);
+    return CLOUD_VALLEY_DEPTH * scale * (1 - normalized * normalized);
+  }
+
   function buildCloudRow(layer, scale) {
     const random = cloudSeaRandom(layer.salt);
     const puffs = [];
     const step = layer.height * 0.62;
     for (let x = -step; x < WIDTH + step; x += step) {
       const height = layer.height * scale * (0.9 + random() * 0.22);
+      const puffX = x - step * 0.25 + random() * step * 0.5;
       puffs.push({
-        x: x - step * 0.25 + random() * step * 0.5,
-        y: layer.baseline - height * (0.9 + random() * 0.12),
+        x: puffX,
+        y: layer.baseline - height * (0.9 + random() * 0.12)
+          + cloudValleyOffset(puffX, layer.valley),
         height,
         sprite: random() < 0.5 ? 'bank' : 'mass',
         mirror: random() < 0.5,
@@ -1802,9 +1822,9 @@
     return puffs;
   }
 
-  const CLOUD_ROWS = CLOUD_LAYERS.map((layer, index) => ({
+  const CLOUD_ROWS = CLOUD_LAYERS.map(layer => ({
     layer,
-    puffs: buildCloudRow(layer, [1, 1.06, 1.12][index] || 1)
+    puffs: buildCloudRow(layer, layer.rowScale)
   }));
 
   function drawCloudSea(sceneWeather, sunAltitude) {
@@ -1837,7 +1857,11 @@
     [...CLOUD_SIDE_BANKS, ...CLOUD_FRONT_BANKS].forEach(bank => {
       const tint = cloudWeatherTint(sceneWeather, sunAltitude, bank);
       const sprite = tintedCloudSprite(bank.sprite, tint.tintColor, tint.tintAmount);
-      if (sprite) drawCloudSpriteAt(sprite, bank.x, bank.top, bank.height, bank.mirror);
+      if (!sprite) return;
+      const scale = bank.height / sprite.height;
+      const width = sprite.width * scale;
+      drawCloudSpriteAt(sprite, bank.cx * WIDTH - width / 2, bank.top, bank.height,
+        bank.cx < 0.5);
     });
   }
 
