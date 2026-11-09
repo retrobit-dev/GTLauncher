@@ -83,59 +83,65 @@ public final class WeatherSkyView extends View {
                     Color.rgb(221, 233, 243), 43, 1.10f)
     };
     private static final int CLOUD_NEAR_TINT = Color.rgb(238, 244, 250);
-    // Low crowns tucked into the two gaps beside the island tip, so no sky shows through
-    // the point where the island meets its cloud bed.
+    // Nothing is an exact mirror of its opposite: heights, widths and tints all vary, so the
+    // cloud walls read as natural puffs rather than a symmetrical pattern.
     private static final CloudBank[] CLOUD_GAP_FILLERS = {
-            new CloudBank(0.335f, 140.0f, 54.0f, 0.06f, true),
-            new CloudBank(0.665f, 140.0f, 54.0f, 0.06f, true),
-            new CloudBank(0.40f, 148.0f, 50.0f, 0.03f, false),
-            new CloudBank(0.60f, 148.0f, 50.0f, 0.03f, false)
+            new CloudBank(0.335f, 148.0f, 46.0f, 0.06f, true),
+            new CloudBank(0.672f, 144.0f, 52.0f, 0.04f, false),
+            new CloudBank(0.418f, 154.0f, 44.0f, 0.03f, false),
+            new CloudBank(0.600f, 150.0f, 40.0f, 0.05f, true)
     };
     // Each flank is a stack of overlapping clouds rather than one scaled blob, so the lobes
     // stay visible and the wall of cloud still reads as many separate puffs.
     private static final CloudBank[] CLOUD_SIDE_BANKS = {
-            new CloudBank(0.045f, 132.0f, 84.0f, 0.12f, true),
-            new CloudBank(0.115f, 118.0f, 90.0f, 0.08f, false),
-            new CloudBank(0.175f, 140.0f, 70.0f, 0.05f, true),
-            new CloudBank(0.075f, 104.0f, 76.0f, 0.16f, false),
-            new CloudBank(0.955f, 132.0f, 84.0f, 0.12f, true),
-            new CloudBank(0.885f, 118.0f, 90.0f, 0.08f, false),
-            new CloudBank(0.825f, 140.0f, 70.0f, 0.05f, true),
-            new CloudBank(0.925f, 104.0f, 76.0f, 0.16f, false)
+            new CloudBank(0.045f, 132.0f, 84.0f, 0.12f, false),
+            new CloudBank(0.118f, 116.0f, 92.0f, 0.07f, true),
+            new CloudBank(0.172f, 142.0f, 68.0f, 0.05f, true),
+            new CloudBank(0.072f, 102.0f, 78.0f, 0.16f, false),
+            new CloudBank(0.958f, 128.0f, 80.0f, 0.11f, true),
+            new CloudBank(0.877f, 122.0f, 86.0f, 0.06f, false),
+            new CloudBank(0.812f, 146.0f, 64.0f, 0.04f, true),
+            new CloudBank(0.936f, 108.0f, 72.0f, 0.15f, true)
     };
     // The cradle holds the island: these crowns sit directly under its soil slab and hide
     // the lowest tip, which is what makes the island look settled on the cloud tops.
     private static final CloudBank[] CLOUD_CRADLE_BANKS = {
-            new CloudBank(0.33f, 140.0f, 72.0f, 0.02f, false),
-            new CloudBank(0.67f, 140.0f, 72.0f, 0.02f, false),
-            new CloudBank(0.44f, 150.0f, 64.0f, 0.01f, true),
-            new CloudBank(0.56f, 150.0f, 64.0f, 0.01f, true),
-            new CloudBank(0.50f, 160.0f, 56.0f, 0.0f, false)
+            new CloudBank(0.328f, 138.0f, 74.0f, 0.02f, false),
+            new CloudBank(0.668f, 144.0f, 68.0f, 0.02f, true),
+            new CloudBank(0.442f, 150.0f, 64.0f, 0.01f, true),
+            new CloudBank(0.566f, 154.0f, 58.0f, 0.01f, false),
+            new CloudBank(0.502f, 163.0f, 52.0f, 0.00f, false)
     };
+    // Only this frontmost group drifts: a very slow sway and bob, so the scene breathes without
+    // the island's framing shifting around.
     private static final CloudBank[] CLOUD_FRONT_BANKS = {
-            new CloudBank(0.10f, 150.0f, 74.0f, 0.04f, false),
-            new CloudBank(0.90f, 150.0f, 74.0f, 0.04f, false),
-            new CloudBank(0.24f, 164.0f, 58.0f, 0.02f, true),
-            new CloudBank(0.76f, 164.0f, 58.0f, 0.02f, true),
-            new CloudBank(0.50f, 172.0f, 48.0f, 0.0f, false)
+            new CloudBank(0.100f, 150.0f, 74.0f, 0.04f, false, 2.6f, 0.8f, 0.075f, 0.4f),
+            new CloudBank(0.895f, 156.0f, 66.0f, 0.04f, true, 2.2f, 0.7f, 0.062f, 2.1f),
+            new CloudBank(0.238f, 164.0f, 58.0f, 0.02f, true, 3.1f, 0.9f, 0.088f, 4.0f),
+            new CloudBank(0.782f, 160.0f, 62.0f, 0.02f, false, 2.4f, 0.6f, 0.070f, 5.3f),
+            new CloudBank(0.516f, 174.0f, 46.0f, 0.00f, false, 3.4f, 1.0f, 0.055f, 1.2f)
     };
-    // A distant cloud band behind the island, level with the middle of the screen. The island
-    // is drawn over it, so this reads as the far side of the sky the island floats in.
+    // Distant clouds behind the island, hovering a little above the middle of the screen. The
+    // island covers their centre, so they show as a scattered far layer in the gaps beside it.
     private static final CloudBank[] CLOUD_BACK_BANKS = {
-            new CloudBank(0.005f, 112.0f, 62.0f, 0.50f, false),
-            new CloudBank(0.095f, 106.0f, 54.0f, 0.44f, true),
-            new CloudBank(0.905f, 106.0f, 54.0f, 0.44f, true),
-            new CloudBank(0.995f, 112.0f, 62.0f, 0.50f, false)
+            new CloudBank(0.115f, 58.0f, 26.0f, 0.50f, true),
+            new CloudBank(0.205f, 74.0f, 30.0f, 0.44f, false),
+            new CloudBank(0.315f, 62.0f, 24.0f, 0.54f, true),
+            new CloudBank(0.685f, 66.0f, 22.0f, 0.54f, false),
+            new CloudBank(0.795f, 72.0f, 30.0f, 0.44f, true),
+            new CloudBank(0.885f, 56.0f, 26.0f, 0.50f, false),
+            new CloudBank(0.955f, 84.0f, 32.0f, 0.48f, true),
+            new CloudBank(0.045f, 88.0f, 30.0f, 0.48f, false)
     };
     // Blanket crowns that climb high enough to cover the outermost tiles on every side, so the
     // cloud really does embrace the ground slab instead of stopping at its edge.
     private static final CloudBank[] CLOUD_BLANKET_BANKS = {
-            new CloudBank(0.02f, 94.0f, 104.0f, 0.14f, false),
-            new CloudBank(0.98f, 94.0f, 104.0f, 0.14f, false),
-            new CloudBank(0.10f, 104.0f, 96.0f, 0.10f, true),
-            new CloudBank(0.90f, 104.0f, 96.0f, 0.10f, true),
-            new CloudBank(0.26f, 150.0f, 74.0f, 0.06f, true),
-            new CloudBank(0.74f, 150.0f, 74.0f, 0.06f, true)
+            new CloudBank(0.020f, 94.0f, 104.0f, 0.14f, false),
+            new CloudBank(0.098f, 106.0f, 94.0f, 0.09f, true),
+            new CloudBank(0.262f, 148.0f, 76.0f, 0.06f, true),
+            new CloudBank(0.986f, 98.0f, 100.0f, 0.13f, true),
+            new CloudBank(0.906f, 112.0f, 88.0f, 0.08f, false),
+            new CloudBank(0.742f, 154.0f, 70.0f, 0.05f, true)
     };
     private static final String CLOUD_BANK_SPRITE = "cloud-bank";
     private static final String CLOUD_MASS_SPRITE = "cloud-mass";
@@ -1855,6 +1861,9 @@ public final class WeatherSkyView extends View {
     }
 
     private void drawCloudBanks(Canvas canvas, double sunAltitude, double cloudCover, int code) {
+        // Only the frontmost group animates; everything else stays perfectly still.
+        double elapsedSeconds = animationEnabled
+                ? (System.currentTimeMillis() - animationStartMillis) / 1000.0 : 0.0;
         for (CloudBank[] banks : new CloudBank[][] {CLOUD_GAP_FILLERS, CLOUD_SIDE_BANKS,
                 CLOUD_BLANKET_BANKS, CLOUD_CRADLE_BANKS, CLOUD_FRONT_BANKS}) {
             for (CloudBank bank : banks) {
@@ -1864,9 +1873,13 @@ public final class WeatherSkyView extends View {
                 if (sprite == null) continue;
                 float scale = bank.height / sprite.getHeight();
                 float width = sprite.getWidth() * scale;
+                double phase = elapsedSeconds * bank.speed + bank.phase;
+                float offsetX = bank.sway > 0.0f ? (float) Math.sin(phase) * bank.sway : 0.0f;
+                float offsetY = bank.bob > 0.0f ? (float) Math.cos(phase * 0.7) * bank.bob : 0.0f;
                 cloudPaint.setAlpha(255);
-                drawCloudSpriteAt(canvas, sprite, bank.cx * SCENE_WIDTH - width / 2.0f,
-                        bank.top, bank.height, bank.cx < 0.5f);
+                drawCloudSpriteAt(canvas, sprite,
+                        bank.cx * SCENE_WIDTH - width / 2.0f + offsetX,
+                        bank.top + offsetY, bank.height, bank.cx < 0.5f);
             }
         }
     }
@@ -1941,13 +1954,27 @@ public final class WeatherSkyView extends View {
         final float tint;
         /** true = cloud bank sprite, false = cloud mass sprite. */
         final boolean bank;
+        /** Frontmost banks only: sway in scene units, vertical bob, angular speed, phase. */
+        final float sway;
+        final float bob;
+        final float speed;
+        final float phase;
 
         CloudBank(float cx, float top, float height, float tint, boolean bank) {
+            this(cx, top, height, tint, bank, 0.0f, 0.0f, 0.0f, 0.0f);
+        }
+
+        CloudBank(float cx, float top, float height, float tint, boolean bank,
+                  float sway, float bob, float speed, float phase) {
             this.cx = cx;
             this.top = top;
             this.height = height;
             this.tint = tint;
             this.bank = bank;
+            this.sway = sway;
+            this.bob = bob;
+            this.speed = speed;
+            this.phase = phase;
         }
     }
 

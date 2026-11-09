@@ -102,54 +102,71 @@
       rowScale: 1.1
     }
   ];
-  // Banks are anchored by their centre fraction of the width, so mirrored pairs stay
-  // symmetrical. Side banks climb the flanks; front banks close the lower foreground.
-  // Each flank is a stack of overlapping clouds rather than one scaled blob, so the lobes
-  // stay visible and the wall of cloud still reads as many separate puffs.
-  const CLOUD_SIDE_BANKS = [
-    { cx: 0.045, top: 132, height: 84, tint: 0.12, sprite: 'bank' },
-    { cx: 0.115, top: 118, height: 90, tint: 0.08, sprite: 'mass' },
-    { cx: 0.175, top: 140, height: 70, tint: 0.05, sprite: 'bank' },
-    { cx: 0.075, top: 104, height: 76, tint: 0.16, sprite: 'mass' },
-    { cx: 0.955, top: 132, height: 84, tint: 0.12, sprite: 'bank' },
-    { cx: 0.885, top: 118, height: 90, tint: 0.08, sprite: 'mass' },
-    { cx: 0.825, top: 140, height: 70, tint: 0.05, sprite: 'bank' },
-    { cx: 0.925, top: 104, height: 76, tint: 0.16, sprite: 'mass' }
+  // Banks are anchored by their centre fraction of the width. Nothing is an exact mirror
+  // of its opposite: heights, widths and tints all vary, so the cloud walls read as natural
+  // puffs rather than a symmetrical pattern.
+  const CLOUD_GAP_FILLERS = [
+    { cx: 0.335, top: 148, height: 46, tint: 0.06, sprite: 'bank' },
+    { cx: 0.672, top: 144, height: 52, tint: 0.04, sprite: 'mass' },
+    { cx: 0.418, top: 154, height: 44, tint: 0.03, sprite: 'mass' },
+    { cx: 0.60, top: 150, height: 40, tint: 0.05, sprite: 'bank' }
   ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
-  // The cradle holds the island: these crowns sit directly under its soil slab and hide
-  // the lowest tip, which is what makes the island look settled on the cloud tops.
-  // Blanket crowns that climb high enough to cover the outermost tiles on every side, so the
-  // cloud really does embrace the ground slab instead of stopping at its edge.
+  const CLOUD_SIDE_BANKS = [
+    { cx: 0.045, top: 132, height: 84, tint: 0.12, sprite: 'mass' },
+    { cx: 0.118, top: 116, height: 92, tint: 0.07, sprite: 'bank' },
+    { cx: 0.172, top: 142, height: 68, tint: 0.05, sprite: 'bank' },
+    { cx: 0.072, top: 102, height: 78, tint: 0.16, sprite: 'mass' },
+    { cx: 0.958, top: 128, height: 80, tint: 0.11, sprite: 'bank' },
+    { cx: 0.877, top: 122, height: 86, tint: 0.06, sprite: 'mass' },
+    { cx: 0.812, top: 146, height: 64, tint: 0.04, sprite: 'bank' },
+    { cx: 0.936, top: 108, height: 72, tint: 0.15, sprite: 'bank' }
+  ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
+  // Blanket crowns climb high enough to cover the outermost tiles on every side, so the cloud
+  // really does embrace the ground slab instead of stopping at its edge.
   const CLOUD_BLANKET_BANKS = [
     { cx: 0.02, top: 94, height: 104, tint: 0.14, sprite: 'mass' },
-    { cx: 0.98, top: 94, height: 104, tint: 0.14, sprite: 'mass' },
-    { cx: 0.10, top: 104, height: 96, tint: 0.10, sprite: 'bank' },
-    { cx: 0.90, top: 104, height: 96, tint: 0.10, sprite: 'bank' },
-    { cx: 0.26, top: 150, height: 74, tint: 0.06, sprite: 'bank' },
-    { cx: 0.74, top: 150, height: 74, tint: 0.06, sprite: 'bank' }
+    { cx: 0.098, top: 106, height: 94, tint: 0.09, sprite: 'bank' },
+    { cx: 0.262, top: 148, height: 76, tint: 0.06, sprite: 'bank' },
+    { cx: 0.986, top: 98, height: 100, tint: 0.13, sprite: 'bank' },
+    { cx: 0.906, top: 112, height: 88, tint: 0.08, sprite: 'mass' },
+    { cx: 0.742, top: 154, height: 70, tint: 0.05, sprite: 'bank' }
   ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
+  // The cradle holds the island: these crowns sit directly under its soil slab and hug the
+  // lowest tip, which is what makes the island look settled on the cloud tops.
   const CLOUD_CRADLE_BANKS = [
-    { cx: 0.33, top: 140, height: 72, tint: 0.02, sprite: 'mass' },
-    { cx: 0.67, top: 140, height: 72, tint: 0.02, sprite: 'mass' },
-    { cx: 0.44, top: 150, height: 64, tint: 0.01, sprite: 'bank' },
-    { cx: 0.56, top: 150, height: 64, tint: 0.01, sprite: 'bank' },
-    { cx: 0.50, top: 160, height: 56, tint: 0, sprite: 'mass' }
+    { cx: 0.328, top: 138, height: 74, tint: 0.02, sprite: 'mass' },
+    { cx: 0.668, top: 144, height: 68, tint: 0.02, sprite: 'bank' },
+    { cx: 0.442, top: 150, height: 64, tint: 0.01, sprite: 'bank' },
+    { cx: 0.566, top: 154, height: 58, tint: 0.01, sprite: 'mass' },
+    { cx: 0.502, top: 163, height: 52, tint: 0, sprite: 'mass' }
   ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
+  // Only this frontmost group drifts: a very slow sway and bob, so the scene breathes without
+  // the island's framing shifting around.
   const CLOUD_FRONT_BANKS = [
-    { cx: 0.10, top: 150, height: 74, tint: 0.04, sprite: 'mass' },
-    { cx: 0.90, top: 150, height: 74, tint: 0.04, sprite: 'mass' },
-    { cx: 0.24, top: 164, height: 58, tint: 0.02, sprite: 'bank' },
-    { cx: 0.76, top: 164, height: 58, tint: 0.02, sprite: 'bank' },
-    { cx: 0.50, top: 172, height: 48, tint: 0, sprite: 'mass' }
+    { cx: 0.10, top: 150, height: 74, tint: 0.04, sprite: 'mass', sway: 2.6, bob: 0.8,
+      speed: 0.075, phase: 0.4 },
+    { cx: 0.895, top: 156, height: 66, tint: 0.04, sprite: 'bank', sway: 2.2, bob: 0.7,
+      speed: 0.062, phase: 2.1 },
+    { cx: 0.238, top: 164, height: 58, tint: 0.02, sprite: 'bank', sway: 3.1, bob: 0.9,
+      speed: 0.088, phase: 4.0 },
+    { cx: 0.782, top: 160, height: 62, tint: 0.02, sprite: 'mass', sway: 2.4, bob: 0.6,
+      speed: 0.070, phase: 5.3 },
+    { cx: 0.516, top: 174, height: 46, tint: 0, sprite: 'mass', sway: 3.4, bob: 1.0,
+      speed: 0.055, phase: 1.2 }
   ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
-  // A distant cloud band behind the island, level with the middle of the screen. The island
-  // is drawn over it, so this reads as the far side of the sky the island floats in.
+  // Far background: an uneven band behind the island, most of it just above the middle of the
+  // screen, so the island has a layered backdrop instead of bare sky.
   const CLOUD_BACK_BANKS = [
-    // Level with the middle of the screen: these sit behind the island's lateral corners.
-    { cx: 0.005, top: 112, height: 62, tint: 0.50, sprite: 'mass' },
-    { cx: 0.095, top: 106, height: 54, tint: 0.44, sprite: 'bank' },
-    { cx: 0.905, top: 106, height: 54, tint: 0.44, sprite: 'bank' },
-    { cx: 0.995, top: 112, height: 62, tint: 0.50, sprite: 'mass' }
+    // Distant clouds behind the island, hovering a little above the middle of the screen. The
+    // island covers their centre, so they show as a scattered far layer in the gaps beside it.
+    { cx: 0.115, top: 58, height: 26, tint: 0.50, sprite: 'bank' },
+    { cx: 0.205, top: 74, height: 30, tint: 0.44, sprite: 'mass' },
+    { cx: 0.315, top: 62, height: 24, tint: 0.54, sprite: 'bank' },
+    { cx: 0.685, top: 66, height: 22, tint: 0.54, sprite: 'mass' },
+    { cx: 0.795, top: 72, height: 30, tint: 0.44, sprite: 'bank' },
+    { cx: 0.885, top: 56, height: 26, tint: 0.50, sprite: 'mass' },
+    { cx: 0.955, top: 84, height: 32, tint: 0.48, sprite: 'bank' },
+    { cx: 0.045, top: 88, height: 30, tint: 0.48, sprite: 'mass' }
   ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   const CLOUD_SPRITE_SOURCES = {
     bank: './assets/cloud-bank.png',
@@ -1779,15 +1796,6 @@
   }
 
   const CLOUD_SEA_TOP = CLOUD_SEA_BASE + 4;
-  // Low crowns tucked into the two gaps beside the island tip, so no sky shows through
-  // the point where the island meets its cloud bed.
-  const CLOUD_GAP_FILLERS = [
-    { cx: 0.335, top: 140, height: 54, tint: 0.06, sprite: 'bank' },
-    { cx: 0.665, top: 140, height: 54, tint: 0.06, sprite: 'bank' },
-    { cx: 0.40, top: 148, height: 50, tint: 0.03, sprite: 'mass' },
-    { cx: 0.60, top: 148, height: 50, tint: 0.03, sprite: 'mass' }
-  ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
-
   // A soft contact shadow where the island's mass darkens the cloud tops beneath it.
   function drawIslandShadowOnClouds(centerX, sunAltitude, cloudCover, code) {
     const directLight = clamp((sunAltitude + 8) / 28, 0, 1);
@@ -1918,17 +1926,25 @@
     });
   }
 
+  function drawCloudBank(bank, sceneWeather, sunAltitude, elapsed) {
+    const tint = cloudWeatherTint(sceneWeather, sunAltitude, bank);
+    const sprite = tintedCloudSprite(bank.sprite, tint.tintColor, tint.tintAmount);
+    if (!sprite) return;
+    const scale = bank.height / sprite.height;
+    const width = sprite.width * scale;
+    const phase = elapsed * (bank.speed || 0) + (bank.phase || 0);
+    const offsetX = bank.sway ? Math.sin(phase) * bank.sway : 0;
+    const offsetY = bank.bob ? Math.cos(phase * 0.7) * bank.bob : 0;
+    drawCloudSpriteAt(sprite, bank.cx * WIDTH - width / 2 + offsetX, bank.top + offsetY,
+      bank.height, bank.cx < 0.5);
+  }
+
   function drawCloudBanks(sceneWeather, sunAltitude) {
+    // Only the frontmost group animates; everything else stays perfectly still.
+    const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
     [...CLOUD_GAP_FILLERS, ...CLOUD_SIDE_BANKS, ...CLOUD_BLANKET_BANKS, ...CLOUD_CRADLE_BANKS,
-      ...CLOUD_FRONT_BANKS].forEach(bank => {
-      const tint = cloudWeatherTint(sceneWeather, sunAltitude, bank);
-      const sprite = tintedCloudSprite(bank.sprite, tint.tintColor, tint.tintAmount);
-      if (!sprite) return;
-      const scale = bank.height / sprite.height;
-      const width = sprite.width * scale;
-      drawCloudSpriteAt(sprite, bank.cx * WIDTH - width / 2, bank.top, bank.height,
-        bank.cx < 0.5);
-    });
+      ...CLOUD_FRONT_BANKS]
+      .forEach(bank => drawCloudBank(bank, sceneWeather, sunAltitude, elapsed));
   }
 
   function rebuildParticles(sceneWeather) {
