@@ -69,37 +69,55 @@ public final class WeatherSkyView extends View {
     // Three static sprite rows build the sea; side and front banks overlap the island.
     private static final float CLOUD_SEA_BASE = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN;
     private static final float CLOUD_SEA_MARGIN = 34.0f;
-    private static final float CLOUD_SEA_TOP = CLOUD_SEA_BASE + 20.0f;
+    private static final float CLOUD_SEA_TOP = CLOUD_SEA_BASE + 4.0f;
+    private static final float CLOUD_HAZE_TOP = CLOUD_SEA_BASE - 54.0f;
     // Clouds are static for now: no drift and no drag parallax.
-    // The sea sinks into a shallow valley beneath the island. Distant rows dip least, so the
-    // sea stays visible below the island while the nearer rows frame it from the sides.
-    private static final float CLOUD_VALLEY_DEPTH = 22.0f;
+    // The sea rises until its crowns meet the island's underside, so the island reads as
+    // resting on the clouds instead of hovering over a gap.
     private static final CloudLayer[] CLOUD_LAYERS = {
-            new CloudLayer(CLOUD_SEA_BASE + 14.0f, 24.0f, 0.88f, 0.55f,
-                    Color.rgb(182, 200, 218), 11, 1.0f, 0.35f),
-            new CloudLayer(CLOUD_SEA_BASE + 28.0f, 32.0f, 1.0f, 0.26f,
-                    Color.rgb(201, 217, 231), 27, 1.04f, 0.72f),
-            new CloudLayer(CLOUD_SEA_BASE + 44.0f, 42.0f, 1.0f, 0.0f,
-                    Color.rgb(221, 233, 243), 43, 1.1f, 1.0f)
+            new CloudLayer(CLOUD_SEA_BASE + 8.0f, 28.0f, 0.90f, 0.55f,
+                    Color.rgb(182, 200, 218), 11, 1.0f),
+            new CloudLayer(CLOUD_SEA_BASE + 22.0f, 36.0f, 1.0f, 0.26f,
+                    Color.rgb(201, 217, 231), 27, 1.04f),
+            new CloudLayer(CLOUD_SEA_BASE + 38.0f, 46.0f, 1.0f, 0.0f,
+                    Color.rgb(221, 233, 243), 43, 1.10f)
     };
     private static final int CLOUD_NEAR_TINT = Color.rgb(238, 244, 250);
+    // Low crowns tucked into the two gaps beside the island tip, so no sky shows through
+    // the point where the island meets its cloud bed.
+    private static final CloudBank[] CLOUD_GAP_FILLERS = {
+            new CloudBank(0.335f, 140.0f, 54.0f, 0.06f, true),
+            new CloudBank(0.665f, 140.0f, 54.0f, 0.06f, true),
+            new CloudBank(0.40f, 148.0f, 50.0f, 0.03f, false),
+            new CloudBank(0.60f, 148.0f, 50.0f, 0.03f, false)
+    };
     // Each flank is a stack of overlapping clouds rather than one scaled blob, so the lobes
     // stay visible and the wall of cloud still reads as many separate puffs.
     private static final CloudBank[] CLOUD_SIDE_BANKS = {
-            new CloudBank(0.045f, 128.0f, 78.0f, 0.12f, true),
-            new CloudBank(0.115f, 112.0f, 84.0f, 0.08f, false),
-            new CloudBank(0.175f, 138.0f, 64.0f, 0.05f, true),
-            new CloudBank(0.075f, 96.0f, 70.0f, 0.16f, false),
-            new CloudBank(0.955f, 128.0f, 78.0f, 0.12f, true),
-            new CloudBank(0.885f, 112.0f, 84.0f, 0.08f, false),
-            new CloudBank(0.825f, 138.0f, 64.0f, 0.05f, true),
-            new CloudBank(0.925f, 96.0f, 70.0f, 0.16f, false)
+            new CloudBank(0.045f, 132.0f, 84.0f, 0.12f, true),
+            new CloudBank(0.115f, 118.0f, 90.0f, 0.08f, false),
+            new CloudBank(0.175f, 140.0f, 70.0f, 0.05f, true),
+            new CloudBank(0.075f, 104.0f, 76.0f, 0.16f, false),
+            new CloudBank(0.955f, 132.0f, 84.0f, 0.12f, true),
+            new CloudBank(0.885f, 118.0f, 90.0f, 0.08f, false),
+            new CloudBank(0.825f, 140.0f, 70.0f, 0.05f, true),
+            new CloudBank(0.925f, 104.0f, 76.0f, 0.16f, false)
+    };
+    // The cradle holds the island: these crowns sit directly under its soil slab and hide
+    // the lowest tip, which is what makes the island look settled on the cloud tops.
+    private static final CloudBank[] CLOUD_CRADLE_BANKS = {
+            new CloudBank(0.33f, 140.0f, 72.0f, 0.02f, false),
+            new CloudBank(0.67f, 140.0f, 72.0f, 0.02f, false),
+            new CloudBank(0.44f, 150.0f, 64.0f, 0.01f, true),
+            new CloudBank(0.56f, 150.0f, 64.0f, 0.01f, true),
+            new CloudBank(0.50f, 160.0f, 56.0f, 0.0f, false)
     };
     private static final CloudBank[] CLOUD_FRONT_BANKS = {
-            new CloudBank(0.10f, 152.0f, 62.0f, 0.04f, false),
-            new CloudBank(0.90f, 152.0f, 62.0f, 0.04f, false),
-            new CloudBank(0.30f, 166.0f, 48.0f, 0.02f, true),
-            new CloudBank(0.70f, 166.0f, 48.0f, 0.02f, true)
+            new CloudBank(0.10f, 150.0f, 74.0f, 0.04f, false),
+            new CloudBank(0.90f, 150.0f, 74.0f, 0.04f, false),
+            new CloudBank(0.24f, 164.0f, 58.0f, 0.02f, true),
+            new CloudBank(0.76f, 164.0f, 58.0f, 0.02f, true),
+            new CloudBank(0.50f, 172.0f, 48.0f, 0.0f, false)
     };
     private static final String CLOUD_BANK_SPRITE = "cloud-bank";
     private static final String CLOUD_MASS_SPRITE = "cloud-mass";
@@ -1735,10 +1753,27 @@ public final class WeatherSkyView extends View {
         return new CloudTint(tintColor, tintAmount);
     }
 
-    private static float cloudValleyOffset(float x, float scale) {
-        float normalized = (float) clamp((x - SCENE_WIDTH / 2.0f) / (SCENE_WIDTH * 0.66f),
-                -1.0, 1.0);
-        return CLOUD_VALLEY_DEPTH * scale * (1.0f - normalized * normalized);
+    // A distant bank of cloud behind the sea fills the windows between the island's
+    // underside and the cloud tops, so the island sits against cloud, never against sky.
+    private void drawDistantCloudHaze(Canvas canvas, double sunAltitude, double cloudCover,
+                                      int code) {
+        boolean storm = code >= 95;
+        double cover = clamp(cloudCover / 100.0, 0.0, 1.0);
+        double night = clamp(1.0 - sunAltitude / 8.0, 0.0, 1.0) * 0.85;
+        double gloom = clamp(cover * 0.30 + (storm ? 0.26 : 0.0), 0.0, 0.55);
+        paint.setShader(new LinearGradient(0, CLOUD_HAZE_TOP, 0, CLOUD_SEA_BASE + 10.0f,
+                new int[] {
+                        0x00d6e3ef,
+                        blend(blend(Color.rgb(211, 225, 238), CLOUD_NIGHT_TINT, night),
+                                CLOUD_STORM_TINT, gloom * 0.7),
+                        blend(blend(Color.rgb(198, 216, 232), CLOUD_NIGHT_TINT, night),
+                                CLOUD_STORM_TINT, gloom * 0.8)
+                },
+                new float[] {0.0f, 0.55f, 1.0f}, Shader.TileMode.CLAMP));
+        paint.setAlpha(217);
+        canvas.drawRect(0, CLOUD_HAZE_TOP, SCENE_WIDTH, CLOUD_SEA_BASE + 10.0f, paint);
+        paint.setAlpha(255);
+        paint.setShader(null);
     }
 
     private void drawCloudSea(Canvas canvas, double sunAltitude, double cloudCover, int code) {
@@ -1776,8 +1811,7 @@ public final class WeatherSkyView extends View {
                 boolean useMass = random.nextFloat() < 0.5f;
                 boolean mirror = random.nextFloat() < 0.5f;
                 float puffX = x - step * 0.25f + random.nextFloat() * step * 0.5f;
-                float puffY = layer.baseline - height * (0.9f + random.nextFloat() * 0.12f)
-                        + cloudValleyOffset(puffX, layer.valley);
+                float puffY = layer.baseline - height * (0.9f + random.nextFloat() * 0.12f);
                 drawCloudSpriteAt(canvas, useMass ? mass : bank, puffX, puffY, height, mirror);
             }
         }
@@ -1786,7 +1820,8 @@ public final class WeatherSkyView extends View {
 
     // Side and front banks overlap the island itself, so they draw after it.
     private void drawCloudBanks(Canvas canvas, double sunAltitude, double cloudCover, int code) {
-        for (CloudBank[] banks : new CloudBank[][] {CLOUD_SIDE_BANKS, CLOUD_FRONT_BANKS}) {
+        for (CloudBank[] banks : new CloudBank[][] {CLOUD_GAP_FILLERS, CLOUD_SIDE_BANKS,
+                CLOUD_CRADLE_BANKS, CLOUD_FRONT_BANKS}) {
             for (CloudBank bank : banks) {
                 CloudTint tint = cloudWeatherTint(sunAltitude, cloudCover, code,
                         bank.tint, CLOUD_NEAR_TINT);
@@ -1841,10 +1876,9 @@ public final class WeatherSkyView extends View {
         final int tintColor;
         final int salt;
         final float rowScale;
-        final float valley;
 
         CloudLayer(float baseline, float height, float alpha, float tint, int tintColor,
-                   int salt, float rowScale, float valley) {
+                   int salt, float rowScale) {
             this.baseline = baseline;
             this.height = height;
             this.alpha = alpha;
@@ -1852,7 +1886,6 @@ public final class WeatherSkyView extends View {
             this.tintColor = tintColor;
             this.salt = salt;
             this.rowScale = rowScale;
-            this.valley = valley;
         }
     }
 
