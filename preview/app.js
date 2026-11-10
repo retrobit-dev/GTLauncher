@@ -425,6 +425,18 @@
   }
 
   // Dawn enters at the inset east/right edge, solar noon reaches top center, dusk exits west/left.
+  // Celestial bodies walk across the sky the way they do overhead: the body rises on the east
+  // horizon, arcs through the top centre of the band at its highest and sets on the west
+  // horizon. The horizontal position therefore comes from the body's own progress along that
+  // arc rather than from the raw compass bearing, which would wrap to the opposite screen side
+  // once the sun crosses due south shortly before solar noon at this latitude.
+  function mapCelestialX(hourAngleDegrees) {
+    // Negative hour angle is before solar noon (east), positive is after it (west), so the
+    // midpoint of a half circle lands the body dead centre at solar noon.
+    const progress = clamp(0.5 + hourAngleDegrees / 180, 0, 1);
+    return SUN_RISE_X + (SUN_SET_X - SUN_RISE_X) * progress;
+  }
+
   function mapAltitudeToCelestialBand(altitude) {
     return CELESTIAL_BAND_TOP
       + (1 - clamp(altitude, 0, 90) / 90) * CELESTIAL_BAND_HEIGHT;
@@ -439,6 +451,9 @@
   // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
   // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
   const SUN_BODY_RADIUS = 10.5;
+  // East and west ends of the celestial arc, inset so the disc never clips the frame.
+  const SUN_RISE_X = 36;
+  const SUN_SET_X = 284;
   const GLOW_STEPS = 14;
   const GLOW_REACH = 15.0;
   const GLOW_ALPHA = 0.040;
@@ -518,7 +533,7 @@
   function drawMoon(moon, motionTime) {
     if (moon.altitude <= -1) return;
     const palette = moonPalette();
-    const centerX = Math.round(mapAzimuth(moon.azimuth) / RENDER_CELL) * RENDER_CELL;
+    const centerX = Math.round(mapCelestialX(moon.hourAngleDegrees) / RENDER_CELL) * RENDER_CELL;
     const centerY = Math.round(mapAltitudeToCelestialBand(moon.altitude) / RENDER_CELL)
       * RENDER_CELL;
     const visibility = clamp((moon.altitude + 1) / 3, 0, 1);
@@ -569,7 +584,7 @@
   function drawSun(sun, cloudCover, motionTime) {
     if (sun.altitude <= -1) return;
     const palette = sunPalette(sun.altitude, cloudCover);
-    const centerX = Math.round(mapAzimuth(sun.azimuth) / RENDER_CELL) * RENDER_CELL;
+    const centerX = Math.round(mapCelestialX(sun.hourAngleDegrees) / RENDER_CELL) * RENDER_CELL;
     const centerY = Math.round(mapAltitudeToCelestialBand(sun.altitude) / RENDER_CELL)
       * RENDER_CELL;
     const previousAlpha = ctx.globalAlpha;

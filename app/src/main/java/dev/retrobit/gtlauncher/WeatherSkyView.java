@@ -60,6 +60,9 @@ public final class WeatherSkyView extends View {
     // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
     // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
     private static final float SUN_BODY_RADIUS = 10.5f;
+    // East and west ends of the celestial arc, inset so the disc never clips the frame.
+    private static final float SUN_RISE_X = 36.0f;
+    private static final float SUN_SET_X = 284.0f;
     private static final int GLOW_STEPS = 14;
     private static final float GLOW_REACH = 15.0f;
     private static final double GLOW_ALPHA = 0.040;
@@ -1509,7 +1512,7 @@ public final class WeatherSkyView extends View {
                          double elapsedSeconds) {
         if (sun.altitudeDegrees <= -1.0) return;
         int[] palette = sunPalette(sun.altitudeDegrees, cloudCover);
-        float centerX = Math.round(mapAzimuthToX(sun.azimuthDegrees) / RENDER_CELL)
+        float centerX = Math.round(mapCelestialX(sun.hourAngleDegrees) / RENDER_CELL)
                 * RENDER_CELL;
         float centerY = Math.round(mapAltitudeToCelestialBand(sun.altitudeDegrees) / RENDER_CELL)
                 * RENDER_CELL;
@@ -1533,7 +1536,7 @@ public final class WeatherSkyView extends View {
     private void drawMoon(Canvas canvas, SkyMath.Position moon, double elapsedSeconds) {
         if (moon.altitudeDegrees <= -1.0) return;
         int[] palette = moonPalette();
-        float centerX = Math.round(mapAzimuthToX(moon.azimuthDegrees) / RENDER_CELL)
+        float centerX = Math.round(mapCelestialX(moon.hourAngleDegrees) / RENDER_CELL)
                 * RENDER_CELL;
         float centerY = Math.round(mapAltitudeToCelestialBand(moon.altitudeDegrees) / RENDER_CELL)
                 * RENDER_CELL;
@@ -1592,6 +1595,19 @@ public final class WeatherSkyView extends View {
     private float mapAzimuthToX(double azimuth) {
         double relative = normalizeDegrees(azimuth - headingDegrees + 180.0);
         return (float) (relative / 360.0 * SCENE_WIDTH);
+    }
+
+    /**
+     * Celestial bodies walk across the sky the way they do overhead: the body rises on the east
+     * horizon, arcs through the top centre of the band at its highest and sets on the west
+     * horizon. The horizontal position therefore comes from the body's own progress along that
+     * arc rather than from the raw compass bearing, which would wrap to the opposite screen side
+     * once the sun crosses due south shortly before solar noon at this latitude.
+     */
+    private float mapCelestialX(double hourAngleDegrees) {
+        // Negative hour angle is before solar noon (east), positive is after it (west).
+        double progress = clamp(0.5 + hourAngleDegrees / 180.0, 0.0, 1.0);
+        return (float) (SUN_RISE_X + (SUN_SET_X - SUN_RISE_X) * progress);
     }
 
     private float mapAltitudeToCelestialBand(double altitude) {
