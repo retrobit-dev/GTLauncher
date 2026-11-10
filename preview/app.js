@@ -48,7 +48,7 @@
   const ISLAND_GRASS_OVERHANG = 4;
   const ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
   const ISLAND_BASE_BOTTOM_MARGIN = 8;
-  const ISLAND_VERTICAL_LIFT = 22;
+  const ISLAND_VERTICAL_LIFT = 16;
   const ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
   let islandTop = HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH
     - ISLAND_GRID_SIZE * islandTileHeight;
@@ -395,6 +395,8 @@
   // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
   // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
   const SUN_BODY_RADIUS = 10.5;
+  const SUN_GLOW_STEPS = 14;
+  const SUN_GLOW_REACH = 13.0;
 
   // Light tone on top, deep tone at the bottom. The pair warms near the horizon and dulls
   // under a heavy cloud deck; the disc itself never changes shape.
@@ -405,9 +407,41 @@
     const dull = clamp(cloudCover / 100, 0, 1) * 0.4;
     const shaded = color => blendColor(color, '#7d8494', dull);
     return {
-      top: shaded(warm('#fff3c0', '#ffe4a6')),
-      bottom: shaded(warm('#ffc23d', '#ef8f2a'))
+      top: shaded(warm('#fffdf0', '#fff0c2')),
+      bottom: shaded(warm('#ffd44a', '#ff9d33'))
     };
+  }
+
+
+  // The glow is a stack of many faint discs instead of a few hard rings, so it fades out
+  // smoothly. Its shape follows the sun's real position: low sun means a longer path through
+  // the air, so the halo spreads wider across the horizon and flattens vertically, while a
+  // high noon sun gets a tight round halo. Both size and tint therefore come from the
+  // astronomy for this latitude and longitude rather than being a fixed decoration.
+  function glowDisc(centerX, centerY, radius, squash) {
+    for (let row = -radius; row < radius; row += RENDER_CELL) {
+      const sampleY = row + RENDER_CELL / 2;
+      const scaledY = sampleY / squash;
+      const halfWidth = Math.sqrt(Math.max(0, radius * radius - scaledY * scaledY));
+      const left = Math.round((centerX - halfWidth) / RENDER_CELL) * RENDER_CELL;
+      const right = Math.round((centerX + halfWidth) / RENDER_CELL) * RENDER_CELL;
+      if (right > left) ctx.fillRect(left, centerY + row, right - left, RENDER_CELL);
+    }
+  }
+
+  function drawSunHalos(centerX, centerY, sun, palette, visibility) {
+    if (visibility <= 0) return;
+    const altitude = clamp(sun.altitude, 0, 90);
+    // 0 at the horizon, 1 well up in the sky.
+    const high = clamp(altitude / 45, 0, 1);
+    const squash = 0.52 + high * 0.48;
+    const reach = SUN_GLOW_REACH * (1.25 - high * 0.55);
+    ctx.fillStyle = blendColor(palette.top, '#ffd98a', 0.55)
+      .replace('rgb', 'rgba').replace(')', `, ${0.030 * visibility})`);
+    for (let step = 0; step < SUN_GLOW_STEPS; step += 1) {
+      const progress = step / (SUN_GLOW_STEPS - 1);
+      glowDisc(centerX, centerY, SUN_BODY_RADIUS + 1.0 + progress * reach, squash);
+    }
   }
 
   function drawSunBody(centerX, centerY, palette) {
@@ -435,7 +469,9 @@
     const centerY = Math.round(mapAltitudeToCelestialBand(sun.altitude) / RENDER_CELL)
       * RENDER_CELL;
     const previousAlpha = ctx.globalAlpha;
-    ctx.globalAlpha = previousAlpha * clamp((sun.altitude + 1) / 3, 0, 1);
+    const visibility = clamp((sun.altitude + 1) / 3, 0, 1);
+    ctx.globalAlpha = previousAlpha * visibility;
+    drawSunHalos(centerX, centerY, sun, palette, visibility);
     drawSunBody(centerX, centerY, palette);
     ctx.globalAlpha = previousAlpha;
   }

@@ -48,7 +48,7 @@ public final class WeatherSkyView extends View {
     private static final float ISLAND_GRASS_OVERHANG = 4.0f;
     private static final int ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
     private static final int ISLAND_BASE_BOTTOM_MARGIN = 8;
-    private static final int ISLAND_VERTICAL_LIFT = 22;
+    private static final int ISLAND_VERTICAL_LIFT = 16;
     private static final int ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
     private static final float ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH
             - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
@@ -60,6 +60,8 @@ public final class WeatherSkyView extends View {
     // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
     // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
     private static final float SUN_BODY_RADIUS = 10.5f;
+    private static final int SUN_GLOW_STEPS = 14;
+    private static final float SUN_GLOW_REACH = 13.0f;
 
     private static final float CELESTIAL_BAND_TOP = SCENE_HEIGHT * 0.10f;
     private static final float CELESTIAL_BAND_HEIGHT = SCENE_HEIGHT / 3.0f
@@ -1429,11 +1431,51 @@ public final class WeatherSkyView extends View {
         double low = clamp(1.0 - daylight, 0.0, 1.0);
         double dull = clamp(cloudCover / 100.0, 0.0, 1.0) * 0.4;
         int ash = Color.rgb(125, 132, 148);
-        int top = blend(blend(Color.rgb(255, 243, 192), Color.rgb(255, 228, 166), low * 0.8),
+        int top = blend(blend(Color.rgb(255, 253, 240), Color.rgb(255, 240, 194), low * 0.8),
                 ash, dull);
-        int bottom = blend(blend(Color.rgb(255, 194, 61), Color.rgb(239, 143, 42), low * 0.8),
+        int bottom = blend(blend(Color.rgb(255, 212, 74), Color.rgb(255, 157, 51), low * 0.8),
                 ash, dull);
         return new int[] { top, bottom };
+    }
+
+    /** One disc of the halo, flattened vertically by squash. */
+    private void glowDisc(Canvas canvas, float centerX, float centerY, float radius,
+                          float squash, int color) {
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(color);
+        for (float row = -radius; row < radius; row += RENDER_CELL) {
+            float sampleY = row + RENDER_CELL / 2.0f;
+            float scaledY = sampleY / squash;
+            float halfWidth = (float) Math.sqrt(Math.max(0.0,
+                    radius * radius - scaledY * scaledY));
+            float left = Math.round((centerX - halfWidth) / RENDER_CELL) * RENDER_CELL;
+            float right = Math.round((centerX + halfWidth) / RENDER_CELL) * RENDER_CELL;
+            if (right > left) {
+                canvas.drawRect(left, centerY + row, right, centerY + row + RENDER_CELL, paint);
+            }
+        }
+    }
+
+    /**
+     * Many faint stacked discs instead of a few hard rings. The shape comes from the sun's real
+     * position: a low sun spreads the halo wider across the horizon and flattens it, a high sun
+     * gets a tight round halo, so the glow reflects the current latitude and longitude.
+     */
+    private void drawSunHalos(Canvas canvas, float centerX, float centerY, SkyMath.Position sun,
+                              int[] palette, float visibility) {
+        if (visibility <= 0.0f) return;
+        double altitude = clamp(sun.altitudeDegrees, 0.0, 90.0);
+        double high = clamp(altitude / 45.0, 0.0, 1.0);
+        float squash = (float) (0.52 + high * 0.48);
+        float reach = (float) (SUN_GLOW_REACH * (1.25 - high * 0.55));
+        int glowColor = blend(palette[0], Color.rgb(255, 217, 138), 0.55);
+        int alpha = (int) Math.round(255.0 * 0.030 * visibility);
+        int color = (glowColor & 0x00FFFFFF) | (alpha << 24);
+        for (int step = 0; step < SUN_GLOW_STEPS; step++) {
+            float progress = step / (float) (SUN_GLOW_STEPS - 1);
+            glowDisc(canvas, centerX, centerY, SUN_BODY_RADIUS + 1.0f + progress * reach,
+                    squash, color);
+        }
     }
 
     private void drawSunBody(Canvas canvas, float centerX, float centerY, int[] palette) {
@@ -1468,6 +1510,8 @@ public final class WeatherSkyView extends View {
         int save = canvas.save();
         paint.setAlpha((int) Math.round(255.0
                 * clamp((sun.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0)));
+        drawSunHalos(canvas, centerX, centerY, sun, palette,
+                (float) clamp((sun.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0));
         drawSunBody(canvas, centerX, centerY, palette);
         canvas.restoreToCount(save);
         paint.setAlpha(255);
