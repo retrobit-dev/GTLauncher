@@ -811,23 +811,22 @@
     const directLight = clamp((sunAltitude + 8) / 28, 0, 1);
     let cloudFilter = 1 - clamp(cloudCover / 100 * 0.45, 0, 0.45);
     if (weatherCodeIsStorm(code)) cloudFilter *= 0.82;
-    // Roughly double the island's ground-shadow opacity. The same value that reads clearly on pale
-    // grass measures only 8 levels per pixel on dark water, so the shadow was technically present
-    // and visually absent.
+    // Well above the island's ground-shadow opacity. The value that reads clearly on pale grass
+    // measures only a few levels per pixel on dark water, so the shadow was technically present and
+    // visually absent.
     const opacity = (0.10 + directLight * 0.30) * cloudFilter
-      * ISLAND_BODY_SHADOW_OPACITY_SCALE * 3.2;
+      * ISLAND_BODY_SHADOW_OPACITY_SCALE * 3.0;
     if (opacity <= 0.002) return;
-    // Only 18 scene units of water are visible below the island's base, so the shadow is pinned in
-    // that band and kept short enough to fit inside it. Pinned any lower or any taller, half of it
-    // hid behind the island's own body and the rest fell off the bottom of the frame, which is why
-    // it kept looking like there was no shadow at all.
-    const waterTop = islandTop + ISLAND_GRID_SIZE * islandTileHeight + ISLAND_DEPTH;
-    const centerY = waterTop + (HEIGHT - waterTop) * 0.55;
-    // Wide and shallow rather than a copy of the island: at this camera angle a shadow on water is
-    // stretched across the surface, and a tall diamond would only show its top tip in the narrow
-    // strip of water that is actually visible below the plate.
-    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4 * ISLAND_BODY_SHADOW_SCALE * 1.15;
-    const halfHeight = (HEIGHT - waterTop) * 0.38;
+    // The shadow is the island's own footprint, slid down the water by a fixed offset. Only 18
+    // scene units of water are visible below the island's base, so the offset has to stay small:
+    // pushed much further and the lower half of the diamond falls off the bottom of the frame, which
+    // is why earlier attempts read as "there is no shadow at all" even though one was being drawn.
+    const centerY = islandTop + ISLAND_GRID_SIZE * islandTileHeight / 2 + ISLAND_DEPTH + 18;
+    // Full footprint rather than a squashed sliver. A sliver overlapping the island's base looked
+    // like a smudge on the plate's underside; a diamond the size of the plate, offset from it, reads
+    // immediately as the plate's shadow lying on the water.
+    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2 * 0.96;
+    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 2 * 0.96;
     // Light from the eastern half pushes the patch west, exactly as the island's own shadow does.
     const progress = celestialProgress(sunHourAngle);
     const drift = (0.5 - progress) * 2 * ISLAND_BODY_SHADOW_DRIFT;

@@ -785,24 +785,24 @@ public final class WeatherSkyView extends View {
         double directLight = clamp((sunAltitude + 8.0) / 28.0, 0.0, 1.0);
         double cloudFilter = 1.0 - clamp(cloudCover / 100.0 * 0.45, 0.0, 0.45);
         if (code >= 95) cloudFilter *= 0.82;
-        // Roughly double the island's ground-shadow opacity. The same value that reads clearly on
-        // pale grass measures only single-digit levels per pixel on dark water, so the shadow was
-        // technically present and visually absent.
+        // Well above the island's ground-shadow opacity. The value that reads clearly on pale grass
+        // measures only a few levels per pixel on dark water, so the shadow was technically present
+        // and visually absent.
         double opacity = (0.10 + directLight * 0.30) * cloudFilter
-                * ISLAND_BODY_SHADOW_OPACITY_SCALE * 3.2;
+                * ISLAND_BODY_SHADOW_OPACITY_SCALE * 3.0;
         if (opacity <= 0.002) return;
-        // Only 18 scene units of water are visible below the island's base, so the shadow is pinned
-        // in that band and kept short enough to fit inside it. Pinned any lower or any taller, half
-        // of it hid behind the island's own body and the rest fell off the bottom of the frame,
-        // which is why it kept looking like there was no shadow at all.
-        float waterTop = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT + ISLAND_DEPTH;
-        float stripHeight = SCENE_HEIGHT - waterTop;
-        float centreY = waterTop + stripHeight * 0.55f;
-        // Wide and shallow rather than a copy of the island: at this camera angle a shadow on water
-        // is stretched across the surface, and a tall diamond would only show its top tip.
-        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4.0f
-                * ISLAND_BODY_SHADOW_SCALE * 1.15f;
-        float halfHeight = stripHeight * 0.38f;
+        // The shadow is the island's own footprint, slid down the water by a fixed offset. Only 18
+        // scene units of water are visible below the island's base, so the offset has to stay
+        // small: pushed much further and the lower half of the diamond falls off the bottom of the
+        // frame, which is why earlier attempts read as "there is no shadow at all" even though one
+        // was being drawn.
+        float centreY = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f
+                + ISLAND_DEPTH + 18.0f;
+        // Full footprint rather than a squashed sliver. A sliver overlapping the island's base
+        // looked like a smudge on the plate's underside; a diamond the size of the plate, offset
+        // from it, reads immediately as the plate's shadow lying on the water.
+        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f * 0.96f;
+        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f * 0.96f;
         double progress = celestialProgress(sunHourAngle);
         float drift = (float) ((0.5 - progress) * 2.0 * ISLAND_BODY_SHADOW_DRIFT);
         float centreX = SCENE_WIDTH / 2.0f - drift;
