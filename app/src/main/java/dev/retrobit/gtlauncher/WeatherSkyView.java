@@ -72,6 +72,10 @@ public final class WeatherSkyView extends View {
     private static final float ISLAND_GRID_OVERLAY_INSET = 1.5f;
     private static final float ISLAND_GRID_OVERLAY_ALPHA = 0.38f;
     private static final float ISLAND_GRID_OVERLAY_EDGE_ALPHA = 0.62f;
+    // The lattice reads as a sheet above the plate rather than inked into it, so it carries its own
+    // whole footprint instead of being clipped away by the plate. One offset moves the shape and the
+    // grid inside it together.
+    private static final float ISLAND_GRID_OVERLAY_LIFT = 50.0f;
     // The moon only appears once the sun has dropped below this altitude.
     private static final double MOON_VISIBLE_BELOW_SUN = -2.0;
     private static final int GLOW_STEPS = 14;
@@ -1010,6 +1014,8 @@ public final class WeatherSkyView extends View {
         float line = ISLAND_GRID_OVERLAY_LINE;
         float inset = ISLAND_GRID_OVERLAY_INSET;
         int save = canvas.save();
+        // Screen units, so the overlay clears the plate by a fixed distance.
+        canvas.translate(0, -ISLAND_GRID_OVERLAY_LIFT);
         // Clip the lattice a whole unit inside the plate; see the inset constant.
         islandClipPath.reset();
         traceSmoothIslandDiamondPath(islandClipPath, centerX, centerY,

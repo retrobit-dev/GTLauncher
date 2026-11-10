@@ -101,6 +101,10 @@
   const ISLAND_GRID_OVERLAY_INSET = 1.5;
   const ISLAND_GRID_OVERLAY_ALPHA = 0.38;
   const ISLAND_GRID_OVERLAY_EDGE_ALPHA = 0.62;
+  // The lattice sits as a sheet above the plate rather than inked into it: lifted clear of the grass
+  // so its own footprint stays whole instead of being clipped away by the plate. The whole overlay
+  // is drawn under this one offset, so the shape and the grid inside it stay locked together.
+  const ISLAND_GRID_OVERLAY_LIFT = 50;
   // A cloud crossing the island turns partly transparent so the tiles behind it stay readable.
   const CLOUD_ISLAND_ALPHA = 0.55;
   // Clouds travel right to left like real wind-driven cloud, cross the whole frame, then re-enter
@@ -1273,9 +1277,12 @@
     const last = ISLAND_GRID_SIZE - 0.5;
     const line = ISLAND_GRID_OVERLAY_LINE;
     ctx.save();
-    // Keep the ink inside the plate. Strokes centred on a path paint half their width on each
-    // side, so a seam that ends on the silhouette would leave an antialiased fringe outside it;
-    // clipping a whole unit in is what stops the lattice bleeding past the island.
+    // Screen units, so the overlay clears the plate by a fixed distance regardless of the island's
+    // own tilt or zoom.
+    ctx.translate(0, -ISLAND_GRID_OVERLAY_LIFT);
+    // Own silhouette, own clip. The lattice is meant to stay whole, so it no longer relies on the
+    // plate's surface clip; it clips to itself instead. The inset is the hair of margin that keeps
+    // the boundary stroke's outer half inside the shape.
     const inset = ISLAND_GRID_OVERLAY_INSET;
     ctx.beginPath();
     traceSmoothIslandDiamond(centreX, centreY, halfWidth - inset, halfHeight - inset, 2.2);
@@ -1613,11 +1620,10 @@
     ], tileSeam, tileSeam);
     ISLAND_TILES.forEach(tile => drawGrassTile(tile, palette, sunlight));
     drawCloudShadowsOnIsland(cloudStates, sunAltitude, sunHourAngle, cloudCover, code);
+    // No surface clip here any more: the overlay carries its own, and clipping to the plate as well
+    // would slice the top off a lattice that has been lifted clear of it.
     if (ISLAND_GRID_OVERLAY_ENABLED) {
-      ctx.save();
-      clipIslandSurface();
       drawIslandGridOverlay();
-      ctx.restore();
     }
     const topRim = blendColor(palette.grassSeam, palette.grassDark, 0.32);
     drawSmoothIslandLine(leftX, middleY, centerX, bottomY, topRim, 0.60);
