@@ -87,6 +87,20 @@
   const CLOUD_ARC_TOP = 46;
   const CLOUD_ARC_RISE = 42;
   const CLOUD_ARC_OFFSETS = [2, 0, 12, 20];
+  // The island's own 9 x 9 lattice, redrawn on top of the plate as a legible overlay. It is the
+  // plate's silhouette at the plate's size, not a second surface: the same diamond, the same tile
+  // pitch, the same rounded cells, sunk into the grass as a single flat ink. This is the reference
+  // the coordinates are quoted in (A-I across, 1-9 down), so it has to sit on the real grid rather
+  // than float above it. Drawn in the plate's own transform, after the tiles, so the cloud-shade
+  // pass does not dim it.
+  const ISLAND_GRID_OVERLAY_ENABLED = true;
+  const ISLAND_GRID_OVERLAY_LINE = 0.5;
+  // Distance from the plate edge to the outermost ink. Antialiasing on the clip boundary used to
+  // bleed a fringe of grid colour onto the grass band below the front edge, so the whole overlay
+  // is pulled this far inside instead of ending exactly on the silhouette.
+  const ISLAND_GRID_OVERLAY_INSET = 1.5;
+  const ISLAND_GRID_OVERLAY_ALPHA = 0.38;
+  const ISLAND_GRID_OVERLAY_EDGE_ALPHA = 0.62;
   // A cloud crossing the island turns partly transparent so the tiles behind it stay readable.
   const CLOUD_ISLAND_ALPHA = 0.55;
   // Clouds travel right to left like real wind-driven cloud, cross the whole frame, then re-enter
@@ -1234,6 +1248,71 @@
     ctx.restore();
   }
 
+  // Sinks a dark 9 x 9 lattice into the grass. Every line is the plate's own tile grid shifted by a
+  // hard pixel, so the overlay reads as inlaid rather than drawn on: no antialiased hairlines, no
+  // second colour, no labels. The four outer lines reuse the plate silhouette and the rounded
+  // corner helper, which is what makes the overlay the same shape as the island instead of a
+  // separate diamond that merely happens to line up. Caller has already clipped to the surface.
+  function drawIslandGridOverlay() {
+    const centreX = WIDTH / 2;
+    const centreY = islandCenterY;
+    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2;
+    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 2;
+    const snap = value => Math.round(value * RENDER_SCALE) / RENDER_SCALE;
+    // Tiles are addressed by (column, row): x = centreX + (column - row) * tileWidth / 2 and
+    // y = islandTop + tileHeight / 2 + (column + row) * tileHeight / 2. Integer values land on
+    // tile CENTRES, so the seam between two tiles sits at a half value: column = 1.5 is the line
+    // between columns B and C. Drawing at whole values instead put the lattice through the middle
+    // of every tile. The plate itself is the diamond |a| + |b| = 9, with a = column - row and
+    // b = column + row - 8, which is why each seam runs from -0.5 to 8.5 along the other axis.
+    const tilePoint = (column, row) => [
+      centreX + (column - row) * ISLAND_TILE_WIDTH / 2,
+      islandTop + islandTileHeight / 2 + (column + row) * islandTileHeight / 2
+    ];
+    const first = -0.5;
+    const last = ISLAND_GRID_SIZE - 0.5;
+    const line = ISLAND_GRID_OVERLAY_LINE;
+    ctx.save();
+    // Keep the ink inside the plate. Strokes centred on a path paint half their width on each
+    // side, so a seam that ends on the silhouette would leave an antialiased fringe outside it;
+    // clipping a whole unit in is what stops the lattice bleeding past the island.
+    const inset = ISLAND_GRID_OVERLAY_INSET;
+    ctx.beginPath();
+    traceSmoothIslandDiamond(centreX, centreY, halfWidth - inset, halfHeight - inset, 2.2);
+    ctx.clip();
+    ctx.strokeStyle = '#0b1420';
+    ctx.lineWidth = line;
+    ctx.lineCap = 'butt';
+    // Round joins, not miter: the rim's four vertices turn by about 53 degrees, and a miter join
+    // there shoots a spike well outside the plate. The spike was the only ink that escaped the
+    // silhouette.
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = ISLAND_GRID_OVERLAY_ALPHA;
+    ctx.beginPath();
+    for (let edge = 1; edge < ISLAND_GRID_SIZE; edge += 1) {
+      // The seam between columns edge-1 and edge, and the seam between rows edge-1 and edge.
+      const seam = edge - 0.5;
+      const fromColumn = tilePoint(seam, first);
+      const toColumn = tilePoint(seam, last);
+      ctx.moveTo(snap(fromColumn[0]), snap(fromColumn[1]));
+      ctx.lineTo(snap(toColumn[0]), snap(toColumn[1]));
+      const fromRow = tilePoint(first, seam);
+      const toRow = tilePoint(last, seam);
+      ctx.moveTo(snap(fromRow[0]), snap(fromRow[1]));
+      ctx.lineTo(snap(toRow[0]), snap(toRow[1]));
+    }
+    ctx.stroke();
+    // The rim is the plate's own silhouette, inset by a line so its outer half stays inside the
+    // clip. Drawn darker than the seams because it is the boundary of the grid, not one of its
+    // cells.
+    ctx.globalAlpha = ISLAND_GRID_OVERLAY_EDGE_ALPHA;
+    ctx.beginPath();
+    traceSmoothIslandDiamond(centreX, centreY,
+      halfWidth - inset - line / 2, halfHeight - inset - line / 2, 2.2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function drawPixelPolygon(points, color, alpha) {
     if (points.length < 3) return;
     const minY = Math.min(...points.map(point => point[1]));
@@ -1534,6 +1613,12 @@
     ], tileSeam, tileSeam);
     ISLAND_TILES.forEach(tile => drawGrassTile(tile, palette, sunlight));
     drawCloudShadowsOnIsland(cloudStates, sunAltitude, sunHourAngle, cloudCover, code);
+    if (ISLAND_GRID_OVERLAY_ENABLED) {
+      ctx.save();
+      clipIslandSurface();
+      drawIslandGridOverlay();
+      ctx.restore();
+    }
     const topRim = blendColor(palette.grassSeam, palette.grassDark, 0.32);
     drawSmoothIslandLine(leftX, middleY, centerX, bottomY, topRim, 0.60);
     drawSmoothIslandLine(centerX, bottomY, rightX, middleY, topRim, 0.60);

@@ -62,6 +62,16 @@ public final class WeatherSkyView extends View {
     private static final float SUN_RISE_X = 284.0f;
     private static final float SUN_SET_X = 36.0f;
     private static final float ARC_TILT = 9.0f;
+    // The island's own 9 x 9 lattice, redrawn on top of the plate as a legible overlay: the plate's
+    // silhouette at the plate's size, with the same tile pitch. This is the reference the
+    // coordinates are quoted in (A-I across, 1-9 down), so it sits on the real grid.
+    private static final boolean ISLAND_GRID_OVERLAY_ENABLED = true;
+    private static final float ISLAND_GRID_OVERLAY_LINE = 0.5f;
+    // Antialiasing on the clip boundary bled a fringe of grid colour onto the grass band below the
+    // front edge, so the whole overlay is pulled this far inside the silhouette.
+    private static final float ISLAND_GRID_OVERLAY_INSET = 1.5f;
+    private static final float ISLAND_GRID_OVERLAY_ALPHA = 0.38f;
+    private static final float ISLAND_GRID_OVERLAY_EDGE_ALPHA = 0.62f;
     // The moon only appears once the sun has dropped below this altitude.
     private static final double MOON_VISIBLE_BELOW_SUN = -2.0;
     private static final int GLOW_STEPS = 14;
@@ -226,6 +236,8 @@ public final class WeatherSkyView extends View {
             Color.rgb(90, 106, 128), Color.rgb(147, 161, 179), Color.rgb(198, 208, 220)};
 
     private final Path islandClipPath = new Path();
+    // Reused by the grid overlay so the draw path allocates nothing per frame.
+    private final Path gridPath = new Path();
     private final Paint paint = new Paint();
     private final Paint islandPolyPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint renderBitmapPaint = new Paint();
@@ -667,6 +679,9 @@ public final class WeatherSkyView extends View {
         }
         drawCloudShadowsOnIsland(canvas, cloudStates, sunAltitude, sunHourAngle,
                 cloudCover, code);
+        if (ISLAND_GRID_OVERLAY_ENABLED) {
+            drawIslandGridOverlay(canvas);
+        }
         int topRim = blend(palette.grassSeam, palette.grassDark, 0.32);
         drawSmoothIslandLine(canvas, leftX, middleY, centerX, bottomY, topRim, 0.60f);
         drawSmoothIslandLine(canvas, centerX, bottomY, rightX, middleY, topRim, 0.60f);
@@ -974,6 +989,88 @@ public final class WeatherSkyView extends View {
             canvas.drawPath(path, islandPolyPaint);
         }
         islandPolyPaint.setStyle(Paint.Style.FILL);
+    }
+
+    /**
+     * Sinks a dark 9 x 9 lattice into the grass. Every line is a tile seam, so the lattice is
+     * addressed in the projection's own (column, row) coordinates: integer values land on tile
+     * centres, which means the seam between two tiles sits at a half value. The plate is the
+     * diamond |a| + |b| = 9 with a = column - row and b = column + row - 8, which is why each seam
+     * runs from -0.5 to 8.5 along the other axis.
+     *
+     * The rim reuses the plate silhouette, so the overlay is the same shape as the island rather
+     * than a separate diamond that merely lines up. Round joins matter: the rim's four vertices
+     * turn by about 53 degrees and a miter join there shoots a spike outside the plate.
+     */
+    private void drawIslandGridOverlay(Canvas canvas) {
+        float centerX = SCENE_WIDTH / 2.0f;
+        float centerY = ISLAND_CENTER_Y;
+        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f;
+        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f;
+        float line = ISLAND_GRID_OVERLAY_LINE;
+        float inset = ISLAND_GRID_OVERLAY_INSET;
+        int save = canvas.save();
+        // Clip the lattice a whole unit inside the plate; see the inset constant.
+        islandClipPath.reset();
+        traceSmoothIslandDiamondPath(islandClipPath, centerX, centerY,
+                halfWidth - inset, halfHeight - inset);
+        canvas.clipPath(islandClipPath);
+
+        Path grid = gridPath;
+        grid.reset();
+        float first = -0.5f;
+        float last = ISLAND_GRID_SIZE - 0.5f;
+        for (int edge = 1; edge < ISLAND_GRID_SIZE; edge++) {
+            float seam = edge - 0.5f;
+            grid.moveTo(tilePointX(seam, first), tilePointY(seam, first));
+            grid.lineTo(tilePointX(seam, last), tilePointY(seam, last));
+            grid.moveTo(tilePointX(first, seam), tilePointY(first, seam));
+            grid.lineTo(tilePointX(last, seam), tilePointY(last, seam));
+        }
+        islandPolyPaint.setShader(null);
+        islandPolyPaint.setStyle(Paint.Style.STROKE);
+        islandPolyPaint.setStrokeWidth(line);
+        islandPolyPaint.setStrokeCap(Paint.Cap.BUTT);
+        islandPolyPaint.setStrokeJoin(Paint.Join.ROUND);
+        islandPolyPaint.setColor(0xFF0B1420);
+        islandPolyPaint.setAlpha(Math.round(ISLAND_GRID_OVERLAY_ALPHA * 255));
+        canvas.drawPath(grid, islandPolyPaint);
+
+        Path rim = gridPath;
+        rim.reset();
+        traceSmoothIslandDiamondPath(rim, centerX, centerY,
+                halfWidth - inset - line / 2.0f, halfHeight - inset - line / 2.0f);
+        islandPolyPaint.setAlpha(Math.round(ISLAND_GRID_OVERLAY_EDGE_ALPHA * 255));
+        canvas.drawPath(rim, islandPolyPaint);
+
+        islandPolyPaint.setAlpha(255);
+        islandPolyPaint.setStyle(Paint.Style.FILL);
+        canvas.restoreToCount(save);
+    }
+
+    private float tilePointX(float column, float row) {
+        return SCENE_WIDTH / 2.0f + (column - row) * ISLAND_TILE_WIDTH / 2.0f;
+    }
+
+    private float tilePointY(float column, float row) {
+        return ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (column + row) * ISLAND_TILE_HEIGHT / 2.0f;
+    }
+
+    /** The plate silhouette, as a path, so it can be stroked or clipped. */
+    private void traceSmoothIslandDiamondPath(Path path, float centerX, float centerY,
+            float halfWidth, float halfHeight) {
+        float cornerRadius = 2.2f;
+        float cutX = Math.min(cornerRadius, halfWidth * 0.34f);
+        float cutY = cutX * halfHeight / halfWidth;
+        path.moveTo(centerX - cutX, centerY - halfHeight + cutY);
+        path.quadTo(centerX, centerY - halfHeight, centerX + cutX, centerY - halfHeight + cutY);
+        path.lineTo(centerX + halfWidth - cutX, centerY - cutY);
+        path.quadTo(centerX + halfWidth, centerY, centerX + halfWidth - cutX, centerY + cutY);
+        path.lineTo(centerX + cutX, centerY + halfHeight - cutY);
+        path.quadTo(centerX, centerY + halfHeight, centerX - cutX, centerY + halfHeight - cutY);
+        path.lineTo(centerX - halfWidth + cutX, centerY + cutY);
+        path.quadTo(centerX - halfWidth, centerY, centerX - halfWidth + cutX, centerY - cutY);
+        path.close();
     }
 
     private void drawSmoothIslandLine(Canvas canvas, float x1, float y1,
