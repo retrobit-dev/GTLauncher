@@ -124,6 +124,8 @@ public final class WeatherSkyView extends View {
     // The island's own cast shadow: close to the base, drifting with the light direction.
     private static final float ISLAND_BODY_SHADOW_SCALE = 1.55f;
     private static final float ISLAND_BODY_SHADOW_OPACITY_SCALE = 0.46f;
+    /** The plate's own cast shadow: same weight in every weather, only its position changes. */
+    private static final float ISLAND_BODY_SHADOW_OPACITY = 0.14f;
     private static final float ISLAND_BODY_SHADOW_RISE = 1.0f;
     private static final float ISLAND_BODY_SHADOW_DRIFT = 10.0f;
     private static final int[] NIGHT_SKY = colors("#111a35", "#1d2948", "#35415d", "#514c65");
@@ -652,16 +654,19 @@ public final class WeatherSkyView extends View {
     private void drawIslandShadow(Canvas canvas, float centerX, float lowerY,
                                   double lightAltitude, double lightHourAngle,
                                   double cloudCover, int code) {
-        double directLight = clamp((lightAltitude + 8.0) / 28.0, 0.0, 1.0);
-        double cloudFilter = 1.0 - clamp(cloudCover / 100.0 * 0.45, 0.0, 0.45);
-        if (code >= 95) cloudFilter *= 0.82;
-        double opacity = (0.10 + directLight * 0.30) * cloudFilter
-                * ISLAND_BODY_SHADOW_OPACITY_SCALE;
-        if (opacity <= 0.002) return;
+        // Constant, like the size: weather decides how the sky looks, not how dark the plate's
+        // shadow is. Opacity used to follow the light level, so the same shadow faded from 0.14 by
+        // day to 0.02 at night and looked as though it shrank and then vanished, when all that
+        // changed was its weight. Only its position moves now, driven by where the light comes from.
+        double opacity = ISLAND_BODY_SHADOW_OPACITY;
+        // Light from the eastern half pushes the shadow west, light from the western half pushes it
+        // east; the term eases through zero across solar noon and is capped at a fifth of the
+        // plate's own width so the shadow always stays tucked under it.
         double progress = celestialProgress(lightHourAngle);
-        float drift = (float) ((0.5 - progress) * 2.0 * ISLAND_BODY_SHADOW_DRIFT);
-        float shadowCenterX = centerX - drift;
+        float lean = (float) clamp((0.5 - progress) * 2.0, -1.0, 1.0);
+        float shadowCenterX = centerX - lean * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.10f;
         float shadowCenterY = lowerY - ISLAND_DEPTH - ISLAND_BODY_SHADOW_RISE;
+        // One size, never a function of the light or the weather.
         float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4.0f
                 * (float) ISLAND_BODY_SHADOW_SCALE;
         float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 4.0f

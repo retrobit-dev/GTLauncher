@@ -107,6 +107,8 @@
   // The island's own cast shadow: close to the base, drifting with the light direction.
   const ISLAND_BODY_SHADOW_SCALE = 1.55;
   const ISLAND_BODY_SHADOW_OPACITY_SCALE = 0.46;
+  // The plate's own cast shadow: same weight in every weather, only its position changes.
+  const ISLAND_BODY_SHADOW_OPACITY = 0.14;
   const ISLAND_BODY_SHADOW_RISE = 1;
   const ISLAND_BODY_SHADOW_DRIFT = 10;
   const FALLBACK = { latitude: -6.7097, longitude: 111.3476, fallback: true };
@@ -938,17 +940,21 @@
   // low to cast anything. Offset and size are both kept small so the shadow stays tucked close
   // under the island instead of floating away from it.
   function drawIslandShadow(centerX, lowerY, lightAltitude, lightHourAngle, cloudCover, code) {
-    const directLight = clamp((lightAltitude + 8) / 28, 0, 1);
-    let cloudFilter = 1 - clamp(cloudCover / 100 * 0.45, 0, 0.45);
-    if (weatherCodeIsStorm(code)) cloudFilter *= 0.82;
-    const opacity = (0.10 + directLight * 0.30) * cloudFilter * ISLAND_BODY_SHADOW_OPACITY_SCALE;
-    if (opacity <= 0.002) return;
-    // Light comes from the eastern half early and the western half late, so the shadow drifts
-    // the other way. The sign flips across solar noon and eases through zero at midday.
+    // Constant, like the size: weather decides how the sky looks, not how dark the plate's shadow
+    // is. Opacity used to follow the light level, so the same shadow faded from 0.14 by day to 0.02
+    // at night -- it looked as if the shadow shrank and then disappeared, when all that changed was
+    // its weight. Only its position moves now, driven by where the light comes from.
+    const opacity = ISLAND_BODY_SHADOW_OPACITY;
+    // Light from the eastern half pushes the shadow west, light from the western half pushes it
+    // east; the term eases through zero across solar noon and is capped at 30% of the plate's own
+    // width. It has to be capped rather than proportional to the light's height: the projection is
+    // fixed at 25 degrees, so a geometric throw would be the same length at every hour, and what the
+    // eye actually reads is the sideways lean rather than a long shadow sliding off the plate.
     const progress = celestialProgress(lightHourAngle);
-    const drift = (0.5 - progress) * 2 * ISLAND_BODY_SHADOW_DRIFT;
-    const shadowCenterX = centerX - drift;
+    const lean = clamp((0.5 - progress) * 2, -1, 1);
+    const shadowCenterX = centerX - lean * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.10;
     const shadowCenterY = lowerY - ISLAND_DEPTH - ISLAND_BODY_SHADOW_RISE;
+    // One size, never a function of the light or the weather.
     const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4 * ISLAND_BODY_SHADOW_SCALE;
     const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 4 * ISLAND_BODY_SHADOW_SCALE;
     drawIslandPolygon([
