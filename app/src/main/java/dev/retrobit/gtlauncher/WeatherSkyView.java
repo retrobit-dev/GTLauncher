@@ -52,10 +52,6 @@ public final class WeatherSkyView extends View {
     private static final int ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
     private static final float ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH
             - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
-    // Cloud bases meet the island's top plane at the upper-half visual horizon.
-    private static final double CLOUD_VISUAL_HORIZON_Y = SCENE_HEIGHT * 0.5;
-    // A square-root curve gives low-altitude clouds more visible vertical separation.
-    private static final double CLOUD_VISUAL_ALTITUDE_EXPONENT = 0.50;
     // Keep celestial centers in the upper third with enough margin for the Sun's glow.
     // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
     // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
@@ -86,45 +82,23 @@ public final class WeatherSkyView extends View {
     private static final double ISLAND_TILE_METERS = 250.0;
     private static final float ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f
             + (ISLAND_GRID_SIZE - 1) * ISLAND_TILE_HEIGHT / 2.0f;
-    private static final double CLOUD_BASE_MIN_METERS = 800.0;
-    private static final int CLOUD_BASE_RANGE_METERS = 9201;
-    private static final double CLOUD_MIN_BASE_ALTITUDE_GAP_METERS = 200.0;
-    private static final double CLOUD_MIN_SCREEN_ALTITUDE_GAP = 2.55;
-    private static final int CLOUD_ALTITUDE_SAMPLE_ATTEMPTS = 256;
-    private static final double CLOUD_WIDTH_MIN_METERS = 1200.0;
-    private static final int CLOUD_WIDTH_RANGE_METERS = 4401;
-    private static final double CLOUD_FIELD_MIN_RADIUS_METERS = 500.0;
-    private static final double CLOUD_FIELD_RADIUS_RANGE_METERS = 44500.0;
-    private static final double CLOUD_FIELD_HALF_LENGTH_METERS = 60000.0;
-    private static final int CLOUD_RADIUS_RANDOM_SALT = 34;
-    private static final int CLOUD_ALTITUDE_RANDOM_SALT = 2;
-    private static final int CLOUD_WIDTH_RANDOM_SALT = 3;
-    private static final int CLOUD_DEPTH_RANDOM_SALT = 4;
-    private static final int CLOUD_BEARING_RANDOM_SALT = 1;
-    private static final int CLOUD_SHAPE_RANDOM_SALT = 0;
-    private static final int CLOUD_ART_SIZE_RANDOM_SALT = 5;
-    // Rendering advances cloud advection at 24 simulated seconds per animation second.
-    private static final double CLOUD_SIMULATION_RATE = 24.0;
-    private static final double CLOUD_VERTICAL_ART_EXAGGERATION = 1.5;
-    private static final double CLOUD_HORIZONTAL_ART_EXAGGERATION = 3.0;
-    private static final float CLOUD_MIN_SCREEN_WIDTH = 52.0f;
-    private static final float CLOUD_MAX_SCREEN_WIDTH = 64.0f;
-    private static final float CLOUD_LAYOUT_GAP = 5.0f;
-    private static final float CLOUD_MIN_SCREEN_HEIGHT = 18.0f;
-    private static final float CLOUD_MAX_SCREEN_HEIGHT = 23.0f;
-    private static final float CLOUD_SCREEN_TOP_MARGIN = 8.0f;
-    private static final double CLOUD_SHADOW_FOOTPRINT_SCALE = 0.52;
-    private static final double CLOUD_SHADOW_MAX_SPRITE_RATIO = 0.90;
-    private static final double ISLAND_BODY_SHADOW_SCALE = 1.55;
-    private static final double ISLAND_BODY_SHADOW_OPACITY_SCALE = 0.46;
+    // Clouds are raster sprites traced from reference art, downsampled to a 30-column grid and
+    // quantised into three flat bands. One cell value drives both axes, so each silhouette keeps
+    // the ratio it was traced at instead of stretching into a flat smudge.
+    private static final int[] CLOUD_COVER_STEPS = {12, 32, 58, 82};
+    private static final float CLOUD_CELL_MIN = 1.45f;
+    private static final float CLOUD_CELL_RANGE = 0.65f;
+    // Slots are absolute scene units so the widest sprite still clears both frame edges.
+    private static final float[] CLOUD_SLOT_X = {56.0f, 264.0f, 64.0f, 256.0f};
+    private static final float[] CLOUD_SLOT_BOTTOM = {48.0f, 46.0f, 92.0f, 90.0f};
+    private static final float CLOUD_DRIFT_AMPLITUDE = 14.0f;
+    private static final double CLOUD_DRIFT_RATE = 0.35;
+    private static final float CLOUD_EDGE_INSET = 4.0f;
+    // The island's own cast shadow: close to the base, drifting with the light direction.
+    private static final float ISLAND_BODY_SHADOW_SCALE = 1.55f;
+    private static final float ISLAND_BODY_SHADOW_OPACITY_SCALE = 0.46f;
     private static final float ISLAND_BODY_SHADOW_RISE = 1.0f;
     private static final float ISLAND_BODY_SHADOW_DRIFT = 10.0f;
-    private static final double CLOUD_SHADOW_MIN_SUN_ALTITUDE = 3.0;
-    private static final double CLOUD_SHADOW_CLEAR_OPACITY = 0.10;
-    private static final double CLOUD_SHADOW_COVER_OPACITY = 0.08;
-    private static final double CLOUD_SHADOW_STORM_BONUS = 0.02;
-    private static final double CLOUD_SHADOW_MAX_OPACITY = 0.20;
-    private static final double CLOUD_SHADOW_FALLBACK_MIN_OPACITY = 0.16;
     private static final int[] NIGHT_SKY = colors("#111a35", "#1d2948", "#35415d", "#514c65");
     private static final int[] DAWN_SKY = colors("#425783", "#7183a7", "#c79aa5", "#f0bd88");
     private static final int[] SUNSET_SKY = colors("#39486e", "#6e6f91", "#d38d84", "#f5b573");
@@ -137,31 +111,93 @@ public final class WeatherSkyView extends View {
             new SkyAtmosphere(Color.rgb(119, 143, 154), 0.12);
     private static final SkyAtmosphere DAY_ATMOSPHERE =
             new SkyAtmosphere(Color.rgb(218, 226, 207), 0.07);
-    // Tall cumulus silhouettes: a broad base, with one or two higher rounded lobes.
+    // Traced from reference art, then downsampled and colour-quantised. '0' is empty and
+    // '1'..'3' are the three light bands, darkest first. Row counts differ by design.
     private static final String[][] CLOUD_SHAPES = {
-            {"000000111000000", "000001111100000", "000011111110000", "000111111111000",
-                    "001111111111100", "011111111111110", "111111111111111", "111111111111111",
-                    "111111111111111", "111111111111111"},
-            {"000111000000000", "001111100000000", "011111110000000", "011111111100000",
-                    "111111111111000", "111111111111110", "111111111111111", "111111111111111",
-                    "111111111111111", "111111111111111"},
-            {"000000000111000", "000000001111100", "000000011111110", "000001111111110",
-                    "000111111111111", "011111111111111", "111111111111111", "111111111111111",
-                    "111111111111111", "111111111111111"},
-            {"000111000111000", "001111101111100", "011111111111110", "111111111111111",
-                    "111111111111111", "111111111111111", "111111111111111", "111111111111111",
-                    "111111111111111", "111111111111111"},
-            {"000001110000000", "000011111000000", "000111111100000", "001111111110000",
-                    "011111111111000", "111111111111100", "111111111111111", "111111111111111",
-                    "111111111111111", "111111111111111"}
+            {"000000000000001110011110000000",
+                    "000000022211321111111110000000",
+                    "000000322223321111111111000000",
+                    "000000333333331111111111100000",
+                    "000003333333331111111111110000",
+                    "000033332333331111111111111000",
+                    "033333322233331111111111111100",
+                    "333333322233331111111111111100",
+                    "333333311133331111111111111110",
+                    "333333311113331111111111111111",
+                    "333333311112221111111111111111",
+                    "032333111112221111111111111111",
+                    "000233111111211111111111111110",
+                    "000000000000011111000000000000"},
+            {"000000000002221110000000000000",
+                    "000000000033221111111100000000",
+                    "000000223333322111111110000000",
+                    "000002233333322111111111000000",
+                    "000003333333322211111111111000",
+                    "003333333333322211111111111100",
+                    "033333333333322211111111111110",
+                    "033333333333322211111111111111",
+                    "333333333333322211111111111111",
+                    "333333333333322211111111111111",
+                    "333333333333322211111111111111",
+                    "333333333333322211111111111111",
+                    "333332233333322111111111111110",
+                    "033322223333322111111111111110",
+                    "003322113333322111111111111100",
+                    "000331110333221111100111110000",
+                    "000000000003221110000000000000"},
+            {"000000000002222200000000000000",
+                    "000000000022222220000000000000",
+                    "000000000332222222000000000000",
+                    "000001133332222222200000000000",
+                    "000033333332211122222222000000",
+                    "000333333322111111222222200000",
+                    "000333333322111111112222220000",
+                    "003333333322111111111122220000",
+                    "033333333322111111111111220000",
+                    "033323333322111111111111111100",
+                    "333111333322111111111111111110",
+                    "333111333322111111111111111111",
+                    "333111133322111111111111111111",
+                    "333111133322111111111111111111",
+                    "031111113322111111111111111111",
+                    "031111110321111111111111111110",
+                    "000111000001111100000000000000"},
+            {"000000000000000000222220000000",
+                    "000000000111111003222222000000",
+                    "000000033111111133311111100000",
+                    "000000333311111111111111100000",
+                    "002223333311111111111111110000",
+                    "032223333311111111111111110000",
+                    "333233333311111111111111111000",
+                    "333333333311111111111111111110",
+                    "333333333331111111111111111110",
+                    "333333333331111111111111111111",
+                    "333333333331111112111111111111",
+                    "033333333331111122211111111111",
+                    "033333333311111122211111111111",
+                    "000333333311111122211111111110",
+                    "000003333311111122211111111110",
+                    "000000333311111112111111111000",
+                    "000000333111111111111111100000",
+                    "000000333111111111111111000000",
+                    "000000031111110001111110000000",
+                    "000000001111100000000000000000"},
     };
+
+    // Day, dusk, night and storm share one light model: three flat bands, darkest at the base.
+    private static final int[] CLOUD_DAY_BANDS = {
+            Color.rgb(169, 192, 217), Color.rgb(228, 239, 250), Color.rgb(255, 255, 255)};
+    private static final int[] CLOUD_DUSK_BANDS = {
+            Color.rgb(140, 127, 156), Color.rgb(187, 174, 198), Color.rgb(239, 215, 210)};
+    private static final int[] CLOUD_NIGHT_BANDS = {
+            Color.rgb(64, 78, 106), Color.rgb(92, 109, 138), Color.rgb(143, 160, 189)};
+    private static final int[] CLOUD_STORM_BANDS = {
+            Color.rgb(90, 106, 128), Color.rgb(147, 161, 179), Color.rgb(198, 208, 220)};
 
     private final Paint paint = new Paint();
     private final Paint islandPolyPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint renderBitmapPaint = new Paint();
     private final Path shapePath = new Path();
-    private final Path cloudShadowPath = new Path();
-    private final Path islandSurfacePath = new Path();
     private final Path islandPolyPath = new Path();
     private final Path islandBodyPath = new Path();
     private final float[] islandBodyVertices = new float[12];
@@ -248,21 +284,24 @@ public final class WeatherSkyView extends View {
         SkyMath.Position moon = SkyMath.moon(now, latitude, longitude);
         double cloudCover = weather == null ? 42.0 : weather.cloudCoverPercent;
         int code = weather == null ? 3 : weather.weatherCode;
-        CloudState[] cloudStates = new CloudState[0];
+        CloudState[] cloudStates = createCloudStates(motionSeconds, cloudCover);
 
         Canvas scene = sceneCanvas;
         int save = scene.save();
         scene.scale(RENDER_SCALE, RENDER_SCALE);
         drawSky(scene, sun, cloudCover, code);
-        int upperHalfSave = scene.save();
-        scene.clipRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT * 0.5f);
+        int skySave = scene.save();
+        // The sky band runs from above the frame down to the horizon; clipping at half height
+        // used to behead any cloud tall enough to reach past it.
+        scene.clipRect(0, -SCENE_HEIGHT, SCENE_WIDTH, SCENE_HEIGHT * 2);
+        drawClouds(scene, cloudStates, sun.altitudeDegrees, code);
         drawSun(scene, sun, cloudCover, motionSeconds);
         drawMoon(scene, moon, motionSeconds, sun.altitudeDegrees);
         drawFog(scene, code);
         drawStormFlash(scene, elapsedSeconds, code);
-        scene.restoreToCount(upperHalfSave);
+        scene.restoreToCount(skySave);
         drawFloatingIsland(scene, sun.altitudeDegrees, sun.azimuthDegrees,
-                sun.hourAngleDegrees, cloudCover, code, cloudStates, moon);
+                sun.hourAngleDegrees, cloudCover, code, moon);
         drawPrecipitation(scene, elapsedSeconds);
         scene.restoreToCount(save);
 
@@ -313,338 +352,9 @@ public final class WeatherSkyView extends View {
         return Math.round(coordinate * RENDER_SCALE) / (float) RENDER_SCALE;
     }
 
-    private CloudState[] createCloudStates(double elapsedSeconds, int code) {
-        // WMO 0/1 means clear or mainly clear; every other condition gets one cloud.
-        int count = code == 0 || code == 1 ? 0 : 1;
-        CloudState[] result = new CloudState[count];
-        if (count == 0) return result;
-
-        double windSpeedKmh = weather == null ? 4.0 : weather.windSpeedKmh;
-        double windFromDegrees = weather == null ? 90.0 : weather.windDirectionDegrees;
-        // Open-Meteo reports the bearing the wind comes from; use the downwind ENU vector.
-        double windBearing = Math.toRadians(normalizeDegrees(windFromDegrees + 180.0));
-        double alongEast = Math.sin(windBearing);
-        double alongNorth = Math.cos(windBearing);
-        double crossEast = -alongNorth;
-        double crossNorth = alongEast;
-        double simulatedSeconds = elapsedSeconds * CLOUD_SIMULATION_RATE;
-        double windSpeedMetersPerSecond = Math.max(0.0, windSpeedKmh) / 3.6;
-        int cloudSeed = (int) Math.floor(latitude * 37.0 + longitude * 17.0);
-
-        double[] assignedBaseAltitudes = new double[count];
-        double[] assignedScreenCenterY = new double[count];
-        for (int index = 0; index < count; index++) {
-            String[] shape = CLOUD_SHAPES[(int) (cloudRandom(cloudSeed, index,
-                    CLOUD_SHAPE_RANDOM_SALT) * CLOUD_SHAPES.length)];
-            // Independent hashed bearings vary cloud positions but stay stable between frames.
-            double initialBearing = cloudRandom(cloudSeed, index, CLOUD_BEARING_RANDOM_SALT)
-                    * Math.PI * 2.0;
-            double initialRadius = CLOUD_FIELD_MIN_RADIUS_METERS
-                    + cloudRandom(cloudSeed, index, CLOUD_RADIUS_RANDOM_SALT) * CLOUD_FIELD_RADIUS_RANGE_METERS;
-            double initialEast = Math.sin(initialBearing) * initialRadius;
-            double initialNorth = Math.cos(initialBearing) * initialRadius;
-            double along = initialEast * alongEast + initialNorth * alongNorth;
-            double across = initialEast * crossEast + initialNorth * crossNorth;
-            // Reflect at either end of the track instead of wrapping to the far edge.
-            // The triangular-wave path reverses direction without a position jump.
-            along = reflectCentered(along + windSpeedMetersPerSecond * simulatedSeconds,
-                    CLOUD_FIELD_HALF_LENGTH_METERS);
-            double cloudEast = along * alongEast + across * crossEast;
-            double cloudNorth = along * alongNorth + across * crossNorth;
-
-            double rangeMeters = Math.max(1.0, Math.hypot(cloudEast, cloudNorth));
-            double widthMeters = CLOUD_WIDTH_MIN_METERS
-                    + cloudRandom(cloudSeed, index, CLOUD_WIDTH_RANDOM_SALT) * CLOUD_WIDTH_RANGE_METERS;
-            double depthRatio = 0.60 + cloudRandom(cloudSeed, index, CLOUD_DEPTH_RANDOM_SALT) * 0.35;
-            double depthMeters = widthMeters * depthRatio;
-            // Choose altitude from the cloud's stable initial range, not its changing distance.
-            // Re-sampling every frame can switch candidates and visibly teleport the cloud vertically.
-            double baseAltitude = sampleCloudBaseAltitude(cloudSeed, index, initialRadius,
-                    depthMeters, shape, assignedBaseAltitudes, assignedScreenCenterY, index);
-            double azimuth = normalizeDegrees(Math.toDegrees(Math.atan2(cloudEast, cloudNorth)));
-            double baseElevation = Math.toDegrees(Math.atan2(baseAltitude, rangeMeters));
-            double topElevation = Math.toDegrees(Math.atan2(baseAltitude + depthMeters, rangeMeters));
-            double angularWidth = 2.0 * Math.atan2(widthMeters * 0.5, rangeMeters);
-            double artSizeMix = cloudRandom(cloudSeed, index, CLOUD_ART_SIZE_RANDOM_SALT);
-            float maxSpriteWidth = Math.min(
-                    CLOUD_MAX_SCREEN_WIDTH * (0.82f + (float) artSizeMix * 0.18f),
-                    SCENE_WIDTH / (float) count - CLOUD_LAYOUT_GAP);
-            float spriteWidth = (float) clamp(
-                    Math.toDegrees(angularWidth) * CLOUD_HORIZONTAL_ART_EXAGGERATION
-                            * SCENE_WIDTH / 360.0,
-                    CLOUD_MIN_SCREEN_WIDTH, maxSpriteWidth);
-            float unitX = spriteWidth / shape[0].length();
-            float baseY = mapCloudAltitudeToY(baseElevation);
-            float topY = mapCloudAltitudeToY(topElevation);
-            float spriteHeight = (float) clamp(
-                    Math.max(shape.length * 0.7f,
-                            (baseY - topY) * (float) CLOUD_VERTICAL_ART_EXAGGERATION),
-                    CLOUD_MIN_SCREEN_HEIGHT, CLOUD_MAX_SCREEN_HEIGHT);
-            float unitY = spriteHeight / shape.length;
-            float spriteTopY = Math.max(CLOUD_SCREEN_TOP_MARGIN, baseY - spriteHeight);
-            assignedBaseAltitudes[index] = baseAltitude;
-            assignedScreenCenterY[index] = cloudSpriteCenterY(baseAltitude, initialRadius,
-                    depthMeters, shape.length);
-            result[index] = new CloudState(
-                    shape, cloudEast, cloudNorth, baseAltitude, widthMeters, depthMeters,
-                    alongEast, alongNorth, crossEast, crossNorth,
-                    (float) mapAzimuthToX(azimuth), spriteTopY, unitX, unitY);
-        }
-        separateOverlappingClouds(result);
-        return result;
-    }
-
-    /** Randomly sample cloud heights, rejecting physical or projected near-duplicates. */
-    private double sampleCloudBaseAltitude(int seed, int index, double rangeMeters,
-                                           double depthMeters, String[] shape,
-                                           double[] assignedAltitudes, double[] assignedCenterY,
-                                           int assignedCount) {
-        double bestCandidate = CLOUD_BASE_MIN_METERS
-                + cloudRandom(seed, index, CLOUD_ALTITUDE_RANDOM_SALT + 8192)
-                * CLOUD_BASE_RANGE_METERS;
-        double bestScore = -1.0;
-        for (int attempt = 0; attempt < CLOUD_ALTITUDE_SAMPLE_ATTEMPTS; attempt++) {
-            int salt = CLOUD_ALTITUDE_RANDOM_SALT + attempt * 37;
-            double candidate = CLOUD_BASE_MIN_METERS
-                    + cloudRandom(seed, index, salt) * CLOUD_BASE_RANGE_METERS;
-            double centerY = cloudSpriteCenterY(candidate, rangeMeters, depthMeters, shape.length);
-            double score = altitudeSpacingScore(candidate, centerY,
-                    assignedAltitudes, assignedCenterY, assignedCount);
-            if (score > bestScore) {
-                bestScore = score;
-                bestCandidate = candidate;
-            }
-            if (score >= 1.0) return candidate;
-        }
-
-        // Rare fallback: scan a seed-rotated altitude lattice for a valid gap before relaxing it.
-        int latticeSize = 4096;
-        int start = (int) (cloudRandom(seed, index, CLOUD_ALTITUDE_RANDOM_SALT + 16384)
-                * latticeSize);
-        for (int offset = 0; offset < latticeSize; offset++) {
-            int slot = (start + offset) % latticeSize;
-            double candidate = CLOUD_BASE_MIN_METERS
-                    + (slot + 0.5) / latticeSize * CLOUD_BASE_RANGE_METERS;
-            double centerY = cloudSpriteCenterY(candidate, rangeMeters, depthMeters, shape.length);
-            double score = altitudeSpacingScore(candidate, centerY,
-                    assignedAltitudes, assignedCenterY, assignedCount);
-            if (score > bestScore) {
-                bestScore = score;
-                bestCandidate = candidate;
-            }
-            if (score >= 1.0) return candidate;
-        }
-        return bestCandidate;
-    }
-
-    private double cloudSpriteCenterY(double baseAltitudeMeters, double rangeMeters,
-                                      double depthMeters, int shapeHeight) {
-        double baseElevation = Math.toDegrees(Math.atan2(baseAltitudeMeters, rangeMeters));
-        double topElevation = Math.toDegrees(Math.atan2(baseAltitudeMeters + depthMeters, rangeMeters));
-        double baseY = mapCloudAltitudeToY(baseElevation);
-        double topY = mapCloudAltitudeToY(topElevation);
-        double spriteHeight = clamp(
-                Math.max(shapeHeight * 0.7,
-                        (baseY - topY) * CLOUD_VERTICAL_ART_EXAGGERATION),
-                CLOUD_MIN_SCREEN_HEIGHT, CLOUD_MAX_SCREEN_HEIGHT);
-        double spriteTopY = Math.max(CLOUD_SCREEN_TOP_MARGIN, baseY - spriteHeight);
-        return spriteTopY + spriteHeight * 0.5;
-    }
-
-    private double altitudeSpacingScore(double altitudeMeters, double screenCenterY,
-                                        double[] assignedAltitudes, double[] assignedScreenCenterY,
-                                        int assignedCount) {
-        if (assignedCount == 0) return Double.POSITIVE_INFINITY;
-        double score = Double.POSITIVE_INFINITY;
-        for (int previous = 0; previous < assignedCount; previous++) {
-            double altitudeGap = Math.abs(altitudeMeters - assignedAltitudes[previous]);
-            double screenGap = Math.abs(screenCenterY - assignedScreenCenterY[previous]);
-            score = Math.min(score, altitudeGap / CLOUD_MIN_BASE_ALTITUDE_GAP_METERS);
-            score = Math.min(score, screenGap / CLOUD_MIN_SCREEN_ALTITUDE_GAP);
-        }
-        return score;
-    }
-
-    /** Spread only intersecting sprites; preserve range and keep the ENU shadow source aligned. */
-    private void separateOverlappingClouds(CloudState[] clouds) {
-        for (int iteration = 0; iteration < 16; iteration++) {
-            boolean moved = false;
-            for (int first = 0; first < clouds.length; first++) {
-                CloudState a = clouds[first];
-                float widthA = a.unitX * a.shape[0].length();
-                float heightA = a.unitY * a.shape.length;
-                float centerYA = a.screenY + heightA * 0.5f;
-                for (int second = first + 1; second < clouds.length; second++) {
-                    CloudState b = clouds[second];
-                    float widthB = b.unitX * b.shape[0].length();
-                    float heightB = b.unitY * b.shape.length;
-                    float centerYB = b.screenY + heightB * 0.5f;
-                    if (Math.abs(centerYA - centerYB) >= (heightA + heightB) * 0.5f) continue;
-                    double deltaX = wrapCentered(b.screenCenterX - a.screenCenterX, SCENE_WIDTH);
-                    double requiredGap = (widthA + widthB) * 0.5 + CLOUD_LAYOUT_GAP;
-                    double overlap = requiredGap - Math.abs(deltaX);
-                    if (overlap <= 0.0) continue;
-                    double direction = deltaX < 0.0 ? -1.0 : 1.0;
-                    float push = (float) (overlap * 0.5);
-                    a.screenCenterX = wrap(a.screenCenterX - direction * push, SCENE_WIDTH);
-                    b.screenCenterX = wrap(b.screenCenterX + direction * push, SCENE_WIDTH);
-                    moved = true;
-                }
-            }
-            if (!moved) break;
-        }
-
-        // Rotate ENU coordinates to the separated bearing without changing cloud distance.
-        for (CloudState cloud : clouds) {
-            double range = Math.hypot(cloud.eastMeters, cloud.northMeters);
-            double azimuth = normalizeDegrees(cloud.screenCenterX / SCENE_WIDTH * 360.0
-                    + headingDegrees - 180.0);
-            cloud.eastMeters = Math.sin(Math.toRadians(azimuth)) * range;
-            cloud.northMeters = Math.cos(Math.toRadians(azimuth)) * range;
-        }
-    }
-
-    private void drawClouds(Canvas canvas, CloudState[] clouds, double sunAltitude, int code) {
-        int baseColor;
-        int shadeColor;
-        int lightColor;
-        if (sunAltitude < -5.0) {
-            baseColor = Color.rgb(100, 119, 150);
-            shadeColor = Color.rgb(61, 76, 105);
-            lightColor = Color.rgb(174, 190, 218);
-        } else if (sunAltitude < 8.0) {
-            baseColor = Color.rgb(213, 185, 199);
-            shadeColor = Color.rgb(142, 126, 157);
-            lightColor = Color.rgb(249, 224, 197);
-        } else {
-            baseColor = Color.rgb(215, 227, 243);
-            shadeColor = Color.rgb(128, 150, 180);
-            lightColor = Color.rgb(255, 250, 239);
-        }
-        if (code >= 95) {
-            baseColor = Color.rgb(142, 155, 174);
-            shadeColor = Color.rgb(77, 94, 118);
-            lightColor = Color.rgb(203, 212, 224);
-        }
-
-        for (CloudState cloud : clouds) {
-            float width = cloud.unitX * cloud.shape[0].length();
-            float x = cloud.screenCenterX - width * 0.5f;
-            drawCloud(canvas, x, cloud.screenY, cloud.unitX, cloud.unitY,
-                    cloud.shape, baseColor, shadeColor, lightColor);
-            if (x < 0.0f) {
-                drawCloud(canvas, x + SCENE_WIDTH, cloud.screenY, cloud.unitX, cloud.unitY,
-                        cloud.shape, baseColor, shadeColor, lightColor);
-            } else if (x + width > SCENE_WIDTH) {
-                drawCloud(canvas, x - SCENE_WIDTH, cloud.screenY, cloud.unitX, cloud.unitY,
-                        cloud.shape, baseColor, shadeColor, lightColor);
-            }
-        }
-    }
-
-    private void appendCloudRows(Path path, float x, float y, float unitX, float unitY,
-                                 String[] shape, int firstRow, int lastRow, float offsetY) {
-        for (int row = firstRow; row < lastRow; row++) {
-            int column = 0;
-            while (column < shape[row].length()) {
-                while (column < shape[row].length() && shape[row].charAt(column) != '1') column++;
-                int firstColumn = column;
-                while (column < shape[row].length() && shape[row].charAt(column) == '1') column++;
-                if (column == firstColumn) continue;
-                float left = snapCelestialCoordinate(x + firstColumn * unitX);
-                float right = snapCelestialCoordinate(x + column * unitX);
-                float top = snapCelestialCoordinate(y + row * unitY + offsetY);
-                float bottom = snapCelestialCoordinate(y + (row + 1) * unitY + offsetY);
-                if (right > left && bottom > top) {
-                    path.addRect(left, top, right, bottom, Path.Direction.CW);
-                }
-            }
-        }
-    }
-
-    private void drawCloud(Canvas canvas, float x, float y, float unitX, float unitY,
-                           String[] shape, int base, int shade, int light) {
-        int middleRow = shape.length / 2;
-        int bottomRow = shape.length - 1;
-        paint.setStyle(Paint.Style.FILL);
-        paint.setAlpha(255);
-
-        // Offset lower blocks form a compact shadow bevel beneath the broad base.
-        shapePath.reset();
-        appendCloudRows(shapePath, x, y, unitX, unitY, shape,
-                middleRow, shape.length, unitY * 0.34f);
-        paint.setColor(shade);
-        canvas.drawPath(shapePath, paint);
-
-        // Joined row-runs retain the rounded cumulus silhouette as chunky pixel steps.
-        shapePath.reset();
-        appendCloudRows(shapePath, x, y, unitX, unitY, shape, 0, shape.length, 0.0f);
-        paint.setColor(base);
-        canvas.drawPath(shapePath, paint);
-
-        // A narrow lower facet separates the cloud's face from its underside.
-        shapePath.reset();
-        for (int row = Math.max(middleRow, bottomRow - 1); row <= bottomRow; row++) {
-            int column = 0;
-            while (column < shape[row].length()) {
-                while (column < shape[row].length() && shape[row].charAt(column) != '1') column++;
-                int firstColumn = column;
-                while (column < shape[row].length() && shape[row].charAt(column) == '1') column++;
-                if (column == firstColumn) continue;
-                float left = snapCelestialCoordinate(x + firstColumn * unitX + unitX * 0.06f);
-                float right = snapCelestialCoordinate(x + column * unitX - unitX * 0.06f);
-                float top = snapCelestialCoordinate(y + (row + 0.66f) * unitY);
-                float bottom = snapCelestialCoordinate(y + (row + 1.0f) * unitY);
-                if (right > left && bottom > top) {
-                    shapePath.addRect(left, top, right, bottom, Path.Direction.CW);
-                }
-            }
-        }
-        paint.setColor(blend(base, shade, 0.48));
-        canvas.drawPath(shapePath, paint);
-
-        // Small flat facets catch light along the stepped crowns and left shoulders.
-        shapePath.reset();
-        for (int row = 0; row < middleRow; row++) {
-            for (int column = 0; column < shape[row].length(); column++) {
-                if (shape[row].charAt(column) != '1') continue;
-                boolean exposedTop = row == 0 || shape[row - 1].charAt(column) != '1';
-                boolean exposedLeft = column == 0 || shape[row].charAt(column - 1) != '1';
-                float left = x + column * unitX;
-                float right = left + unitX;
-                float top = y + row * unitY;
-                float bottom = top + unitY;
-                if (exposedTop) {
-                    shapePath.moveTo(snapCelestialCoordinate(left + unitX * 0.08f),
-                            snapCelestialCoordinate(top + unitY * 0.08f));
-                    shapePath.lineTo(snapCelestialCoordinate(right - unitX * 0.08f),
-                            snapCelestialCoordinate(top + unitY * 0.08f));
-                    shapePath.lineTo(snapCelestialCoordinate(left + unitX * 0.56f),
-                            snapCelestialCoordinate(top + unitY * 0.48f));
-                    shapePath.lineTo(snapCelestialCoordinate(left + unitX * 0.08f),
-                            snapCelestialCoordinate(top + unitY * 0.48f));
-                    shapePath.close();
-                } else if (exposedLeft) {
-                    shapePath.moveTo(snapCelestialCoordinate(left + unitX * 0.08f),
-                            snapCelestialCoordinate(top + unitY * 0.08f));
-                    shapePath.lineTo(snapCelestialCoordinate(left + unitX * 0.42f),
-                            snapCelestialCoordinate(top + unitY * 0.25f));
-                    shapePath.lineTo(snapCelestialCoordinate(left + unitX * 0.42f),
-                            snapCelestialCoordinate(bottom - unitY * 0.08f));
-                    shapePath.lineTo(snapCelestialCoordinate(left + unitX * 0.08f),
-                            snapCelestialCoordinate(bottom - unitY * 0.08f));
-                    shapePath.close();
-                }
-            }
-        }
-        paint.setColor(light);
-        canvas.drawPath(shapePath, paint);
-        paint.setStyle(Paint.Style.FILL);
-    }
-
     private void drawFloatingIsland(Canvas canvas, double sunAltitude, double sunAzimuth,
-                                    double sunHourAngle, double cloudCover, int code,
-                                    CloudState[] clouds, SkyMath.Position moon) {
+            double sunHourAngle, double cloudCover, int code,
+            SkyMath.Position moon) {
         IslandPalette palette = islandPalette(sunAltitude, cloudCover, code);
         IslandSunlight sunlight = islandSunlight(sunAltitude, cloudCover, code);
         float centerX = SCENE_WIDTH / 2.0f;
@@ -725,298 +435,9 @@ public final class WeatherSkyView extends View {
                         column, row, palette, sunlight);
             }
         }
-        drawIslandCloudShadows(canvas, clouds, sunAltitude, sunAzimuth, cloudCover, code);
         int topRim = blend(palette.grassSeam, palette.grassDark, 0.32);
         drawSmoothIslandLine(canvas, leftX, middleY, centerX, bottomY, topRim, 0.60f);
         drawSmoothIslandLine(canvas, centerX, bottomY, rightX, middleY, topRim, 0.60f);
-    }
-
-    private void drawCloudsOverIsland(Canvas canvas, CloudState[] clouds,
-                                      double sunAltitude, int code) {
-        if (clouds.length == 0) return;
-        setIslandSurfacePath();
-        int save = canvas.save();
-        canvas.clipPath(islandSurfacePath);
-        canvas.clipRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT * 0.5f);
-        // Only the part of a cloud's projection over the surface is redrawn in front.
-        drawClouds(canvas, clouds, sunAltitude, code);
-        canvas.restoreToCount(save);
-    }
-
-    private void drawIslandCloudShadows(Canvas canvas, CloudState[] clouds,
-                                        double sunAltitude, double sunAzimuth,
-                                        double cloudCover, int code) {
-        if (clouds.length == 0 || sunAltitude <= CLOUD_SHADOW_MIN_SUN_ALTITUDE) return;
-        setIslandSurfacePath();
-        boolean physicalShadowMayHit = drawCloudShadowsOnSurface(canvas, clouds,
-                sunAltitude, sunAzimuth, cloudCover, 0.0, islandSurfacePath, code);
-        if (!physicalShadowMayHit) {
-            drawIslandCloudShadowCue(canvas, clouds, sunAltitude, sunAzimuth,
-                    cloudCover, islandSurfacePath, code);
-        }
-    }
-
-    private void setIslandSurfacePath() {
-        float centerX = SCENE_WIDTH / 2.0f;
-        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f;
-        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f;
-        islandSurfacePath.reset();
-        islandSurfacePath.moveTo(centerX, ISLAND_CENTER_Y - halfHeight);
-        islandSurfacePath.lineTo(centerX + halfWidth, ISLAND_CENTER_Y);
-        islandSurfacePath.lineTo(centerX, ISLAND_CENTER_Y + halfHeight);
-        islandSurfacePath.lineTo(centerX - halfWidth, ISLAND_CENTER_Y);
-        islandSurfacePath.close();
-    }
-
-    /**
-     * Projects cloud silhouettes onto a horizontal receiver plane. The clip path and receiver
-     * elevation make this reusable for future object tops; the current scene only has the island.
-     */
-    private boolean drawCloudShadowsOnSurface(Canvas canvas, CloudState[] clouds,
-                                               double sunAltitude, double sunAzimuth,
-                                               double cloudCover, double receiverElevationMeters,
-                                               Path receiverMask, int code) {
-        if (sunAltitude <= CLOUD_SHADOW_MIN_SUN_ALTITUDE) return false;
-        double altitudeRadians = Math.toRadians(sunAltitude);
-        double azimuthRadians = Math.toRadians(sunAzimuth);
-        double sineAltitude = Math.sin(altitudeRadians);
-        double horizontalSun = Math.cos(altitudeRadians);
-        double sunEast = horizontalSun * Math.sin(azimuthRadians);
-        double sunNorth = horizontalSun * Math.cos(azimuthRadians);
-        double directLight = clamp((sineAltitude - Math.sin(Math.toRadians(3.0)))
-                / (Math.sin(Math.toRadians(18.0)) - Math.sin(Math.toRadians(3.0))), 0.0, 1.0);
-        double coverFactor = clamp(cloudCover / 100.0, 0.0, 1.0);
-        double opacity = (CLOUD_SHADOW_CLEAR_OPACITY
-                + CLOUD_SHADOW_COVER_OPACITY * coverFactor) * directLight;
-        if (code >= 95) {
-            opacity = Math.min(CLOUD_SHADOW_MAX_OPACITY, opacity + CLOUD_SHADOW_STORM_BONUS);
-        }
-        int shadowColor = Color.argb((int) Math.round(opacity * 255.0), 17, 26, 39);
-
-        boolean physicalShadowMayHit = false;
-        int save = canvas.save();
-        canvas.clipPath(receiverMask);
-        for (CloudState cloud : clouds) {
-            double relativeCloudHeight = cloud.baseAltitudeMeters - receiverElevationMeters;
-            if (relativeCloudHeight <= 0.0) continue;
-            double groundShiftEast = -relativeCloudHeight * sunEast / sineAltitude;
-            double groundShiftNorth = -relativeCloudHeight * sunNorth / sineAltitude;
-            double footprintScale = cloudShadowFootprintScale(cloud);
-            double shadowCenterEast = cloud.eastMeters + groundShiftEast;
-            double shadowCenterNorth = cloud.northMeters + groundShiftNorth;
-            if (cloudShadowIntersectsIsland(cloud, groundShiftEast, groundShiftNorth,
-                    footprintScale)) {
-                physicalShadowMayHit = true;
-            }
-            buildCloudShadowPath(cloud, groundShiftEast, groundShiftNorth, footprintScale);
-            paint.setStyle(Paint.Style.FILL);
-            paint.setAlpha(255);
-            paint.setColor(shadowColor);
-            canvas.drawPath(cloudShadowPath, paint);
-        }
-        canvas.restoreToCount(save);
-        return physicalShadowMayHit;
-    }
-
-    /** If every real shadow misses, add a soft, island-local cue from the nearest cloud. */
-    private void drawIslandCloudShadowCue(Canvas canvas, CloudState[] clouds,
-                                          double sunAltitude, double sunAzimuth,
-                                          double cloudCover, Path receiverMask, int code) {
-        double altitudeRadians = Math.toRadians(sunAltitude);
-        double azimuthRadians = Math.toRadians(sunAzimuth);
-        double sineAltitude = Math.sin(altitudeRadians);
-        if (sineAltitude <= 0.0) return;
-        double horizontalSun = Math.cos(altitudeRadians);
-        double sunEast = horizontalSun * Math.sin(azimuthRadians);
-        double sunNorth = horizontalSun * Math.cos(azimuthRadians);
-        double directLight = clamp((sineAltitude - Math.sin(Math.toRadians(3.0)))
-                / (Math.sin(Math.toRadians(18.0)) - Math.sin(Math.toRadians(3.0))), 0.0, 1.0);
-        double coverFactor = clamp(cloudCover / 100.0, 0.0, 1.0);
-        double opacity = (CLOUD_SHADOW_CLEAR_OPACITY
-                + CLOUD_SHADOW_COVER_OPACITY * coverFactor) * directLight;
-        if (code >= 95) {
-            opacity = Math.min(CLOUD_SHADOW_MAX_OPACITY, opacity + CLOUD_SHADOW_STORM_BONUS);
-        }
-        double cueOpacity = Math.max(CLOUD_SHADOW_FALLBACK_MIN_OPACITY * directLight,
-                opacity * 0.72);
-
-        CloudState nearest = null;
-        double nearestEast = 0.0;
-        double nearestNorth = 0.0;
-        double nearestDistance = Double.POSITIVE_INFINITY;
-        for (CloudState cloud : clouds) {
-            double relativeCloudHeight = cloud.baseAltitudeMeters;
-            if (relativeCloudHeight <= 0.0) continue;
-            double shiftEast = -relativeCloudHeight * sunEast / sineAltitude;
-            double shiftNorth = -relativeCloudHeight * sunNorth / sineAltitude;
-            double centerEast = cloud.eastMeters + shiftEast;
-            double centerNorth = cloud.northMeters + shiftNorth;
-            double distance = Math.hypot(centerEast, centerNorth);
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
-                nearest = cloud;
-                nearestEast = centerEast;
-                nearestNorth = centerNorth;
-            }
-        }
-        if (nearest == null) return;
-
-        // Preserve the projected direction but gently pull the cue onto the island's inner surface.
-        double cueRadiusMeters = ISLAND_GRID_SIZE * ISLAND_TILE_METERS * 0.20;
-        double maxAxisDistance = Math.max(Math.abs(nearestEast), Math.abs(nearestNorth));
-        double pull = maxAxisDistance > cueRadiusMeters ? cueRadiusMeters / maxAxisDistance : 1.0;
-        double cueEast = nearestEast * pull;
-        double cueNorth = nearestNorth * pull;
-        double cueShiftEast = cueEast - nearest.eastMeters;
-        double cueShiftNorth = cueNorth - nearest.northMeters;
-        buildCloudShadowPath(nearest, cueShiftEast, cueShiftNorth,
-                cloudShadowFootprintScale(nearest));
-
-        int save = canvas.save();
-        canvas.clipPath(receiverMask);
-        paint.setStyle(Paint.Style.FILL);
-        paint.setAlpha(255);
-        paint.setColor(Color.argb((int) Math.round(cueOpacity * 255.0), 17, 26, 39));
-        canvas.drawPath(cloudShadowPath, paint);
-        canvas.restoreToCount(save);
-    }
-
-    /** Exact convex-quad checks against the square ENU footprint of the island top. */
-    private boolean cloudShadowIntersectsIsland(CloudState cloud,
-                                                double shadowEast, double shadowNorth,
-                                                double footprintScale) {
-        double cellAlong = cloud.widthMeters * footprintScale / cloud.shape[0].length();
-        double cellAcross = cloud.depthMeters * footprintScale / cloud.shape.length;
-        double halfExtent = ISLAND_GRID_SIZE * ISLAND_TILE_METERS / 2.0;
-        for (int row = 0; row < cloud.shape.length; row++) {
-            String pixels = cloud.shape[row];
-            int column = 0;
-            while (column < pixels.length()) {
-                while (column < pixels.length() && pixels.charAt(column) != '1') column++;
-                int runStart = column;
-                while (column < pixels.length() && pixels.charAt(column) == '1') column++;
-                if (runStart == column) continue;
-                double alongStart = (runStart - pixels.length() * 0.5) * cellAlong;
-                double alongEnd = (column - pixels.length() * 0.5) * cellAlong;
-                double acrossStart = (row - cloud.shape.length * 0.5) * cellAcross;
-                double acrossEnd = (row + 1 - cloud.shape.length * 0.5) * cellAcross;
-                double[] east = new double[4];
-                double[] north = new double[4];
-                setShadowVertex(cloud, alongStart, acrossStart, shadowEast, shadowNorth, east, north, 0);
-                setShadowVertex(cloud, alongEnd, acrossStart, shadowEast, shadowNorth, east, north, 1);
-                setShadowVertex(cloud, alongEnd, acrossEnd, shadowEast, shadowNorth, east, north, 2);
-                setShadowVertex(cloud, alongStart, acrossEnd, shadowEast, shadowNorth, east, north, 3);
-                if (shadowQuadIntersectsIsland(east, north, halfExtent)) return true;
-            }
-        }
-        return false;
-    }
-
-    private void setShadowVertex(CloudState cloud, double alongMeters, double acrossMeters,
-                                 double shadowEast, double shadowNorth,
-                                 double[] east, double[] north, int index) {
-        east[index] = cloud.eastMeters + alongMeters * cloud.alongEast
-                + acrossMeters * cloud.crossEast + shadowEast;
-        north[index] = cloud.northMeters + alongMeters * cloud.alongNorth
-                + acrossMeters * cloud.crossNorth + shadowNorth;
-    }
-
-    private boolean shadowQuadIntersectsIsland(double[] east, double[] north, double halfExtent) {
-        double minEast = east[0];
-        double maxEast = east[0];
-        double minNorth = north[0];
-        double maxNorth = north[0];
-        for (int index = 1; index < 4; index++) {
-            minEast = Math.min(minEast, east[index]);
-            maxEast = Math.max(maxEast, east[index]);
-            minNorth = Math.min(minNorth, north[index]);
-            maxNorth = Math.max(maxNorth, north[index]);
-        }
-        if (minEast > halfExtent || maxEast < -halfExtent
-                || minNorth > halfExtent || maxNorth < -halfExtent) return false;
-
-        // Separating-axis checks for the four edges of the projected parallelogram.
-        for (int edge = 0; edge < 4; edge++) {
-            int next = (edge + 1) % 4;
-            double axisX = -(north[next] - north[edge]);
-            double axisY = east[next] - east[edge];
-            double polygonMin = Double.POSITIVE_INFINITY;
-            double polygonMax = Double.NEGATIVE_INFINITY;
-            for (int vertex = 0; vertex < 4; vertex++) {
-                double projection = east[vertex] * axisX + north[vertex] * axisY;
-                polygonMin = Math.min(polygonMin, projection);
-                polygonMax = Math.max(polygonMax, projection);
-            }
-            double squareRadius = halfExtent * (Math.abs(axisX) + Math.abs(axisY));
-            if (polygonMin > squareRadius || polygonMax < -squareRadius) return false;
-        }
-        return true;
-    }
-
-    private void buildCloudShadowPath(CloudState cloud, double shadowEast, double shadowNorth,
-                                      double footprintScale) {
-        double cellAlong = cloud.widthMeters * footprintScale / cloud.shape[0].length();
-        double cellAcross = cloud.depthMeters * footprintScale / cloud.shape.length;
-        cloudShadowPath.reset();
-        for (int row = 0; row < cloud.shape.length; row++) {
-            String pixels = cloud.shape[row];
-            int column = 0;
-            while (column < pixels.length()) {
-                while (column < pixels.length() && pixels.charAt(column) != '1') column++;
-                int runStart = column;
-                while (column < pixels.length() && pixels.charAt(column) == '1') column++;
-                if (runStart == column) continue;
-                double alongStart = (runStart - pixels.length() * 0.5) * cellAlong;
-                double alongEnd = (column - pixels.length() * 0.5) * cellAlong;
-                double acrossStart = (row - cloud.shape.length * 0.5) * cellAcross;
-                double acrossEnd = (row + 1 - cloud.shape.length * 0.5) * cellAcross;
-                appendCloudShadowVertex(cloudShadowPath, cloud, alongStart, acrossStart,
-                        shadowEast, shadowNorth, true);
-                appendCloudShadowVertex(cloudShadowPath, cloud, alongEnd, acrossStart,
-                        shadowEast, shadowNorth, false);
-                appendCloudShadowVertex(cloudShadowPath, cloud, alongEnd, acrossEnd,
-                        shadowEast, shadowNorth, false);
-                appendCloudShadowVertex(cloudShadowPath, cloud, alongStart, acrossEnd,
-                        shadowEast, shadowNorth, false);
-                cloudShadowPath.close();
-            }
-        }
-    }
-
-    /** Keep the projected ground shadow smaller than its rendered cloud sprite. */
-    private double cloudShadowFootprintScale(CloudState cloud) {
-        double modelWidth = cloud.widthMeters;
-        double modelDepth = cloud.depthMeters;
-        double projectedWidthAtScaleOne = (modelWidth * Math.abs(cloud.alongEast - cloud.alongNorth)
-                + modelDepth * Math.abs(cloud.crossEast - cloud.crossNorth))
-                * ISLAND_TILE_WIDTH / (2.0 * ISLAND_TILE_METERS);
-        double projectedHeightAtScaleOne = (modelWidth * Math.abs(cloud.alongEast + cloud.alongNorth)
-                + modelDepth * Math.abs(cloud.crossEast + cloud.crossNorth))
-                * ISLAND_TILE_HEIGHT / (2.0 * ISLAND_TILE_METERS);
-        double spriteWidth = cloud.unitX * cloud.shape[0].length();
-        double spriteHeight = cloud.unitY * cloud.shape.length;
-        double widthLimit = spriteWidth / Math.max(1.0e-6, projectedWidthAtScaleOne);
-        double heightLimit = spriteHeight / Math.max(1.0e-6, projectedHeightAtScaleOne);
-        return Math.min(CLOUD_SHADOW_FOOTPRINT_SCALE,
-                CLOUD_SHADOW_MAX_SPRITE_RATIO * Math.min(widthLimit, heightLimit));
-    }
-
-    private void appendCloudShadowVertex(Path path, CloudState cloud,
-                                         double alongMeters, double acrossMeters,
-                                         double shadowEast, double shadowNorth,
-                                         boolean first) {
-        double east = cloud.eastMeters + alongMeters * cloud.alongEast
-                + acrossMeters * cloud.crossEast + shadowEast;
-        double north = cloud.northMeters + alongMeters * cloud.alongNorth
-                + acrossMeters * cloud.crossNorth + shadowNorth;
-        float x = (float) (SCENE_WIDTH / 2.0
-                + (east - north) * ISLAND_TILE_WIDTH / (2.0 * ISLAND_TILE_METERS));
-        float y = (float) (ISLAND_CENTER_Y
-                + (east + north) * ISLAND_TILE_HEIGHT / (2.0 * ISLAND_TILE_METERS));
-        x = Math.round(x * RENDER_SCALE) / (float) RENDER_SCALE;
-        y = Math.round(y * RENDER_SCALE) / (float) RENDER_SCALE;
-        if (first) path.moveTo(x, y);
-        else path.lineTo(x, y);
     }
 
     /**
@@ -1670,10 +1091,107 @@ public final class WeatherSkyView extends View {
                 + (1.0 - visibleAltitude / 90.0) * CELESTIAL_BAND_HEIGHT);
     }
 
-    private float mapCloudAltitudeToY(double altitude) {
-        double visibleAltitude = clamp(altitude, 0.0, 90.0);
-        double verticalMix = Math.pow(visibleAltitude / 90.0, CLOUD_VISUAL_ALTITUDE_EXPONENT);
-        return (float) ((1.0 - verticalMix) * CLOUD_VISUAL_HORIZON_Y);
+    private static final String[][] CLOUD_SHAPE_VARIANTS = buildCloudShapeVariants();
+
+    private static String[][] buildCloudShapeVariants() {
+        String[][] variants = new String[CLOUD_SHAPES.length * 2][];
+        for (int shape = 0; shape < CLOUD_SHAPES.length; shape += 1) {
+            variants[shape * 2] = CLOUD_SHAPES[shape];
+            String[] mirrored = new String[CLOUD_SHAPES[shape].length];
+            for (int row = 0; row < CLOUD_SHAPES[shape].length; row += 1) {
+                mirrored[row] = new StringBuilder(CLOUD_SHAPES[shape][row]).reverse().toString();
+            }
+            variants[shape * 2 + 1] = mirrored;
+        }
+        return variants;
+    }
+
+    private static int cloudCountForCover(double cloudCover) {
+        double cover = clamp(cloudCover, 0.0, 100.0);
+        int count = 0;
+        for (int step : CLOUD_COVER_STEPS) {
+            if (cover >= step) count += 1;
+        }
+        return count;
+    }
+
+    private static double cloudHash(int seed, int index, int salt) {
+        int value = seed ^ ((index + 1) * 0x9e3779b9) ^ ((salt + 1) * 0x85ebca6b);
+        value = (value ^ (value >>> 16)) * 0x7feb352d;
+        value = (value ^ (value >>> 15)) * 0x846ca68b;
+        value ^= value >>> 16;
+        return Integer.toUnsignedLong(value) / 4294967296.0;
+    }
+
+    /**
+     * Clouds are laid out by slot rather than advected across a physical sky field: the panel is a
+     * stylised diorama, so composition matters more than meteorology.
+     */
+    private CloudState[] createCloudStates(double elapsedSeconds, double cloudCover) {
+        int count = cloudCountForCover(cloudCover);
+        if (count == 0) return new CloudState[0];
+        int seed = (int) Math.round(latitude * 37 + longitude * 17) ^ (count * 0x2545f491);
+        double driftPhase = elapsedSeconds * CLOUD_DRIFT_RATE;
+        CloudState[] clouds = new CloudState[count];
+        for (int index = 0; index < count; index += 1) {
+            int variant = (int) (cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length);
+            String[] shape = CLOUD_SHAPE_VARIANTS[variant];
+            float cell = (float) (CLOUD_CELL_MIN + cloudHash(seed, index, 2) * CLOUD_CELL_RANGE);
+            float halfWidth = shape[0].length() * cell * 0.5f;
+            float slotX = CLOUD_SLOT_X[index % CLOUD_SLOT_X.length];
+            float slotBottom = CLOUD_SLOT_BOTTOM[index % CLOUD_SLOT_BOTTOM.length];
+            double sway = Math.sin(driftPhase + index * 1.9) * CLOUD_DRIFT_AMPLITUDE;
+            float centreX = (float) clamp(slotX + sway * (0.7 + index * 0.2),
+                    halfWidth + CLOUD_EDGE_INSET, SCENE_WIDTH - halfWidth - CLOUD_EDGE_INSET);
+            float bottomY = (float) (slotBottom + (cloudHash(seed, index, 3) - 0.5) * 5.0);
+            clouds[index] = new CloudState(shape, cell, centreX, bottomY);
+        }
+        return clouds;
+    }
+
+    /** Three flat bands keyed to the sun's height, matching the Sun and Moon's own light model. */
+    private int[] cloudPalette(double sunAltitude, int code) {
+        if (weatherCodeIsStorm(code)) return CLOUD_STORM_BANDS;
+        if (sunAltitude < -6.0) return CLOUD_NIGHT_BANDS;
+        if (sunAltitude < 10.0) return CLOUD_DUSK_BANDS;
+        return CLOUD_DAY_BANDS;
+    }
+
+    /**
+     * One rectangle per sprite cell keeps every edge on the art grid, which is what holds the
+     * cloud to the same pixel language as the rest of the scene at this size.
+     */
+    private void drawCloudRows(Canvas canvas, CloudState cloud, int[] palette) {
+        String[] shape = cloud.shape;
+        float cell = cloud.cell;
+        float left = cloud.screenCenterX - shape[0].length() * cell * 0.5f;
+        float top = cloud.screenBottomY - shape.length * cell;
+        for (int row = 0; row < shape.length; row += 1) {
+            String line = shape[row];
+            float rowTop = snapToArtGrid(top + row * cell);
+            float rowBottom = snapToArtGrid(top + (row + 1) * cell);
+            for (int column = 0; column < line.length(); column += 1) {
+                char band = line.charAt(column);
+                if (band == '0') continue;
+                paint.setColor(palette[band - '1']);
+                paint.setStyle(Paint.Style.FILL);
+                float runLeft = snapToArtGrid(left + column * cell);
+                float runRight = snapToArtGrid(left + (column + 1) * cell);
+                canvas.drawRect(runLeft, rowTop, runRight, rowBottom, paint);
+            }
+        }
+    }
+
+    private void drawClouds(Canvas canvas, CloudState[] clouds, double sunAltitude, int code) {
+        if (clouds.length == 0) return;
+        int[] palette = cloudPalette(sunAltitude, code);
+        for (CloudState cloud : clouds) {
+            drawCloudRows(canvas, cloud, palette);
+        }
+    }
+
+    private float snapToArtGrid(float value) {
+        return Math.round(value * RENDER_SCALE) / (float) RENDER_SCALE;
     }
 
     private int colorForSkyHeight(double y, double sunAltitude, double cloudCover) {
@@ -1712,27 +1230,6 @@ public final class WeatherSkyView extends View {
         return (float) (((value % range) + range) % range);
     }
 
-    private static double wrapCentered(double value, double range) {
-        return (((value + range * 0.5) % range) + range) % range - range * 0.5;
-    }
-
-    /** Triangle-wave reflection on a centered track; speed magnitude stays constant. */
-    private static double reflectCentered(double value, double halfRange) {
-        double phase = (((value + halfRange) % (4.0 * halfRange))
-                + 4.0 * halfRange) % (4.0 * halfRange);
-        return phase <= 2.0 * halfRange
-                ? phase - halfRange
-                : 3.0 * halfRange - phase;
-    }
-
-    private static double cloudRandom(int seed, int index, int salt) {
-        int value = seed ^ ((index + 1) * 0x9e3779b9) ^ ((salt + 1) * 0x85ebca6b);
-        value = (value ^ (value >>> 16)) * 0x7feb352d;
-        value = (value ^ (value >>> 15)) * 0x846ca68b;
-        value ^= value >>> 16;
-        return Integer.toUnsignedLong(value) / 4294967296.0;
-    }
-
     private static double normalizeDegrees(double value) {
         return ((value % 360.0) + 360.0) % 360.0;
     }
@@ -1743,38 +1240,15 @@ public final class WeatherSkyView extends View {
 
     private static final class CloudState {
         final String[] shape;
-        double eastMeters;
-        double northMeters;
-        final double baseAltitudeMeters;
-        final double widthMeters;
-        final double depthMeters;
-        final double alongEast;
-        final double alongNorth;
-        final double crossEast;
-        final double crossNorth;
-        float screenCenterX;
-        final float screenY;
-        final float unitX;
-        final float unitY;
+        final float cell;
+        final float screenCenterX;
+        final float screenBottomY;
 
-        CloudState(String[] shape, double eastMeters, double northMeters,
-                   double baseAltitudeMeters, double widthMeters, double depthMeters,
-                   double alongEast, double alongNorth, double crossEast, double crossNorth,
-                   float screenCenterX, float screenY, float unitX, float unitY) {
+        CloudState(String[] shape, float cell, float screenCenterX, float screenBottomY) {
             this.shape = shape;
-            this.eastMeters = eastMeters;
-            this.northMeters = northMeters;
-            this.baseAltitudeMeters = baseAltitudeMeters;
-            this.widthMeters = widthMeters;
-            this.depthMeters = depthMeters;
-            this.alongEast = alongEast;
-            this.alongNorth = alongNorth;
-            this.crossEast = crossEast;
-            this.crossNorth = crossNorth;
+            this.cell = cell;
             this.screenCenterX = screenCenterX;
-            this.screenY = screenY;
-            this.unitX = unitX;
-            this.unitY = unitY;
+            this.screenBottomY = screenBottomY;
         }
     }
 

@@ -53,10 +53,6 @@
   let islandTop = HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH
     - ISLAND_GRID_SIZE * islandTileHeight;
   let islandCenterY = islandTop + ISLAND_GRID_SIZE * islandTileHeight / 2;
-  // Cloud bases meet the island's top plane at the upper-half visual horizon.
-  const CLOUD_VISUAL_HORIZON_Y = HEIGHT * 0.5;
-  // A square-root curve gives low-altitude clouds more visible vertical separation.
-  const CLOUD_VISUAL_ALTITUDE_EXPONENT = 0.50;
   // Keep celestial centers in the upper third with enough margin for the Sun's glow.
   const CELESTIAL_BAND_TOP = HEIGHT * 0.10;
   const CELESTIAL_BAND_HEIGHT = HEIGHT / 3 - CELESTIAL_BAND_TOP;
@@ -68,65 +64,98 @@
   // island lighting; only the drawn celestial bodies are gone while the replacement is designed.
   // A stylized 9 x 9 tile surface represents a 2.25 km square ground patch.
   const ISLAND_TILE_METERS = 250;
-  const CLOUD_BASE_MIN_METERS = 800;
-  const CLOUD_BASE_RANGE_METERS = 9201;
-  const CLOUD_MIN_BASE_ALTITUDE_GAP_METERS = 200;
-  const CLOUD_MIN_SCREEN_ALTITUDE_GAP = 2.55;
-  const CLOUD_ALTITUDE_SAMPLE_ATTEMPTS = 256;
-  const CLOUD_WIDTH_MIN_METERS = 1200;
-  const CLOUD_WIDTH_RANGE_METERS = 4401;
-  const CLOUD_FIELD_MIN_RADIUS_METERS = 500;
-  const CLOUD_FIELD_RADIUS_RANGE_METERS = 44500;
-  const CLOUD_FIELD_HALF_LENGTH_METERS = 60000;
-  const CLOUD_RADIUS_RANDOM_SALT = 34;
-  const CLOUD_ALTITUDE_RANDOM_SALT = 2;
-  const CLOUD_WIDTH_RANDOM_SALT = 3;
-  const CLOUD_DEPTH_RANDOM_SALT = 4;
-  const CLOUD_BEARING_RANDOM_SALT = 1;
-  const CLOUD_SHAPE_RANDOM_SALT = 0;
-  const CLOUD_ART_SIZE_RANDOM_SALT = 5;
-  // Rendering advances cloud advection at 24 simulated seconds per animation second.
-  const CLOUD_SIMULATION_RATE = 24;
-  const CLOUD_VERTICAL_ART_EXAGGERATION = 1.5;
-  const CLOUD_HORIZONTAL_ART_EXAGGERATION = 3;
-  const CLOUD_MIN_SCREEN_WIDTH = 52;
-  const CLOUD_MAX_SCREEN_WIDTH = 64;
-  const CLOUD_LAYOUT_GAP = 5;
-  const CLOUD_MIN_SCREEN_HEIGHT = 18;
-  const CLOUD_MAX_SCREEN_HEIGHT = 23;
-  const CLOUD_SCREEN_TOP_MARGIN = 8;
-  const CLOUD_SHADOW_FOOTPRINT_SCALE = 0.52;
-  const CLOUD_SHADOW_MAX_SPRITE_RATIO = 0.90;
+  // Clouds are raster sprites traced from reference art, downsampled to a 30-column grid and
+  // quantised into three flat bands. One `cell` value drives both axes, so each silhouette
+  // keeps the ratio it was traced at instead of stretching into a flat smudge.
+  // Cloud cover breakpoints: below 12% the sky is left empty, 82% and up fills every slot.
+  const CLOUD_COVER_STEPS = [12, 32, 58, 82];
+  const CLOUD_CELL_MIN = 1.45;
+  const CLOUD_CELL_RANGE = 0.65;
+  // Slots are absolute scene units, not fractions, because the widest sprite must still clear
+  // both frame edges. The lower pair sit just above the island's back corner and read as nearer.
+  const CLOUD_SLOT_X = [56, 264, 64, 256];
+  const CLOUD_SLOT_BOTTOM = [48, 46, 92, 90];
+  // Drift oscillates instead of wrapping: a clamped cloud would freeze against the frame edge.
+  const CLOUD_DRIFT_AMPLITUDE = 14;
+  const CLOUD_DRIFT_RATE = 0.35;
+  const CLOUD_EDGE_INSET = 4;
+  // The island's own cast shadow: close to the base, drifting with the light direction.
   const ISLAND_BODY_SHADOW_SCALE = 1.55;
   const ISLAND_BODY_SHADOW_OPACITY_SCALE = 0.46;
   const ISLAND_BODY_SHADOW_RISE = 1;
   const ISLAND_BODY_SHADOW_DRIFT = 10;
-  const CLOUD_SHADOW_MIN_SUN_ALTITUDE = 3;
-  const CLOUD_SHADOW_CLEAR_OPACITY = 0.10;
-  const CLOUD_SHADOW_COVER_OPACITY = 0.08;
-  const CLOUD_SHADOW_STORM_BONUS = 0.02;
-  const CLOUD_SHADOW_MAX_OPACITY = 0.20;
-  const CLOUD_SHADOW_FALLBACK_MIN_OPACITY = 0.16;
   const FALLBACK = { latitude: -6.7097, longitude: 111.3476, fallback: true };
   const REFRESH_INTERVAL = 30 * 60 * 1000;
   const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  // Tall cumulus silhouettes: a broad base, with one or two higher rounded lobes.
   const CLOUD_SHAPES = [
-    ['000000111000000', '000001111100000', '000011111110000', '000111111111000',
-      '001111111111100', '011111111111110', '111111111111111', '111111111111111',
-      '111111111111111', '111111111111111'],
-    ['000111000000000', '001111100000000', '011111110000000', '011111111100000',
-      '111111111111000', '111111111111110', '111111111111111', '111111111111111',
-      '111111111111111', '111111111111111'],
-    ['000000000111000', '000000001111100', '000000011111110', '000001111111110',
-      '000111111111111', '011111111111111', '111111111111111', '111111111111111',
-      '111111111111111', '111111111111111'],
-    ['000111000111000', '001111101111100', '011111111111110', '111111111111111',
-      '111111111111111', '111111111111111', '111111111111111', '111111111111111',
-      '111111111111111', '111111111111111'],
-    ['000001110000000', '000011111000000', '000111111100000', '001111111110000',
-      '011111111111000', '111111111111100', '111111111111111', '111111111111111',
-      '111111111111111', '111111111111111']
+    ['000000000000001110011110000000',
+      '000000022211321111111110000000',
+      '000000322223321111111111000000',
+      '000000333333331111111111100000',
+      '000003333333331111111111110000',
+      '000033332333331111111111111000',
+      '033333322233331111111111111100',
+      '333333322233331111111111111100',
+      '333333311133331111111111111110',
+      '333333311113331111111111111111',
+      '333333311112221111111111111111',
+      '032333111112221111111111111111',
+      '000233111111211111111111111110',
+      '000000000000011111000000000000'],
+    ['000000000002221110000000000000',
+      '000000000033221111111100000000',
+      '000000223333322111111110000000',
+      '000002233333322111111111000000',
+      '000003333333322211111111111000',
+      '003333333333322211111111111100',
+      '033333333333322211111111111110',
+      '033333333333322211111111111111',
+      '333333333333322211111111111111',
+      '333333333333322211111111111111',
+      '333333333333322211111111111111',
+      '333333333333322211111111111111',
+      '333332233333322111111111111110',
+      '033322223333322111111111111110',
+      '003322113333322111111111111100',
+      '000331110333221111100111110000',
+      '000000000003221110000000000000'],
+    ['000000000002222200000000000000',
+      '000000000022222220000000000000',
+      '000000000332222222000000000000',
+      '000001133332222222200000000000',
+      '000033333332211122222222000000',
+      '000333333322111111222222200000',
+      '000333333322111111112222220000',
+      '003333333322111111111122220000',
+      '033333333322111111111111220000',
+      '033323333322111111111111111100',
+      '333111333322111111111111111110',
+      '333111333322111111111111111111',
+      '333111133322111111111111111111',
+      '333111133322111111111111111111',
+      '031111113322111111111111111111',
+      '031111110321111111111111111110',
+      '000111000001111100000000000000'],
+    ['000000000000000000222220000000',
+      '000000000111111003222222000000',
+      '000000033111111133311111100000',
+      '000000333311111111111111100000',
+      '002223333311111111111111110000',
+      '032223333311111111111111110000',
+      '333233333311111111111111111000',
+      '333333333311111111111111111110',
+      '333333333331111111111111111110',
+      '333333333331111111111111111111',
+      '333333333331111112111111111111',
+      '033333333331111122211111111111',
+      '033333333311111122211111111111',
+      '000333333311111122211111111110',
+      '000003333311111122211111111110',
+      '000000333311111112111111111000',
+      '000000333111111111111111100000',
+      '000000333111111111111111000000',
+      '000000031111110001111110000000',
+      '000000001111100000000000000000'],
   ];
   const ISLAND_TILES = [];
   function rebuildIslandProjection() {
@@ -456,12 +485,6 @@
       + (1 - clamp(altitude, 0, 90) / 90) * CELESTIAL_BAND_HEIGHT;
   }
 
-  function mapCloudAltitude(altitude) {
-    const verticalMix = Math.pow(clamp(altitude, 0, 90) / 90,
-      CLOUD_VISUAL_ALTITUDE_EXPONENT);
-    return (1 - verticalMix) * CLOUD_VISUAL_HORIZON_Y;
-  }
-
   // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
   // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
   const SUN_BODY_RADIUS = 10.5;
@@ -644,104 +667,24 @@
     return blendColor(base, '#586576', clamp(cloudCover / 100 * 0.58, 0, 0.58));
   }
 
-  function appendCloudRows(x, y, unitX, unitY, shape,
-    firstRow, lastRow, offsetY = 0) {
-    for (let rowIndex = firstRow; rowIndex < lastRow; rowIndex += 1) {
-      const row = shape[rowIndex];
-      let column = 0;
-      while (column < row.length) {
-        while (column < row.length && row[column] !== '1') column += 1;
-        const firstColumn = column;
-        while (column < row.length && row[column] === '1') column += 1;
-        if (column === firstColumn) continue;
-        const left = Math.round((x + firstColumn * unitX) * RENDER_SCALE) / RENDER_SCALE;
-        const right = Math.round((x + column * unitX) * RENDER_SCALE) / RENDER_SCALE;
-        const top = Math.round((y + rowIndex * unitY + offsetY) * RENDER_SCALE) / RENDER_SCALE;
-        const bottom = Math.round((y + (rowIndex + 1) * unitY + offsetY) * RENDER_SCALE) / RENDER_SCALE;
-        ctx.rect(left, top, right - left, bottom - top);
-      }
-    }
+  // Clouds need two variants of every silhouette: the traced shape and its mirror, so a row of
+  // them never looks stamped from a single die.
+  const CLOUD_SHAPE_VARIANTS = CLOUD_SHAPES.reduce((variants, shape) => {
+    variants.push(shape);
+    variants.push(shape.map(row => row.split('').reverse().join('')));
+    return variants;
+  }, []);
+
+  function cloudCountForCover(cloudCover) {
+    const cover = clamp(cloudCover, 0, 100);
+    let count = 0;
+    CLOUD_COVER_STEPS.forEach(step => {
+      if (cover >= step) count += 1;
+    });
+    return count;
   }
 
-  function drawCloud(x, y, unitX, unitY, shape, base, shade, light) {
-    const middleRow = Math.floor(shape.length / 2);
-    const bottomRow = shape.length - 1;
-
-    // Offset lower blocks form a compact shadow bevel beneath the broad base.
-    ctx.beginPath();
-    appendCloudRows(x, y, unitX, unitY, shape, middleRow, shape.length, unitY * 0.34);
-    ctx.fillStyle = shade;
-    ctx.fill();
-
-    // Joined row-runs retain the rounded cumulus silhouette as chunky pixel steps.
-    ctx.beginPath();
-    appendCloudRows(x, y, unitX, unitY, shape, 0, shape.length);
-    ctx.fillStyle = base;
-    ctx.fill();
-
-    // A narrow lower facet separates the cloud's face from its underside.
-    ctx.beginPath();
-    for (let rowIndex = Math.max(middleRow, bottomRow - 1);
-      rowIndex <= bottomRow; rowIndex += 1) {
-      const row = shape[rowIndex];
-      let column = 0;
-      while (column < row.length) {
-        while (column < row.length && row[column] !== '1') column += 1;
-        const firstColumn = column;
-        while (column < row.length && row[column] === '1') column += 1;
-        if (column === firstColumn) continue;
-        const left = Math.round((x + firstColumn * unitX + unitX * 0.06) * RENDER_SCALE) / RENDER_SCALE;
-        const right = Math.round((x + column * unitX - unitX * 0.06) * RENDER_SCALE) / RENDER_SCALE;
-        const top = Math.round((y + (rowIndex + 0.66) * unitY) * RENDER_SCALE) / RENDER_SCALE;
-        const bottom = Math.round((y + (rowIndex + 1) * unitY) * RENDER_SCALE) / RENDER_SCALE;
-        ctx.rect(left, top, Math.max(0, right - left), Math.max(0, bottom - top));
-      }
-    }
-    ctx.fillStyle = blendColor(base, shade, 0.48);
-    ctx.fill();
-
-    // Small flat facets catch light along the stepped crowns and left shoulders.
-    const snapCloudPoint = value => Math.round(value * RENDER_SCALE) / RENDER_SCALE;
-    ctx.beginPath();
-    for (let rowIndex = 0; rowIndex < middleRow; rowIndex += 1) {
-      const row = shape[rowIndex];
-      for (let column = 0; column < row.length; column += 1) {
-        if (row[column] !== '1') continue;
-        const exposedTop = rowIndex === 0 || shape[rowIndex - 1][column] !== '1';
-        const exposedLeft = column === 0 || row[column - 1] !== '1';
-        const left = x + column * unitX;
-        const right = left + unitX;
-        const top = y + rowIndex * unitY;
-        const bottom = top + unitY;
-        if (exposedTop) {
-          ctx.moveTo(snapCloudPoint(left + unitX * 0.08), snapCloudPoint(top + unitY * 0.08));
-          ctx.lineTo(snapCloudPoint(right - unitX * 0.08), snapCloudPoint(top + unitY * 0.08));
-          ctx.lineTo(snapCloudPoint(left + unitX * 0.56), snapCloudPoint(top + unitY * 0.48));
-          ctx.lineTo(snapCloudPoint(left + unitX * 0.08), snapCloudPoint(top + unitY * 0.48));
-          ctx.closePath();
-        } else if (exposedLeft) {
-          ctx.moveTo(snapCloudPoint(left + unitX * 0.08), snapCloudPoint(top + unitY * 0.08));
-          ctx.lineTo(snapCloudPoint(left + unitX * 0.42), snapCloudPoint(top + unitY * 0.25));
-          ctx.lineTo(snapCloudPoint(left + unitX * 0.42), snapCloudPoint(bottom - unitY * 0.08));
-          ctx.lineTo(snapCloudPoint(left + unitX * 0.08), snapCloudPoint(bottom - unitY * 0.08));
-          ctx.closePath();
-        }
-      }
-    }
-    ctx.fillStyle = light;
-    ctx.fill();
-  }
-
-  function wrapCentered(value, range) {
-    return ((value + range * 0.5) % range + range) % range - range * 0.5;
-  }
-
-  function reflectCentered(value, halfRange) {
-    const phase = ((value + halfRange) % (4 * halfRange) + 4 * halfRange) % (4 * halfRange);
-    return phase <= 2 * halfRange ? phase - halfRange : 3 * halfRange - phase;
-  }
-
-  function cloudRandom(seed, index, salt) {
+  function cloudHash(seed, index, salt) {
     let value = (seed ^ Math.imul(index + 1, 0x9e3779b9)
       ^ Math.imul(salt + 1, 0x85ebca6b)) | 0;
     value = Math.imul(value ^ (value >>> 16), 0x7feb352d);
@@ -750,197 +693,72 @@
     return (value >>> 0) / 4294967296;
   }
 
+  // Cloud states are layered by slot rather than advected across a physical sky field: the panel
+  // is a stylised diorama, so composition matters more than meteorology.
   function createCloudStates(elapsedSeconds, sceneWeather) {
-    const code = sceneWeather.weatherCode;
-    const count = code === 0 || code === 1 ? 0 : 1;
+    const count = cloudCountForCover(sceneWeather.cloudCover ?? 0);
     if (count === 0) return [];
-
-    const windSpeedKmh = Math.max(0, sceneWeather.windSpeed ?? 4);
-    const windFromDegrees = sceneWeather.windDirection ?? 90;
-    const windBearing = normalizeDegrees(windFromDegrees + 180) * Math.PI / 180;
-    const alongEast = Math.sin(windBearing);
-    const alongNorth = Math.cos(windBearing);
-    const crossEast = -alongNorth;
-    const crossNorth = alongEast;
-    const simulatedSeconds = elapsedSeconds * CLOUD_SIMULATION_RATE;
-    const windSpeedMetersPerSecond = windSpeedKmh / 3.6;
-    const cloudSeed = Math.trunc(location.latitude * 37 + location.longitude * 17) | 0;
-    const shapeIndex = Math.floor(cloudRandom(cloudSeed, 0, CLOUD_SHAPE_RANDOM_SALT)
-      * CLOUD_SHAPES.length);
-    const shape = CLOUD_SHAPES[shapeIndex];
-    const initialBearing = cloudRandom(cloudSeed, 0, CLOUD_BEARING_RANDOM_SALT) * Math.PI * 2;
-    const initialRadius = CLOUD_FIELD_MIN_RADIUS_METERS
-      + cloudRandom(cloudSeed, 0, CLOUD_RADIUS_RANDOM_SALT) * CLOUD_FIELD_RADIUS_RANGE_METERS;
-    const initialEast = Math.sin(initialBearing) * initialRadius;
-    const initialNorth = Math.cos(initialBearing) * initialRadius;
-    let along = initialEast * alongEast + initialNorth * alongNorth;
-    const across = initialEast * crossEast + initialNorth * crossNorth;
-    along = reflectCentered(along + windSpeedMetersPerSecond * simulatedSeconds,
-      CLOUD_FIELD_HALF_LENGTH_METERS);
-    const east = along * alongEast + across * crossEast;
-    const north = along * alongNorth + across * crossNorth;
-    const rangeMeters = Math.max(1, Math.hypot(east, north));
-    const widthMeters = CLOUD_WIDTH_MIN_METERS
-      + cloudRandom(cloudSeed, 0, CLOUD_WIDTH_RANDOM_SALT) * CLOUD_WIDTH_RANGE_METERS;
-    const depthRatio = 0.60 + cloudRandom(cloudSeed, 0, CLOUD_DEPTH_RANDOM_SALT) * 0.35;
-    const depthMeters = widthMeters * depthRatio;
-    const baseAltitude = sampleCloudBaseAltitude(cloudSeed, 0, initialRadius,
-      depthMeters, shape.length, [], []);
-    const azimuth = normalizeDegrees(Math.atan2(east, north) * 180 / Math.PI);
-    const baseElevation = Math.atan2(baseAltitude, rangeMeters) * 180 / Math.PI;
-    const topElevation = Math.atan2(baseAltitude + depthMeters, rangeMeters) * 180 / Math.PI;
-    const angularWidth = 2 * Math.atan2(widthMeters * 0.5, rangeMeters);
-    const artSizeMix = cloudRandom(cloudSeed, 0, CLOUD_ART_SIZE_RANDOM_SALT);
-    const maxSpriteWidth = Math.min(
-      CLOUD_MAX_SCREEN_WIDTH * (0.82 + artSizeMix * 0.18), WIDTH / count - CLOUD_LAYOUT_GAP);
-    const spriteWidth = clamp(angularWidth * 180 / Math.PI * CLOUD_HORIZONTAL_ART_EXAGGERATION
-      * WIDTH / 360, CLOUD_MIN_SCREEN_WIDTH, maxSpriteWidth);
-    const unitX = spriteWidth / shape[0].length;
-    const baseY = mapCloudAltitude(baseElevation);
-    const topY = mapCloudAltitude(topElevation);
-    const spriteHeight = clamp(Math.max(shape.length * 0.7,
-      (baseY - topY) * CLOUD_VERTICAL_ART_EXAGGERATION),
-    CLOUD_MIN_SCREEN_HEIGHT, CLOUD_MAX_SCREEN_HEIGHT);
-    const unitY = spriteHeight / shape.length;
-    const spriteTopY = Math.max(CLOUD_SCREEN_TOP_MARGIN, baseY - spriteHeight);
-    const cloud = {
-      shape,
-      eastMeters: east,
-      northMeters: north,
-      baseAltitudeMeters: baseAltitude,
-      widthMeters,
-      depthMeters,
-      alongEast,
-      alongNorth,
-      crossEast,
-      crossNorth,
-      screenCenterX: mapAzimuth(azimuth),
-      screenY: spriteTopY,
-      unitX,
-      unitY
-    };
-    separateOverlappingClouds([cloud]);
-    return [cloud];
+    const seed = Math.trunc(location.latitude * 37 + location.longitude * 17)
+      ^ Math.imul(count, 0x2545f491);
+    const driftPhase = elapsedSeconds * CLOUD_DRIFT_RATE;
+    const drift = Math.sin(driftPhase) * CLOUD_DRIFT_AMPLITUDE;
+    const clouds = [];
+    for (let index = 0; index < count; index += 1) {
+      const variant = Math.floor(cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length);
+      const shape = CLOUD_SHAPE_VARIANTS[variant];
+      const cell = CLOUD_CELL_MIN + cloudHash(seed, index, 2) * CLOUD_CELL_RANGE;
+      const width = shape[0].length * cell;
+      const height = shape.length * cell;
+      const halfWidth = width * 0.5;
+      const slotX = CLOUD_SLOT_X[index % CLOUD_SLOT_X.length];
+      const slotBottom = CLOUD_SLOT_BOTTOM[index % CLOUD_SLOT_BOTTOM.length];
+      const sway = Math.sin(driftPhase + index * 1.9) * CLOUD_DRIFT_AMPLITUDE;
+      const centreX = clamp(slotX + sway * (0.7 + index * 0.2),
+        halfWidth + CLOUD_EDGE_INSET, WIDTH - halfWidth - CLOUD_EDGE_INSET);
+      const bottomY = slotBottom + (cloudHash(seed, index, 3) - 0.5) * 5;
+      clouds.push({ shape, cell, screenCenterX: centreX, screenBottomY: bottomY });
+    }
+    return clouds;
   }
 
-  function sampleCloudBaseAltitude(seed, index, rangeMeters, depthMeters, shapeHeight,
-    assignedAltitudes, assignedCenterY) {
-    let bestCandidate = CLOUD_BASE_MIN_METERS
-      + cloudRandom(seed, index, CLOUD_ALTITUDE_RANDOM_SALT + 8192) * CLOUD_BASE_RANGE_METERS;
-    let bestScore = -1;
-    for (let attempt = 0; attempt < CLOUD_ALTITUDE_SAMPLE_ATTEMPTS; attempt += 1) {
-      const salt = CLOUD_ALTITUDE_RANDOM_SALT + attempt * 37;
-      const candidate = CLOUD_BASE_MIN_METERS
-        + cloudRandom(seed, index, salt) * CLOUD_BASE_RANGE_METERS;
-      const centerY = cloudSpriteCenterY(candidate, rangeMeters, depthMeters, shapeHeight);
-      const score = altitudeSpacingScore(candidate, centerY, assignedAltitudes, assignedCenterY);
-      if (score > bestScore) {
-        bestScore = score;
-        bestCandidate = candidate;
+  // Three flat bands keyed to the sun's height, matching the Sun and Moon's own light model.
+  function cloudPalette(sunAltitude, code) {
+    if (weatherCodeIsStorm(code)) {
+      return ['#5a6a80', '#93a1b3', '#c6d0dc'];
+    }
+    if (sunAltitude < -6) return ['#404e6a', '#5c6d8a', '#8fa0bd'];
+    if (sunAltitude < 10) return ['#8c7f9c', '#bbaec6', '#efd7d2'];
+    return ['#a9c0d9', '#e4eefb', '#ffffff'];
+  }
+
+  // One rectangle per sprite cell keeps every edge on the art grid, which is what holds the
+  // cloud to the same pixel language as the rest of the scene at this size.
+  function drawCloudRows(cloud, palette) {
+    const shape = cloud.shape;
+    const cell = cloud.cell;
+    const left = cloud.screenCenterX - shape[0].length * cell * 0.5;
+    const top = cloud.screenBottomY - shape.length * cell;
+    const snap = value => Math.round(value * RENDER_SCALE) / RENDER_SCALE;
+    for (let row = 0; row < shape.length; row += 1) {
+      const line = shape[row];
+      const rowTop = snap(top + row * cell);
+      const rowBottom = snap(top + (row + 1) * cell);
+      for (let column = 0; column < line.length; column += 1) {
+        const band = line[column];
+        if (band === '0') continue;
+        // Sprite cells carry band digits '1'..'3', darkest first.
+        ctx.fillStyle = palette[Number(band) - 1];
+        const runLeft = snap(left + column * cell);
+        const runRight = snap(left + (column + 1) * cell);
+        ctx.fillRect(runLeft, rowTop, runRight - runLeft, rowBottom - rowTop);
       }
-      if (score >= 1) return candidate;
     }
-    const latticeSize = 4096;
-    const start = Math.floor(cloudRandom(seed, index, CLOUD_ALTITUDE_RANDOM_SALT + 16384)
-      * latticeSize);
-    for (let offset = 0; offset < latticeSize; offset += 1) {
-      const slot = (start + offset) % latticeSize;
-      const candidate = CLOUD_BASE_MIN_METERS + (slot + 0.5) / latticeSize * CLOUD_BASE_RANGE_METERS;
-      const centerY = cloudSpriteCenterY(candidate, rangeMeters, depthMeters, shapeHeight);
-      const score = altitudeSpacingScore(candidate, centerY, assignedAltitudes, assignedCenterY);
-      if (score > bestScore) {
-        bestScore = score;
-        bestCandidate = candidate;
-      }
-      if (score >= 1) return candidate;
-    }
-    return bestCandidate;
-  }
-
-  function cloudSpriteCenterY(baseAltitudeMeters, rangeMeters, depthMeters, shapeHeight) {
-    const baseElevation = Math.atan2(baseAltitudeMeters, rangeMeters) * 180 / Math.PI;
-    const topElevation = Math.atan2(baseAltitudeMeters + depthMeters, rangeMeters) * 180 / Math.PI;
-    const baseY = mapCloudAltitude(baseElevation);
-    const topY = mapCloudAltitude(topElevation);
-    const spriteHeight = clamp(Math.max(shapeHeight * 0.7,
-      (baseY - topY) * CLOUD_VERTICAL_ART_EXAGGERATION),
-    CLOUD_MIN_SCREEN_HEIGHT, CLOUD_MAX_SCREEN_HEIGHT);
-    const spriteTopY = Math.max(CLOUD_SCREEN_TOP_MARGIN, baseY - spriteHeight);
-    return spriteTopY + spriteHeight * 0.5;
-  }
-
-  function altitudeSpacingScore(altitudeMeters, screenCenterY, assignedAltitudes, assignedScreenCenterY) {
-    if (assignedAltitudes.length === 0) return Infinity;
-    let score = Infinity;
-    for (let index = 0; index < assignedAltitudes.length; index += 1) {
-      const altitudeGap = Math.abs(altitudeMeters - assignedAltitudes[index]);
-      const screenGap = Math.abs(screenCenterY - assignedScreenCenterY[index]);
-      score = Math.min(score, altitudeGap / CLOUD_MIN_BASE_ALTITUDE_GAP_METERS,
-        screenGap / CLOUD_MIN_SCREEN_ALTITUDE_GAP);
-    }
-    return score;
-  }
-
-  function separateOverlappingClouds(clouds) {
-    for (let iteration = 0; iteration < 16; iteration += 1) {
-      let moved = false;
-      for (let first = 0; first < clouds.length; first += 1) {
-        const a = clouds[first];
-        const widthA = a.unitX * a.shape[0].length;
-        const heightA = a.unitY * a.shape.length;
-        const centerYA = a.screenY + heightA * 0.5;
-        for (let second = first + 1; second < clouds.length; second += 1) {
-          const b = clouds[second];
-          const widthB = b.unitX * b.shape[0].length;
-          const heightB = b.unitY * b.shape.length;
-          const centerYB = b.screenY + heightB * 0.5;
-          if (Math.abs(centerYA - centerYB) >= (heightA + heightB) * 0.5) continue;
-          const deltaX = wrapCentered(b.screenCenterX - a.screenCenterX, WIDTH);
-          const overlap = (widthA + widthB) * 0.5 + CLOUD_LAYOUT_GAP - Math.abs(deltaX);
-          if (overlap <= 0) continue;
-          const direction = deltaX < 0 ? -1 : 1;
-          const push = overlap * 0.5;
-          a.screenCenterX = wrap(a.screenCenterX - direction * push, WIDTH);
-          b.screenCenterX = wrap(b.screenCenterX + direction * push, WIDTH);
-          moved = true;
-        }
-      }
-      if (!moved) break;
-    }
-    clouds.forEach(cloud => {
-      const range = Math.hypot(cloud.eastMeters, cloud.northMeters);
-      const azimuth = normalizeDegrees(cloud.screenCenterX / WIDTH * 360 + headingDegrees - 180);
-      cloud.eastMeters = Math.sin(azimuth * Math.PI / 180) * range;
-      cloud.northMeters = Math.cos(azimuth * Math.PI / 180) * range;
-    });
   }
 
   function drawClouds(clouds, sunAltitude, code) {
-    let base;
-    let shade;
-    let light;
-    if (sunAltitude < -5) {
-      base = '#647796'; shade = '#3d4c69'; light = '#aebeda';
-    } else if (sunAltitude < 8) {
-      base = '#d5b9c7'; shade = '#8e7e9d'; light = '#f9e0c5';
-    } else {
-      base = '#d7e3f3'; shade = '#8096b4'; light = '#fffaef';
-    }
-    if (weatherCodeIsStorm(code)) {
-      base = '#8e9bae'; shade = '#4d5e76'; light = '#cbd4e0';
-    }
-    clouds.forEach(cloud => {
-      const width = cloud.unitX * cloud.shape[0].length;
-      const x = cloud.screenCenterX - width / 2;
-      drawCloud(x, cloud.screenY, cloud.unitX, cloud.unitY, cloud.shape, base, shade, light);
-      if (x < 0) {
-        drawCloud(x + WIDTH, cloud.screenY, cloud.unitX, cloud.unitY,
-          cloud.shape, base, shade, light);
-      } else if (x + width > WIDTH) {
-        drawCloud(x - WIDTH, cloud.screenY, cloud.unitX, cloud.unitY,
-          cloud.shape, base, shade, light);
-      }
-    });
+    if (clouds.length === 0) return;
+    const palette = cloudPalette(sunAltitude, code);
+    clouds.forEach(cloud => drawCloudRows(cloud, palette));
   }
 
   function islandSurfacePoints() {
@@ -964,216 +782,6 @@
     }
     ctx.closePath();
     ctx.clip();
-  }
-
-  function drawCloudsOverIsland(clouds, sunAltitude, code) {
-    if (clouds.length === 0) return;
-    ctx.save();
-    clipIslandSurface();
-    ctx.beginPath();
-    ctx.rect(0, 0, WIDTH, HEIGHT * 0.5);
-    ctx.clip();
-    drawClouds(clouds, sunAltitude, code);
-    ctx.restore();
-  }
-
-  function drawIslandCloudShadows(clouds, sunAltitude, sunAzimuth, cloudCover, code) {
-    if (clouds.length === 0 || sunAltitude <= CLOUD_SHADOW_MIN_SUN_ALTITUDE) return;
-    const physicalShadowMayHit = drawCloudShadowsOnSurface(
-      clouds, sunAltitude, sunAzimuth, cloudCover, 0, code);
-    if (!physicalShadowMayHit) {
-      drawIslandCloudShadowCue(clouds, sunAltitude, sunAzimuth, cloudCover, code);
-    }
-  }
-
-  function drawCloudShadowsOnSurface(clouds, sunAltitude, sunAzimuth, cloudCover,
-    receiverElevationMeters, code) {
-    if (sunAltitude <= CLOUD_SHADOW_MIN_SUN_ALTITUDE) return false;
-    const altitudeRadians = sunAltitude * Math.PI / 180;
-    const azimuthRadians = sunAzimuth * Math.PI / 180;
-    const sineAltitude = Math.sin(altitudeRadians);
-    const horizontalSun = Math.cos(altitudeRadians);
-    const sunEast = horizontalSun * Math.sin(azimuthRadians);
-    const sunNorth = horizontalSun * Math.cos(azimuthRadians);
-    const directLight = clamp((sineAltitude - Math.sin(3 * Math.PI / 180))
-      / (Math.sin(18 * Math.PI / 180) - Math.sin(3 * Math.PI / 180)), 0, 1);
-    const coverFactor = clamp(cloudCover / 100, 0, 1);
-    let opacity = (CLOUD_SHADOW_CLEAR_OPACITY + CLOUD_SHADOW_COVER_OPACITY * coverFactor)
-      * directLight;
-    if (weatherCodeIsStorm(code)) opacity = Math.min(CLOUD_SHADOW_MAX_OPACITY,
-      opacity + CLOUD_SHADOW_STORM_BONUS);
-    const shadowColor = `rgba(17,26,39,${opacity})`;
-    let physicalShadowMayHit = false;
-    ctx.save();
-    clipIslandSurface();
-    clouds.forEach(cloud => {
-      const relativeCloudHeight = cloud.baseAltitudeMeters - receiverElevationMeters;
-      if (relativeCloudHeight <= 0) return;
-      const shiftEast = -relativeCloudHeight * sunEast / sineAltitude;
-      const shiftNorth = -relativeCloudHeight * sunNorth / sineAltitude;
-      const scale = cloudShadowFootprintScale(cloud);
-      if (cloudShadowIntersectsIsland(cloud, shiftEast, shiftNorth, scale)) {
-        physicalShadowMayHit = true;
-      }
-      buildCloudShadowPath(cloud, shiftEast, shiftNorth, scale);
-      ctx.fillStyle = shadowColor;
-      ctx.fill();
-    });
-    ctx.restore();
-    return physicalShadowMayHit;
-  }
-
-  function drawIslandCloudShadowCue(clouds, sunAltitude, sunAzimuth, cloudCover, code) {
-    const altitudeRadians = sunAltitude * Math.PI / 180;
-    const azimuthRadians = sunAzimuth * Math.PI / 180;
-    const sineAltitude = Math.sin(altitudeRadians);
-    if (sineAltitude <= 0) return;
-    const horizontalSun = Math.cos(altitudeRadians);
-    const sunEast = horizontalSun * Math.sin(azimuthRadians);
-    const sunNorth = horizontalSun * Math.cos(azimuthRadians);
-    const directLight = clamp((sineAltitude - Math.sin(3 * Math.PI / 180))
-      / (Math.sin(18 * Math.PI / 180) - Math.sin(3 * Math.PI / 180)), 0, 1);
-    const coverFactor = clamp(cloudCover / 100, 0, 1);
-    let opacity = (CLOUD_SHADOW_CLEAR_OPACITY + CLOUD_SHADOW_COVER_OPACITY * coverFactor)
-      * directLight;
-    if (weatherCodeIsStorm(code)) opacity = Math.min(CLOUD_SHADOW_MAX_OPACITY,
-      opacity + CLOUD_SHADOW_STORM_BONUS);
-    const cueOpacity = Math.max(CLOUD_SHADOW_FALLBACK_MIN_OPACITY * directLight, opacity * 0.72);
-    let nearest = null;
-    let nearestEast = 0;
-    let nearestNorth = 0;
-    let nearestDistance = Infinity;
-    clouds.forEach(cloud => {
-      const height = cloud.baseAltitudeMeters;
-      if (height <= 0) return;
-      const shiftEast = -height * sunEast / sineAltitude;
-      const shiftNorth = -height * sunNorth / sineAltitude;
-      const centerEast = cloud.eastMeters + shiftEast;
-      const centerNorth = cloud.northMeters + shiftNorth;
-      const distance = Math.hypot(centerEast, centerNorth);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearest = cloud;
-        nearestEast = centerEast;
-        nearestNorth = centerNorth;
-      }
-    });
-    if (!nearest) return;
-    const cueRadiusMeters = ISLAND_GRID_SIZE * ISLAND_TILE_METERS * 0.20;
-    const maxAxisDistance = Math.max(Math.abs(nearestEast), Math.abs(nearestNorth));
-    const pull = maxAxisDistance > cueRadiusMeters ? cueRadiusMeters / maxAxisDistance : 1;
-    const cueShiftEast = nearestEast * pull - nearest.eastMeters;
-    const cueShiftNorth = nearestNorth * pull - nearest.northMeters;
-    ctx.save();
-    clipIslandSurface();
-    buildCloudShadowPath(nearest, cueShiftEast, cueShiftNorth, cloudShadowFootprintScale(nearest));
-    ctx.fillStyle = `rgba(17,26,39,${cueOpacity})`;
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function cloudShadowIntersectsIsland(cloud, shadowEast, shadowNorth, footprintScale) {
-    const cellAlong = cloud.widthMeters * footprintScale / cloud.shape[0].length;
-    const cellAcross = cloud.depthMeters * footprintScale / cloud.shape.length;
-    const halfExtent = ISLAND_GRID_SIZE * ISLAND_TILE_METERS / 2;
-    for (let row = 0; row < cloud.shape.length; row += 1) {
-      const pixels = cloud.shape[row];
-      let column = 0;
-      while (column < pixels.length) {
-        while (column < pixels.length && pixels[column] !== '1') column += 1;
-        const runStart = column;
-        while (column < pixels.length && pixels[column] === '1') column += 1;
-        if (runStart === column) continue;
-        const alongStart = (runStart - pixels.length * 0.5) * cellAlong;
-        const alongEnd = (column - pixels.length * 0.5) * cellAlong;
-        const acrossStart = (row - cloud.shape.length * 0.5) * cellAcross;
-        const acrossEnd = (row + 1 - cloud.shape.length * 0.5) * cellAcross;
-        const points = [
-          shadowVertex(cloud, alongStart, acrossStart, shadowEast, shadowNorth),
-          shadowVertex(cloud, alongEnd, acrossStart, shadowEast, shadowNorth),
-          shadowVertex(cloud, alongEnd, acrossEnd, shadowEast, shadowNorth),
-          shadowVertex(cloud, alongStart, acrossEnd, shadowEast, shadowNorth)
-        ];
-        if (shadowQuadIntersectsIsland(points, halfExtent)) return true;
-      }
-    }
-    return false;
-  }
-
-  function shadowVertex(cloud, along, across, shadowEast, shadowNorth) {
-    return [
-      cloud.eastMeters + along * cloud.alongEast + across * cloud.crossEast + shadowEast,
-      cloud.northMeters + along * cloud.alongNorth + across * cloud.crossNorth + shadowNorth
-    ];
-  }
-
-  function shadowQuadIntersectsIsland(points, halfExtent) {
-    const east = points.map(point => point[0]);
-    const north = points.map(point => point[1]);
-    if (Math.min(...east) > halfExtent || Math.max(...east) < -halfExtent
-      || Math.min(...north) > halfExtent || Math.max(...north) < -halfExtent) return false;
-    for (let edge = 0; edge < 4; edge += 1) {
-      const next = (edge + 1) % 4;
-      const axisX = -(north[next] - north[edge]);
-      const axisY = east[next] - east[edge];
-      const projections = points.map(point => point[0] * axisX + point[1] * axisY);
-      const squareRadius = halfExtent * (Math.abs(axisX) + Math.abs(axisY));
-      if (Math.min(...projections) > squareRadius || Math.max(...projections) < -squareRadius) return false;
-    }
-    return true;
-  }
-
-  function buildCloudShadowPath(cloud, shadowEast, shadowNorth, footprintScale) {
-    const cellAlong = cloud.widthMeters * footprintScale / cloud.shape[0].length;
-    const cellAcross = cloud.depthMeters * footprintScale / cloud.shape.length;
-    ctx.beginPath();
-    for (let row = 0; row < cloud.shape.length; row += 1) {
-      const pixels = cloud.shape[row];
-      let column = 0;
-      while (column < pixels.length) {
-        while (column < pixels.length && pixels[column] !== '1') column += 1;
-        const runStart = column;
-        while (column < pixels.length && pixels[column] === '1') column += 1;
-        if (runStart === column) continue;
-        const alongStart = (runStart - pixels.length * 0.5) * cellAlong;
-        const alongEnd = (column - pixels.length * 0.5) * cellAlong;
-        const acrossStart = (row - cloud.shape.length * 0.5) * cellAcross;
-        const acrossEnd = (row + 1 - cloud.shape.length * 0.5) * cellAcross;
-        const corners = [
-          shadowVertex(cloud, alongStart, acrossStart, shadowEast, shadowNorth),
-          shadowVertex(cloud, alongEnd, acrossStart, shadowEast, shadowNorth),
-          shadowVertex(cloud, alongEnd, acrossEnd, shadowEast, shadowNorth),
-          shadowVertex(cloud, alongStart, acrossEnd, shadowEast, shadowNorth)
-        ].map(([east, north]) => [
-          Math.round((WIDTH / 2 + (east - north) * ISLAND_TILE_WIDTH
-            / (2 * ISLAND_TILE_METERS)) * RENDER_SCALE) / RENDER_SCALE,
-          Math.round((islandCenterY + (east + north) * islandTileHeight
-            / (2 * ISLAND_TILE_METERS)) * RENDER_SCALE) / RENDER_SCALE
-        ]);
-        ctx.moveTo(corners[0][0], corners[0][1]);
-        for (let index = 1; index < corners.length; index += 1) {
-          ctx.lineTo(corners[index][0], corners[index][1]);
-        }
-        ctx.closePath();
-      }
-    }
-  }
-
-  function cloudShadowFootprintScale(cloud) {
-    const modelWidth = cloud.widthMeters;
-    const modelDepth = cloud.depthMeters;
-    const projectedWidth = (modelWidth * Math.abs(cloud.alongEast - cloud.alongNorth)
-      + modelDepth * Math.abs(cloud.crossEast - cloud.crossNorth))
-      * ISLAND_TILE_WIDTH / (2 * ISLAND_TILE_METERS);
-    const projectedHeight = (modelWidth * Math.abs(cloud.alongEast + cloud.alongNorth)
-      + modelDepth * Math.abs(cloud.crossEast + cloud.crossNorth))
-      * islandTileHeight / (2 * ISLAND_TILE_METERS);
-    const spriteWidth = cloud.unitX * cloud.shape[0].length;
-    const spriteHeight = cloud.unitY * cloud.shape.length;
-    const widthLimit = spriteWidth / Math.max(1e-6, projectedWidth);
-    const heightLimit = spriteHeight / Math.max(1e-6, projectedHeight);
-    return Math.min(CLOUD_SHADOW_FOOTPRINT_SCALE,
-      CLOUD_SHADOW_MAX_SPRITE_RATIO * Math.min(widthLimit, heightLimit));
   }
 
   // Chooses which body is currently lighting the scene: the sun whenever it is up, otherwise the
@@ -1540,7 +1148,7 @@
   }
 
   function drawFloatingIsland(sunAltitude, sunAzimuth, sunHourAngle, cloudCover, code,
-    clouds, moon) {
+    moon) {
     ctx.save();
     const islandAnchorX = WIDTH / 2;
     const islandAnchorY = HEIGHT - ISLAND_BOTTOM_MARGIN;
@@ -1602,7 +1210,6 @@
       [centerX, topY], [rightX, middleY], [centerX, bottomY], [leftX, middleY]
     ], tileSeam, tileSeam);
     ISLAND_TILES.forEach(tile => drawGrassTile(tile, palette, sunlight));
-    drawIslandCloudShadows(clouds, sunAltitude, sunAzimuth, cloudCover, code);
     const topRim = blendColor(palette.grassSeam, palette.grassDark, 0.32);
     drawSmoothIslandLine(leftX, middleY, centerX, bottomY, topRim, 0.60);
     drawSmoothIslandLine(centerX, bottomY, rightX, middleY, topRim, 0.60);
@@ -1704,13 +1311,16 @@
     const sun = sunPosition(skyNow, location.latitude, location.longitude);
     const moonNow = moonPosition(skyNow, location.latitude, location.longitude,
       sun.eclipticLongitude);
-    const cloudStates = [];
+    const cloudStates = createCloudStates(motionTime, sceneWeather);
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     drawSky(skyNow, sun, sceneWeather.weatherCode, sceneWeather.cloudCover);
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, 0, WIDTH, HEIGHT * 0.5);
+    // The sky band runs from above the frame down to the horizon; clipping at half height used
+    // to behead any cloud tall enough to reach past it.
+    ctx.rect(0, -HEIGHT, WIDTH, HEIGHT * 1.5);
     ctx.clip();
+    drawClouds(cloudStates, sun.altitude, sceneWeather.weatherCode);
     drawSun(sun, sceneWeather.cloudCover, motionTime);
     drawMoon(moonNow, motionTime, sun.altitude);
     ctx.restore();
@@ -1722,7 +1332,7 @@
     drawLightning(time, sceneWeather.weatherCode);
     ctx.restore();
     drawFloatingIsland(sun.altitude, sun.azimuth, sun.hourAngleDegrees,
-      sceneWeather.cloudCover, sceneWeather.weatherCode, cloudStates, moonNow);
+      sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow);
     drawPrecipitation(sceneWeather);
     if (!REDUCED_MOTION) window.requestAnimationFrame(drawFrame);
   }
