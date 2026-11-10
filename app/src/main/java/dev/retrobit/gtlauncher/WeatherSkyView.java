@@ -26,8 +26,13 @@ public final class WeatherSkyView extends View {
     private static final int ISLAND_TILE_WIDTH = 28;
     private static final String ISLAND_COLUMN_LABELS = "ABCDEFGHI";
     // Logical grid IDs are A1–I9: columns A–I left to right, rows 1–9 top to bottom.
-    // Diamond compass frame: top=N, upper-right edge=NE, right=E, lower-right edge=SE,
-    // bottom=S, lower-left edge=SW, left=W, and upper-left edge=NW.
+    // Diamond compass frame is rotated 45° clockwise from the screen diagonal so the grid
+    // axes are cardinal: moving along a column runs east–west and moving along a row runs
+    // north–south. Top corner=NW, upper-right edge=N, right corner=NE, lower-right edge=E,
+    // bottom=SE, lower-left edge=S, left=SW, and upper-left edge=W.
+    // A row of tiles is a parallel of latitude; a column of tiles is a meridian of longitude.
+    // Because the frame is shifted 45°, the camera now faces northwest instead of north.
+    private static final float COMPASS_FRAME_OFFSET_DEGREES = 45.0f;
     private static final float ISLAND_CAMERA_ELEVATION_DEGREES = 25.0f;
     // Keep a fixed 45° azimuth and project ground depth from the chosen camera elevation.
     private static final float ISLAND_TILE_HEIGHT = ISLAND_TILE_WIDTH
@@ -199,7 +204,9 @@ public final class WeatherSkyView extends View {
     }
 
     public void setHeadingDegrees(float headingDegrees) {
-        this.headingDegrees = (float) normalizeDegrees(headingDegrees);
+        // Rotating the diamond frame by 45° turns the camera to face northwest, so the
+        // device heading is shifted to keep the sky aligned with real compass bearings.
+        this.headingDegrees = (float) normalizeDegrees(headingDegrees - COMPASS_FRAME_OFFSET_DEGREES);
         postInvalidateOnAnimation();
     }
 
@@ -898,9 +905,65 @@ public final class WeatherSkyView extends View {
             }
         }
         drawIslandCloudShadows(canvas, clouds, sunAltitude, sunAzimuth, cloudCover, code);
+        drawIslandGridAxes(canvas, topY, centerX, palette, sunlight);
         int topRim = blend(palette.grassSeam, palette.grassDark, 0.32);
         drawSmoothIslandLine(canvas, leftX, middleY, centerX, bottomY, topRim, 0.60f);
         drawSmoothIslandLine(canvas, centerX, bottomY, rightX, middleY, topRim, 0.60f);
+    }
+
+    /**
+     * Draws the two cardinal grid axes through the middle of the island: the row through the
+     * centre tile is the 7°0′ S parallel of latitude and the column through it is the
+     * 111°0′ E meridian of longitude. Both lines pass through the centre of the middle tile
+     * (E5) so the cross is symmetric: nine tiles wide, nine tiles tall, 1,125 km per axis at
+     * the illustrative 250 m tile scale. Labels are deliberately not drawn.
+     */
+    private void drawIslandGridAxes(Canvas canvas, float topY, float centerX,
+                                    IslandPalette palette, IslandSunlight sunlight) {
+        int last = ISLAND_GRID_SIZE - 1;
+        int middle = ISLAND_GRID_SIZE / 2;
+        float tileHeight = ISLAND_TILE_HEIGHT;
+        float reach = ISLAND_TILE_WIDTH / 2.0f;
+        float[] latitude = extendAxis(
+                centerX + (0 - middle) * ISLAND_TILE_WIDTH / 2.0f,
+                topY + tileHeight / 2.0f + (0 + middle) * tileHeight / 2.0f,
+                centerX + (last - middle) * ISLAND_TILE_WIDTH / 2.0f,
+                topY + tileHeight / 2.0f + (last + middle) * tileHeight / 2.0f, reach);
+        float[] longitude = extendAxis(
+                centerX + (middle - 0) * ISLAND_TILE_WIDTH / 2.0f,
+                topY + tileHeight / 2.0f + (middle + 0) * tileHeight / 2.0f,
+                centerX + (middle - last) * ISLAND_TILE_WIDTH / 2.0f,
+                topY + tileHeight / 2.0f + (middle + last) * tileHeight / 2.0f, reach);
+
+        // Sunlit grass is pale, so the axis reads as a dark inlaid line; in dim light the grass
+        // darkens and the axis switches to a light inlaid line to stay legible.
+        int tone = blend(0xFFF0ECD2, 0xFF1C3A28, sunlight.strength);
+        float[] widths = { 2.0f, 0.9f, 0.35f };
+        float[] alphas = { 0.10f, 0.30f, 0.62f };
+        setIslandSurfacePath();
+        int save = canvas.save();
+        canvas.clipPath(islandSurfacePath);
+        for (int pass = 0; pass < widths.length; pass++) {
+            int alpha = (int) Math.round(alphas[pass] * 255.0);
+            int color = (tone & 0x00FFFFFF) | (alpha << 24);
+            drawSmoothIslandLine(canvas, latitude[0], latitude[1], latitude[2], latitude[3],
+                    color, widths[pass]);
+            drawSmoothIslandLine(canvas, longitude[0], longitude[1], longitude[2], longitude[3],
+                    color, widths[pass]);
+        }
+        canvas.restoreToCount(save);
+    }
+
+    /** Extends a segment by reach units at both ends so an axis spans a full row of tiles. */
+    private static float[] extendAxis(float x1, float y1, float x2, float y2, float reach) {
+        float dx = x2 - x1;
+        float dy = y2 - y1;
+        float length = (float) Math.hypot(dx, dy);
+        if (length <= 0.0f) return new float[] { x1, y1, x2, y2 };
+        float unitX = dx / length;
+        float unitY = dy / length;
+        return new float[] { x1 - unitX * reach, y1 - unitY * reach,
+                x2 + unitX * reach, y2 + unitY * reach };
     }
 
     private void drawCloudsOverIsland(Canvas canvas, CloudState[] clouds,

@@ -23,8 +23,14 @@
   const ISLAND_TILE_WIDTH = 28;
   const ISLAND_COLUMN_LABELS = 'ABCDEFGHI';
   // Logical grid IDs are A1–I9: columns A–I left to right, rows 1–9 top to bottom.
-  // Diamond compass frame: top=N, upper-right edge=NE, right=E, lower-right edge=SE,
-  // bottom=S, lower-left edge=SW, left=W, and upper-left edge=NW.
+  // The diamond compass frame is rotated 45° clockwise from the screen diagonal so the grid
+  // axes are cardinal: moving along a column runs east–west, moving along a row runs
+  // north–south. Top corner=NW, upper-right edge=N, right corner=NE, lower-right edge=E,
+  // bottom=SE, lower-left edge=S, left=SW, and upper-left edge=W.
+  // A row of tiles is therefore a parallel of latitude and a column is a meridian of longitude.
+  // The frame shift makes the camera face northwest instead of north, so device headings are
+  // compensated in setHeadingDegrees to keep the sky on real compass bearings.
+  const COMPASS_FRAME_OFFSET_DEGREES = 45;
   // Fixed 45° azimuth and 25° elevation keep a consistent dimetric projection.
   const DEFAULT_ISLAND_CAMERA_ELEVATION = 25;
   const MIN_ISLAND_CAMERA_ELEVATION = 20;
@@ -1537,6 +1543,56 @@
     if (outline) drawPixelPolyline(points, outline, true, 0.5);
   }
 
+  function islandTileCenter(column, row) {
+    return [WIDTH / 2 + (column - row) * ISLAND_TILE_WIDTH / 2,
+      islandTop + islandTileHeight / 2 + (column + row) * islandTileHeight / 2];
+  }
+
+  // Draws the two cardinal grid axes through the middle of the island. The row through the
+  // centre tile is the 7°0′ S parallel of latitude; the column through it is the 111°0′ E
+  // meridian of longitude. Both pass through the centre of the middle tile (E5) so the cross
+  // is symmetric: nine tiles wide, nine tiles tall, 1,125 km per axis at the illustrative
+  // 250 m tile scale. Coordinate labels are deliberately not drawn.
+  function drawIslandGridAxes(palette, sunlight) {
+    const last = ISLAND_GRID_SIZE - 1;
+    const middle = Math.floor(ISLAND_GRID_SIZE / 2);
+    // Extend each axis by half a tile spacing so it spans the full row or column of nine
+    // tiles, edge to edge, instead of stopping in the middle of the end tiles.
+    const extendAxis = (from, to) => {
+      const dx = to[0] - from[0];
+      const dy = to[1] - from[1];
+      const length = Math.hypot(dx, dy) || 1;
+      const reach = length / last / 2;
+      return [
+        [from[0] - dx / length * reach, from[1] - dy / length * reach],
+        [to[0] + dx / length * reach, to[1] + dy / length * reach]
+      ];
+    };
+    const latitude = extendAxis(islandTileCenter(0, middle), islandTileCenter(last, middle));
+    const longitude = extendAxis(islandTileCenter(middle, 0), islandTileCenter(middle, last));
+    // Two tones keep the cross readable on bright noon grass and on dark night grass: a soft
+    // dark halo separates the line from the tiles, then a light core sits on top.
+    // Sunlit grass is pale, so the axis reads as a dark inlaid line; in dim light the grass
+    // darkens and the axis switches to a light inlaid line to stay legible.
+    const daylight = clamp(sunlight.strength, 0, 1);
+    const tone = blendColor('#f0ecd2', '#1c3a28', daylight);
+    const passCount = daylight > 0.45 ? 3 : 4;
+    const passes = [
+      [tone, 2.0, 0.10],
+      [tone, 0.9, 0.30],
+      [tone, 0.35, 0.62]
+    ].slice(0, passCount);
+    ctx.save();
+    clipIslandSurface();
+    passes.forEach(([color, width, alpha]) => {
+      ctx.globalAlpha = alpha;
+      [latitude, longitude].forEach(([first, second]) => {
+        drawSmoothIslandLine(first[0], first[1], second[0], second[1], color, width);
+      });
+    });
+    ctx.restore();
+  }
+
   function drawFloatingIsland(sunAltitude, sunAzimuth, cloudCover, code, clouds) {
     ctx.save();
     const islandAnchorX = WIDTH / 2;
@@ -1597,6 +1653,7 @@
     ], tileSeam, tileSeam);
     ISLAND_TILES.forEach(tile => drawGrassTile(tile, palette, sunlight));
     drawIslandCloudShadows(clouds, sunAltitude, sunAzimuth, cloudCover, code);
+    drawIslandGridAxes(palette, sunlight);
     const topRim = blendColor(palette.grassSeam, palette.grassDark, 0.32);
     drawSmoothIslandLine(leftX, middleY, centerX, bottomY, topRim, 0.60);
     drawSmoothIslandLine(centerX, bottomY, rightX, middleY, topRim, 0.60);
@@ -1834,7 +1891,9 @@
         ? event.webkitCompassHeading
         : event.absolute && Number.isFinite(event.alpha) ? event.alpha : null;
       if (compassHeading !== null) {
-        headingDegrees = normalizeDegrees(compassHeading);
+        // The rotated diamond frame turns the camera 45° to face northwest, so the device
+        // heading is shifted to keep sky bearings aligned with the compass.
+        headingDegrees = normalizeDegrees(compassHeading - COMPASS_FRAME_OFFSET_DEGREES);
         if (REDUCED_MOTION) drawFrame();
       }
     }, true);
