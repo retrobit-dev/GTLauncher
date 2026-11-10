@@ -61,8 +61,10 @@ public final class WeatherSkyView extends View {
     // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
     private static final float SUN_BODY_RADIUS = 10.5f;
     // East and west ends of the celestial arc, inset so the disc never clips the frame.
-    private static final float SUN_RISE_X = 36.0f;
-    private static final float SUN_SET_X = 284.0f;
+    // East sits on the right of the screen and west on the left, so the sun rises on the right
+    // and sets on the left, which is the reading most people expect from a sky panel.
+    private static final float SUN_RISE_X = 284.0f;
+    private static final float SUN_SET_X = 36.0f;
     private static final int GLOW_STEPS = 14;
     private static final float GLOW_REACH = 15.0f;
     private static final double GLOW_ALPHA = 0.040;

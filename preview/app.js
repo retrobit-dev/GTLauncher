@@ -452,8 +452,10 @@
   // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
   const SUN_BODY_RADIUS = 10.5;
   // East and west ends of the celestial arc, inset so the disc never clips the frame.
-  const SUN_RISE_X = 36;
-  const SUN_SET_X = 284;
+  // East sits on the right of the screen and west on the left, so the sun rises on the right
+  // and sets on the left, which is the reading most people expect from a sky panel.
+  const SUN_RISE_X = 284;
+  const SUN_SET_X = 36;
   const GLOW_STEPS = 14;
   const GLOW_REACH = 15.0;
   const GLOW_ALPHA = 0.040;
