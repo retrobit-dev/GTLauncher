@@ -94,9 +94,14 @@ public final class WeatherSkyView extends View {
     // Slots are absolute scene units so the widest sprite still clears both frame edges. The last
     // two sit above the island so their shadows fall on its top surface.
     private static final float[] CLOUD_SLOT_X = {56.0f, 264.0f, 118.0f, 206.0f};
-    // The lower pair must float clear of the grass: sitting them at the island's own surface
-    // height made them read as pressed into it rather than hanging above it.
-    private static final float[] CLOUD_SLOT_BOTTOM = {48.0f, 46.0f, 84.0f, 98.0f};
+    // Vertical ties per slot, used as a tiebreak when several clouds share the band.
+    private static final float[] CLOUD_SLOT_ORDER = {0.12f, 0.05f, 0.68f, 0.9f};
+    // Clouds must hang below the sun so the light can reach past them and drop their shadow on the
+    // island. They spread from just under the sun down over the island's back half.
+    private static final float CLOUD_SUN_CLEARANCE = 4.0f;
+    private static final float CLOUD_BAND_REACH = 34.0f;
+    private static final float CLOUD_BAND_MIN_SPAN = 26.0f;
+    private static final float CLOUD_SCREEN_TOP_MARGIN = 4.0f;
     // Clouds travel across the frame like real wind-driven cloud, then re-enter from the other
     // side. Screen speed is derived from the reported wind so a breeze crawls and a storm hurries.
     private static final double CLOUD_DRIFT_BASE = 0.55;
@@ -300,7 +305,7 @@ public final class WeatherSkyView extends View {
         double windSpeed = weather == null ? 4.0 : weather.windSpeedKmh;
         double windDirection = weather == null ? 90.0 : weather.windDirectionDegrees;
         CloudState[] cloudStates = createCloudStates(motionSeconds, cloudCover,
-                windSpeed, windDirection);
+                windSpeed, windDirection, sun.altitudeDegrees, sun.hourAngleDegrees);
 
         Canvas scene = sceneCanvas;
         int save = scene.save();
@@ -384,25 +389,6 @@ public final class WeatherSkyView extends View {
         canvas.clipPath(islandClipPath);
     }
 
-    /** Only clouds that actually hang over the island top cast anything. */
-    private boolean cloudOverIsland(CloudState cloud) {
-        float sceneWidth = cloud.shape[0].length() * cloud.cell;
-        float sceneHeight = cloud.shape.length * cloud.cell;
-        float centreX = cloud.screenCenterX;
-        float centreY = cloud.screenBottomY - sceneHeight * 0.5f;
-        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.5f;
-        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT * 0.5f;
-        float dx = Math.abs(centreX - SCENE_WIDTH / 2.0f);
-        float dy = Math.abs(centreY - ISLAND_CENTER_Y);
-        return dx / (halfWidth + sceneWidth * 0.5f) + dy / (halfHeight + sceneHeight * 0.5f) <= 1.0f;
-    }
-
-    /**
-     * A cloud dims the ground it covers the way the island's own shadow does: as one full diamond
-     * plane on the ground, not as a small dark copy of the sprite stuck to the grass. The plane's
-     * size tracks the cloud's footprint, its shape stays a diamond because the ground is a plane
-     * in the same dimetric projection, and it is only drawn where it lands on the island.
-     */
     private void drawCloudShadowsOnIsland(Canvas canvas, CloudState[] clouds, double sunAltitude,
             double sunHourAngle, double cloudCover, int code) {
         if (clouds.length == 0) return;
@@ -418,15 +404,28 @@ public final class WeatherSkyView extends View {
         double lean = (0.5 - celestialProgress(sunHourAngle))
                 * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.55;
         double throwFactor = Math.min(1.0 / elevationSine, 1.6);
+        float halfIsland = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.5f;
         int save = canvas.save();
         setClipIslandSurface(canvas);
         for (CloudState cloud : clouds) {
             float sceneWidth = cloud.shape[0].length() * cloud.cell;
             float sceneHeight = cloud.shape.length * cloud.cell;
-            if (!cloudOverIsland(cloud)) continue;
-            float shiftX = (float) clamp(lean * throwFactor, -sceneWidth, sceneWidth);
-            float centreX = cloud.screenCenterX + shiftX;
-            float centreY = cloud.screenBottomY - sceneHeight * 0.5f + sceneHeight * 1.15f;
+            // The shadow lands where the cloud appears in its own band: clouds hang at a range
+            // where their whole band is only a few degrees above the island, so the ground point
+            // is close to the sprite, and this keeps a shadow on the island for every cloud.
+            float bandTopCloud = cloudBandTop(sunAltitude, sunHourAngle, sceneHeight);
+            float bandSpanCloud = Math.max(cloudBandBottom() - bandTopCloud,
+                    CLOUD_BAND_MIN_SPAN);
+            float bandMix = (float) clamp(
+                    1.0 - (cloud.screenBottomY - bandTopCloud) / bandSpanCloud, 0.0, 1.0);
+            float centreX = cloud.screenCenterX
+                    + (float) clamp(lean * throwFactor, -sceneWidth, sceneWidth);
+            // Kept inside the island: a physical drop would push the shadow off the front edge at
+            // this panel size, so the plane stays close enough to read as belonging to its cloud.
+            float straightAboveY = ISLAND_CENTER_Y + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT * 0.12f;
+            float centreY = straightAboveY
+                    - bandMix * ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT * 0.45f;
+            if (Math.abs(centreX - SCENE_WIDTH / 2.0f) > halfIsland * 0.9f) continue;
             float halfWidth = sceneWidth * 0.85f;
             float halfHeight = halfWidth * (ISLAND_TILE_HEIGHT / ISLAND_TILE_WIDTH);
             drawIslandPolygon(canvas,
@@ -1229,8 +1228,24 @@ public final class WeatherSkyView extends View {
         return Math.sin(windDirection * Math.PI / 180.0) >= 0 ? -1 : 1;
     }
 
+    /**
+     * Where clouds may hang: only under the sun, because a cloud above the light cannot shade
+     * anything. Exposed separately so the shadow pass maps a cloud to its ground point with the
+     * same band it was placed in.
+     */
+    private float cloudBandTop(double sunAltitude, double sunHourAngle, float cloudHeight) {
+        float sunY = (float) mapCelestialY(sunAltitude, sunHourAngle);
+        return Math.max(CLOUD_SCREEN_TOP_MARGIN,
+                Math.min(sunY + CLOUD_SUN_CLEARANCE,
+                        ISLAND_TOP + CLOUD_BAND_REACH - cloudHeight - 8.0f));
+    }
+
+    private float cloudBandBottom() {
+        return ISLAND_TOP + CLOUD_BAND_REACH;
+    }
+
     private CloudState[] createCloudStates(double elapsedSeconds, double cloudCover,
-            double windSpeed, double windDirection) {
+            double windSpeed, double windDirection, double sunAltitude, double sunHourAngle) {
         int count = cloudCountForCover(cloudCover);
         if (count == 0) return new CloudState[0];
         int seed = (int) Math.round(latitude * 37 + longitude * 17) ^ (count * 0x2545f491);
@@ -1242,7 +1257,14 @@ public final class WeatherSkyView extends View {
             String[] shape = CLOUD_SHAPE_VARIANTS[variant];
             float cell = CLOUD_CELL;
             float width = shape[0].length() * cell;
-            float slotBottom = CLOUD_SLOT_BOTTOM[index % CLOUD_SLOT_BOTTOM.length];
+            float height = shape.length * cell;
+            // Every cloud sits under the sun, which is what lets it shade the island at all. A low
+            // sun leaves a sliver, so a minimum span keeps the clouds from stacking on one line.
+            float bandTop = cloudBandTop(sunAltitude, sunHourAngle, height);
+            float bandSpan = Math.max(cloudBandBottom() - bandTop - height, CLOUD_BAND_MIN_SPAN);
+            float order = count == 1
+                    ? 0.45f
+                    : CLOUD_SLOT_ORDER[index % CLOUD_SLOT_ORDER.length];
             // Each cloud starts at its own offset across the frame so they do not travel in a block.
             float startX = CLOUD_SLOT_X[index % CLOUD_SLOT_X.length]
                     + (float) ((cloudHash(seed, index, 4) - 0.5) * 40.0);
@@ -1252,7 +1274,8 @@ public final class WeatherSkyView extends View {
             double span = SCENE_WIDTH + width + CLOUD_EDGE_INSET * 2.0;
             double travelled = ((startX + travel + width + CLOUD_EDGE_INSET) % span + span) % span;
             float centreX = (float) (travelled - width * 0.5 - CLOUD_EDGE_INSET);
-            float bottomY = (float) (slotBottom + (cloudHash(seed, index, 3) - 0.5) * 5.0);
+            float bottomY = bandTop + height + order * bandSpan
+                    + (float) ((cloudHash(seed, index, 3) - 0.5) * 4.0);
             clouds[index] = new CloudState(shape, cell, centreX, bottomY);
         }
         return clouds;

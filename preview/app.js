@@ -75,12 +75,20 @@
   // cell edge on the art grid. A fractional cell left antialiased seams across the cloud face,
   // and re-rounding each cell independently made the silhouette zigzag.
   const CLOUD_CELL = 1;
-  // Slots are absolute scene units, not fractions, because the widest sprite must still clear
-  // both frame edges. The lower pair sit just above the island's back corner and read as nearer.
+  // Horizontal slots are absolute scene units, not fractions, so the widest sprite still clears
+  // both frame edges.
   const CLOUD_SLOT_X = [56, 264, 118, 206];
+  // Clouds must hang below the sun so the light can reach past them and drop their shadow on the
+  // island. They spread from just under the sun down over the island's back half, which is the
+  // band they can actually cast into.
+  const CLOUD_SUN_CLEARANCE = 4;
+  const CLOUD_BAND_REACH = 34;
+  const CLOUD_BAND_MIN_SPAN = 26;
+  const CLOUD_SCREEN_TOP_MARGIN = 4;
   // The lower pair must float clear of the grass: sitting them at the island's own surface
   // height made them read as pressed into it rather than hanging above it.
-  const CLOUD_SLOT_BOTTOM = [48, 46, 84, 98];
+  // Vertical ties per slot, used as a tiebreak when several clouds share the band.
+  const CLOUD_SLOT_ORDER = [0.12, 0.05, 0.68, 0.9];
   // Clouds travel right to left like real wind-driven cloud, cross the whole frame, then re-enter
   // from the other side. Screen speed is derived from the reported wind so a breeze crawls and a
   // storm hurries; the old oscillating sway was fast and never actually went anywhere.
@@ -719,7 +727,7 @@
     return windFromEast >= 0 ? -1 : 1;
   }
 
-  function createCloudStates(elapsedSeconds, sceneWeather) {
+  function createCloudStates(elapsedSeconds, sceneWeather, sunAltitude, sunHourAngle) {
     const count = cloudCountForCover(sceneWeather.cloudCover ?? 0);
     if (count === 0) return [];
     const seed = Math.trunc(location.latitude * 37 + location.longitude * 17)
@@ -732,7 +740,14 @@
       const shape = CLOUD_SHAPE_VARIANTS[variant];
       const cell = CLOUD_CELL;
       const width = shape[0].length * cell;
-      const slotBottom = CLOUD_SLOT_BOTTOM[index % CLOUD_SLOT_BOTTOM.length];
+      const height = shape.length * cell;
+      // Every cloud sits under the sun, which is what lets it shade the island at all. The band
+      // runs from just below the disc down to the island's back half; a low sun leaves a sliver,
+      // so a minimum span keeps the clouds from stacking on one line.
+      const bandTop = cloudBandTop(sunAltitude, sunHourAngle, height);
+      const bandBottom = cloudBandBottom();
+      const bandSpan = Math.max(bandBottom - bandTop - height, CLOUD_BAND_MIN_SPAN);
+      const order = count === 1 ? 0.45 : CLOUD_SLOT_ORDER[index % CLOUD_SLOT_ORDER.length];
       // Each cloud starts at its own offset across the frame so they do not travel in a block.
       const startX = CLOUD_SLOT_X[index % CLOUD_SLOT_X.length]
         + (cloudHash(seed, index, 4) - 0.5) * 40;
@@ -742,7 +757,8 @@
       const span = WIDTH + width + CLOUD_EDGE_INSET * 2;
       const travelled = ((startX + travel + width + CLOUD_EDGE_INSET) % span + span) % span;
       const centreX = travelled - width * 0.5 - CLOUD_EDGE_INSET;
-      const bottomY = slotBottom + (cloudHash(seed, index, 3) - 0.5) * 5;
+      const bottomY = bandTop + height + order * bandSpan
+        + (cloudHash(seed, index, 3) - 0.5) * 4;
       clouds.push({ shape, cell, screenCenterX: centreX, screenBottomY: bottomY });
     }
     return clouds;
@@ -1198,21 +1214,17 @@
     if (outline) drawPixelPolyline(points, outline, true, 0.5);
   }
 
-  // Only clouds that actually hang over the island top cast anything. The silhouette is the
-  // sprite's own cells, so the shadow keeps the lobes instead of becoming an oval blob.
-  function cloudOverIsland(cloud, sceneWidth, sceneHeight) {
-    const centreX = (cloud.screenCenterX - WIDTH / 2) / islandZoom + WIDTH / 2;
-    const centreY = (cloud.screenBottomY - HEIGHT + ISLAND_BOTTOM_MARGIN) / islandZoom
-      + HEIGHT - ISLAND_BOTTOM_MARGIN - sceneHeight * 0.5;
-    for (const point of islandSurfacePoints()) {
-      if (Math.abs(centreX - point[0]) <= sceneWidth * 0.5
-        && Math.abs(centreY - point[1]) <= sceneHeight * 0.5) return true;
-    }
-    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.5;
-    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight * 0.5;
-    const dx = Math.abs(centreX - WIDTH / 2);
-    const dy = Math.abs(centreY - islandCenterY);
-    return dx / (halfWidth + sceneWidth * 0.5) + dy / (halfHeight + sceneHeight * 0.5) <= 1;
+  // Where clouds may hang: only under the sun, because a cloud above the light cannot shade
+  // anything. Exposed separately so the shadow pass maps a cloud to its ground point with the
+  // same band it was placed in.
+  function cloudBandTop(sunAltitude, sunHourAngle, cloudHeight) {
+    const sunY = mapCelestialY(sunAltitude, sunHourAngle);
+    return Math.max(CLOUD_SCREEN_TOP_MARGIN,
+      Math.min(sunY + CLOUD_SUN_CLEARANCE, islandTop + CLOUD_BAND_REACH - cloudHeight - 8));
+  }
+
+  function cloudBandBottom() {
+    return islandTop + CLOUD_BAND_REACH;
   }
 
   // A cloud dims the ground it covers the way the island's own shadow does: as one full diamond
@@ -1234,17 +1246,30 @@
     const lean = (0.5 - celestialProgress(light.hourAngle))
       * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.55;
     const throwFactor = Math.min(1 / elevationSine, 1.6);
+    const bandTop = cloudBandTop(sunAltitude, sunHourAngle, 0);
+    const bandSpan = Math.max(cloudBandBottom() - bandTop, CLOUD_BAND_MIN_SPAN);
     ctx.save();
     applyIslandTransform();
     clipIslandSurface();
     clouds.forEach(cloud => {
       const sceneWidth = cloud.shape[0].length * cloud.cell;
       const sceneHeight = cloud.shape.length * cloud.cell;
-      if (!cloudOverIsland(cloud, sceneWidth, sceneHeight)) return;
-      const shiftX = clamp(lean * throwFactor, -sceneWidth, sceneWidth);
-      const centreX = (cloud.screenCenterX - WIDTH / 2) / islandZoom + WIDTH / 2 + shiftX;
-      const centreY = (cloud.screenBottomY - HEIGHT + ISLAND_BOTTOM_MARGIN) / islandZoom
-        + HEIGHT - ISLAND_BOTTOM_MARGIN - sceneHeight * 0.5 + sceneHeight * 1.15;
+      // The shadow lands where the cloud appears in its own band: clouds hang at a range where
+      // their whole band is only a few degrees above the island, so the ground point is close to
+      // the sprite, and this keeps a shadow on the island for every cloud the band puts there.
+      const bandTopCloud = cloudBandTop(sunAltitude, sunHourAngle, sceneHeight);
+      const bandSpanCloud = Math.max(cloudBandBottom() - bandTopCloud,
+        CLOUD_BAND_MIN_SPAN);
+      const bandMix = clamp(1 - (cloud.screenBottomY - bandTopCloud) / bandSpanCloud, 0, 1);
+      let centreX = (cloud.screenCenterX - WIDTH / 2) / islandZoom + WIDTH / 2
+        + clamp(lean * throwFactor, -sceneWidth, sceneWidth);
+      // Ground point of a cloud straight above comes out at this offset below the island centre.
+      // Kept inside the island: a physical drop would push the shadow off the front edge at this
+      // panel size, so the plane stays close enough to read as belonging to its cloud.
+      const straightAboveY = islandCenterY + ISLAND_GRID_SIZE * islandTileHeight * 0.12;
+      const centreY = straightAboveY - bandMix * ISLAND_GRID_SIZE * islandTileHeight * 0.45;
+      const halfIsland = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.5;
+      if (Math.abs(centreX - WIDTH / 2) > halfIsland * 0.9) return;
       // The plane covers the ground the cloud shades, so it is sized from the sprite footprint
       // and then squashed onto the island's dimetric surface rather than staying a rectangle.
       const halfWidth = sceneWidth * 0.85;
@@ -1420,7 +1445,8 @@
     const sun = sunPosition(skyNow, location.latitude, location.longitude);
     const moonNow = moonPosition(skyNow, location.latitude, location.longitude,
       sun.eclipticLongitude);
-    const cloudStates = createCloudStates(motionTime, sceneWeather);
+    const cloudStates = createCloudStates(motionTime, sceneWeather,
+      sun.altitude, sun.hourAngleDegrees);
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     drawSky(skyNow, sun, sceneWeather.weatherCode, sceneWeather.cloudCover);
     ctx.save();
