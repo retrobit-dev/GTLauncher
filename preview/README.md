@@ -31,4 +31,4 @@ The button below the tablet cycles through Live (Open-Meteo), sunny day, overcas
 python3 -m http.server 4173 --bind 0.0.0.0 --directory preview
 ```
 
-Geolocation generally requires HTTPS or localhost. The weather request is made directly from the browser to Open-Meteo.
+Geolocation generally requires HTTPS or localhost. The weather request is made directly from the browser to Open-Meteo. The straw-hat farmer stands on tile E5, the centre of the 9x9 board, drawn inside the island's own transform so his feet sit on that tile's centre and his body rises over the tiles behind him. He is drawn after the island surface but before the clouds, so a cloud crossing the plate passes in front of him exactly as it does over the grass. His sprite is the app-palette restyle, tinted with the same sky atmosphere the island uses and dimmed by the same daylight curve, because the night tint alone is a light wash and left him as bright at midnight as at noon; the tinted copy is cached per tint value instead of being composited every frame.
