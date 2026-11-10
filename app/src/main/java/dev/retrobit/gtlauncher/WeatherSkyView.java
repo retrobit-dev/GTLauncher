@@ -439,9 +439,11 @@ public final class WeatherSkyView extends View {
         double opacity = (0.10 + directLight * 0.30) * cloudFilter
                 * ISLAND_BODY_SHADOW_OPACITY_SCALE * 0.9;
         if (opacity <= 0.002) return;
-        // Progress along the arc decides which way the light leans, so the shadow swings with it.
         double lean = cloudShadowLean(sunHourAngle);
-        double throwFactor = Math.min(1.0 / elevationSine, 1.6);
+        // A low light throws a shadow further along the ground, so the horizontal lean and the
+        // forward throw are driven by the same factor. The cap is wider than the lean's used to be,
+        // because the forward distance is what makes dawn and dusk read differently from noon.
+        double throwFactor = clamp(1.0 / elevationSine, 0.6, 2.2);
         int save = canvas.save();
         setClipIslandSurface(canvas);
         for (CloudState cloud : clouds) {
@@ -450,20 +452,41 @@ public final class WeatherSkyView extends View {
             // Only a cloud actually crossing the island casts onto it. That is also what keeps
             // the casting rule easy to read: the sprite dims and its shadow appears together.
             if (!cloudOverlapsIsland(cloud)) continue;
-            // The ground point tracks the cloud's own height on the arc, so a cloud higher up the
-            // dome throws its shadow onto the far half of the island.
-            float arcHeight = cloud.screenBottomY - cloudArcY(cloud.screenCenterX, 0);
-            float drop = (float) clamp(arcHeight, 0.0,
-                    ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT * 1.2);
             float centreX = cloud.screenCenterX
                     + (float) clamp(lean * throwFactor, -sceneWidth, sceneWidth);
-            float centreY = ISLAND_CENTER_Y - drop * 0.55f
-                    + (cloud.screenBottomY - ISLAND_CENTER_Y) * 0.12f;
+            // The shadow lands FORWARD of the cloud, which is lower on the screen: the light is
+            // above, the plate is below, so the ground point has to be beneath the sprite rather
+            // than behind it. How far forward grows with the cloud's height above the plate and
+            // with how low the light is. The term this replaced subtracted the cloud's arc height,
+            // which pulled the shadow upward as the cloud climbed, so a high cloud shaded the far
+            // half of the plate while its own sprite sat in front of that shading.
+            float heightAbovePlate = Math.max(0.0f, cloud.screenBottomY - ISLAND_TOP);
+            float thrownY = cloud.screenBottomY
+                    + heightAbovePlate * 0.55f * (float) throwFactor;
+            // The plate is a diamond, so the room a ground point has shrinks toward every corner.
+            // Scaling the offset vector as a whole, rather than each axis on its own, keeps the
+            // shadow inside the plate without straightening the throw: a per-axis clamp froze the
+            // shadow on a flat line the moment it reached the edge, which read as the shadow
+            // refusing to move.
+            float halfPlateW = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f;
+            float halfPlateH = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f;
+            float halfShadow = sceneHeight * CLOUD_SHADOW_SCALE / 2.0f;
+            float inset = 1.0f - (float) clamp(halfShadow / halfPlateH, 0.0, 0.8);
+            float offsetX = centreX - SCENE_WIDTH / 2.0f;
+            float offsetY = thrownY - ISLAND_CENTER_Y;
+            float reach = Math.abs(offsetX) / (halfPlateW * inset)
+                    + Math.abs(offsetY) / (halfPlateH * inset);
+            if (reach > 1.0f) {
+                offsetX /= reach;
+                offsetY /= reach;
+            }
+            float shadowX = SCENE_WIDTH / 2.0f + offsetX;
+            float centreY = ISLAND_CENTER_Y + offsetY;
             // The shadow is the cloud's own silhouette, shrunk. A diamond plate read as a generic
             // smudge that said nothing about which cloud threw it; the traced outline keeps the
             // lobes.
             paint.setColor(Color.argb((int) (255.0 * opacity), 12, 23, 40));
-            drawGroundSilhouette(canvas, cloud.shape, centreX, centreY,
+            drawGroundSilhouette(canvas, cloud.shape, shadowX, centreY,
                     sceneWidth * CLOUD_SHADOW_SCALE, sceneHeight * CLOUD_SHADOW_SCALE);
         }
         canvas.restoreToCount(save);
