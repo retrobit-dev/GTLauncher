@@ -763,12 +763,11 @@ public final class WeatherSkyView extends View {
         // frame, which is why earlier attempts read as "there is no shadow at all" even though one
         // was being drawn.
         float centreY = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f
-                + ISLAND_DEPTH + SEA_DROP + 11.0f;
-        // Smaller than the plate and smaller than the water, so the surface still shows all the way
-        // around it. A shadow the size of the sea diamond would just be a second dark diamond with
-        // nothing to tell the two apart.
-        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f * 0.62f;
-        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f * 0.62f;
+                + ISLAND_DEPTH + SEA_DROP + 10.0f;
+        // Nearly the plate's own footprint: almost the same size is what makes it read as that
+        // plate's shadow, and the offset above is what keeps it from merging into the plate's base.
+        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f * 0.95f;
+        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f * 0.95f;
         double progress = celestialProgress(sunHourAngle);
         float drift = (float) ((0.5 - progress) * 2.0 * ISLAND_BODY_SHADOW_DRIFT);
         float centreX = SCENE_WIDTH / 2.0f - drift;

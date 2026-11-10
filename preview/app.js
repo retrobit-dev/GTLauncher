@@ -760,14 +760,14 @@
     const opacity = (0.10 + directLight * 0.30) * cloudFilter
       * ISLAND_BODY_SHADOW_OPACITY_SCALE * 3.0;
     if (opacity <= 0.002) return;
-    // The shadow is the island's own footprint, slid down the water by a fixed offset. It moves with
-    // SEA_DROP so it keeps the same distance from the plate, and stays small enough that the water
-    // still shows all the way around it -- a shadow as big as the sea diamond would just be a second
-    // dark diamond with nothing to tell the two apart.
+    // The shadow is the plate's own footprint at almost full size, slid down the water so it clearly
+    // sits below the island rather than touching its underside. Nearly the same size as the island is
+    // what makes it read as that plate's shadow; the offset is what keeps it from merging into the
+    // plate's base. It moves with SEA_DROP so the gap stays the same at any sea depth.
     const centerY = islandTop + ISLAND_GRID_SIZE * islandTileHeight / 2 + ISLAND_DEPTH
-      + SEA_DROP + 11;
-    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2 * 0.62;
-    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 2 * 0.62;
+      + SEA_DROP + 10;
+    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2 * 0.95;
+    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 2 * 0.95;
     // Light from the eastern half pushes the patch west, exactly as the island's own shadow does.
     const progress = celestialProgress(sunHourAngle);
     const drift = (0.5 - progress) * 2 * ISLAND_BODY_SHADOW_DRIFT;
