@@ -522,8 +522,10 @@
   // The moon only appears once the sun has dropped below this altitude.
   const MOON_VISIBLE_BELOW_SUN = -2;
   const GLOW_STEPS = 14;
-  const GLOW_REACH = 15.0;
-  const GLOW_ALPHA = 0.040;
+  // The halo used to reach 15 units past a 10.5-unit disc at 0.040 alpha per ring, which washed out
+  // the sky around it and read brighter than the disc itself. Pulled in and faded down.
+  const GLOW_REACH = 9.5;
+  const GLOW_ALPHA = 0.024;
   const GLOW_PULSE_SPEED = 1.15;
 
   // Light tone on top, deep tone at the bottom. The pair warms near the horizon and dulls
@@ -564,8 +566,8 @@
     const high = clamp(clamp(altitude, 0, 90) / 45, 0, 1);
     const squash = 0.52 + high * 0.48;
     const breathe = 0.5 + 0.5 * Math.sin(motionTime * GLOW_PULSE_SPEED);
-    const reach = GLOW_REACH * (1.25 - high * 0.55) * (0.68 + breathe * 0.72);
-    const alpha = GLOW_ALPHA * (0.55 + breathe * 0.75) * visibility * strength;
+    const reach = GLOW_REACH * (1.15 - high * 0.45) * (0.82 + breathe * 0.36);
+    const alpha = GLOW_ALPHA * (0.72 + breathe * 0.42) * visibility * strength;
     ctx.fillStyle = tint.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
     for (let step = 0; step < GLOW_STEPS; step += 1) {
       const progress = step / (GLOW_STEPS - 1);
@@ -845,15 +847,18 @@
 
   // A cloud crossing the island drops to partial opacity, so whatever sits on the tiles is not
   // hidden behind it. The island's own surface shadows are unaffected: this is only the sprite.
-  function cloudOpacity(cloud) {
-    return cloudOverlapsIsland(cloud) ? CLOUD_ISLAND_ALPHA : 1;
+  // Every cloud carries the same opacity, whether or not it is crossing the island. Dimming only
+  // the ones over the plate made a cloud visibly change weight as it drifted on, which read as the
+  // cloud flickering rather than as depth.
+  function cloudOpacity() {
+    return CLOUD_ISLAND_ALPHA;
   }
 
   function drawClouds(clouds, sunAltitude, code) {
     if (clouds.length === 0) return;
     const palette = cloudPalette(sunAltitude, code);
     clouds.forEach(cloud => {
-      const alpha = cloudOpacity(cloud);
+      const alpha = cloudOpacity();
       const previousAlpha = ctx.globalAlpha;
       ctx.globalAlpha = previousAlpha * alpha;
       drawCloudRows(cloud, palette);
@@ -874,6 +879,14 @@
   // placed with the same transform or the shadow drifts as soon as the zoom changes.
   function islandAnchor() {
     return [WIDTH / 2, HEIGHT - ISLAND_BOTTOM_MARGIN];
+  }
+
+  // The floor the island floats over. The island's own cast shadow already establishes where that
+  // floor reads on screen, so cloud shadows use the same line rather than a guess: they sit on the
+  // ground beside the island's shadow and share its language instead of floating on their own.
+  function groundShadowY() {
+    const bottomY = islandTop + ISLAND_GRID_SIZE * islandTileHeight;
+    return bottomY + ISLAND_DEPTH - ISLAND_DEPTH - ISLAND_BODY_SHADOW_RISE;
   }
 
   function applyIslandTransform() {
@@ -1311,16 +1324,61 @@
       * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.55;
   }
 
+  // One shared light model for every cloud shadow, on the island or on the ground, so the two never
+  // drift apart in weight the way the island body's and the cloud's used to.
+  function cloudShadowOpacity(light, cloudCover, code) {
+    const altitude = Math.max(light.altitude, 0);
+    const directLight = clamp((altitude + 8) / 28, 0, 1);
+    let cloudFilter = 1 - clamp(cloudCover / 100 * 0.45, 0, 0.45);
+    if (weatherCodeIsStorm(code)) cloudFilter *= 0.82;
+    return (0.10 + directLight * 0.30) * cloudFilter * ISLAND_BODY_SHADOW_OPACITY_SCALE * 0.9;
+  }
+
+  // Ground shadows sit on the floor the island floats over, drawn before the island so the plate
+  // covers them where they overlap. They borrow the island's own cast-shadow language: the same
+  // colour, the same opacity model and the same diamond squash, so a shadow on the ground reads as
+  // the same material as the one under the island rather than as a second effect.
+  function drawGroundCloudShadows(clouds, sunAltitude, sunHourAngle, cloudCover, code) {
+    if (clouds.length === 0) return;
+    const light = pickLightSource(sunAltitude, sunHourAngle, null, cloudCover);
+    const altitude = Math.max(light.altitude, 0);
+    const elevationSine = Math.max(Math.sin(altitude * Math.PI / 180), 0.35);
+    const opacity = cloudShadowOpacity(light, cloudCover, code);
+    if (opacity <= 0.002) return;
+    const throwFactor = clamp(1 / elevationSine, 0.6, 2.2);
+    const floorY = groundShadowY();
+    const toFloor = Math.max(0, floorY - islandTop);
+    ctx.save();
+    clouds.forEach(cloud => {
+      // Only clouds that are not already shading the plate draw down here, so nothing is doubled.
+      if (cloudOverlapsIsland(cloud)) return;
+      const sceneWidth = cloud.shape[0].length * cloud.cell;
+      const sceneHeight = cloud.shape.length * cloud.cell;
+      const offsetX = clamp(cloudShadowLean(light.hourAngle) * throwFactor * 1.35,
+        -sceneWidth * 1.6, sceneWidth * 1.6);
+      const heightAboveFloor = Math.max(0, cloud.screenBottomY - floorY) + toFloor;
+      // On the floor the throw reads much flatter than on the plate, because the floor is further
+      // from the light, so it is weighted down to a fraction of the plate's throw. It is then held
+      // inside the band of floor the panel actually shows: pushed any lower and the shadow fell
+      // behind the island mass, where the plate hid it and the feature looked broken.
+      const centreX = cloud.screenCenterX + offsetX;
+      // Held close to the island shadow's line so the two read as one ground plane; drifting any
+      // further down left a lone smudge near the bottom edge, disconnected from everything.
+      const centreY = clamp(floorY + heightAboveFloor * 0.055 * throwFactor,
+        floorY - 8, floorY + 20);
+      ctx.fillStyle = `rgba(12,23,40,${opacity * 0.82})`;
+      drawGroundSilhouette(cloud.shape, centreX, centreY, sceneWidth * CLOUD_SHADOW_SCALE * 1.25,
+        sceneHeight * CLOUD_SHADOW_SCALE * 0.52);
+    });
+    ctx.restore();
+  }
+
   function drawCloudShadowsOnIsland(clouds, sunAltitude, sunHourAngle, cloudCover, code) {
     if (clouds.length === 0) return;
     const light = pickLightSource(sunAltitude, sunHourAngle, null, cloudCover);
     const altitude = Math.max(light.altitude, 0);
     const elevationSine = Math.max(Math.sin(altitude * Math.PI / 180), 0.35);
-    const directLight = clamp((altitude + 8) / 28, 0, 1);
-    let cloudFilter = 1 - clamp(cloudCover / 100 * 0.45, 0, 0.45);
-    if (weatherCodeIsStorm(code)) cloudFilter *= 0.82;
-    const opacity = (0.10 + directLight * 0.30) * cloudFilter
-      * ISLAND_BODY_SHADOW_OPACITY_SCALE * 0.9;
+    const opacity = cloudShadowOpacity(light, cloudCover, code);
     if (opacity <= 0.002) return;
     // A low light throws a shadow further along the ground, so the horizontal lean and the
     // forward throw are driven by the same factor. The cap is wider than the lean's used to be,
@@ -1553,6 +1611,10 @@
     drawFog(sceneWeather.weatherCode);
     drawLightning(time, sceneWeather.weatherCode);
     ctx.restore();
+    // Ground shadows go down before the island so the plate covers them, and before the clouds so
+    // no sprite is ever painted over by a shadow it did not come from.
+    drawGroundCloudShadows(cloudStates, sun.altitude, sun.hourAngleDegrees,
+      sceneWeather.cloudCover, sceneWeather.weatherCode);
     drawFloatingIsland(sun.altitude, sun.azimuth, sun.hourAngleDegrees,
       sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates);
     // Clouds sit in front of the island. They are not clipped to the sky band: a foreground

@@ -65,8 +65,10 @@ public final class WeatherSkyView extends View {
     // The moon only appears once the sun has dropped below this altitude.
     private static final double MOON_VISIBLE_BELOW_SUN = -2.0;
     private static final int GLOW_STEPS = 14;
-    private static final float GLOW_REACH = 15.0f;
-    private static final double GLOW_ALPHA = 0.040;
+    // The halo used to reach 15 units past a 10.5-unit disc, which washed out the sky around it and
+    // read brighter than the disc itself. Pulled in and faded down.
+    private static final float GLOW_REACH = 9.5f;
+    private static final double GLOW_ALPHA = 0.024;
     private static final double GLOW_PULSE_SPEED = 1.15;
 
     private static final float CELESTIAL_BAND_TOP = SCENE_HEIGHT * 0.10f;
@@ -328,6 +330,10 @@ public final class WeatherSkyView extends View {
         drawFog(scene, code);
         drawStormFlash(scene, elapsedSeconds, code);
         scene.restoreToCount(skySave);
+        // Ground shadows go down before the island so the plate covers them, and before the clouds
+        // so no sprite is ever painted over by a shadow it did not come from.
+        drawGroundCloudShadows(scene, cloudStates, sun.altitudeDegrees, sun.hourAngleDegrees,
+                cloudCover, code);
         drawFloatingIsland(scene, sun.altitudeDegrees, sun.azimuthDegrees,
                 sun.hourAngleDegrees, cloudCover, code, moon, cloudStates);
         // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
@@ -428,16 +434,71 @@ public final class WeatherSkyView extends View {
                 * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.55;
     }
 
+    /**
+     * One shared light model for every cloud shadow, on the island or on the ground, so the two
+     * never drift apart in weight the way the island body's and the cloud's used to.
+     */
+    private double cloudShadowOpacity(double altitude, double cloudCover, int code) {
+        double directLight = clamp((altitude + 8.0) / 28.0, 0.0, 1.0);
+        double cloudFilter = 1.0 - clamp(cloudCover / 100.0 * 0.45, 0.0, 0.45);
+        if (code >= 95) cloudFilter *= 0.82;
+        return (0.10 + directLight * 0.30) * cloudFilter * ISLAND_BODY_SHADOW_OPACITY_SCALE * 0.9;
+    }
+
+    /**
+     * The floor the island floats over. The island's own cast shadow already establishes where that
+     * floor reads on screen, so cloud shadows use the same line rather than a guess.
+     */
+    private float groundShadowY() {
+        float bottomY = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
+        return bottomY - ISLAND_BODY_SHADOW_RISE;
+    }
+
+    /**
+     * Ground shadows sit on the floor the island floats over, drawn before the island so the plate
+     * covers them where they overlap. They borrow the island's own cast-shadow language: the same
+     * colour, the same opacity model and the same squash, so a shadow on the ground reads as the
+     * same material as the one under the island rather than as a second effect.
+     */
+    private void drawGroundCloudShadows(Canvas canvas, CloudState[] clouds, double sunAltitude,
+            double sunHourAngle, double cloudCover, int code) {
+        if (clouds.length == 0) return;
+        double altitude = Math.max(sunAltitude, 0.0);
+        double elevationSine = Math.max(Math.sin(altitude * Math.PI / 180.0), 0.35);
+        double opacity = cloudShadowOpacity(altitude, cloudCover, code);
+        if (opacity <= 0.002) return;
+        double throwFactor = clamp(1.0 / elevationSine, 0.6, 2.2);
+        double lean = cloudShadowLean(sunHourAngle);
+        float floorY = groundShadowY();
+        float toFloor = Math.max(0.0f, floorY - ISLAND_TOP);
+        for (CloudState cloud : clouds) {
+            // Only clouds that are not already shading the plate draw down here, so nothing is
+            // doubled.
+            if (cloudOverlapsIsland(cloud)) continue;
+            float sceneWidth = cloud.shape[0].length() * cloud.cell;
+            float sceneHeight = cloud.shape.length * cloud.cell;
+            float offsetX = (float) clamp(lean * throwFactor * 1.35,
+                    -sceneWidth * 1.6, sceneWidth * 1.6);
+            float heightAboveFloor = Math.max(0.0f, cloud.screenBottomY - floorY) + toFloor;
+            // On the floor the throw reads much flatter than on the plate, because the floor is
+            // further from the light. Held close to the island shadow's line so the two read as one
+            // ground plane; drifting any further down left a lone smudge near the bottom edge,
+            // disconnected from everything.
+            float centreX = cloud.screenCenterX + offsetX;
+            float centreY = (float) clamp(floorY + heightAboveFloor * 0.055 * throwFactor,
+                    floorY - 8.0, floorY + 20.0);
+            paint.setColor(Color.argb((int) (255.0 * opacity * 0.82), 12, 23, 40));
+            drawGroundSilhouette(canvas, cloud.shape, centreX, centreY,
+                    sceneWidth * CLOUD_SHADOW_SCALE * 1.25f, sceneHeight * CLOUD_SHADOW_SCALE * 0.52f);
+        }
+    }
+
     private void drawCloudShadowsOnIsland(Canvas canvas, CloudState[] clouds, double sunAltitude,
             double sunHourAngle, double cloudCover, int code) {
         if (clouds.length == 0) return;
         double altitude = Math.max(sunAltitude, 0.0);
         double elevationSine = Math.max(Math.sin(altitude * Math.PI / 180.0), 0.35);
-        double directLight = clamp((altitude + 8.0) / 28.0, 0.0, 1.0);
-        double cloudFilter = 1.0 - clamp(cloudCover / 100.0 * 0.45, 0.0, 0.45);
-        if (code >= 95) cloudFilter *= 0.82;
-        double opacity = (0.10 + directLight * 0.30) * cloudFilter
-                * ISLAND_BODY_SHADOW_OPACITY_SCALE * 0.9;
+        double opacity = cloudShadowOpacity(altitude, cloudCover, code);
         if (opacity <= 0.002) return;
         double lean = cloudShadowLean(sunHourAngle);
         // A low light throws a shadow further along the ground, so the horizontal lean and the
@@ -1068,8 +1129,8 @@ public final class WeatherSkyView extends View {
         double high = clamp(clamp(altitude, 0.0, 90.0) / 45.0, 0.0, 1.0);
         float squash = (float) (0.52 + high * 0.48);
         double breathe = 0.5 + 0.5 * Math.sin(elapsedSeconds * GLOW_PULSE_SPEED);
-        float reach = (float) (GLOW_REACH * (1.25 - high * 0.55) * (0.68 + breathe * 0.72));
-        double alpha = GLOW_ALPHA * (0.55 + breathe * 0.75) * visibility * strength;
+        float reach = (float) (GLOW_REACH * (1.15 - high * 0.45) * (0.82 + breathe * 0.36));
+        double alpha = GLOW_ALPHA * (0.72 + breathe * 0.42) * visibility * strength;
         int color = (tint & 0x00FFFFFF) | ((int) Math.round(255.0 * alpha) << 24);
         for (int step = 0; step < GLOW_STEPS; step++) {
             float progress = step / (float) (GLOW_STEPS - 1);
@@ -1410,7 +1471,10 @@ public final class WeatherSkyView extends View {
             // A cloud crossing the island drops to partial opacity, so whatever sits on the tiles
             // is not hidden behind it.
             int previousAlpha = paint.getAlpha();
-            int layerAlpha = cloudOverlapsIsland(cloud) ? (int) (255 * CLOUD_ISLAND_ALPHA) : 255;
+            // Every cloud carries the same opacity, whether or not it is crossing the island.
+            // Dimming only the ones over the plate made a cloud visibly change weight as it drifted
+            // on, which read as the cloud flickering rather than as depth.
+            int layerAlpha = (int) (255 * CLOUD_ISLAND_ALPHA);
             drawCloudRows(canvas, cloud, palette, layerAlpha);
             // Draw the wrapped copy too, so a cloud straddling an edge stays continuous instead of
             // being sliced in half while it leaves one side and arrives at the other.
