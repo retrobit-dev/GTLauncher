@@ -22,10 +22,16 @@ public final class WeatherSkyView extends View {
      * it is the water the plate hangs over, so its outline mirrors the plate.
      */
     private static final float SEA_SCALE = 1.34f;
-    private static final int[] SEA_LIGHT = {0xFF2B3C53, 0xFF6D5F7C, 0xFF546974, 0xFF5E879B};
-    private static final int[] SEA_MID = {0xFF1A2A3F, 0xFF4E4763, 0xFF3D4E58, 0xFF3D6A80};
-    private static final int[] SEA_DEEP = {0xFF121E2E, 0xFF3A344B, 0xFF2E3C44, 0xFF2B5265};
-    private static final int[] SEA_RIPPLE = {0xFF3A5273, 0xFF8A7A92, 0xFF68808A, 0xFF74A0AC};
+    /**
+     * One flat blue for the whole surface. The sea is the calmest thing in the frame: no bands, no
+     * ripples, no rim, so nothing competes with the island.
+     */
+    private static final int SEA_COLOR = 0xFF4A7F99;
+    /**
+     * How far the water sits below the plate. Pushing it down opens a band of sky between the
+     * island's underside and the surface, so the plate reads as floating well above the water.
+     */
+    private static final float SEA_DROP = 16.0f;
     private static final int SCENE_HEIGHT = 200;
     // A 2x backing bitmap makes half-scene-unit clusters land on crisp source pixels.
     private static final int RENDER_SCALE = 2;
@@ -695,8 +701,10 @@ public final class WeatherSkyView extends View {
         float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f * SEA_SCALE;
         // Dropped so the upper half tucks behind the plate and the lower half shows as water under
         // it, which is the composition the plate's own shadow needs in order to land somewhere.
+        // SEA_DROP pushes it further down, opening a band of sky between the plate's underside and
+        // the surface so the island reads as floating well above the water.
         float centerY = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT + ISLAND_DEPTH
-                - halfHeight * 0.15f;
+                - halfHeight * 0.15f + SEA_DROP;
         return new float[] {
                 centerX, centerY - halfHeight,
                 centerX + halfWidth, centerY,
@@ -716,61 +724,19 @@ public final class WeatherSkyView extends View {
     }
 
     /**
-     * Three flat tones inside a diamond that mirrors the island, with a scatter of one-unit ripples.
-     * Same limited-palette language as the island; ripples lengthen toward the viewer, which is what
-     * sells the depth without a gradient.
+     * A single flat tone inside a diamond that mirrors the island. The sea is deliberately the
+     * calmest thing in the frame: no bands, no ripples, no rim, so nothing competes with the island.
      */
     private void drawSea(Canvas canvas, double sunAltitude, double cloudCover, int code,
             double sunHourAngle) {
         SkyAtmosphere atmosphere = skyAtmosphere(sunAltitude, cloudCover, code);
-        int index = 3;
-        if (atmosphere == NIGHT_ATMOSPHERE) index = 0;
-        else if (atmosphere == TWILIGHT_ATMOSPHERE) index = 1;
-        else if (atmosphere == OVERCAST_ATMOSPHERE) index = 2;
-        // The island is pulled toward the sky's tint as the light changes; the sea was not, so it
-        // stayed a separate, more saturated blue. Blending it the same way is what makes the water
-        // belong to the same scene instead of sitting on top of it as its own colour.
-        float mix = (float) (atmosphere.islandMix * 1.35);
-        int seaLight = blend(SEA_LIGHT[index], atmosphere.tint, mix);
-        int seaMid = blend(SEA_MID[index], atmosphere.tint, mix);
-        int seaDeep = blend(SEA_DEEP[index], atmosphere.tint, mix);
-        int seaRipple = blend(SEA_RIPPLE[index], atmosphere.tint, mix);
+        // The light still moves over it: the same sky tint that pulls the island is applied here,
+        // so the water darkens at night and warms at dusk instead of glowing the same blue at 11pm.
+        int seaColor = blend(SEA_COLOR, atmosphere.tint, atmosphere.islandMix * 1.35);
         float[] p = seaSurfacePoints();
-        float centreY = p[1] + (p[5] - p[1]) / 2.0f;
-        float halfHeight = (p[5] - p[1]) / 2.0f;
 
-        int save = canvas.save();
-        canvas.clipPath(seaDiamondPath(p));
-        paint.setColor(seaMid);
-        canvas.drawRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT, paint);
-        // The near half takes the deeper tone, split along the diamond's own middle line, so the
-        // divide follows the shape instead of cutting across it.
-        Path nearHalf = new Path();
-        nearHalf.moveTo(p[6], p[7]);
-        nearHalf.lineTo(p[2], p[3]);
-        nearHalf.lineTo(p[4], p[5]);
-        nearHalf.close();
-        paint.setColor(seaDeep);
-        canvas.drawPath(nearHalf, paint);
-        for (int i = 0; i < 120; i += 1) {
-            double near = Math.pow(cloudHash(0x5ea, i, 1), 0.7);
-            float y = (float) (p[1] + 3.0 + near * (p[5] - p[1] - 6.0));
-            float span = 1.0f - Math.abs(y - centreY) / halfHeight;
-            float halfAt = (p[2] - p[6]) / 2.0f * Math.max(0.0f, span);
-            float length = (float) (3.0 + (1.0 - near) * 14.0);
-            float x = p[0] + (float) ((cloudHash(0x5ea, i, 2) - 0.5) * 2.0) * halfAt;
-            if (Math.abs(x - p[0]) > halfAt - length) continue;
-            paint.setColor(cloudHash(0x5ea, i, 3) > 0.62 ? seaLight : seaRipple);
-            canvas.drawRect(x, y, x + length, y + 1.0f, paint);
-        }
-        canvas.restoreToCount(save);
-
-        // A light rim around the diamond, drawn after the clip is released so the edge stays crisp.
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(1.0f);
-        paint.setColor(seaLight);
+        paint.setColor(seaColor);
         canvas.drawPath(seaDiamondPath(p), paint);
-        paint.setStyle(Paint.Style.FILL);
 
         // The plate's shadow lands ON this surface, which is the point of the whole change.
         drawIslandReflection(canvas, sunAltitude, cloudCover, code, sunHourAngle);
@@ -797,12 +763,12 @@ public final class WeatherSkyView extends View {
         // frame, which is why earlier attempts read as "there is no shadow at all" even though one
         // was being drawn.
         float centreY = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f
-                + ISLAND_DEPTH + 18.0f;
-        // Full footprint rather than a squashed sliver. A sliver overlapping the island's base
-        // looked like a smudge on the plate's underside; a diamond the size of the plate, offset
-        // from it, reads immediately as the plate's shadow lying on the water.
-        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f * 0.96f;
-        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f * 0.96f;
+                + ISLAND_DEPTH + SEA_DROP + 14.0f;
+        // Smaller than the plate and smaller than the water, so the surface still shows all the way
+        // around it. A shadow the size of the sea diamond would just be a second dark diamond with
+        // nothing to tell the two apart.
+        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f * 0.72f;
+        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f * 0.72f;
         double progress = celestialProgress(sunHourAngle);
         float drift = (float) ((0.5 - progress) * 2.0 * ISLAND_BODY_SHADOW_DRIFT);
         float centreX = SCENE_WIDTH / 2.0f - drift;
