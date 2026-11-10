@@ -184,8 +184,11 @@
   ];
   // The straw-hat farmer, restyled to this palette. Drawn only when the asset is ready, so a slow
   // or missing image leaves the panel untouched instead of throwing.
-  const CHARACTER_SOURCE = 'assets/player-character-app-palette.png';
+  // The farmer is an 18x24 sprite where one sprite pixel is exactly one scene unit, so his scale is
+  // written in scene units rather than in tile fractions.
+  const CHARACTER_SOURCE = 'assets/farmer-18x24.png';
   const CHARACTER_TILE = 'E5';
+  const CHARACTER_UNIT = 1.15;
   let characterImage = null;
   function loadCharacter() {
     const image = new Image();
@@ -1546,11 +1549,14 @@
     if (!tile) return;
     const atmosphere = skyAtmosphere(sunAltitude, cloudCover, code);
     const daylight = clamp((sunAltitude + 8) / 28, 0, 1);
-    const sprite = tintedCharacter(atmosphere.tint, atmosphere.islandMix, (1 - daylight) * 0.62);
-    // Three and a bit tiles tall, which keeps him readable at this panel size without hiding the
-    // grid he stands on.
-    const height = islandTileHeight * 3.4;
-    const width = height * characterImage.width / characterImage.height;
+    // In daylight the sprite is already the right weight, so the tint and the dim both scale down as
+    // the sun rises. Applying the full atmosphere wash all day was the other half of why he read as
+    // a dark blob: it darkened a sprite that needed no darkening.
+    const tintMix = atmosphere.islandMix * (1 - daylight * 0.55);
+    const sprite = tintedCharacter(atmosphere.tint, tintMix, (1 - daylight) * 0.55);
+    // One unit per sprite pixel, then half of what the old traced sprite took up.
+    const height = characterImage.height * CHARACTER_UNIT;
+    const width = characterImage.width * CHARACTER_UNIT;
     const feetX = tile.x;
     const feetY = tile.y + islandTileHeight * 0.18;
     ctx.drawImage(sprite, feetX - width / 2, feetY - height, width, height);
