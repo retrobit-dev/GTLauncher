@@ -2,24 +2,16 @@ package dev.retrobit.gtlauncher;
 
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.LinearGradient;
-import android.graphics.Matrix;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
-import android.graphics.RadialGradient;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.util.AttributeSet;
-import android.util.SparseArray;
 import android.view.View;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Random;
 
 /** Full-screen, non-scrolling pixel-art sky driven by local astronomy and weather data. */
@@ -65,148 +57,6 @@ public final class WeatherSkyView extends View {
     private static final float SUN_GLOW_SAFE_INSET = 20.0f;
     // Temporarily hide sky objects while retaining their renderer for later design iterations.
     private static final boolean DRAW_SKY_OBJECTS = false;
-    // The island's lowest point rests above this cloud sea, which fills the sky beneath it.
-    // Three static sprite rows build the sea; side and front banks overlap the island.
-    private static final float CLOUD_SEA_BASE = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN;
-    private static final float CLOUD_SEA_MARGIN = 34.0f;
-    private static final float CLOUD_SEA_TOP = CLOUD_SEA_BASE + 4.0f;
-    private static final float CLOUD_HAZE_TOP = CLOUD_SEA_BASE - 54.0f;
-    // Clouds are static for now: no drift and no drag parallax.
-    // The sea rises until its crowns meet the island's underside, so the island reads as
-    // resting on the clouds instead of hovering over a gap.
-    private static final CloudLayer[] CLOUD_LAYERS = {
-            new CloudLayer(CLOUD_SEA_BASE + 8.0f, 28.0f, 0.90f, 0.55f,
-                    Color.rgb(182, 200, 218), 11, 1.0f),
-            new CloudLayer(CLOUD_SEA_BASE + 22.0f, 36.0f, 1.0f, 0.26f,
-                    Color.rgb(201, 217, 231), 27, 1.04f),
-            new CloudLayer(CLOUD_SEA_BASE + 38.0f, 46.0f, 1.0f, 0.0f,
-                    Color.rgb(221, 233, 243), 43, 1.10f)
-    };
-    private static final int CLOUD_NEAR_TINT = Color.rgb(238, 244, 250);
-    // Nothing is an exact mirror of its opposite: heights, widths and tints all vary, so the
-    // cloud walls read as natural puffs rather than a symmetrical pattern.
-    private static final CloudBank[] CLOUD_GAP_FILLERS = {
-            new CloudBank(0.335f, 148.0f, 46.0f, 0.06f, true),
-            new CloudBank(0.672f, 144.0f, 52.0f, 0.04f, false),
-            new CloudBank(0.418f, 154.0f, 44.0f, 0.03f, false),
-            new CloudBank(0.600f, 150.0f, 40.0f, 0.05f, true)
-    };
-    // Each flank is a stack of overlapping clouds rather than one scaled blob, so the lobes
-    // stay visible and the wall of cloud still reads as many separate puffs.
-    private static final CloudBank[] CLOUD_SIDE_BANKS = {
-            new CloudBank(0.045f, 132.0f, 84.0f, 0.12f, false),
-            new CloudBank(0.118f, 116.0f, 92.0f, 0.07f, true),
-            new CloudBank(0.172f, 142.0f, 68.0f, 0.05f, true),
-            new CloudBank(0.072f, 102.0f, 78.0f, 0.16f, false),
-            new CloudBank(0.958f, 128.0f, 80.0f, 0.11f, true),
-            new CloudBank(0.877f, 122.0f, 86.0f, 0.06f, false),
-            new CloudBank(0.812f, 146.0f, 64.0f, 0.04f, true),
-            new CloudBank(0.936f, 108.0f, 72.0f, 0.15f, true)
-    };
-    // The cradle holds the island: these crowns sit directly under its soil slab and hide
-    // the lowest tip, which is what makes the island look settled on the cloud tops.
-    // The cradle holds the island: every crest sits a fixed gap under the slab underside,
-    // so the cloud silhouette parallels the two lower edges and the tip looks wedged in
-    // cloud instead of pasted on. Heights and tints vary so it is not a copied outline.
-    // A continuous ridge of crowns with bridge puffs between them, so the clouds that touch
-    // the slab read as one mass instead of a row of separate balls. Heights follow a smooth
-    // arc and the whole row sits four units lower than a bare hug would, which keeps the
-    // exposed soil band at its original width.
-    private static final CloudBank[] CLOUD_CRADLE_BANKS = {
-            new CloudBank(0.235f, 118.0f, 30.0f, 0.10f, true),
-            new CloudBank(0.293f, 125.9f, 33.4f, 0.10f, false),
-            new CloudBank(0.351f, 133.8f, 36.4f, 0.10f, true),
-            new CloudBank(0.409f, 142.0f, 38.7f, 0.10f, false),
-            new CloudBank(0.467f, 150.3f, 39.8f, 0.10f, true),
-            new CloudBank(0.525f, 151.5f, 39.8f, 0.10f, false),
-            new CloudBank(0.583f, 143.2f, 38.7f, 0.10f, true),
-            new CloudBank(0.641f, 135.0f, 36.4f, 0.10f, false),
-            new CloudBank(0.699f, 127.1f, 33.4f, 0.10f, true),
-            new CloudBank(0.757f, 119.2f, 30.0f, 0.10f, false),
-            new CloudBank(0.264f, 124.4f, 35.4f, 0.10f, false),
-            new CloudBank(0.322f, 132.7f, 38.0f, 0.10f, false),
-            new CloudBank(0.380f, 141.1f, 40.1f, 0.10f, false),
-            new CloudBank(0.438f, 149.6f, 41.5f, 0.10f, false),
-            new CloudBank(0.496f, 158.2f, 42.0f, 0.10f, false),
-            new CloudBank(0.554f, 150.8f, 41.5f, 0.10f, false),
-            new CloudBank(0.612f, 142.3f, 40.1f, 0.10f, false),
-            new CloudBank(0.670f, 133.9f, 38.0f, 0.10f, false),
-            new CloudBank(0.728f, 125.6f, 35.4f, 0.10f, false),
-    };
-    // Only this frontmost group drifts: a very slow sway and bob, so the scene breathes without
-    // the island's framing shifting around.
-    // Only this group drifts. Bridge puffs between the crowns keep the foreground from
-    // reading as separate blobs while the sway and bob stay exactly as they were.
-    private static final CloudBank[] CLOUD_FRONT_BANKS = {
-            new CloudBank(0.100f, 150.0f, 74.0f, 0.07f, false, 2.6f, 0.8f, 0.075f, 0.4f),
-            new CloudBank(0.895f, 156.0f, 66.0f, 0.07f, true, 2.2f, 0.7f, 0.062f, 2.1f),
-            new CloudBank(0.497f, 160.0f, 52.8f, 0.07f, true, 2.2f, 0.7f, 0.062f, 3.1f),
-            new CloudBank(0.238f, 162.0f, 58.0f, 0.07f, true, 3.1f, 0.9f, 0.088f, 4.0f),
-            new CloudBank(0.567f, 166.0f, 46.4f, 0.07f, false, 3.1f, 0.9f, 0.088f, 5.0f),
-            new CloudBank(0.782f, 168.0f, 62.0f, 0.07f, false, 2.4f, 0.6f, 0.070f, 5.3f),
-            new CloudBank(0.510f, 172.0f, 49.6f, 0.07f, true, 2.4f, 0.6f, 0.070f, 6.3f),
-            new CloudBank(0.516f, 174.0f, 46.0f, 0.07f, false, 3.4f, 1.0f, 0.055f, 1.2f),
-            new CloudBank(0.649f, 178.0f, 36.8f, 0.07f, false, 3.4f, 1.0f, 0.055f, 2.2f),
-    };
-    // Distant clouds behind the island, hovering a little above the middle of the screen. The
-    // island covers their centre, so they show as a scattered far layer in the gaps beside it.
-    // Far layer: crests echo the island's upper edges (highest under its tip, sinking
-    // toward the frame edges) with uneven jitter, so the island reads as resting inside a
-    // cloud basin instead of sitting in open sky. These drift very slowly as well: far
-    // clouds move far less than the front ones. The last value is the bank's alpha.
-    private static final CloudBank[] CLOUD_BACK_BANKS = {
-            new CloudBank(0.005f, 104.0f, 42.0f, 0.46f, true,
-                    1.00f, 0.40f, 0.010f, 0.0f, 0.64f),
-            new CloudBank(0.050f, 96.0f, 32.0f, 0.43f, false,
-                    1.25f, 0.55f, 0.011f, 0.7f, 0.64f),
-            new CloudBank(0.095f, 75.0f, 36.0f, 0.39f, true,
-                    1.50f, 0.70f, 0.012f, 1.4f, 0.64f),
-            new CloudBank(0.145f, 67.0f, 28.0f, 0.46f, false,
-                    1.75f, 0.40f, 0.014f, 2.1f, 0.64f),
-            new CloudBank(0.200f, 50.0f, 32.0f, 0.43f, true,
-                    1.00f, 0.55f, 0.015f, 2.8f, 0.50f),
-            new CloudBank(0.265f, 52.0f, 26.0f, 0.39f, false,
-                    1.25f, 0.70f, 0.010f, 3.5f, 0.50f),
-            new CloudBank(0.335f, 44.0f, 30.0f, 0.46f, true,
-                    1.50f, 0.40f, 0.011f, 4.2f, 0.50f),
-            new CloudBank(0.410f, 49.0f, 26.0f, 0.43f, false,
-                    1.75f, 0.55f, 0.012f, 4.9f, 0.50f),
-            new CloudBank(0.490f, 42.0f, 28.0f, 0.39f, true,
-                    1.00f, 0.70f, 0.014f, 5.6f, 0.50f),
-            new CloudBank(0.565f, 48.0f, 26.0f, 0.46f, false,
-                    1.25f, 0.40f, 0.015f, 6.3f, 0.50f),
-            new CloudBank(0.640f, 43.0f, 30.0f, 0.43f, true,
-                    1.50f, 0.55f, 0.010f, 7.0f, 0.50f),
-            new CloudBank(0.710f, 52.0f, 26.0f, 0.39f, false,
-                    1.75f, 0.70f, 0.011f, 7.7f, 0.50f),
-            new CloudBank(0.775f, 53.0f, 32.0f, 0.46f, true,
-                    1.00f, 0.40f, 0.012f, 8.4f, 0.50f),
-            new CloudBank(0.835f, 69.0f, 28.0f, 0.43f, false,
-                    1.25f, 0.55f, 0.014f, 9.1f, 0.50f),
-            new CloudBank(0.895f, 75.0f, 36.0f, 0.39f, true,
-                    1.50f, 0.70f, 0.015f, 9.8f, 0.64f),
-            new CloudBank(0.950f, 94.0f, 32.0f, 0.46f, false,
-                    1.75f, 0.40f, 0.010f, 10.5f, 0.64f),
-            new CloudBank(0.995f, 104.0f, 44.0f, 0.43f, true,
-                    1.00f, 0.55f, 0.011f, 11.2f, 0.64f),
-    };
-    // Blanket crowns that climb high enough to cover the outermost tiles on every side, so the
-    // cloud really does embrace the ground slab instead of stopping at its edge.
-    private static final CloudBank[] CLOUD_BLANKET_BANKS = {
-            new CloudBank(0.020f, 118.0f, 92.0f, 0.14f, false),
-            new CloudBank(0.098f, 126.0f, 84.0f, 0.08f, true),
-            new CloudBank(0.262f, 152.0f, 72.0f, 0.05f, true),
-            new CloudBank(0.986f, 122.0f, 88.0f, 0.12f, false),
-            new CloudBank(0.906f, 132.0f, 80.0f, 0.07f, false),
-            new CloudBank(0.742f, 156.0f, 68.0f, 0.04f, true)
-    };
-    private static final String CLOUD_BANK_SPRITE = "cloud-bank";
-    private static final String CLOUD_MASS_SPRITE = "cloud-mass";
-    // Night cools the clouds, storm cover deepens them, and low sun warms the crests.
-    private static final int CLOUD_NIGHT_TINT = Color.rgb(51, 67, 106);
-    private static final int CLOUD_STORM_TINT = Color.rgb(101, 117, 140);
-    private static final int CLOUD_WARM_TINT = Color.rgb(255, 226, 189);
-    private static final int CLOUD_TINT_CACHE_LIMIT = 12;
     // This stylized 9 x 9 tile surface represents a 2.25 km square ground patch.
     private static final double ISLAND_TILE_METERS = 250.0;
     private static final float ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f
@@ -299,10 +149,6 @@ public final class WeatherSkyView extends View {
     private float headingDegrees;
     private boolean animationEnabled = true;
     private Raindrop[] raindrops = new Raindrop[0];
-    private final SparseArray<Bitmap> cloudSprites = new SparseArray<>();
-    private final Map<String, Bitmap> cloudTintCache = new LinkedHashMap<>();
-    private final Paint cloudPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
-    private final Matrix cloudMatrix = new Matrix();
 
     public WeatherSkyView(Context context) {
         super(context);
@@ -996,12 +842,7 @@ public final class WeatherSkyView extends View {
         float soilLeftX = leftX + ISLAND_GRASS_OVERHANG;
         float soilRightX = rightX - ISLAND_GRASS_OVERHANG;
 
-        // The cloud sea acts as the ground plane, so the island's shadow lands on its tops.
-        // Far layers first: haze and the distant skyline must sit behind the sea and island.
-        drawDistantCloudHaze(canvas, sunAltitude, cloudCover, code);
-        drawBackCloudBanks(canvas, sunAltitude, cloudCover, code);
-        drawCloudSea(canvas, sunAltitude, cloudCover, code);
-        drawIslandShadowOnClouds(canvas, centerX, sunAltitude, cloudCover, code);
+        drawIslandShadow(canvas, centerX, lowerY, sunAltitude, cloudCover, code);
 
         // One rounded, uninterrupted soil slab sits inside the wider grass cap.
         drawIslandSoilBody(canvas, soilLeftX, centerX, soilRightX,
@@ -1060,9 +901,6 @@ public final class WeatherSkyView extends View {
         int topRim = blend(palette.grassSeam, palette.grassDark, 0.32);
         drawSmoothIslandLine(canvas, leftX, middleY, centerX, bottomY, topRim, 0.60f);
         drawSmoothIslandLine(canvas, centerX, bottomY, rightX, middleY, topRim, 0.60f);
-        // Side and front banks overlap the island's tiles, so they draw after it.
-        drawCloudBanks(canvas, sunAltitude, cloudCover, code);
-        drawCloudContactShade(canvas, sunAltitude, cloudCover, code);
     }
 
     private void drawCloudsOverIsland(Canvas canvas, CloudState[] clouds,
@@ -1770,338 +1608,37 @@ public final class WeatherSkyView extends View {
         paint.setAlpha(255);
     }
 
-    private Bitmap cloudSprite(boolean bank) {
-        int key = bank ? 1 : 0;
-        Bitmap cached = cloudSprites.get(key);
-        if (cached != null) return cached;
-        String packageName = getContext().getPackageName();
-        int resource = getResources().getIdentifier(
-                bank ? CLOUD_BANK_SPRITE : CLOUD_MASS_SPRITE, "drawable", packageName);
-        if (resource == 0) return null;
-        Bitmap sprite = BitmapFactory.decodeResource(getResources(), resource);
-        if (sprite == null) return null;
-        cloudSprites.put(key, sprite);
-        return sprite;
-    }
+    private void rebuildWeatherParticles(WeatherSnapshot snapshot) {
+        boolean drizzle = snapshot.hasDrizzle();
+        boolean raining = snapshot.hasRain() || snapshot.hasStorm();
+        double intensity = Math.max(snapshot.precipitationMm, snapshot.rainMm);
+        int rainCount = !raining && !drizzle ? 0
+                : (snapshot.hasStorm() ? 145 : drizzle ? 48 : 76)
+                + (int) Math.min(55.0, intensity * 12.0);
+        Random random = new Random();
 
-    private Bitmap tintedCloudSprite(boolean bank, int tintColor, float tintAmount) {
-        Bitmap sprite = cloudSprite(bank);
-        if (sprite == null) return null;
-        String key = (bank ? "bank" : "mass") + "|" + tintColor + "|"
-                + Math.round(tintAmount * 32.0f);
-        Bitmap cached = cloudTintCache.get(key);
-        if (cached != null) return cached;
-        Bitmap buffer = Bitmap.createBitmap(sprite.getWidth(), sprite.getHeight(),
-                Bitmap.Config.ARGB_8888);
-        Canvas bufferCanvas = new Canvas(buffer);
-        bufferCanvas.drawBitmap(sprite, 0, 0, null);
-        if (tintAmount > 0.01f) {
-            int alpha = Math.round(255.0f * Math.min(1.0f, tintAmount));
-            int tint = Color.argb(alpha, Color.red(tintColor), Color.green(tintColor),
-                    Color.blue(tintColor));
-            // SOURCE_ATOP keeps the sprite's soft edges while shifting its colour.
-            Paint tintPaint = new Paint();
-            tintPaint.setColor(tint);
-            tintPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP));
-            bufferCanvas.drawRect(0, 0, sprite.getWidth(), sprite.getHeight(), tintPaint);
+        raindrops = new Raindrop[rainCount];
+        for (int index = 0; index < rainCount; index++) {
+            boolean storm = snapshot.hasStorm();
+            float speed = drizzle ? 14.0f + random.nextFloat() * 27.0f
+                    : storm ? 55.0f + random.nextFloat() * 48.0f
+                    : 34.0f + random.nextFloat() * 42.0f;
+            float length = drizzle ? 0.5f + random.nextInt(3) * 0.5f
+                    : 2.5f + random.nextInt(storm ? 10 : 6) * 0.5f;
+            float width = 0.5f + random.nextInt(2) * 0.5f;
+            raindrops[index] = new Raindrop(
+                    random.nextFloat() * SCENE_WIDTH,
+                    random.nextFloat() * SCENE_HEIGHT,
+                    speed,
+                    length,
+                    width,
+                    (random.nextFloat() - 0.5f) * (drizzle ? 0.85f : 0.45f),
+                    0.15f + random.nextFloat() * (drizzle ? 1.5f : 0.8f),
+                    0.5f + random.nextFloat() * 1.5f,
+                    random.nextFloat() * 6.28f,
+                    drizzle ? Color.rgb(188, 211, 215) : Color.rgb(158, 188, 207),
+                    drizzle ? 55 + random.nextInt(95) : 130 + random.nextInt(90));
         }
-        if (cloudTintCache.size() >= CLOUD_TINT_CACHE_LIMIT) cloudTintCache.clear();
-        cloudTintCache.put(key, buffer);
-        return buffer;
-    }
-
-    private void drawCloudSpriteAt(Canvas canvas, Bitmap sprite, float x, float y,
-                                   float height, boolean mirror) {
-        float scale = height / sprite.getHeight();
-        float width = sprite.getWidth() * scale;
-        if (mirror) {
-            cloudMatrix.setScale(-1.0f, 1.0f);
-            cloudMatrix.postTranslate(x + width, y);
-            canvas.drawBitmap(sprite, cloudMatrix, cloudPaint);
-        } else {
-            canvas.drawBitmap(sprite, x, y, cloudPaint);
-        }
-    }
-
-    private CloudTint cloudWeatherTint(double sunAltitude, double cloudCover, int code,
-                                       float baseTint, int baseTintColor) {
-        boolean storm = code >= 95;
-        double cover = clamp(cloudCover / 100.0, 0.0, 1.0);
-        double night = quantise(clamp(1.0 - sunAltitude / 8.0, 0.0, 1.0) * 0.85);
-        double gloom = quantise(clamp(cover * 0.20 + (storm ? 0.22 : 0.0), 0.0, 0.55));
-        double warm = quantise(clamp(sunAltitude / 40.0, 0.0, 1.0) * (1.0 - cover) * 0.35);
-        int tintColor = blend(blend(blend(CLOUD_WARM_TINT, CLOUD_NIGHT_TINT, night),
-                CLOUD_STORM_TINT, gloom), baseTintColor, baseTint * 0.6);
-        float tintAmount = (float) clamp(baseTint + night * 0.55 + gloom * 0.45
-                + warm * 0.25, 0.0, 0.92);
-        return new CloudTint(tintColor, tintAmount);
-    }
-
-    // A distant bank of cloud behind the sea fills the windows between the island's
-    // underside and the cloud tops, so the island sits against cloud, never against sky.
-    private void drawDistantCloudHaze(Canvas canvas, double sunAltitude, double cloudCover,
-                                      int code) {
-        boolean storm = code >= 95;
-        double cover = clamp(cloudCover / 100.0, 0.0, 1.0);
-        double night = clamp(1.0 - sunAltitude / 8.0, 0.0, 1.0) * 0.85;
-        double gloom = clamp(cover * 0.30 + (storm ? 0.26 : 0.0), 0.0, 0.55);
-        paint.setShader(new LinearGradient(0, CLOUD_HAZE_TOP, 0, CLOUD_SEA_BASE + 10.0f,
-                new int[] {
-                        0x00d6e3ef,
-                        blend(blend(Color.rgb(211, 225, 238), CLOUD_NIGHT_TINT, night),
-                                CLOUD_STORM_TINT, gloom * 0.7),
-                        blend(blend(Color.rgb(198, 216, 232), CLOUD_NIGHT_TINT, night),
-                                CLOUD_STORM_TINT, gloom * 0.8)
-                },
-                new float[] {0.0f, 0.55f, 1.0f}, Shader.TileMode.CLAMP));
-        paint.setAlpha(217);
-        canvas.drawRect(0, CLOUD_HAZE_TOP, SCENE_WIDTH, CLOUD_SEA_BASE + 10.0f, paint);
-        paint.setAlpha(255);
-        paint.setShader(null);
-    }
-
-    private void drawCloudSea(Canvas canvas, double sunAltitude, double cloudCover, int code) {
-        paint.setStyle(Paint.Style.FILL);
-        boolean storm = code >= 95;
-        double cover = clamp(cloudCover / 100.0, 0.0, 1.0);
-        double night = quantise(clamp(1.0 - sunAltitude / 8.0, 0.0, 1.0) * 0.85);
-        double gloom = quantise(clamp(cover * 0.30 + (storm ? 0.26 : 0.0), 0.0, 0.55));
-
-        // A soft cloud-toned body under the sprites hides sky gaps between puffs. It fades in
-        // from transparent at its top edge so the sea has no hard horizon line.
-        paint.setShader(new LinearGradient(0, CLOUD_SEA_TOP, 0, SCENE_HEIGHT,
-                new int[] {
-                        0x00000000,
-                        blend(blend(Color.rgb(196, 214, 229), CLOUD_NIGHT_TINT, night),
-                                CLOUD_STORM_TINT, gloom * 0.6),
-                        blend(blend(Color.rgb(159, 182, 204), CLOUD_NIGHT_TINT, night),
-                                CLOUD_STORM_TINT, gloom * 0.7)
-                },
-                new float[] {0.0f, 0.35f, 1.0f}, Shader.TileMode.CLAMP));
-        canvas.drawRect(0, CLOUD_SEA_TOP, SCENE_WIDTH, SCENE_HEIGHT, paint);
-        paint.setShader(null);
-
-        for (CloudLayer layer : CLOUD_LAYERS) {
-            Random random = new Random(layer.salt);
-            CloudTint tint = cloudWeatherTint(sunAltitude, cloudCover, code,
-                    layer.tint, layer.tintColor);
-            Bitmap bank = tintedCloudSprite(true, tint.color, tint.amount);
-            Bitmap mass = tintedCloudSprite(false, tint.color, tint.amount);
-            if (bank == null || mass == null) continue;
-            cloudPaint.setAlpha(Math.round(255.0f * layer.alpha));
-            float step = layer.height * 0.62f;
-            for (float x = -step; x < SCENE_WIDTH + step; x += step) {
-                float height = layer.height * layer.rowScale * (0.9f + random.nextFloat() * 0.22f);
-                boolean useMass = random.nextFloat() < 0.5f;
-                boolean mirror = random.nextFloat() < 0.5f;
-                float puffX = x - step * 0.25f + random.nextFloat() * step * 0.5f;
-                float puffY = layer.baseline - height * (0.9f + random.nextFloat() * 0.12f);
-                drawCloudSpriteAt(canvas, useMass ? mass : bank, puffX, puffY, height, mirror);
-            }
-        }
-        cloudPaint.setAlpha(255);
-    }
-
-    // Side and front banks overlap the island itself, so they draw after it.
-    // Far-side clouds behind the island; the island and its foreground banks then cover them.
-    private void drawBackCloudBanks(Canvas canvas, double sunAltitude, double cloudCover,
-                                    int code) {
-        // The far layer drifts too, at roughly a tenth of the front group's speed.
-        double elapsedSeconds = animationEnabled
-                ? (System.currentTimeMillis() - animationStartMillis) / 1000.0 : 0.0;
-        for (CloudBank bank : CLOUD_BACK_BANKS) {
-            CloudTint tint = cloudWeatherTint(sunAltitude, cloudCover, code,
-                    bank.tint, CLOUD_NEAR_TINT);
-            Bitmap sprite = tintedCloudSprite(bank.bank, tint.color, tint.amount);
-            if (sprite == null) continue;
-            float scale = bank.height / sprite.getHeight();
-            float width = sprite.getWidth() * scale;
-            double phase = elapsedSeconds * bank.speed + bank.phase;
-            float offsetX = bank.sway > 0.0f ? (float) Math.sin(phase) * bank.sway : 0.0f;
-            float offsetY = bank.bob > 0.0f ? (float) Math.cos(phase * 0.7) * bank.bob : 0.0f;
-            cloudPaint.setAlpha(Math.round(bank.alpha * 255.0f));
-            drawCloudSpriteAt(canvas, sprite,
-                    bank.cx * SCENE_WIDTH - width / 2.0f + offsetX,
-                    bank.top + offsetY, bank.height, bank.cx < 0.5f);
-        }
-        cloudPaint.setAlpha(255);
-    }
-
-    // Contact shade drawn after the banks: the crowns that touch the slab are darkened by the
-    // island too, which is what stops them reading as pasted onto the soil.
-    private void drawCloudContactShade(Canvas canvas, double sunAltitude, double cloudCover,
-                                       int code) {
-        boolean storm = code >= 95;
-        double directLight = clamp((sunAltitude + 8.0) / 28.0, 0.0, 1.0);
-        double filter = 1.0 - clamp(cloudCover / 100.0 * 0.45, 0.0, 0.45);
-        if (storm) filter *= 0.82;
-        double opacity = (0.12 + directLight * 0.22) * filter;
-        float centerX = SCENE_WIDTH / 2.0f;
-        float tipY = 152.0f;
-        float radiusX = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.46f;
-        int core = Color.argb((int) Math.round(opacity * 255), 44, 62, 90);
-        int mid = Color.argb((int) Math.round(opacity * 0.6 * 255), 48, 68, 96);
-        paint.setShader(new RadialGradient(centerX, tipY, radiusX,
-                new int[] {core, mid, 0x00344a68},
-                new float[] {0.0f, 0.5f, 1.0f}, Shader.TileMode.CLAMP));
-        canvas.save();
-        canvas.translate(centerX, tipY);
-        canvas.scale(1.0f, 0.42f);
-        canvas.translate(-centerX, -tipY);
-        canvas.drawCircle(centerX, tipY, radiusX, paint);
-        canvas.restore();
-        paint.setShader(null);
-    }
-
-    private void drawCloudBanks(Canvas canvas, double sunAltitude, double cloudCover, int code) {
-        // Only the frontmost group animates; everything else stays perfectly still.
-        double elapsedSeconds = animationEnabled
-                ? (System.currentTimeMillis() - animationStartMillis) / 1000.0 : 0.0;
-        for (CloudBank[] banks : new CloudBank[][] {CLOUD_GAP_FILLERS, CLOUD_SIDE_BANKS,
-                CLOUD_BLANKET_BANKS, CLOUD_CRADLE_BANKS, CLOUD_FRONT_BANKS}) {
-            for (CloudBank bank : banks) {
-                CloudTint tint = cloudWeatherTint(sunAltitude, cloudCover, code,
-                        bank.tint, CLOUD_NEAR_TINT);
-                Bitmap sprite = tintedCloudSprite(bank.bank, tint.color, tint.amount);
-                if (sprite == null) continue;
-                float scale = bank.height / sprite.getHeight();
-                float width = sprite.getWidth() * scale;
-                double phase = elapsedSeconds * bank.speed + bank.phase;
-                float offsetX = bank.sway > 0.0f ? (float) Math.sin(phase) * bank.sway : 0.0f;
-                float offsetY = bank.bob > 0.0f ? (float) Math.cos(phase * 0.7) * bank.bob : 0.0f;
-                cloudPaint.setAlpha(255);
-                drawCloudSpriteAt(canvas, sprite,
-                        bank.cx * SCENE_WIDTH - width / 2.0f + offsetX,
-                        bank.top + offsetY, bank.height, bank.cx < 0.5f);
-            }
-        }
-    }
-
-    // A soft contact shadow where the island's mass darkens the cloud tops beneath it.
-    private void drawIslandShadowOnClouds(Canvas canvas, float centerX, double sunAltitude,
-                                          double cloudCover, int code) {
-        double directLight = clamp((sunAltitude + 8.0) / 28.0, 0.0, 1.0);
-        double cloudFilter = 1.0 - clamp(cloudCover / 100.0 * 0.45, 0.0, 0.45);
-        if (code >= 95) cloudFilter *= 0.82;
-        double opacity = (0.10 + directLight * 0.26) * cloudFilter;
-        paint.setAlpha(255);
-        float shadowY = CLOUD_SEA_BASE + 2.0f;
-        float radiusX = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.52f;
-        float radiusY = 11.0f;
-        paint.setShader(new RadialGradient(centerX, shadowY, radiusX,
-                new int[] {
-                        Color.argb((int) (255.0 * opacity), 48, 68, 96),
-                        Color.argb((int) (255.0 * opacity * 0.55), 52, 74, 104),
-                        Color.argb(0, 52, 74, 104)
-                },
-                new float[] {0.0f, 0.55f, 1.0f}, Shader.TileMode.CLAMP));
-        canvas.save();
-        canvas.translate(centerX, shadowY);
-        canvas.scale(1.0f, radiusY / radiusX);
-        canvas.translate(-centerX, -shadowY);
-        canvas.drawRect(centerX - radiusX, shadowY - radiusX,
-                centerX + radiusX, shadowY + radiusX, paint);
-        canvas.restore();
-        paint.setShader(null);
-    }
-
-    private static double quantise(double value) {
-        return Math.round(value * 16.0) / 16.0;
-    }
-
-    private static final class CloudLayer {
-        final float baseline;
-        final float height;
-        float alpha;
-        final float tint;
-        final int tintColor;
-        final int salt;
-        final float rowScale;
-
-        CloudLayer(float baseline, float height, float alpha, float tint, int tintColor,
-                   int salt, float rowScale) {
-            this.baseline = baseline;
-            this.height = height;
-            this.alpha = alpha;
-            this.tint = tint;
-            this.tintColor = tintColor;
-            this.salt = salt;
-            this.rowScale = rowScale;
-        }
-    }
-
-    private static final class CloudTint {
-        final int color;
-        final float amount;
-
-        CloudTint(int color, float amount) {
-            this.color = color;
-            this.amount = amount;
-        }
-    }
-
-    private static int paletteColor(int[] palette, double amount) {
-        double position = clamp(amount, 0.0, 1.0) * (palette.length - 1);
-        int index = Math.min(palette.length - 2, (int) Math.floor(position));
-        return blend(palette[index], palette[index + 1], position - index);
-    }
-
-    private static int blend(int first, int second, double amount) {
-        double t = clamp(amount, 0.0, 1.0);
-        return Color.rgb(
-                (int) Math.round(Color.red(first) + (Color.red(second) - Color.red(first)) * t),
-                (int) Math.round(Color.green(first) + (Color.green(second) - Color.green(first)) * t),
-                (int) Math.round(Color.blue(first) + (Color.blue(second) - Color.blue(first)) * t));
-    }
-
-    private static double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(max, value));
-    }
-
-    private static float wrap(double value, double range) {
-        return (float) (((value % range) + range) % range);
-    }
-
-    private static double wrapCentered(double value, double range) {
-        return (((value + range * 0.5) % range) + range) % range - range * 0.5;
-    }
-
-    private static double reflectCentered(double value, double halfRange) {
-        double phase = (((value + halfRange) % (4.0 * halfRange))
-                + 4.0 * halfRange) % (4.0 * halfRange);
-        return phase <= 2.0 * halfRange
-                ? phase - halfRange
-                : 3.0 * halfRange - phase;
-    }
-
-    private static double cloudRandom(int seed, int index, int salt) {
-        int value = seed ^ ((index + 1) * 0x9e3779b9) ^ ((salt + 1) * 0x85ebca6b);
-        value = (value ^ (value >>> 16)) * 0x7feb352d;
-        value = (value ^ (value >>> 15)) * 0x846ca68b;
-        value ^= value >>> 16;
-        return Integer.toUnsignedLong(value) / 4294967296.0;
-    }
-
-    private static double normalizeDegrees(double value) {
-        return ((value % 360.0) + 360.0) % 360.0;
-    }
-
-    private static int interpolate(int first, int second, double amount) {
-        return (int) Math.round(first + (second - first) * clamp(amount, 0.0, 1.0));
-    }
-
-    private static int[] colors(String... values) {
-        int[] result = new int[values.length];
-        for (int index = 0; index < values.length; index++) result[index] = Color.parseColor(values[index]);
-        return result;
-    }
-
-    private int colorForSkyHeight(double y, double sunAltitude, double cloudCover) {
-        int[] palette = sunAltitude < -12.0 ? NIGHT_SKY
-                : sunAltitude > 2.0 ? DAY_SKY : DAWN_SKY;
-        int base = paletteColor(palette, clamp(y, 0.0, 1.0));
-        int overcast = Color.rgb(88, 101, 118);
-        return blend(base, overcast, clamp(cloudCover / 100.0 * 0.58, 0.0, 0.58));
     }
 
     private void drawPixelDisc(Canvas canvas, int centerX, int centerY, int radius,
@@ -2116,23 +1653,12 @@ public final class WeatherSkyView extends View {
         }
     }
 
-    private float mapAltitudeToCelestialBand(double altitude) {
-        double visibleAltitude = clamp(altitude, 0.0, 90.0);
-        return (float) (CELESTIAL_BAND_TOP
-                + (1.0 - visibleAltitude / 90.0) * CELESTIAL_BAND_HEIGHT);
-    }
-
     private float mapAzimuthToX(double azimuth) {
         double relative = normalizeDegrees(azimuth - headingDegrees + 180.0);
         return (float) (relative / 360.0 * SCENE_WIDTH);
     }
 
-    private float mapCloudAltitudeToY(double altitude) {
-        double visibleAltitude = clamp(altitude, 0.0, 90.0);
-        double verticalMix = Math.pow(visibleAltitude / 90.0, CLOUD_VISUAL_ALTITUDE_EXPONENT);
-        return (float) ((1.0 - verticalMix) * CLOUD_VISUAL_HORIZON_Y);
-    }
-
+    /** Sunrise tracks the inset east/right edge, solar noon the top center, then sunset west/left. */
     private float mapSunToUpperEdgeX(double hourAngleDegrees) {
         double distance = sunEdgeDistance(hourAngleDegrees);
         double sideLength = SCENE_HEIGHT / 3.0 - SUN_GLOW_SAFE_INSET;
@@ -2169,75 +1695,159 @@ public final class WeatherSkyView extends View {
         return dayFraction * halfPathLength;
     }
 
-    private void rebuildWeatherParticles(WeatherSnapshot snapshot) {
-        boolean drizzle = snapshot.hasDrizzle();
-        boolean raining = snapshot.hasRain() || snapshot.hasStorm();
-        double intensity = Math.max(snapshot.precipitationMm, snapshot.rainMm);
-        int rainCount = !raining && !drizzle ? 0
-                : (snapshot.hasStorm() ? 145 : drizzle ? 48 : 76)
-                + (int) Math.min(55.0, intensity * 12.0);
-        Random random = new Random();
+    private float mapAltitudeToCelestialBand(double altitude) {
+        double visibleAltitude = clamp(altitude, 0.0, 90.0);
+        return (float) (CELESTIAL_BAND_TOP
+                + (1.0 - visibleAltitude / 90.0) * CELESTIAL_BAND_HEIGHT);
+    }
 
-        raindrops = new Raindrop[rainCount];
-        for (int index = 0; index < rainCount; index++) {
-            boolean storm = snapshot.hasStorm();
-            float speed = drizzle ? 14.0f + random.nextFloat() * 27.0f
-                    : storm ? 55.0f + random.nextFloat() * 48.0f
-                    : 34.0f + random.nextFloat() * 42.0f;
-            float length = drizzle ? 0.5f + random.nextInt(3) * 0.5f
-                    : 2.5f + random.nextInt(storm ? 10 : 6) * 0.5f;
-            float width = 0.5f + random.nextInt(2) * 0.5f;
-            raindrops[index] = new Raindrop(
-                    random.nextFloat() * SCENE_WIDTH,
-                    random.nextFloat() * SCENE_HEIGHT,
-                    speed,
-                    length,
-                    width,
-                    (random.nextFloat() - 0.5f) * (drizzle ? 0.85f : 0.45f),
-                    0.15f + random.nextFloat() * (drizzle ? 1.5f : 0.8f),
-                    0.5f + random.nextFloat() * 1.5f,
-                    random.nextFloat() * 6.28f,
-                    drizzle ? Color.rgb(188, 211, 215) : Color.rgb(158, 188, 207),
-                    drizzle ? 55 + random.nextInt(95) : 130 + random.nextInt(90));
+    private float mapCloudAltitudeToY(double altitude) {
+        double visibleAltitude = clamp(altitude, 0.0, 90.0);
+        double verticalMix = Math.pow(visibleAltitude / 90.0, CLOUD_VISUAL_ALTITUDE_EXPONENT);
+        return (float) ((1.0 - verticalMix) * CLOUD_VISUAL_HORIZON_Y);
+    }
+
+    private int colorForSkyHeight(double y, double sunAltitude, double cloudCover) {
+        int[] palette = sunAltitude < -12.0 ? NIGHT_SKY
+                : sunAltitude > 2.0 ? DAY_SKY : DAWN_SKY;
+        int base = paletteColor(palette, clamp(y, 0.0, 1.0));
+        int overcast = Color.rgb(88, 101, 118);
+        return blend(base, overcast, clamp(cloudCover / 100.0 * 0.58, 0.0, 0.58));
+    }
+
+    private static int paletteColor(int[] palette, double amount) {
+        double position = clamp(amount, 0.0, 1.0) * (palette.length - 1);
+        int index = Math.min(palette.length - 2, (int) Math.floor(position));
+        return blend(palette[index], palette[index + 1], position - index);
+    }
+
+    private static int blend(int first, int second, double amount) {
+        double t = clamp(amount, 0.0, 1.0);
+        return Color.rgb(
+                (int) Math.round(Color.red(first) + (Color.red(second) - Color.red(first)) * t),
+                (int) Math.round(Color.green(first) + (Color.green(second) - Color.green(first)) * t),
+                (int) Math.round(Color.blue(first) + (Color.blue(second) - Color.blue(first)) * t));
+    }
+
+    private static int interpolate(int first, int second, double amount) {
+        return (int) Math.round(first + (second - first) * clamp(amount, 0.0, 1.0));
+    }
+
+    private static int[] colors(String... values) {
+        int[] result = new int[values.length];
+        for (int index = 0; index < values.length; index++) result[index] = Color.parseColor(values[index]);
+        return result;
+    }
+
+    private static float wrap(double value, double range) {
+        return (float) (((value % range) + range) % range);
+    }
+
+    private static double wrapCentered(double value, double range) {
+        return (((value + range * 0.5) % range) + range) % range - range * 0.5;
+    }
+
+    /** Triangle-wave reflection on a centered track; speed magnitude stays constant. */
+    private static double reflectCentered(double value, double halfRange) {
+        double phase = (((value + halfRange) % (4.0 * halfRange))
+                + 4.0 * halfRange) % (4.0 * halfRange);
+        return phase <= 2.0 * halfRange
+                ? phase - halfRange
+                : 3.0 * halfRange - phase;
+    }
+
+    private static double cloudRandom(int seed, int index, int salt) {
+        int value = seed ^ ((index + 1) * 0x9e3779b9) ^ ((salt + 1) * 0x85ebca6b);
+        value = (value ^ (value >>> 16)) * 0x7feb352d;
+        value = (value ^ (value >>> 15)) * 0x846ca68b;
+        value ^= value >>> 16;
+        return Integer.toUnsignedLong(value) / 4294967296.0;
+    }
+
+    private static double normalizeDegrees(double value) {
+        return ((value % 360.0) + 360.0) % 360.0;
+    }
+
+    private static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
+    }
+
+    private static final class CloudState {
+        final String[] shape;
+        double eastMeters;
+        double northMeters;
+        final double baseAltitudeMeters;
+        final double widthMeters;
+        final double depthMeters;
+        final double alongEast;
+        final double alongNorth;
+        final double crossEast;
+        final double crossNorth;
+        float screenCenterX;
+        final float screenY;
+        final float unitX;
+        final float unitY;
+
+        CloudState(String[] shape, double eastMeters, double northMeters,
+                   double baseAltitudeMeters, double widthMeters, double depthMeters,
+                   double alongEast, double alongNorth, double crossEast, double crossNorth,
+                   float screenCenterX, float screenY, float unitX, float unitY) {
+            this.shape = shape;
+            this.eastMeters = eastMeters;
+            this.northMeters = northMeters;
+            this.baseAltitudeMeters = baseAltitudeMeters;
+            this.widthMeters = widthMeters;
+            this.depthMeters = depthMeters;
+            this.alongEast = alongEast;
+            this.alongNorth = alongNorth;
+            this.crossEast = crossEast;
+            this.crossNorth = crossNorth;
+            this.screenCenterX = screenCenterX;
+            this.screenY = screenY;
+            this.unitX = unitX;
+            this.unitY = unitY;
         }
     }
 
-    private static final class CloudBank {
-        final float cx;
-        final float top;
-        final float height;
-        final float tint;
-        /** true = cloud bank sprite, false = cloud mass sprite. */
-        final boolean bank;
-        /** Frontmost banks only: sway in scene units, vertical bob, angular speed, phase. */
-        final float sway;
-        final float bob;
-        final float speed;
-        final float phase;
-        /** 0..1 opacity; near passes use full strength, the far layer is hazier. */
-        final float alpha;
+    private static final class SkyAtmosphere {
+        final int tint;
+        final double islandMix;
 
-        CloudBank(float cx, float top, float height, float tint, boolean bank) {
-            this(cx, top, height, tint, bank, 0.0f, 0.0f, 0.0f, 0.0f, 0.92f);
-        }
-
-        CloudBank(float cx, float top, float height, float tint, boolean bank,
-                  float sway, float bob, float speed, float phase) {
-            this(cx, top, height, tint, bank, sway, bob, speed, phase, 0.92f);
-        }
-
-        CloudBank(float cx, float top, float height, float tint, boolean bank,
-                  float sway, float bob, float speed, float phase, float alpha) {
-            this.cx = cx;
-            this.top = top;
-            this.height = height;
+        SkyAtmosphere(int tint, double islandMix) {
             this.tint = tint;
-            this.bank = bank;
-            this.sway = sway;
-            this.bob = bob;
-            this.speed = speed;
-            this.phase = phase;
-            this.alpha = alpha;
+            this.islandMix = islandMix;
+        }
+    }
+
+    private static final class IslandSunlight {
+        final double strength;
+
+        IslandSunlight(double strength) {
+            this.strength = strength;
+        }
+    }
+
+    private static final class IslandPalette {
+        final int grass;
+        final int grassDark;
+        final int grassTileSoftFern;
+        final int grassTileFernSage;
+        final int grassSeam;
+        final int grassWall;
+        final int soilLight;
+        final int soilDark;
+
+        IslandPalette(int grass, int grassDark,
+                      int grassTileSoftFern, int grassTileFernSage, int grassSeam,
+                      int grassWall, int soilLight, int soilDark) {
+            this.grass = grass;
+            this.grassDark = grassDark;
+            this.grassTileSoftFern = grassTileSoftFern;
+            this.grassTileFernSage = grassTileFernSage;
+            this.grassSeam = grassSeam;
+            this.grassWall = grassWall;
+            this.soilLight = soilLight;
+            this.soilDark = soilDark;
         }
     }
 
