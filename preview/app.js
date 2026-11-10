@@ -471,6 +471,8 @@
   const SUN_RISE_X = 284;
   const SUN_SET_X = 36;
   const ARC_TILT = 9;
+  // The moon only appears once the sun has dropped below this altitude.
+  const MOON_VISIBLE_BELOW_SUN = -2;
   const GLOW_STEPS = 14;
   const GLOW_REACH = 15.0;
   const GLOW_ALPHA = 0.040;
@@ -547,13 +549,18 @@
     return { top: '#f4f7fb', bottom: '#b9c6da' };
   }
 
-  function drawMoon(moon, motionTime) {
+  function drawMoon(moon, motionTime, sunAltitude) {
     if (moon.altitude <= -1) return;
+    // The moon is only shown once the sun is gone, so it reads as a night object rather than a
+    // pale sliver that competes with the sun in the daytime sky. It also fades in over the last
+    // few degrees of sunset instead of popping in.
+    const nightFall = clamp((MOON_VISIBLE_BELOW_SUN - sunAltitude) / 4, 0, 1);
+    if (nightFall <= 0) return;
     const palette = moonPalette();
     const centerX = Math.round(mapCelestialX(moon.hourAngleDegrees) / RENDER_CELL) * RENDER_CELL;
     const centerY = Math.round(mapCelestialY(moon.altitude, moon.hourAngleDegrees)
       / RENDER_CELL) * RENDER_CELL;
-    const visibility = clamp((moon.altitude + 1) / 3, 0, 1);
+    const visibility = clamp((moon.altitude + 1) / 3, 0, 1) * nightFall;
     const previousAlpha = ctx.globalAlpha;
     ctx.globalAlpha = previousAlpha * visibility;
     drawCelestialGlow(centerX, centerY, moon.altitude, motionTime,
@@ -1705,7 +1712,7 @@
     ctx.rect(0, 0, WIDTH, HEIGHT * 0.5);
     ctx.clip();
     drawSun(sun, sceneWeather.cloudCover, motionTime);
-    drawMoon(moonNow, motionTime);
+    drawMoon(moonNow, motionTime, sun.altitude);
     ctx.restore();
     ctx.save();
     ctx.beginPath();

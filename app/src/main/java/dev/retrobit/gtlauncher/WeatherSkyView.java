@@ -66,6 +66,8 @@ public final class WeatherSkyView extends View {
     private static final float SUN_RISE_X = 284.0f;
     private static final float SUN_SET_X = 36.0f;
     private static final float ARC_TILT = 9.0f;
+    // The moon only appears once the sun has dropped below this altitude.
+    private static final double MOON_VISIBLE_BELOW_SUN = -2.0;
     private static final int GLOW_STEPS = 14;
     private static final float GLOW_REACH = 15.0f;
     private static final double GLOW_ALPHA = 0.040;
@@ -255,7 +257,7 @@ public final class WeatherSkyView extends View {
         int upperHalfSave = scene.save();
         scene.clipRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT * 0.5f);
         drawSun(scene, sun, cloudCover, motionSeconds);
-        drawMoon(scene, moon, motionSeconds);
+        drawMoon(scene, moon, motionSeconds, sun.altitudeDegrees);
         drawFog(scene, code);
         drawStormFlash(scene, elapsedSeconds, code);
         scene.restoreToCount(upperHalfSave);
@@ -1561,15 +1563,22 @@ public final class WeatherSkyView extends View {
         return new int[] { Color.rgb(244, 247, 251), Color.rgb(185, 198, 218) };
     }
 
-    private void drawMoon(Canvas canvas, SkyMath.Position moon, double elapsedSeconds) {
+    private void drawMoon(Canvas canvas, SkyMath.Position moon, double elapsedSeconds,
+                          double sunAltitude) {
         if (moon.altitudeDegrees <= -1.0) return;
+        // The moon is only shown once the sun is gone, so it reads as a night object rather than
+        // a pale sliver that competes with the sun in the daytime sky. It also fades in over the
+        // last few degrees of sunset instead of popping in.
+        double nightFall = clamp((MOON_VISIBLE_BELOW_SUN - sunAltitude) / 4.0, 0.0, 1.0);
+        if (nightFall <= 0.0) return;
         int[] palette = moonPalette();
         float centerX = Math.round(mapCelestialX(moon.hourAngleDegrees) / RENDER_CELL)
                 * RENDER_CELL;
         float centerY = Math.round(mapCelestialY(moon.altitudeDegrees, moon.hourAngleDegrees)
                 / RENDER_CELL)
                 * RENDER_CELL;
-        float visibility = (float) clamp((moon.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0);
+        float visibility = (float) (clamp((moon.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0)
+                * nightFall);
         int save = canvas.save();
         paint.setAlpha((int) Math.round(255.0 * visibility));
         drawCelestialGlow(canvas, centerX, centerY, moon.altitudeDegrees, elapsedSeconds,
