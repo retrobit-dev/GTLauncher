@@ -106,10 +106,13 @@ public final class WeatherSkyView extends View {
     private static final float CLOUD_ISLAND_ALPHA = 0.55f;
     // Clouds travel across the frame like real wind-driven cloud, then re-enter from the other
     // side. Screen speed is derived from the reported wind so a breeze crawls and a storm hurries.
-    private static final double CLOUD_DRIFT_BASE = 0.55;
-    private static final double CLOUD_DRIFT_WIND_GAIN = 0.30;
-    private static final double CLOUD_DRIFT_MIN = 0.18;
-    private static final double CLOUD_DRIFT_MAX = 5.5;
+    // The frame maps the whole compass - 360 degrees of sky - onto 320 units, so one unit is 1.125
+    // degrees. That makes drift speed a function of cloud altitude: a layer at 1200 m needs 0.0118
+    // units per second per km/h. Taking that literally would look frozen on a panel this small, so
+    // this gain is about four times faster, which puts the implied cloud layer at 283 m. The trade
+    // is deliberate and the honest figure is the 0.0118 above.
+    private static final double CLOUD_DRIFT_WIND_GAIN = 0.05;
+    private static final double CLOUD_DRIFT_MAX = 4.2;
     private static final float CLOUD_EDGE_INSET = 4.0f;
     // The shadow is a shrunk copy of the cloud, not a same-size one: at full size it covered
     // most of the island and read as a hole rather than as shade.
@@ -1244,9 +1247,10 @@ public final class WeatherSkyView extends View {
      * stylised diorama, so composition matters more than meteorology.
      */
     private double cloudDriftSpeed(double windSpeed, double windDirection) {
+        // No base term: still air has to leave the clouds where they are. There used to be a
+        // constant 0.55 units per second here, so a dead calm drifted as fast as a light breeze.
         double crosswind = Math.max(0.0, windSpeed) * cloudScreenWindFactor(windDirection);
-        return clamp(CLOUD_DRIFT_BASE + crosswind * CLOUD_DRIFT_WIND_GAIN,
-                CLOUD_DRIFT_MIN, CLOUD_DRIFT_MAX);
+        return Math.min(crosswind * CLOUD_DRIFT_WIND_GAIN, CLOUD_DRIFT_MAX);
     }
 
     /**

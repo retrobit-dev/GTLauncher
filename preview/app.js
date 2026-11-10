@@ -92,10 +92,13 @@
   // Clouds travel right to left like real wind-driven cloud, cross the whole frame, then re-enter
   // from the other side. Screen speed is derived from the reported wind so a breeze crawls and a
   // storm hurries; the old oscillating sway was fast and never actually went anywhere.
-  const CLOUD_DRIFT_BASE = 0.55;
-  const CLOUD_DRIFT_WIND_GAIN = 0.30;
-  const CLOUD_DRIFT_MIN = 0.18;
-  const CLOUD_DRIFT_MAX = 5.5;
+  // The frame maps the whole compass — 360 degrees of sky — onto 320 units, so one unit is 1.125
+  // degrees. That makes drift speed a function of cloud altitude: a layer at 1200 m needs 0.0118
+  // units per second per km/h. Taking that literally would look frozen on a panel this small, so
+  // this gain is about four times faster, which puts the implied cloud layer at 283 m. The trade is
+  // deliberate and the honest figure is the 0.0118 above.
+  const CLOUD_DRIFT_WIND_GAIN = 0.05;
+  const CLOUD_DRIFT_MAX = 4.2;
   // A cloud is fully off-screen on the left only once its trail clears the frame with margin.
   const CLOUD_EDGE_INSET = 4;
   // The shadow is a shrunk copy of the cloud, not a same-size one: at full size it covered most of
@@ -717,10 +720,12 @@
 
   // Cloud states are layered by slot rather than advected across a physical sky field: the panel
   // is a stylised diorama, so composition matters more than meteorology.
+  // No base term: still air has to leave the clouds where they are. There used to be a constant
+  // 0.55 units per second here, so a dead calm drifted as fast as a light breeze.
   function cloudDriftSpeed(sceneWeather) {
-    const wind = Math.max(0, sceneWeather.windSpeed ?? 4) * cloudScreenWindFactor(sceneWeather);
-    return clamp(CLOUD_DRIFT_BASE + wind * CLOUD_DRIFT_WIND_GAIN,
-      CLOUD_DRIFT_MIN, CLOUD_DRIFT_MAX);
+    const crosswind = Math.max(0, sceneWeather.windSpeed ?? 4)
+      * cloudScreenWindFactor(sceneWeather);
+    return Math.min(crosswind * CLOUD_DRIFT_WIND_GAIN, CLOUD_DRIFT_MAX);
   }
 
   // Wind blows AWAY from the direction it is reported from, projected onto the screen. The bearing
