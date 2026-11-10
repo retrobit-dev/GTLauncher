@@ -12,7 +12,6 @@ import android.graphics.Shader;
 import android.util.AttributeSet;
 import android.view.View;
 
-import java.util.Arrays;
 import java.util.Random;
 
 /** Full-screen, non-scrolling pixel-art sky driven by local astronomy and weather data. */
@@ -58,19 +57,9 @@ public final class WeatherSkyView extends View {
     // A square-root curve gives low-altitude clouds more visible vertical separation.
     private static final double CLOUD_VISUAL_ALTITUDE_EXPONENT = 0.50;
     // Keep celestial centers in the upper third with enough margin for the Sun's glow.
-    // The sun is drawn as an isometric pixel-art object: its body is shaded with a fixed
-    // upper-left key light and then quantised into four flat bands, so the pixels stay crisp
-    // while the sphere still reads as a solid volume. The fixed light direction is what makes
-    // it look like an object in the scene instead of a flat sticker that follows the viewer.
-    private static final int SUN_RAY_COUNT = 12;
+    // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
+    // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
     private static final float SUN_BODY_RADIUS = 10.5f;
-    private static final float SUN_RAY_INNER = 10.2f;
-    private static final float SUN_RAY_LONG = 6.4f;
-    private static final float SUN_RAY_SHORT = 4.6f;
-    // Unit vector of the key light, resolved once.
-    private static final float SUN_LIGHT_X = (float) (-0.46 / Math.sqrt(0.46 * 0.46 + 0.52 * 0.52 + 0.72 * 0.72));
-    private static final float SUN_LIGHT_Y = (float) (-0.52 / Math.sqrt(0.46 * 0.46 + 0.52 * 0.52 + 0.72 * 0.72));
-    private static final float SUN_LIGHT_Z = (float) (0.72 / Math.sqrt(0.46 * 0.46 + 0.52 * 0.52 + 0.72 * 0.72));
 
     private static final float CELESTIAL_BAND_TOP = SCENE_HEIGHT * 0.10f;
     private static final float CELESTIAL_BAND_HEIGHT = SCENE_HEIGHT / 3.0f
@@ -1434,139 +1423,34 @@ public final class WeatherSkyView extends View {
     }
 
 
-    /** Four flat tones, brightest first, warm near the horizon and dull under a heavy deck. */
+    /** Light tone on top, deep tone at the bottom, warmed near the horizon and dulled. */
     private static int[] sunPalette(double altitude, double cloudCover) {
         double daylight = clamp((altitude + 6.0) / 18.0, 0.0, 1.0);
         double low = clamp(1.0 - daylight, 0.0, 1.0);
         double dull = clamp(cloudCover / 100.0, 0.0, 1.0) * 0.4;
-        int[] high = { Color.rgb(255, 248, 214), Color.rgb(255, 217, 100),
-                Color.rgb(247, 179, 43), Color.rgb(217, 135, 26) };
-        int[] nearHorizon = { Color.rgb(255, 234, 180), Color.rgb(255, 188, 96),
-                Color.rgb(240, 144, 44), Color.rgb(194, 99, 28) };
         int ash = Color.rgb(125, 132, 148);
-        int[] palette = new int[4];
-        for (int index = 0; index < 4; index++) {
-            palette[index] = blend(blend(high[index], nearHorizon[index], low * 0.8), ash, dull);
-        }
-        return palette;
-    }
-
-    /** Rasterises a convex polygon into cell-aligned spans, matching the preview renderer. */
-    private void fillPixelPolygon(Canvas canvas, float[][] points, int color) {
-        if (points.length < 3) return;
-        float minY = Float.MAX_VALUE;
-        float maxY = -Float.MAX_VALUE;
-        for (float[] point : points) {
-            minY = Math.min(minY, point[1]);
-            maxY = Math.max(maxY, point[1]);
-        }
-        int firstRow = (int) Math.floor(minY / RENDER_CELL);
-        int lastRow = (int) Math.ceil(maxY / RENDER_CELL);
-        paint.setStyle(Paint.Style.FILL);
-        paint.setColor(color);
-        float[] crossings = new float[points.length];
-        for (int row = firstRow; row < lastRow; row++) {
-            float top = row * RENDER_CELL;
-            float sampleY = top + RENDER_CELL / 2.0f;
-            int count = 0;
-            for (int index = 0; index < points.length; index++) {
-                float[] first = points[index];
-                float[] second = points[(index + 1) % points.length];
-                if ((first[1] <= sampleY && second[1] > sampleY)
-                        || (second[1] <= sampleY && first[1] > sampleY)) {
-                    float fraction = (sampleY - first[1]) / (second[1] - first[1]);
-                    crossings[count++] = first[0] + fraction * (second[0] - first[0]);
-                }
-            }
-            Arrays.sort(crossings, 0, count);
-            for (int index = 0; index + 1 < count; index += 2) {
-                int firstCell = (int) Math.ceil(crossings[index] / RENDER_CELL - 0.5f);
-                int endCell = (int) Math.ceil(crossings[index + 1] / RENDER_CELL - 0.5f);
-                if (endCell > firstCell) {
-                    canvas.drawRect(firstCell * RENDER_CELL, top,
-                            endCell * RENDER_CELL, top + RENDER_CELL, paint);
-                }
-            }
-        }
+        int top = blend(blend(Color.rgb(255, 243, 192), Color.rgb(255, 228, 166), low * 0.8),
+                ash, dull);
+        int bottom = blend(blend(Color.rgb(255, 194, 61), Color.rgb(239, 143, 42), low * 0.8),
+                ash, dull);
+        return new int[] { top, bottom };
     }
 
     private void drawSunBody(Canvas canvas, float centerX, float centerY, int[] palette) {
         float radius = SUN_BODY_RADIUS;
+        paint.setStyle(Paint.Style.FILL);
         for (float row = -radius; row < radius; row += RENDER_CELL) {
-            float dy = row + RENDER_CELL / 2.0f;
+            float sampleY = row + RENDER_CELL / 2.0f;
             float halfWidth = (float) Math.sqrt(Math.max(0.0,
-                    radius * radius - dy * dy));
+                    radius * radius - sampleY * sampleY));
             float left = Math.round((centerX - halfWidth) / RENDER_CELL) * RENDER_CELL;
             float right = Math.round((centerX + halfWidth) / RENDER_CELL) * RENDER_CELL;
-            // Group neighbouring cells of the same tone into one span.
-            int runLevel = -1;
-            float runStart = 0.0f;
-            for (float x = left; x < right + RENDER_CELL; x += RENDER_CELL) {
-                int level = -1;
-                if (x < right) {
-                    float dx = x + RENDER_CELL / 2.0f - centerX;
-                    float normalZ = (float) Math.sqrt(Math.max(0.0,
-                            1.0 - (dx * dx + dy * dy) / (radius * radius)));
-                    float lambert = (dx / radius) * SUN_LIGHT_X + (dy / radius) * SUN_LIGHT_Y
-                            + normalZ * SUN_LIGHT_Z;
-                    level = lambert > 0.84f ? 0 : lambert > 0.52f ? 1 : lambert > 0.20f ? 2 : 3;
-                }
-                if (level != runLevel) {
-                    if (runLevel >= 0) {
-                        paint.setColor(palette[runLevel]);
-                        canvas.drawRect(runStart, centerY + row, x, centerY + row + RENDER_CELL,
-                                paint);
-                    }
-                    runLevel = level;
-                    runStart = x;
-                }
-            }
+            if (right <= left) continue;
+            // 0 at the top of the disc, 1 at the bottom.
+            float mix = (float) clamp((sampleY + radius) / (radius * 2.0), 0.0, 1.0);
+            paint.setColor(blend(palette[0], palette[1], mix));
+            canvas.drawRect(left, centerY + row, right, centerY + row + RENDER_CELL, paint);
         }
-    }
-
-    private void drawSunRay(Canvas canvas, float centerX, float centerY, double angle,
-                            float length, int[] palette) {
-        float dirX = (float) Math.cos(angle);
-        float dirY = (float) Math.sin(angle);
-        float perpX = -dirY;
-        float perpY = dirX;
-        float inner = SUN_RAY_INNER;
-        float tip = inner + length;
-        float baseHalf = 2.6f;
-        float tipHalf = 1.0f;
-        float shoulder = inner + (tip - inner) * 0.72f;
-        float shoulderHalf = baseHalf * 0.28f + tipHalf * 0.72f;
-        int shadeSide = perpX * SUN_LIGHT_X + perpY * SUN_LIGHT_Y > 0 ? 1 : -1;
-        fillPixelPolygon(canvas, new float[][] {
-                at(centerX, centerY, dirX, dirY, perpX, perpY, inner, -baseHalf),
-                at(centerX, centerY, dirX, dirY, perpX, perpY, shoulder, -shoulderHalf),
-                at(centerX, centerY, dirX, dirY, perpX, perpY, shoulder, shoulderHalf),
-                at(centerX, centerY, dirX, dirY, perpX, perpY, inner, baseHalf)
-        }, palette[1]);
-        fillPixelPolygon(canvas, new float[][] {
-                at(centerX, centerY, dirX, dirY, perpX, perpY, shoulder, -shoulderHalf),
-                at(centerX, centerY, dirX, dirY, perpX, perpY, tip, 0.0f),
-                at(centerX, centerY, dirX, dirY, perpX, perpY, shoulder, shoulderHalf)
-        }, palette[1]);
-        fillPixelPolygon(canvas, new float[][] {
-                at(centerX, centerY, dirX, dirY, perpX, perpY, inner, 0.0f),
-                at(centerX, centerY, dirX, dirY, perpX, perpY, inner, shadeSide * baseHalf),
-                at(centerX, centerY, dirX, dirY, perpX, perpY, shoulder,
-                        shadeSide * shoulderHalf),
-                at(centerX, centerY, dirX, dirY, perpX, perpY, shoulder, 0.0f)
-        }, palette[2]);
-        fillPixelPolygon(canvas, new float[][] {
-                at(centerX, centerY, dirX, dirY, perpX, perpY, shoulder, 0.0f),
-                at(centerX, centerY, dirX, dirY, perpX, perpY, shoulder,
-                        shadeSide * shoulderHalf),
-                at(centerX, centerY, dirX, dirY, perpX, perpY, tip, 0.0f)
-        }, palette[2]);
-    }
-
-    private static float[] at(float centerX, float centerY, float dirX, float dirY,
-                              float perpX, float perpY, float along, float across) {
-        return new float[] { centerX + dirX * along + perpX * across,
-                centerY + dirY * along + perpY * across };
     }
 
     /**
@@ -1582,14 +1466,8 @@ public final class WeatherSkyView extends View {
         float centerY = Math.round(mapAltitudeToCelestialBand(sun.altitudeDegrees) / RENDER_CELL)
                 * RENDER_CELL;
         int save = canvas.save();
-        paint.setStyle(Paint.Style.FILL);
         paint.setAlpha((int) Math.round(255.0
                 * clamp((sun.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0)));
-        for (int ray = 0; ray < SUN_RAY_COUNT; ray++) {
-            double angle = -Math.PI / 2.0 + ray * (Math.PI * 2.0 / SUN_RAY_COUNT);
-            drawSunRay(canvas, centerX, centerY, angle,
-                    ray % 2 == 0 ? SUN_RAY_LONG : SUN_RAY_SHORT, palette);
-        }
         drawSunBody(canvas, centerX, centerY, palette);
         canvas.restoreToCount(save);
         paint.setAlpha(255);
