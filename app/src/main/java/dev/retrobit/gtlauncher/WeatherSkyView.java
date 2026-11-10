@@ -2,6 +2,12 @@ package dev.retrobit.gtlauncher;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import java.util.Map;
+import java.util.LinkedHashMap;
+import android.util.SparseArray;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.PorterDuff;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
 import android.graphics.Color;
@@ -41,8 +47,17 @@ public final class WeatherSkyView extends View {
     private static final float ISLAND_GRASS_OVERHANG = 4.0f;
     private static final int ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
     private static final int ISLAND_BASE_BOTTOM_MARGIN = 8;
-    private static final int ISLAND_VERTICAL_LIFT = 22;
+    private static final int ISLAND_VERTICAL_LIFT = 38;
     private static final int ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
+    private static final String CLOUD_BANK_SPRITE = "cloud-bank";
+    private static final String CLOUD_MASS_SPRITE = "cloud-mass";
+    private static final int CLOUD_NIGHT_TINT = Color.rgb(51, 67, 106);
+    private static final int CLOUD_STORM_TINT = Color.rgb(101, 117, 140);
+    private static final int CLOUD_TINT_CACHE_LIMIT = 24;
+    // How far the pad is pushed up into the slab: at 12 the cloud meets the soil lip while
+    // two thirds of the brown band stays visible.
+    private static final float SUPPORT_CLOUD_CONTACT = 12.0f;
+    private static final float SUPPORT_CLOUD_SCALE = 0.85f;
     private static final float ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH
             - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
     // Cloud bases meet the island's top plane at the upper-half visual horizon.
@@ -133,6 +148,10 @@ public final class WeatherSkyView extends View {
     private final Paint paint = new Paint();
     private final Paint islandPolyPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint renderBitmapPaint = new Paint();
+    private final Paint cloudPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+    private final android.graphics.Matrix cloudMatrix = new android.graphics.Matrix();
+    private final SparseArray<Bitmap> cloudSprites = new SparseArray<>();
+    private final Map<String, Bitmap> cloudTintCache = new LinkedHashMap<>();
     private final Path shapePath = new Path();
     private final Path cloudShadowPath = new Path();
     private final Path islandSurfacePath = new Path();
@@ -842,7 +861,10 @@ public final class WeatherSkyView extends View {
         float soilLeftX = leftX + ISLAND_GRASS_OVERHANG;
         float soilRightX = rightX - ISLAND_GRASS_OVERHANG;
 
-        drawIslandShadow(canvas, centerX, lowerY, sunAltitude, cloudCover, code);
+        // The island rests on cloud now, so the old ground shadow is replaced by the
+        // cluster underneath: shade, then the back of the cloud, then the island itself.
+        drawSupportCloudShade(canvas, sunAltitude, cloudCover, code);
+        drawSupportCloudLayer(canvas, sunAltitude, cloudCover, code, false);
 
         // One rounded, uninterrupted soil slab sits inside the wider grass cap.
         drawIslandSoilBody(canvas, soilLeftX, centerX, soilRightX,
@@ -901,6 +923,8 @@ public final class WeatherSkyView extends View {
         int topRim = blend(palette.grassSeam, palette.grassDark, 0.32);
         drawSmoothIslandLine(canvas, leftX, middleY, centerX, bottomY, topRim, 0.60f);
         drawSmoothIslandLine(canvas, centerX, bottomY, rightX, middleY, topRim, 0.60f);
+        // Shoulders overlap the slab, so they are drawn after the island.
+        drawSupportCloudLayer(canvas, sunAltitude, cloudCover, code, true);
     }
 
     private void drawCloudsOverIsland(Canvas canvas, CloudState[] clouds,
@@ -1210,6 +1234,192 @@ public final class WeatherSkyView extends View {
         y = Math.round(y * RENDER_SCALE) / (float) RENDER_SCALE;
         if (first) path.moveTo(x, y);
         else path.lineTo(x, y);
+    }
+
+    // Bitmap sprite for one of the two cloud shapes, decoded once and cached.
+    private Bitmap cloudSprite(boolean bank) {
+        int key = bank ? 1 : 0;
+        Bitmap cached = cloudSprites.get(key);
+        if (cached != null) return cached;
+        String packageName = getContext().getPackageName();
+        int resource = getResources().getIdentifier(
+                bank ? CLOUD_BANK_SPRITE : CLOUD_MASS_SPRITE, "drawable", packageName);
+        if (resource == 0) return null;
+        Bitmap sprite = BitmapFactory.decodeResource(getResources(), resource);
+        if (sprite == null) return null;
+        cloudSprites.put(key, sprite);
+        return sprite;
+    }
+
+    private Bitmap tintedCloudSprite(boolean bank, int tintColor, float tintAmount) {
+        Bitmap sprite = cloudSprite(bank);
+        if (sprite == null) return null;
+        String key = (bank ? "bank" : "mass") + "|" + tintColor + "|"
+                + Math.round(tintAmount * 32.0f);
+        Bitmap cached = cloudTintCache.get(key);
+        if (cached != null) return cached;
+        Bitmap buffer = Bitmap.createBitmap(sprite.getWidth(), sprite.getHeight(),
+                Bitmap.Config.ARGB_8888);
+        Canvas bufferCanvas = new Canvas(buffer);
+        bufferCanvas.drawBitmap(sprite, 0, 0, null);
+        if (tintAmount > 0.01f) {
+            int alpha = Math.round(255.0f * Math.min(1.0f, tintAmount));
+            Paint tintPaint = new Paint();
+            tintPaint.setColor(Color.argb(alpha, Color.red(tintColor), Color.green(tintColor),
+                    Color.blue(tintColor)));
+            // SOURCE_ATOP keeps the sprite's soft edges while shifting its colour.
+            tintPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP));
+            bufferCanvas.drawRect(0, 0, sprite.getWidth(), sprite.getHeight(), tintPaint);
+        }
+        if (cloudTintCache.size() >= CLOUD_TINT_CACHE_LIMIT) cloudTintCache.clear();
+        cloudTintCache.put(key, buffer);
+        return buffer;
+    }
+
+    private void drawCloudSpriteAt(Canvas canvas, Bitmap sprite, float x, float y,
+                                   float height, boolean mirror) {
+        float scale = height / sprite.getHeight();
+        float width = sprite.getWidth() * scale;
+        if (mirror) {
+            cloudMatrix.setScale(-1.0f, 1.0f);
+            cloudMatrix.postTranslate(x + width, y);
+            canvas.drawBitmap(sprite, cloudMatrix, cloudPaint);
+        } else {
+            canvas.drawBitmap(sprite, x, y, cloudPaint);
+        }
+    }
+
+    // Night cools the clouds and cover deepens them; these match the rest of the sky.
+    private int supportCloudTintColor(double sunAltitude, double cloudCover) {
+        double night = clamp(1.0 - sunAltitude / 8.0, 0.0, 1.0) * 0.85;
+        double gloom = clamp(cloudCover / 100.0 * 0.20, 0.0, 0.55);
+        return blend(blend(Color.rgb(232, 240, 250), CLOUD_NIGHT_TINT, night),
+                CLOUD_STORM_TINT, gloom);
+    }
+
+    // The cloud that caught the island: a pressed pad where the weight lands, shoulders
+    // that carry it further out, and a skirt that hangs because nothing holds it.
+    private void drawSupportCloudLayer(Canvas canvas, double sunAltitude, double cloudCover,
+                                       int code, boolean front) {
+        int tintColor = supportCloudTintColor(sunAltitude, cloudCover);
+        double night = clamp(1.0 - sunAltitude / 8.0, 0.0, 1.0) * 0.85;
+        double gloom = clamp(cloudCover / 100.0 * 0.20, 0.0, 0.55);
+        float baseAmount = (float) Math.min(0.9, night * 0.60 + gloom * 0.3);
+
+        float centerX = SCENE_WIDTH / 2.0f;
+        float bottomY = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
+        float tipY = bottomY + ISLAND_DEPTH;
+        float cornerY = bottomY + 12.0f;
+        float leftX = centerX - ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f;
+        float rightX = centerX + ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f;
+        float scale = SUPPORT_CLOUD_SCALE;
+        float contact = SUPPORT_CLOUD_CONTACT;
+
+        // Build the list in the same order the browser renderer does.
+        java.util.List<float[]> puffs = new java.util.ArrayList<>();
+        java.util.List<Boolean> puffFront = new java.util.ArrayList<>();
+        java.util.List<Boolean> puffBank = new java.util.ArrayList<>();
+        java.util.List<Float> puffTint = new java.util.ArrayList<>();
+        java.util.List<Integer> order = new java.util.ArrayList<>();
+
+        for (int i = 0; i < 11; i++) {
+            boolean right = i > 5;
+            float k = i == 5 ? 0.0f : Math.abs(i - 5) / 5.0f;
+            float x;
+            float y;
+            if (i == 5) {
+                x = centerX;
+                y = tipY;
+            } else {
+                float t = 0.05f + k * 0.88f;
+                float cornerX = right ? rightX : leftX;
+                x = centerX + (cornerX - centerX) * t;
+                y = tipY + (cornerY - tipY) * t;
+            }
+            float h = (30.0f - k * 5.0f) * scale;
+            puffs.add(new float[] {x, y + 4.0f - k * 2.0f - contact,
+                    h, 1.45f - k * 0.32f, 0.56f + k * 0.24f});
+            puffFront.add(false);
+            puffBank.add(i % 2 != 0);
+            puffTint.add(0.05f + k * 0.05f);
+        }
+        for (int i = 0; i < 10; i++) {
+            boolean right = i >= 5;
+            float k = (i % 5) / 4.0f;
+            float t = 0.18f + k * 0.7f;
+            float cornerX = right ? rightX : leftX;
+            float x = centerX + (cornerX - centerX) * t + (right ? 3.0f : -3.0f);
+            float y = tipY + (cornerY - tipY) * t;
+            float h = (22.0f - k * 3.0f) * scale;
+            puffs.add(new float[] {x, y + 12.0f - k * 4.0f - contact,
+                    h, 1.20f - k * 0.16f, 0.82f + k * 0.12f});
+            puffFront.add(true);
+            puffBank.add(i % 2 == 0);
+            puffTint.add(0.08f + k * 0.04f);
+        }
+        float[][] skirt = {
+            {40, -2, 30}, {58, 8, 32}, {26, 10, 28}, {80, 14, 30}, {104, 16, 26}, {128, 16, 22},
+            {280, -2, 30}, {262, 8, 32}, {294, 10, 28}, {240, 14, 30}, {216, 16, 26},
+            {192, 16, 22}
+        };
+        float skirtY = tipY + 6.0f;
+        for (int i = 0; i < skirt.length; i++) {
+            puffs.add(new float[] {skirt[i][0], skirtY + skirt[i][1] - contact,
+                    skirt[i][2] * scale, 1.08f, 1.02f + (i % 3) * 0.05f});
+            puffFront.add(false);
+            puffBank.add(i % 2 != 0);
+            puffTint.add(0.13f);
+        }
+        float[][] shelf = {{160, 12, 20}, {136, 14, 18}, {184, 14, 18},
+                           {112, 16, 16}, {208, 16, 16}};
+        for (int i = 0; i < shelf.length; i++) {
+            puffs.add(new float[] {shelf[i][0], tipY + shelf[i][1] - contact,
+                    shelf[i][2] * scale * 1.05f, 1.5f, 0.72f});
+            puffFront.add(false);
+            puffBank.add(i % 2 == 0);
+            puffTint.add(0.11f);
+        }
+
+        // Back to front, so a nearer puff covers the one behind it.
+        for (int i = 0; i < puffs.size(); i++) order.add(i);
+        order.sort((a, b) -> Float.compare(puffs.get(a)[1] - puffs.get(a)[2],
+                                           puffs.get(b)[1] - puffs.get(b)[2]));
+
+        for (int index : order) {
+            if (puffFront.get(index) != front) continue;
+            float[] puff = puffs.get(index);
+            float amount = Math.min(1.0f, Math.max(baseAmount, puffTint.get(index)));
+            Bitmap sprite = tintedCloudSprite(puffBank.get(index), tintColor, amount);
+            if (sprite == null) continue;
+            float width = puff[2] * ((float) sprite.getWidth() / sprite.getHeight()) * puff[3];
+            float height = puff[2] * puff[4];
+            drawCloudSpriteAt(canvas, sprite, puff[0] - width / 2.0f, puff[1] - height,
+                    height, puff[0] < centerX);
+        }
+    }
+
+    // Contact shade under the pad: the island's mass darkens the cloud it rests on.
+    private void drawSupportCloudShade(Canvas canvas, double sunAltitude, double cloudCover,
+                                       int code) {
+        double directLight = clamp((sunAltitude + 8.0) / 28.0, 0.0, 1.0);
+        double cloudFilter = 1.0 - clamp(cloudCover / 100.0 * 0.45, 0.0, 0.45);
+        if (code >= 95) cloudFilter *= 0.82;
+        double opacity = (0.13 + directLight * 0.25) * cloudFilter;
+        float centerX = SCENE_WIDTH / 2.0f;
+        float shadeY = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT + ISLAND_DEPTH - 2.0f;
+        float radius = 70.0f;
+        paint.setShader(new android.graphics.RadialGradient(centerX, shadeY, radius,
+                new int[] {Color.argb((int) Math.round(opacity * 255), 44, 62, 92),
+                           Color.argb((int) Math.round(opacity * 0.55 * 255), 48, 68, 98),
+                           0x00344A66},
+                new float[] {0.0f, 0.55f, 1.0f}, Shader.TileMode.CLAMP));
+        canvas.save();
+        canvas.translate(centerX, shadeY);
+        canvas.scale(1.0f, 0.42f);
+        canvas.translate(-centerX, -shadeY);
+        canvas.drawCircle(centerX, shadeY, radius, paint);
+        canvas.restore();
+        paint.setShader(null);
     }
 
     private void drawIslandShadow(Canvas canvas, float centerX, float lowerY,

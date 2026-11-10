@@ -42,8 +42,33 @@
   const ISLAND_GRASS_OVERHANG = 4;
   const ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
   const ISLAND_BASE_BOTTOM_MARGIN = 8;
-  const ISLAND_VERTICAL_LIFT = 22;
+  const ISLAND_VERTICAL_LIFT = 38;
   const ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
+  // The support cloud is drawn from the same two sprites the rest of the sky uses.
+  const CLOUD_SPRITE_SOURCES = {
+    bank: './assets/cloud-bank.png',
+    mass: './assets/cloud-mass.png'
+  };
+  const CLOUD_NIGHT_TINT = '#33436a';
+  const CLOUD_STORM_TINT = '#65758c';
+  const CLOUD_TINT_CACHE_LIMIT = 24;
+  // How far the pad is pushed up into the slab. At 12 the cloud meets the soil lip and
+  // carries the island while two thirds of the brown band stays visible.
+  const SUPPORT_CLOUD_CONTACT = 12;
+  const SUPPORT_CLOUD_SCALE = 0.85;
+
+  function loadCloudSprites() {
+    const sprites = {};
+    Object.entries(CLOUD_SPRITE_SOURCES).forEach(([name, source]) => {
+      if (typeof Image === 'undefined') return;
+      const image = new Image();
+      image.src = source;
+      sprites[name] = image;
+    });
+    return sprites;
+  }
+  const CLOUD_SPRITES = loadCloudSprites();
+  const CLOUD_TINT_CACHE = new Map();
   let islandTop = HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH
     - ISLAND_GRID_SIZE * islandTileHeight;
   let islandCenterY = islandTop + ISLAND_GRID_SIZE * islandTileHeight / 2;
@@ -1537,6 +1562,144 @@
     if (outline) drawPixelPolyline(points, outline, true, 0.5);
   }
 
+  function cloudSprite(name) {
+    const sprite = CLOUD_SPRITES[name];
+    if (!sprite || !sprite.complete || !sprite.naturalWidth) return null;
+    return sprite;
+  }
+
+  function tintedCloudSprite(name, tintColor, tintAmount) {
+    const sprite = cloudSprite(name);
+    if (!sprite) return null;
+    const key = `${name}|${tintColor}|${tintAmount.toFixed(2)}`;
+    if (CLOUD_TINT_CACHE.has(key)) return CLOUD_TINT_CACHE.get(key);
+    const buffer = document.createElement('canvas');
+    buffer.width = sprite.naturalWidth;
+    buffer.height = sprite.naturalHeight;
+    const bufferCtx = buffer.getContext('2d');
+    bufferCtx.imageSmoothingEnabled = true;
+    bufferCtx.drawImage(sprite, 0, 0);
+    if (tintAmount > 0.01) {
+      bufferCtx.globalCompositeOperation = 'source-atop';
+      bufferCtx.globalAlpha = tintAmount;
+      bufferCtx.fillStyle = tintColor;
+      bufferCtx.fillRect(0, 0, buffer.width, buffer.height);
+    }
+    if (CLOUD_TINT_CACHE.size >= CLOUD_TINT_CACHE_LIMIT) CLOUD_TINT_CACHE.clear();
+    CLOUD_TINT_CACHE.set(key, buffer);
+    return buffer;
+  }
+
+  // Night cools the clouds and cover deepens them; the numbers match the rest of the sky.
+  function supportCloudTint(sunAltitude, cloudCover) {
+    const night = clamp(1 - sunAltitude / 8, 0, 1) * 0.85;
+    const gloom = clamp(cloudCover / 100 * 0.20, 0, 0.55);
+    return {
+      color: blendColor(blendColor('#e8f0fa', CLOUD_NIGHT_TINT, night),
+        CLOUD_STORM_TINT, gloom),
+      amount: Math.min(0.9, night * 0.60 + gloom * 0.3)
+    };
+  }
+
+  // The cloud that caught the island: the pad is pressed flat where the weight lands,
+  // the shoulders carry it further out, and the skirt hangs because nothing holds it.
+  function supportCloudPuffs() {
+    const centerX = WIDTH / 2;
+    const bottomY = islandTop + ISLAND_GRID_SIZE * islandTileHeight;
+    const tipY = bottomY + ISLAND_DEPTH;   // underside vertex of the slab
+    const cornerY = bottomY + 12;
+    const leftX = centerX - ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2;
+    const rightX = centerX + ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2;
+    const TIP = [centerX, tipY];
+    const S = SUPPORT_CLOUD_SCALE;
+    const contact = SUPPORT_CLOUD_CONTACT;
+    const onEdge = (corner, t) => [TIP[0] + (corner[0] - TIP[0]) * t,
+      TIP[1] + (corner[1] - TIP[1]) * t];
+    const puffs = [];
+
+    // pad: flat on the underside, squashed hardest right under the tip
+    for (let i = 0; i < 11; i += 1) {
+      const right = i > 5;
+      const k = i === 5 ? 0 : Math.abs(i - 5) / 5;
+      const point = i === 5 ? TIP
+        : onEdge(right ? [rightX, cornerY] : [leftX, cornerY], 0.05 + k * 0.88);
+      puffs.push({
+        x: point[0], y: point[1] + 4 - k * 2 - contact, h: (30 - k * 5) * S,
+        sx: 1.45 - k * 0.32, sy: 0.56 + k * 0.24, tint: 0.05 + k * 0.05,
+        sprite: i % 2 ? 'bank' : 'mass', front: false
+      });
+    }
+    // shoulders: a second row over the pad, so it reads as a body and not a sheet
+    for (let i = 0; i < 10; i += 1) {
+      const right = i >= 5;
+      const k = (i % 5) / 4;
+      const point = onEdge(right ? [rightX, cornerY] : [leftX, cornerY], 0.18 + k * 0.7);
+      puffs.push({
+        x: point[0] + (right ? 3 : -3), y: point[1] + 12 - k * 4 - contact,
+        h: (22 - k * 3) * S, sx: 1.20 - k * 0.16, sy: 0.82 + k * 0.12,
+        tint: 0.08 + k * 0.04, sprite: i % 2 ? 'mass' : 'bank', front: true
+      });
+    }
+    // skirt: outside the footprint, unsupported, so it hangs lower
+    const skirtY = tipY + 6;
+    [[40, -2, 30], [58, 8, 32], [26, 10, 28], [80, 14, 30], [104, 16, 26], [128, 16, 22],
+     [280, -2, 30], [262, 8, 32], [294, 10, 28], [240, 14, 30], [216, 16, 26],
+     [192, 16, 22]].forEach(([x, dy, h], i) => {
+      puffs.push({
+        x, y: skirtY + dy - contact, h: h * S, sx: 1.08, sy: 1.02 + (i % 3) * 0.05,
+        tint: 0.13, sprite: i % 2 ? 'bank' : 'mass', front: false
+      });
+    });
+    // a flat shelf bridging the two skirt halves under the tip, so no hole opens up
+    [[160, 12, 20], [136, 14, 18], [184, 14, 18], [112, 16, 16], [208, 16, 16]]
+      .forEach(([x, dy, h], i) => {
+        puffs.push({
+          x, y: tipY + dy - contact, h: h * S * 1.05,
+          sx: 1.5, sy: 0.72, tint: 0.11, sprite: i % 2 ? 'mass' : 'bank', front: false
+        });
+      });
+    return puffs;
+  }
+
+  function drawSupportCloudLayer(sunAltitude, cloudCover, front) {
+    const tint = supportCloudTint(sunAltitude, cloudCover);
+    supportCloudPuffs()
+      .filter(puff => puff.front === front)
+      .sort((a, b) => (a.y - a.h) - (b.y - b.h))
+      .forEach(puff => {
+        const sprite = tintedCloudSprite(puff.sprite, tint.color,
+          Math.min(1, Math.max(tint.amount, puff.tint)));
+        if (!sprite) return;
+        const width = puff.h * (sprite.width / sprite.height) * puff.sx;
+        const height = puff.h * puff.sy;
+        ctx.drawImage(sprite, puff.x - width / 2, puff.y - height, width, height);
+      });
+  }
+
+  // Contact shade sits under the pad: the island's mass darkens the cloud it rests on.
+  function drawSupportCloudShade(sunAltitude, cloudCover, code) {
+    const directLight = clamp((sunAltitude + 8) / 28, 0, 1);
+    let cloudFilter = 1 - clamp(cloudCover / 100 * 0.45, 0, 0.45);
+    if (weatherCodeIsStorm(code)) cloudFilter *= 0.82;
+    const opacity = (0.13 + directLight * 0.25) * cloudFilter;
+    const centerX = WIDTH / 2;
+    const shadeY = islandTop + ISLAND_GRID_SIZE * islandTileHeight + ISLAND_DEPTH - 2;
+    const radius = 70;
+    const shade = ctx.createRadialGradient(centerX, shadeY, 0, centerX, shadeY, radius);
+    shade.addColorStop(0, `rgba(44, 62, 92, ${opacity})`);
+    shade.addColorStop(0.55, `rgba(48, 68, 98, ${opacity * 0.55})`);
+    shade.addColorStop(1, 'rgba(52, 72, 102, 0)');
+    ctx.save();
+    ctx.translate(centerX, shadeY);
+    ctx.scale(1, 0.42);
+    ctx.translate(-centerX, -shadeY);
+    ctx.fillStyle = shade;
+    ctx.beginPath();
+    ctx.arc(centerX, shadeY, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   function drawFloatingIsland(sunAltitude, sunAzimuth, cloudCover, code, clouds) {
     ctx.save();
     const islandAnchorX = WIDTH / 2;
@@ -1559,7 +1722,10 @@
     const soilLeftX = leftX + ISLAND_GRASS_OVERHANG;
     const soilRightX = rightX - ISLAND_GRASS_OVERHANG;
 
-    drawIslandShadow(centerX, lowerY, sunAltitude, cloudCover, code);
+    // The island now rests on cloud, so the old ground shadow is replaced by the cluster
+    // underneath it: shade first, then the back half of the cloud, then the island itself.
+    drawSupportCloudShade(sunAltitude, cloudCover, code);
+    drawSupportCloudLayer(sunAltitude, cloudCover, false);
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.
     drawIslandSoilBody(soilLeftX, centerX, soilRightX,
       middleY, soilFrontY, grassBandDepth, palette);
@@ -1601,6 +1767,7 @@
     drawSmoothIslandLine(leftX, middleY, centerX, bottomY, topRim, 0.60);
     drawSmoothIslandLine(centerX, bottomY, rightX, middleY, topRim, 0.60);
     ctx.restore();
+    drawSupportCloudLayer(sunAltitude, cloudCover, true);
   }
 
   function rebuildParticles(sceneWeather) {
