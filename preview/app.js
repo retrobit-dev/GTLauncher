@@ -182,6 +182,31 @@
       '000000031111110001111110000000',
       '000000001111100000000000000000'],
   ];
+  // The sea starts at the horizon and runs to the bottom of the frame. Everything below the island
+  // used to be a soft haze, which left the plate floating over nothing.
+  const SEA_HORIZON_Y = HEIGHT / 2;
+  const SEA_PALETTES = {
+    night: { light: '#2b3c53', mid: '#1a2a3f', deep: '#121e2e', ripple: '#3a5273' },
+    twilight: { light: '#6d5f7c', mid: '#4e4763', deep: '#3a344b', ripple: '#8a7a92' },
+    overcast: { light: '#546974', mid: '#3d4e58', deep: '#2e3c44', ripple: '#68808a' },
+    day: { light: '#5e879b', mid: '#3d6a80', deep: '#2b5265', ripple: '#74a0ac' }
+  };
+  // Fixed ripple layout, hashed once so the water does not shimmer or crawl between frames.
+  const SEA_RIPPLES = (() => {
+    const out = [];
+    for (let index = 0; index < 120; index += 1) {
+      const near = cloudHash(0x5ea, index, 1) ** 0.7;
+      out.push({
+        t: near,
+        x: cloudHash(0x5ea, index, 2) * WIDTH,
+        // Ripples lengthen as they approach, which is what reads as perspective.
+        length: 3 + (1 - near) * 14,
+        bright: cloudHash(0x5ea, index, 3) > 0.62
+      });
+    }
+    return out;
+  })();
+
   const ISLAND_TILES = [];
   function rebuildIslandProjection() {
     islandTileHeight = ISLAND_TILE_WIDTH * Math.sin(islandCameraElevation * Math.PI / 180);
@@ -686,6 +711,64 @@
       ctx.fillStyle = result;
       ctx.fillRect(0, y, WIDTH, band);
     }
+  }
+
+  // Three flat bands with a scatter of one-unit ripples: the same limited-palette language as the
+  // island, which uses three greens and no outlines. Ripples get shorter and denser toward the
+  // viewer, which is what sells the depth without a gradient.
+  function drawSea(sunAltitude, cloudCover, code, sunAzimuth) {
+    const atmosphere = skyAtmosphere(sunAltitude, cloudCover, code);
+    const palette = SEA_PALETTES[Object.keys(SEA_PALETTES).find(key => atmosphere
+      === SKY_ATMOSPHERES[key]) || 'day'];
+    const top = SEA_HORIZON_Y;
+    const depth = HEIGHT - top;
+    // The band edge sits past the island's lowest point, so the deep tone is actually visible in
+    // front of the plate instead of being hidden behind it.
+    const midBand = top + depth * 0.72;
+    ctx.fillStyle = palette.mid;
+    ctx.fillRect(0, top, WIDTH, depth);
+    ctx.fillStyle = palette.deep;
+    ctx.fillRect(0, midBand, WIDTH, HEIGHT - midBand);
+    // A light line at the horizon and a second at the band edge: without them the water is one flat
+    // wall and reads as a continuation of the sky rather than as a surface.
+    ctx.fillStyle = palette.light;
+    ctx.fillRect(0, top, WIDTH, 1.5);
+    ctx.fillStyle = palette.light;
+    ctx.fillRect(0, midBand, WIDTH, 1);
+    SEA_RIPPLES.forEach(ripple => {
+      const y = top + 4 + ripple.t * (depth - 8);
+      // Skip the band edge, so no ripple straddles two tones and reads as a seam.
+      if (Math.abs(y - midBand) < 1.5) return;
+      const shade = ripple.bright ? palette.light : palette.ripple;
+      ctx.fillStyle = shade;
+      ctx.fillRect(Math.round(ripple.x), Math.round(y), Math.round(ripple.length), 1);
+    });
+    // The island used to cast onto bare ground. Over water that becomes a dark patch on the
+    // surface, so it is drawn here, behind the island, instead of on the floor.
+    drawIslandReflection(sunAltitude, sunAzimuth, cloudCover, code);
+  }
+
+  // A squashed copy of the island's own cast shadow, sitting on the water just under the plate.
+  // Same colour and opacity model as before, so it still reads as the same light.
+  function drawIslandReflection(sunAltitude, sunAzimuth, cloudCover, code) {
+    const directLight = clamp((sunAltitude + 8) / 28, 0, 1);
+    let cloudFilter = 1 - clamp(cloudCover / 100 * 0.45, 0, 0.45);
+    if (weatherCodeIsStorm(code)) cloudFilter *= 0.82;
+    const opacity = (0.10 + directLight * 0.30) * cloudFilter
+      * ISLAND_BODY_SHADOW_OPACITY_SCALE * 0.75;
+    if (opacity <= 0.002) return;
+    const centreX = WIDTH / 2;
+    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4 * ISLAND_BODY_SHADOW_SCALE;
+    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 4 * ISLAND_BODY_SHADOW_SCALE * 0.55;
+    const centreY = islandTop + ISLAND_GRID_SIZE * islandTileHeight * 0.62;
+    ctx.fillStyle = `rgba(10,20,32,${opacity})`;
+    ctx.beginPath();
+    ctx.moveTo(centreX, centreY - halfHeight);
+    ctx.lineTo(centreX + halfWidth, centreY);
+    ctx.lineTo(centreX, centreY + halfHeight);
+    ctx.lineTo(centreX - halfWidth, centreY);
+    ctx.closePath();
+    ctx.fill();
   }
 
   function skyColorAt(y, sun, cloudCover) {
@@ -1451,8 +1534,8 @@
 
     // The sun lights the island by day; once it is gone the moon takes over, so the cast
     // shadow follows whichever body is actually in the sky.
-    const light = pickLightSource(sunAltitude, sunHourAngle, moon, cloudCover);
-    drawIslandShadow(centerX, lowerY, light.altitude, light.hourAngle, cloudCover, code);
+    // The island's cast shadow used to fall on the floor. That floor is water now, so the shadow is
+    // drawn there as a reflection instead; drawing it here too left two overlapping diamonds.
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.
     drawIslandSoilBody(soilLeftX, centerX, soilRightX,
       middleY, soilFrontY, grassBandDepth, palette);
@@ -1598,6 +1681,7 @@
       sun.altitude, sun.hourAngleDegrees);
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     drawSky(skyNow, sun, sceneWeather.weatherCode, sceneWeather.cloudCover);
+    drawSea(sun.altitude, sceneWeather.cloudCover, sceneWeather.weatherCode, sun.azimuth);
     ctx.save();
     ctx.beginPath();
     // The sky band runs from above the frame down to the horizon; clipping at half height used

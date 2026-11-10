@@ -17,6 +17,12 @@ import java.util.Random;
 /** Full-screen, non-scrolling pixel-art sky driven by local astronomy and weather data. */
 public final class WeatherSkyView extends View {
     private static final int SCENE_WIDTH = 320;
+    /** The sea starts at the horizon and runs to the bottom of the frame. */
+    private static final float SEA_HORIZON_Y = SCENE_HEIGHT / 2.0f;
+    private static final int[] SEA_LIGHT = {0xFF2B3C53, 0xFF6D5F7C, 0xFF546974, 0xFF5E879B};
+    private static final int[] SEA_MID = {0xFF1A2A3F, 0xFF4E4763, 0xFF3D4E58, 0xFF3D6A80};
+    private static final int[] SEA_DEEP = {0xFF121E2E, 0xFF3A344B, 0xFF2E3C44, 0xFF2B5265};
+    private static final int[] SEA_RIPPLE = {0xFF3A5273, 0xFF8A7A92, 0xFF68808A, 0xFF74A0AC};
     private static final int SCENE_HEIGHT = 200;
     // A 2x backing bitmap makes half-scene-unit clusters land on crisp source pixels.
     private static final int RENDER_SCALE = 2;
@@ -321,6 +327,7 @@ public final class WeatherSkyView extends View {
         int save = scene.save();
         scene.scale(RENDER_SCALE, RENDER_SCALE);
         drawSky(scene, sun, cloudCover, code);
+        drawSea(scene, sun.altitudeDegrees, cloudCover, code);
         int skySave = scene.save();
         // The sky band runs from above the frame down to the horizon; clipping at half height
         // used to behead any cloud tall enough to reach past it.
@@ -580,8 +587,8 @@ public final class WeatherSkyView extends View {
                     * (0.35 + moon.illumination * 0.65), 0.0, 90.0);
             lightHourAngle = moon.hourAngleDegrees;
         }
-        drawIslandShadow(canvas, centerX, lowerY, lightAltitude, lightHourAngle,
-                cloudCover, code);
+        // The island's cast shadow used to fall on the floor. That floor is water now, so the shadow
+        // is drawn there as a reflection instead; drawing it here too left two overlapping diamonds.
 
         // One rounded, uninterrupted soil slab sits inside the wider grass cap.
         drawIslandSoilBody(canvas, soilLeftX, centerX, soilRightX,
@@ -673,6 +680,68 @@ public final class WeatherSkyView extends View {
                 shadowCenterX, shadowCenterY + halfHeight,
                 shadowCenterX - halfWidth, shadowCenterY,
                 shadowColor, 0);
+    }
+
+    /**
+     * Three flat bands with a scatter of one-unit ripples: the same limited-palette language as the
+     * island. Ripples lengthen toward the viewer, which is what sells the depth without a gradient.
+     */
+    private void drawSea(Canvas canvas, double sunAltitude, double cloudCover, int code) {
+        SkyAtmosphere atmosphere = skyAtmosphere(sunAltitude, cloudCover, code);
+        int index = 3;
+        if (atmosphere == NIGHT_ATMOSPHERE) index = 0;
+        else if (atmosphere == TWILIGHT_ATMOSPHERE) index = 1;
+        else if (atmosphere == OVERCAST_ATMOSPHERE) index = 2;
+        float top = SEA_HORIZON_Y;
+        float depth = SCENE_HEIGHT - top;
+        // The band edge sits past the island's lowest point, so the deep tone is visible in front
+        // of the plate instead of being hidden behind it.
+        float midBand = top + depth * 0.72f;
+        paint.setColor(SEA_MID[index]);
+        canvas.drawRect(0, top, SCENE_WIDTH, SCENE_HEIGHT, paint);
+        paint.setColor(SEA_DEEP[index]);
+        canvas.drawRect(0, midBand, SCENE_WIDTH, SCENE_HEIGHT, paint);
+        // A light line at the horizon and a second at the band edge: without them the water is one
+        // flat wall and reads as a continuation of the sky rather than as a surface.
+        paint.setColor(SEA_LIGHT[index]);
+        canvas.drawRect(0, top, SCENE_WIDTH, top + 1.5f, paint);
+        canvas.drawRect(0, midBand, SCENE_WIDTH, midBand + 1.0f, paint);
+        for (int i = 0; i < 120; i += 1) {
+            double near = Math.pow(cloudHash(0x5ea, i, 1), 0.7);
+            float y = (float) (top + 4.0 + near * (depth - 8.0));
+            if (Math.abs(y - midBand) < 1.5f) continue;
+            float x = (float) (cloudHash(0x5ea, i, 2) * SCENE_WIDTH);
+            float length = (float) (3.0 + (1.0 - near) * 14.0);
+            paint.setColor(cloudHash(0x5ea, i, 3) > 0.62 ? SEA_LIGHT[index] : SEA_RIPPLE[index]);
+            canvas.drawRect(x, y, x + length, y + 1.0f, paint);
+        }
+        drawIslandReflection(canvas, sunAltitude, cloudCover, code);
+    }
+
+    /**
+     * A squashed copy of the island's own cast shadow, sitting on the water just under the plate.
+     * Same colour and opacity model as before, so it still reads as the same light.
+     */
+    private void drawIslandReflection(Canvas canvas, double sunAltitude, double cloudCover, int code) {
+        double directLight = clamp((sunAltitude + 8.0) / 28.0, 0.0, 1.0);
+        double cloudFilter = 1.0 - clamp(cloudCover / 100.0 * 0.45, 0.0, 0.45);
+        if (code >= 95) cloudFilter *= 0.82;
+        double opacity = (0.10 + directLight * 0.30) * cloudFilter
+                * ISLAND_BODY_SHADOW_OPACITY_SCALE * 0.75;
+        if (opacity <= 0.002) return;
+        float centreX = SCENE_WIDTH / 2.0f;
+        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4.0f * ISLAND_BODY_SHADOW_SCALE;
+        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 4.0f
+                * ISLAND_BODY_SHADOW_SCALE * 0.55f;
+        float centreY = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT * 0.62f;
+        Path path = new Path();
+        path.moveTo(centreX, centreY - halfHeight);
+        path.lineTo(centreX + halfWidth, centreY);
+        path.lineTo(centreX, centreY + halfHeight);
+        path.lineTo(centreX - halfWidth, centreY);
+        path.close();
+        paint.setColor(Color.argb((int) (255.0 * opacity), 10, 20, 32));
+        canvas.drawPath(path, paint);
     }
 
     private SkyAtmosphere skyAtmosphere(double sunAltitude, double cloudCover, int code) {
