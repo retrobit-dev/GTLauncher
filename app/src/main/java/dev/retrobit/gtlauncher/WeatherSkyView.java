@@ -62,20 +62,19 @@ public final class WeatherSkyView extends View {
     private static final float SUN_RISE_X = 284.0f;
     private static final float SUN_SET_X = 36.0f;
     private static final float ARC_TILT = 9.0f;
-    // The island's own 9 x 9 lattice, redrawn on top of the plate as a legible overlay: the plate's
-    // silhouette at the plate's size, with the same tile pitch. This is the reference the
-    // coordinates are quoted in (A-I across, 1-9 down), so it sits on the real grid.
-    private static final boolean ISLAND_GRID_OVERLAY_ENABLED = true;
-    private static final float ISLAND_GRID_OVERLAY_LINE = 0.5f;
-    // Antialiasing on the clip boundary bled a fringe of grid colour onto the grass band below the
-    // front edge, so the whole overlay is pulled this far inside the silhouette.
-    private static final float ISLAND_GRID_OVERLAY_INSET = 1.5f;
-    private static final float ISLAND_GRID_OVERLAY_ALPHA = 0.38f;
-    private static final float ISLAND_GRID_OVERLAY_EDGE_ALPHA = 0.62f;
-    // The lattice reads as a sheet above the plate rather than inked into it, so it carries its own
-    // whole footprint instead of being clipped away by the plate. One offset moves the shape and the
-    // grid inside it together.
-    private static final float ISLAND_GRID_OVERLAY_LIFT = 75.0f;
+    // Langit Pulau -- the island's sky frame. A 9 x 9 lattice hung above the plate, in the plate's
+    // own silhouette at the plate's own size with the same tile pitch. It is the frame the island
+    // reads the sky against: the ground grid the celestial arc, the clouds and the weather are
+    // measured on, which is why it is named for the sky rather than for the ground it is shaped
+    // like. It hangs as a sheet instead of being inked into the grass.
+    private static final boolean LANGIT_PULAU_ENABLED = true;
+    private static final float LANGIT_PULAU_LINE = 0.5f;
+    private static final float LANGIT_PULAU_INSET = 1.5f;
+    private static final float LANGIT_PULAU_ALPHA = 0.38f;
+    private static final float LANGIT_PULAU_EDGE_ALPHA = 0.62f;
+    // Screen units, so the frame clears the plate by a fixed distance. 53 is the highest lift that
+    // keeps the whole frame on screen.
+    private static final float LANGIT_PULAU_LIFT = 75.0f;
     // The moon only appears once the sun has dropped below this altitude.
     private static final double MOON_VISIBLE_BELOW_SUN = -2.0;
     private static final int GLOW_STEPS = 14;
@@ -683,8 +682,8 @@ public final class WeatherSkyView extends View {
         }
         drawCloudShadowsOnIsland(canvas, cloudStates, sunAltitude, sunHourAngle,
                 cloudCover, code);
-        if (ISLAND_GRID_OVERLAY_ENABLED) {
-            drawIslandGridOverlay(canvas);
+        if (LANGIT_PULAU_ENABLED) {
+            drawLangitPulau(canvas);
         }
         int topRim = blend(palette.grassSeam, palette.grassDark, 0.32);
         drawSmoothIslandLine(canvas, leftX, middleY, centerX, bottomY, topRim, 0.60f);
@@ -996,26 +995,26 @@ public final class WeatherSkyView extends View {
     }
 
     /**
-     * Sinks a dark 9 x 9 lattice into the grass. Every line is a tile seam, so the lattice is
+     * Draws Langit Pulau: a dark 9 x 9 lattice hung above the plate. Every line is a tile seam, so it is
      * addressed in the projection's own (column, row) coordinates: integer values land on tile
      * centres, which means the seam between two tiles sits at a half value. The plate is the
      * diamond |a| + |b| = 9 with a = column - row and b = column + row - 8, which is why each seam
      * runs from -0.5 to 8.5 along the other axis.
      *
-     * The rim reuses the plate silhouette, so the overlay is the same shape as the island rather
+     * The rim reuses the plate silhouette, so the frame is the same shape as the island rather
      * than a separate diamond that merely lines up. Round joins matter: the rim's four vertices
      * turn by about 53 degrees and a miter join there shoots a spike outside the plate.
      */
-    private void drawIslandGridOverlay(Canvas canvas) {
+    private void drawLangitPulau(Canvas canvas) {
         float centerX = SCENE_WIDTH / 2.0f;
         float centerY = ISLAND_CENTER_Y;
         float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f;
         float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f;
-        float line = ISLAND_GRID_OVERLAY_LINE;
-        float inset = ISLAND_GRID_OVERLAY_INSET;
+        float line = LANGIT_PULAU_LINE;
+        float inset = LANGIT_PULAU_INSET;
         int save = canvas.save();
         // Screen units, so the overlay clears the plate by a fixed distance.
-        canvas.translate(0, -ISLAND_GRID_OVERLAY_LIFT);
+        canvas.translate(0, -LANGIT_PULAU_LIFT);
         // Clip the lattice a whole unit inside the plate; see the inset constant.
         islandClipPath.reset();
         traceSmoothIslandDiamondPath(islandClipPath, centerX, centerY,
@@ -1039,14 +1038,14 @@ public final class WeatherSkyView extends View {
         islandPolyPaint.setStrokeCap(Paint.Cap.BUTT);
         islandPolyPaint.setStrokeJoin(Paint.Join.ROUND);
         islandPolyPaint.setColor(0xFF0B1420);
-        islandPolyPaint.setAlpha(Math.round(ISLAND_GRID_OVERLAY_ALPHA * 255));
+        islandPolyPaint.setAlpha(Math.round(LANGIT_PULAU_ALPHA * 255));
         canvas.drawPath(grid, islandPolyPaint);
 
         Path rim = gridPath;
         rim.reset();
         traceSmoothIslandDiamondPath(rim, centerX, centerY,
                 halfWidth - inset - line / 2.0f, halfHeight - inset - line / 2.0f);
-        islandPolyPaint.setAlpha(Math.round(ISLAND_GRID_OVERLAY_EDGE_ALPHA * 255));
+        islandPolyPaint.setAlpha(Math.round(LANGIT_PULAU_EDGE_ALPHA * 255));
         canvas.drawPath(rim, islandPolyPaint);
 
         islandPolyPaint.setAlpha(255);

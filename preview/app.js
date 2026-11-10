@@ -87,24 +87,21 @@
   const CLOUD_ARC_TOP = 46;
   const CLOUD_ARC_RISE = 42;
   const CLOUD_ARC_OFFSETS = [2, 0, 12, 20];
-  // The island's own 9 x 9 lattice, redrawn on top of the plate as a legible overlay. It is the
-  // plate's silhouette at the plate's size, not a second surface: the same diamond, the same tile
-  // pitch, the same rounded cells, sunk into the grass as a single flat ink. This is the reference
-  // the coordinates are quoted in (A-I across, 1-9 down), so it has to sit on the real grid rather
-  // than float above it. Drawn in the plate's own transform, after the tiles, so the cloud-shade
-  // pass does not dim it.
-  const ISLAND_GRID_OVERLAY_ENABLED = true;
-  const ISLAND_GRID_OVERLAY_LINE = 0.5;
-  // Distance from the plate edge to the outermost ink. Antialiasing on the clip boundary used to
-  // bleed a fringe of grid colour onto the grass band below the front edge, so the whole overlay
-  // is pulled this far inside instead of ending exactly on the silhouette.
-  const ISLAND_GRID_OVERLAY_INSET = 1.5;
-  const ISLAND_GRID_OVERLAY_ALPHA = 0.38;
-  const ISLAND_GRID_OVERLAY_EDGE_ALPHA = 0.62;
-  // The lattice sits as a sheet above the plate rather than inked into it: lifted clear of the grass
-  // so its own footprint stays whole instead of being clipped away by the plate. The whole overlay
-  // is drawn under this one offset, so the shape and the grid inside it stay locked together.
-  const ISLAND_GRID_OVERLAY_LIFT = 75;
+  // Langit Pulau — the island's sky frame. A 9 x 9 lattice hung above the plate, in the plate's own
+  // silhouette at the plate's own size with the same tile pitch. It is the frame the island reads
+  // the sky against: the ground grid the celestial arc, the clouds and the weather are measured on,
+  // which is why it is named for the sky rather than for the ground it is shaped like. It hangs as
+  // a sheet instead of being inked into the grass, so its footprint stays whole.
+  const LANGIT_PULAU_ENABLED = true;
+  const LANGIT_PULAU_LINE = 0.5;
+  // Distance from the frame's own edge to the outermost ink, so the boundary stroke's outer half
+  // stays inside the shape.
+  const LANGIT_PULAU_INSET = 1.5;
+  const LANGIT_PULAU_ALPHA = 0.38;
+  const LANGIT_PULAU_EDGE_ALPHA = 0.62;
+  // Screen units, so the frame clears the plate by a fixed distance regardless of the plate's own
+  // tilt or zoom. 53 is the highest lift that keeps the whole frame on screen.
+  const LANGIT_PULAU_LIFT = 75;
   // A cloud crossing the island turns partly transparent so the tiles behind it stay readable.
   const CLOUD_ISLAND_ALPHA = 0.55;
   // Clouds travel right to left like real wind-driven cloud, cross the whole frame, then re-enter
@@ -1257,7 +1254,7 @@
   // second colour, no labels. The four outer lines reuse the plate silhouette and the rounded
   // corner helper, which is what makes the overlay the same shape as the island instead of a
   // separate diamond that merely happens to line up. Caller has already clipped to the surface.
-  function drawIslandGridOverlay() {
+  function drawLangitPulau() {
     const centreX = WIDTH / 2;
     const centreY = islandCenterY;
     const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2;
@@ -1275,15 +1272,15 @@
     ];
     const first = -0.5;
     const last = ISLAND_GRID_SIZE - 0.5;
-    const line = ISLAND_GRID_OVERLAY_LINE;
+    const line = LANGIT_PULAU_LINE;
     ctx.save();
     // Screen units, so the overlay clears the plate by a fixed distance regardless of the island's
     // own tilt or zoom.
-    ctx.translate(0, -ISLAND_GRID_OVERLAY_LIFT);
+    ctx.translate(0, -LANGIT_PULAU_LIFT);
     // Own silhouette, own clip. The lattice is meant to stay whole, so it no longer relies on the
     // plate's surface clip; it clips to itself instead. The inset is the hair of margin that keeps
     // the boundary stroke's outer half inside the shape.
-    const inset = ISLAND_GRID_OVERLAY_INSET;
+    const inset = LANGIT_PULAU_INSET;
     ctx.beginPath();
     traceSmoothIslandDiamond(centreX, centreY, halfWidth - inset, halfHeight - inset, 2.2);
     ctx.clip();
@@ -1294,7 +1291,7 @@
     // there shoots a spike well outside the plate. The spike was the only ink that escaped the
     // silhouette.
     ctx.lineJoin = 'round';
-    ctx.globalAlpha = ISLAND_GRID_OVERLAY_ALPHA;
+    ctx.globalAlpha = LANGIT_PULAU_ALPHA;
     ctx.beginPath();
     for (let edge = 1; edge < ISLAND_GRID_SIZE; edge += 1) {
       // The seam between columns edge-1 and edge, and the seam between rows edge-1 and edge.
@@ -1312,7 +1309,7 @@
     // The rim is the plate's own silhouette, inset by a line so its outer half stays inside the
     // clip. Drawn darker than the seams because it is the boundary of the grid, not one of its
     // cells.
-    ctx.globalAlpha = ISLAND_GRID_OVERLAY_EDGE_ALPHA;
+    ctx.globalAlpha = LANGIT_PULAU_EDGE_ALPHA;
     ctx.beginPath();
     traceSmoothIslandDiamond(centreX, centreY,
       halfWidth - inset - line / 2, halfHeight - inset - line / 2, 2.2);
@@ -1622,8 +1619,8 @@
     drawCloudShadowsOnIsland(cloudStates, sunAltitude, sunHourAngle, cloudCover, code);
     // No surface clip here any more: the overlay carries its own, and clipping to the plate as well
     // would slice the top off a lattice that has been lifted clear of it.
-    if (ISLAND_GRID_OVERLAY_ENABLED) {
-      drawIslandGridOverlay();
+    if (LANGIT_PULAU_ENABLED) {
+      drawLangitPulau();
     }
     const topRim = blendColor(palette.grassSeam, palette.grassDark, 0.32);
     drawSmoothIslandLine(leftX, middleY, centerX, bottomY, topRim, 0.60);
