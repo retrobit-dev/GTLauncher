@@ -81,9 +81,14 @@
   // The lower pair must float clear of the grass: sitting them at the island's own surface
   // height made them read as pressed into it rather than hanging above it.
   const CLOUD_SLOT_BOTTOM = [48, 46, 84, 98];
-  // Drift oscillates instead of wrapping: a clamped cloud would freeze against the frame edge.
-  const CLOUD_DRIFT_AMPLITUDE = 14;
-  const CLOUD_DRIFT_RATE = 0.35;
+  // Clouds travel right to left like real wind-driven cloud, cross the whole frame, then re-enter
+  // from the other side. Screen speed is derived from the reported wind so a breeze crawls and a
+  // storm hurries; the old oscillating sway was fast and never actually went anywhere.
+  const CLOUD_DRIFT_BASE = 0.55;
+  const CLOUD_DRIFT_WIND_GAIN = 0.16;
+  const CLOUD_DRIFT_MIN = 0.18;
+  const CLOUD_DRIFT_MAX = 5.5;
+  // A cloud is fully off-screen on the left only once its trail clears the frame with margin.
   const CLOUD_EDGE_INSET = 4;
   // The island's own cast shadow: close to the base, drifting with the light direction.
   const ISLAND_BODY_SHADOW_SCALE = 1.55;
@@ -701,26 +706,42 @@
 
   // Cloud states are layered by slot rather than advected across a physical sky field: the panel
   // is a stylised diorama, so composition matters more than meteorology.
+  function cloudDriftSpeed(sceneWeather) {
+    const wind = Math.max(0, sceneWeather.windSpeed ?? 4);
+    return clamp(CLOUD_DRIFT_BASE + wind * CLOUD_DRIFT_WIND_GAIN,
+      CLOUD_DRIFT_MIN, CLOUD_DRIFT_MAX);
+  }
+
+  // Right to left, which is the direction a westbound wind blows in this compass frame: east sits
+  // at the right edge and west at the left. Wind "from" the east means travel toward the west.
+  function cloudTravelDirection(sceneWeather) {
+    const windFromEast = Math.sin((sceneWeather.windDirection ?? 90) * Math.PI / 180);
+    return windFromEast >= 0 ? -1 : 1;
+  }
+
   function createCloudStates(elapsedSeconds, sceneWeather) {
     const count = cloudCountForCover(sceneWeather.cloudCover ?? 0);
     if (count === 0) return [];
     const seed = Math.trunc(location.latitude * 37 + location.longitude * 17)
       ^ Math.imul(count, 0x2545f491);
-    const driftPhase = elapsedSeconds * CLOUD_DRIFT_RATE;
-    const drift = Math.sin(driftPhase) * CLOUD_DRIFT_AMPLITUDE;
+    const direction = cloudTravelDirection(sceneWeather);
+    const speed = cloudDriftSpeed(sceneWeather);
     const clouds = [];
     for (let index = 0; index < count; index += 1) {
       const variant = Math.floor(cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length);
       const shape = CLOUD_SHAPE_VARIANTS[variant];
       const cell = CLOUD_CELL;
       const width = shape[0].length * cell;
-      const height = shape.length * cell;
-      const halfWidth = width * 0.5;
-      const slotX = CLOUD_SLOT_X[index % CLOUD_SLOT_X.length];
       const slotBottom = CLOUD_SLOT_BOTTOM[index % CLOUD_SLOT_BOTTOM.length];
-      const sway = Math.sin(driftPhase + index * 1.9) * CLOUD_DRIFT_AMPLITUDE;
-      const centreX = clamp(slotX + sway * (0.7 + index * 0.2),
-        halfWidth + CLOUD_EDGE_INSET, WIDTH - halfWidth - CLOUD_EDGE_INSET);
+      // Each cloud starts at its own offset across the frame so they do not travel in a block.
+      const startX = CLOUD_SLOT_X[index % CLOUD_SLOT_X.length]
+        + (cloudHash(seed, index, 4) - 0.5) * 40;
+      const travel = direction * speed * elapsedSeconds * (0.85 + index * 0.06);
+      // Wrapping over frame width plus sprite width keeps the re-entry seamless: the sprite is
+      // fully clear of one edge before it appears at the other.
+      const span = WIDTH + width + CLOUD_EDGE_INSET * 2;
+      const travelled = ((startX + travel + width + CLOUD_EDGE_INSET) % span + span) % span;
+      const centreX = travelled - width * 0.5 - CLOUD_EDGE_INSET;
       const bottomY = slotBottom + (cloudHash(seed, index, 3) - 0.5) * 5;
       clouds.push({ shape, cell, screenCenterX: centreX, screenBottomY: bottomY });
     }
@@ -764,7 +785,18 @@
   function drawClouds(clouds, sunAltitude, code) {
     if (clouds.length === 0) return;
     const palette = cloudPalette(sunAltitude, code);
-    clouds.forEach(cloud => drawCloudRows(cloud, palette));
+    clouds.forEach(cloud => {
+      drawCloudRows(cloud, palette);
+      // Draw the wrapped copy too, so a cloud straddling an edge stays continuous instead of
+      // being sliced in half while it leaves one side and arrives at the other.
+      const width = cloud.shape[0].length * cloud.cell;
+      const span = WIDTH + width + CLOUD_EDGE_INSET * 2;
+      if (cloud.screenCenterX - width * 0.5 < 0) {
+        drawCloudRows({ ...cloud, screenCenterX: cloud.screenCenterX + span }, palette);
+      } else if (cloud.screenCenterX + width * 0.5 > WIDTH) {
+        drawCloudRows({ ...cloud, screenCenterX: cloud.screenCenterX - span }, palette);
+      }
+    });
   }
 
   // The island is drawn scaled about this anchor, so any overlay on its top surface has to be
@@ -1183,16 +1215,22 @@
     return dx / (halfWidth + sceneWidth * 0.5) + dy / (halfHeight + sceneHeight * 0.5) <= 1;
   }
 
-  // A cloud hanging above the island dims the grass directly beneath it. The offset follows the
-  // light instead of being fixed: the lower the sun, the further the shadow is thrown.
+  // A cloud dims the ground it covers the way the island's own shadow does: as one full diamond
+  // plane on the ground, not as a small dark copy of the sprite stuck to the grass. The plane's
+  // size tracks the cloud's footprint, its shape stays a diamond because the ground is a plane in
+  // the same dimetric projection, and it is only drawn where it lands on the island.
   function drawCloudShadowsOnIsland(clouds, sunAltitude, sunHourAngle, cloudCover, code) {
     if (clouds.length === 0) return;
     const light = pickLightSource(sunAltitude, sunHourAngle, null, cloudCover);
     const altitude = Math.max(light.altitude, 0);
     const elevationSine = Math.max(Math.sin(altitude * Math.PI / 180), 0.35);
-    // Progress along the arc decides which way the sun leans, so shadows swing with it. The
-    // throw is clamped: at a low sun the raw 1/sin(f) term pushes the shadow clear of its own
-    // cloud, which reads as a stray patch on the grass rather than shade from above.
+    const directLight = clamp((altitude + 8) / 28, 0, 1);
+    let cloudFilter = 1 - clamp(cloudCover / 100 * 0.45, 0, 0.45);
+    if (weatherCodeIsStorm(code)) cloudFilter *= 0.82;
+    const opacity = (0.10 + directLight * 0.30) * cloudFilter
+      * ISLAND_BODY_SHADOW_OPACITY_SCALE * 0.9;
+    if (opacity <= 0.002) return;
+    // Progress along the arc decides which way the light leans, so the shadow swings with it.
     const lean = (0.5 - celestialProgress(light.hourAngle))
       * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.55;
     const throwFactor = Math.min(1 / elevationSine, 1.6);
@@ -1203,25 +1241,20 @@
       const sceneWidth = cloud.shape[0].length * cloud.cell;
       const sceneHeight = cloud.shape.length * cloud.cell;
       if (!cloudOverIsland(cloud, sceneWidth, sceneHeight)) return;
-      const maxOffset = sceneWidth * 0.45;
-      const shiftX = clamp(lean * throwFactor, -maxOffset, maxOffset);
+      const shiftX = clamp(lean * throwFactor, -sceneWidth, sceneWidth);
       const centreX = (cloud.screenCenterX - WIDTH / 2) / islandZoom + WIDTH / 2 + shiftX;
-      // The shadow sits well below the cloud in screen space, because the cloud hangs a real
-      // distance above the surface. Placing it just under the sprite made clouds look pressed
-      // into the grass instead of floating over it.
       const centreY = (cloud.screenBottomY - HEIGHT + ISLAND_BOTTOM_MARGIN) / islandZoom
-        + HEIGHT - ISLAND_BOTTOM_MARGIN - sceneHeight * 0.5
-        + sceneHeight * 1.15;
-      ctx.fillStyle = 'rgba(17,26,39,0.14)';
-      for (let row = 0; row < cloud.shape.length; row += 1) {
-        const line = cloud.shape[row];
-        const top = centreY - sceneHeight * 0.5 + row * cloud.cell;
-        for (let column = 0; column < line.length; column += 1) {
-          if (line[column] === '0') continue;
-          ctx.fillRect(centreX - sceneWidth * 0.5 + column * cloud.cell, top,
-            cloud.cell, cloud.cell);
-        }
-      }
+        + HEIGHT - ISLAND_BOTTOM_MARGIN - sceneHeight * 0.5 + sceneHeight * 1.15;
+      // The plane covers the ground the cloud shades, so it is sized from the sprite footprint
+      // and then squashed onto the island's dimetric surface rather than staying a rectangle.
+      const halfWidth = sceneWidth * 0.85;
+      const halfHeight = halfWidth * (islandTileHeight / ISLAND_TILE_WIDTH);
+      drawIslandPolygon([
+        [centreX, centreY - halfHeight],
+        [centreX + halfWidth, centreY],
+        [centreX, centreY + halfHeight],
+        [centreX - halfWidth, centreY]
+      ], `rgba(12,23,40,${opacity})`, null);
     });
     ctx.restore();
   }
