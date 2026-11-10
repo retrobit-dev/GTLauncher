@@ -414,6 +414,17 @@ public final class WeatherSkyView extends View {
         }
     }
 
+    /**
+     * The shadow is thrown AWAY from the light. Progress runs 0 at the eastern (right) end to 1 at
+     * the western (left) end, so a morning sun on the right pushes the shadow left, which is the
+     * negative direction. This is the opposite sign to the island body's own shadow, whose drift
+     * describes which side the light is on rather than which way the shadow is thrown.
+     */
+    private static double cloudShadowLean(double lightHourAngle) {
+        return -(0.5 - celestialProgress(lightHourAngle))
+                * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.55;
+    }
+
     private void drawCloudShadowsOnIsland(Canvas canvas, CloudState[] clouds, double sunAltitude,
             double sunHourAngle, double cloudCover, int code) {
         if (clouds.length == 0) return;
@@ -426,8 +437,7 @@ public final class WeatherSkyView extends View {
                 * ISLAND_BODY_SHADOW_OPACITY_SCALE * 0.9;
         if (opacity <= 0.002) return;
         // Progress along the arc decides which way the light leans, so the shadow swings with it.
-        double lean = (0.5 - celestialProgress(sunHourAngle))
-                * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.55;
+        double lean = cloudShadowLean(sunHourAngle);
         double throwFactor = Math.min(1.0 / elevationSine, 1.6);
         int save = canvas.save();
         setClipIslandSurface(canvas);

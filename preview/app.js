@@ -1279,6 +1279,15 @@
     }
   }
 
+  // The shadow is thrown AWAY from the light. Progress runs 0 at the eastern (right) end to 1 at
+  // the western (left) end, so a morning sun on the right pushes the shadow left, which is the
+  // negative direction. This is the opposite sign to the island body's own shadow, whose drift
+  // describes which side the light is on rather than which way the shadow is thrown.
+  function cloudShadowLean(lightHourAngle) {
+    return -(0.5 - celestialProgress(lightHourAngle))
+      * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.55;
+  }
+
   function drawCloudShadowsOnIsland(clouds, sunAltitude, sunHourAngle, cloudCover, code) {
     if (clouds.length === 0) return;
     const light = pickLightSource(sunAltitude, sunHourAngle, null, cloudCover);
@@ -1290,9 +1299,6 @@
     const opacity = (0.10 + directLight * 0.30) * cloudFilter
       * ISLAND_BODY_SHADOW_OPACITY_SCALE * 0.9;
     if (opacity <= 0.002) return;
-    // Progress along the arc decides which way the light leans, so the shadow swings with it.
-    const lean = (0.5 - celestialProgress(light.hourAngle))
-      * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.55;
     const throwFactor = Math.min(1 / elevationSine, 1.6);
     ctx.save();
     applyIslandTransform();
@@ -1308,7 +1314,7 @@
       const arcHeight = cloud.screenBottomY - cloudArcY(cloud.screenCenterX, 0);
       const drop = clamp(arcHeight, 0, ISLAND_GRID_SIZE * islandTileHeight * 1.2);
       const centreX = (cloud.screenCenterX - WIDTH / 2) / islandZoom + WIDTH / 2
-        + clamp(lean * throwFactor, -sceneWidth, sceneWidth);
+        + clamp(cloudShadowLean(light.hourAngle) * throwFactor, -sceneWidth, sceneWidth);
       const centreY = islandCenterY - drop * 0.55
         + (cloud.screenBottomY - islandCenterY) * 0.12;
       // The shadow is the cloud's own silhouette, shrunk. A diamond plate read as a generic smudge
