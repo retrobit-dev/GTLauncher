@@ -98,6 +98,9 @@
   const CLOUD_DRIFT_MAX = 5.5;
   // A cloud is fully off-screen on the left only once its trail clears the frame with margin.
   const CLOUD_EDGE_INSET = 4;
+  // The shadow is a shrunk copy of the cloud, not a same-size one: at full size it covered most of
+  // the island and read as a hole rather than as shade.
+  const CLOUD_SHADOW_SCALE = 0.78;
   // The island's own cast shadow: close to the base, drifting with the light direction.
   const ISLAND_BODY_SHADOW_SCALE = 1.55;
   const ISLAND_BODY_SHADOW_OPACITY_SCALE = 0.46;
@@ -1231,6 +1234,21 @@
   // plane on the ground, not as a small dark copy of the sprite stuck to the grass. The plane's
   // size tracks the cloud's footprint, its shape stays a diamond because the ground is a plane in
   // the same dimetric projection, and it is only drawn where it lands on the island.
+  // Draws a sprite mask as a ground shadow: the same cells, scaled down, then squashed by the
+  // island's own tile ratio so it lies flat on the dimetric surface instead of standing upright.
+  function drawGroundSilhouette(shape, centreX, centreY, width, height) {
+    const cellX = width / shape[0].length;
+    const cellY = height / shape.length;
+    for (let row = 0; row < shape.length; row += 1) {
+      const line = shape[row];
+      const top = centreY - height * 0.5 + row * cellY;
+      for (let column = 0; column < line.length; column += 1) {
+        if (line[column] === '0') continue;
+        ctx.fillRect(centreX - width * 0.5 + column * cellX, top, cellX + 0.02, cellY + 0.02);
+      }
+    }
+  }
+
   function drawCloudShadowsOnIsland(clouds, sunAltitude, sunHourAngle, cloudCover, code) {
     if (clouds.length === 0) return;
     const light = pickLightSource(sunAltitude, sunHourAngle, null, cloudCover);
@@ -1270,16 +1288,11 @@
       const centreY = straightAboveY - bandMix * ISLAND_GRID_SIZE * islandTileHeight * 0.45;
       const halfIsland = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.5;
       if (Math.abs(centreX - WIDTH / 2) > halfIsland * 0.9) return;
-      // The plane covers the ground the cloud shades, so it is sized from the sprite footprint
-      // and then squashed onto the island's dimetric surface rather than staying a rectangle.
-      const halfWidth = sceneWidth * 0.85;
-      const halfHeight = halfWidth * (islandTileHeight / ISLAND_TILE_WIDTH);
-      drawIslandPolygon([
-        [centreX, centreY - halfHeight],
-        [centreX + halfWidth, centreY],
-        [centreX, centreY + halfHeight],
-        [centreX - halfWidth, centreY]
-      ], `rgba(12,23,40,${opacity})`, null);
+      // The shadow is the cloud's own silhouette, shrunk. A diamond plate read as a generic smudge
+      // that said nothing about which cloud threw it; the traced outline keeps the lobes.
+      ctx.fillStyle = `rgba(12,23,40,${opacity})`;
+      drawGroundSilhouette(cloud.shape, centreX, centreY, sceneWidth * CLOUD_SHADOW_SCALE,
+        sceneHeight * CLOUD_SHADOW_SCALE);
     });
     ctx.restore();
   }

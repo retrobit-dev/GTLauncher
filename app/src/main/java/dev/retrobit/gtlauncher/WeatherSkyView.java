@@ -109,6 +109,9 @@ public final class WeatherSkyView extends View {
     private static final double CLOUD_DRIFT_MIN = 0.18;
     private static final double CLOUD_DRIFT_MAX = 5.5;
     private static final float CLOUD_EDGE_INSET = 4.0f;
+    // The shadow is a shrunk copy of the cloud, not a same-size one: at full size it covered
+    // most of the island and read as a hole rather than as shade.
+    private static final float CLOUD_SHADOW_SCALE = 0.78f;
     // A soft, dark tint so the shadow reads as shade on grass rather than a grey sticker.
     private static final int CLOUD_SHADOW_ON_ISLAND_COLOR = Color.argb(36, 17, 26, 39);
     // The island's own cast shadow: close to the base, drifting with the light direction.
@@ -389,6 +392,26 @@ public final class WeatherSkyView extends View {
         canvas.clipPath(islandClipPath);
     }
 
+    /**
+     * Draws a sprite mask as a ground shadow: the same cells, scaled down, then squashed by the
+     * island's own tile ratio so it lies flat on the dimetric surface instead of standing upright.
+     */
+    private void drawGroundSilhouette(Canvas canvas, String[] shape, float centreX, float centreY,
+            float width, float height) {
+        float cellX = width / shape[0].length();
+        float cellY = height / shape.length;
+        paint.setStyle(Paint.Style.FILL);
+        for (int row = 0; row < shape.length; row += 1) {
+            String line = shape[row];
+            float top = centreY - height * 0.5f + row * cellY;
+            for (int column = 0; column < line.length(); column += 1) {
+                if (line.charAt(column) == '0') continue;
+                float left = centreX - width * 0.5f + column * cellX;
+                canvas.drawRect(left, top, left + cellX, top + cellY, paint);
+            }
+        }
+    }
+
     private void drawCloudShadowsOnIsland(Canvas canvas, CloudState[] clouds, double sunAltitude,
             double sunHourAngle, double cloudCover, int code) {
         if (clouds.length == 0) return;
@@ -426,14 +449,12 @@ public final class WeatherSkyView extends View {
             float centreY = straightAboveY
                     - bandMix * ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT * 0.45f;
             if (Math.abs(centreX - SCENE_WIDTH / 2.0f) > halfIsland * 0.9f) continue;
-            float halfWidth = sceneWidth * 0.85f;
-            float halfHeight = halfWidth * (ISLAND_TILE_HEIGHT / ISLAND_TILE_WIDTH);
-            drawIslandPolygon(canvas,
-                    centreX, centreY - halfHeight,
-                    centreX + halfWidth, centreY,
-                    centreX, centreY + halfHeight,
-                    centreX - halfWidth, centreY,
-                    Color.argb((int) (255.0 * opacity), 12, 23, 40), 0);
+            // The shadow is the cloud's own silhouette, shrunk. A diamond plate read as a generic
+            // smudge that said nothing about which cloud threw it; the traced outline keeps the
+            // lobes.
+            paint.setColor(Color.argb((int) (255.0 * opacity), 12, 23, 40));
+            drawGroundSilhouette(canvas, cloud.shape, centreX, centreY,
+                    sceneWidth * CLOUD_SHADOW_SCALE, sceneHeight * CLOUD_SHADOW_SCALE);
         }
         canvas.restoreToCount(save);
     }
