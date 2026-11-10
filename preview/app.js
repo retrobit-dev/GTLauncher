@@ -193,7 +193,7 @@
   // How far the water sits below the plate. Pushing it down opens a clear band of sky between the
   // island's underside and the surface, so the plate reads as floating well above the water rather
   // than resting on it.
-  const SEA_DROP = 16;
+  const SEA_DROP = 24;
   function seaSurfacePoints() {
     const centerX = WIDTH / 2;
     const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2 * SEA_SCALE;
@@ -765,9 +765,9 @@
     // still shows all the way around it -- a shadow as big as the sea diamond would just be a second
     // dark diamond with nothing to tell the two apart.
     const centerY = islandTop + ISLAND_GRID_SIZE * islandTileHeight / 2 + ISLAND_DEPTH
-      + SEA_DROP + 14;
-    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2 * 0.72;
-    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 2 * 0.72;
+      + SEA_DROP + 11;
+    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2 * 0.62;
+    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 2 * 0.62;
     // Light from the eastern half pushes the patch west, exactly as the island's own shadow does.
     const progress = celestialProgress(sunHourAngle);
     const drift = (0.5 - progress) * 2 * ISLAND_BODY_SHADOW_DRIFT;
