@@ -70,12 +70,17 @@
   // Cloud cover breakpoints, one cloud per step cleared. The first step is 0 so even a fully
   // clear sky keeps a single cloud in the panel; 82% and up fills every slot.
   const CLOUD_COVER_STEPS = [0, 32, 58, 82];
-  const CLOUD_CELL_MIN = 1.45;
-  const CLOUD_CELL_RANGE = 0.65;
+  // Half the previous sprite size. The previous cell ran 1.45-2.10 scene units, so half is
+  // 0.73-1.05; 1 is the only whole-pixel step in that band at RENDER_SCALE 2, and it keeps every
+  // cell edge on the art grid. A fractional cell left antialiased seams across the cloud face,
+  // and re-rounding each cell independently made the silhouette zigzag.
+  const CLOUD_CELL = 1;
   // Slots are absolute scene units, not fractions, because the widest sprite must still clear
   // both frame edges. The lower pair sit just above the island's back corner and read as nearer.
-  const CLOUD_SLOT_X = [56, 264, 64, 256];
-  const CLOUD_SLOT_BOTTOM = [48, 46, 92, 90];
+  const CLOUD_SLOT_X = [56, 264, 118, 206];
+  // The lower pair must float clear of the grass: sitting them at the island's own surface
+  // height made them read as pressed into it rather than hanging above it.
+  const CLOUD_SLOT_BOTTOM = [48, 46, 84, 98];
   // Drift oscillates instead of wrapping: a clamped cloud would freeze against the frame edge.
   const CLOUD_DRIFT_AMPLITUDE = 14;
   const CLOUD_DRIFT_RATE = 0.35;
@@ -707,7 +712,7 @@
     for (let index = 0; index < count; index += 1) {
       const variant = Math.floor(cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length);
       const shape = CLOUD_SHAPE_VARIANTS[variant];
-      const cell = CLOUD_CELL_MIN + cloudHash(seed, index, 2) * CLOUD_CELL_RANGE;
+      const cell = CLOUD_CELL;
       const width = shape[0].length * cell;
       const height = shape.length * cell;
       const halfWidth = width * 0.5;
@@ -737,21 +742,21 @@
   function drawCloudRows(cloud, palette) {
     const shape = cloud.shape;
     const cell = cloud.cell;
-    const left = cloud.screenCenterX - shape[0].length * cell * 0.5;
-    const top = cloud.screenBottomY - shape.length * cell;
     const snap = value => Math.round(value * RENDER_SCALE) / RENDER_SCALE;
+    // Snap the sprite's origin only. Each cell then advances by the exact same pitch, so the
+    // silhouette stays regular instead of being re-rounded per cell.
+    const left = snap(cloud.screenCenterX - shape[0].length * cell * 0.5);
+    const top = snap(cloud.screenBottomY - shape.length * cell);
     for (let row = 0; row < shape.length; row += 1) {
       const line = shape[row];
-      const rowTop = snap(top + row * cell);
-      const rowBottom = snap(top + (row + 1) * cell);
+      const rowTop = top + row * cell;
       for (let column = 0; column < line.length; column += 1) {
         const band = line[column];
         if (band === '0') continue;
         // Sprite cells carry band digits '1'..'3', darkest first.
         ctx.fillStyle = palette[Number(band) - 1];
-        const runLeft = snap(left + column * cell);
-        const runRight = snap(left + (column + 1) * cell);
-        ctx.fillRect(runLeft, rowTop, runRight - runLeft, rowBottom - rowTop);
+        // A hair of overlap stops seams opening between cells at fractional pitch.
+        ctx.fillRect(left + column * cell, rowTop, cell + 0.03, cell + 0.03);
       }
     }
   }
@@ -760,6 +765,19 @@
     if (clouds.length === 0) return;
     const palette = cloudPalette(sunAltitude, code);
     clouds.forEach(cloud => drawCloudRows(cloud, palette));
+  }
+
+  // The island is drawn scaled about this anchor, so any overlay on its top surface has to be
+  // placed with the same transform or the shadow drifts as soon as the zoom changes.
+  function islandAnchor() {
+    return [WIDTH / 2, HEIGHT - ISLAND_BOTTOM_MARGIN];
+  }
+
+  function applyIslandTransform() {
+    const [anchorX, anchorY] = islandAnchor();
+    ctx.translate(anchorX, anchorY);
+    ctx.scale(islandZoom, islandZoom);
+    ctx.translate(-anchorX, -anchorY);
   }
 
   function islandSurfacePoints() {
@@ -1148,14 +1166,70 @@
     if (outline) drawPixelPolyline(points, outline, true, 0.5);
   }
 
-  function drawFloatingIsland(sunAltitude, sunAzimuth, sunHourAngle, cloudCover, code,
-    moon) {
+  // Only clouds that actually hang over the island top cast anything. The silhouette is the
+  // sprite's own cells, so the shadow keeps the lobes instead of becoming an oval blob.
+  function cloudOverIsland(cloud, sceneWidth, sceneHeight) {
+    const centreX = (cloud.screenCenterX - WIDTH / 2) / islandZoom + WIDTH / 2;
+    const centreY = (cloud.screenBottomY - HEIGHT + ISLAND_BOTTOM_MARGIN) / islandZoom
+      + HEIGHT - ISLAND_BOTTOM_MARGIN - sceneHeight * 0.5;
+    for (const point of islandSurfacePoints()) {
+      if (Math.abs(centreX - point[0]) <= sceneWidth * 0.5
+        && Math.abs(centreY - point[1]) <= sceneHeight * 0.5) return true;
+    }
+    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.5;
+    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight * 0.5;
+    const dx = Math.abs(centreX - WIDTH / 2);
+    const dy = Math.abs(centreY - islandCenterY);
+    return dx / (halfWidth + sceneWidth * 0.5) + dy / (halfHeight + sceneHeight * 0.5) <= 1;
+  }
+
+  // A cloud hanging above the island dims the grass directly beneath it. The offset follows the
+  // light instead of being fixed: the lower the sun, the further the shadow is thrown.
+  function drawCloudShadowsOnIsland(clouds, sunAltitude, sunHourAngle, cloudCover, code) {
+    if (clouds.length === 0) return;
+    const light = pickLightSource(sunAltitude, sunHourAngle, null, cloudCover);
+    const altitude = Math.max(light.altitude, 0);
+    const elevationSine = Math.max(Math.sin(altitude * Math.PI / 180), 0.35);
+    // Progress along the arc decides which way the sun leans, so shadows swing with it. The
+    // throw is clamped: at a low sun the raw 1/sin(f) term pushes the shadow clear of its own
+    // cloud, which reads as a stray patch on the grass rather than shade from above.
+    const lean = (0.5 - celestialProgress(light.hourAngle))
+      * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.55;
+    const throwFactor = Math.min(1 / elevationSine, 1.6);
     ctx.save();
-    const islandAnchorX = WIDTH / 2;
-    const islandAnchorY = HEIGHT - ISLAND_BOTTOM_MARGIN;
-    ctx.translate(islandAnchorX, islandAnchorY);
-    ctx.scale(islandZoom, islandZoom);
-    ctx.translate(-islandAnchorX, -islandAnchorY);
+    applyIslandTransform();
+    clipIslandSurface();
+    clouds.forEach(cloud => {
+      const sceneWidth = cloud.shape[0].length * cloud.cell;
+      const sceneHeight = cloud.shape.length * cloud.cell;
+      if (!cloudOverIsland(cloud, sceneWidth, sceneHeight)) return;
+      const maxOffset = sceneWidth * 0.45;
+      const shiftX = clamp(lean * throwFactor, -maxOffset, maxOffset);
+      const centreX = (cloud.screenCenterX - WIDTH / 2) / islandZoom + WIDTH / 2 + shiftX;
+      // The shadow sits well below the cloud in screen space, because the cloud hangs a real
+      // distance above the surface. Placing it just under the sprite made clouds look pressed
+      // into the grass instead of floating over it.
+      const centreY = (cloud.screenBottomY - HEIGHT + ISLAND_BOTTOM_MARGIN) / islandZoom
+        + HEIGHT - ISLAND_BOTTOM_MARGIN - sceneHeight * 0.5
+        + sceneHeight * 1.15;
+      ctx.fillStyle = 'rgba(17,26,39,0.14)';
+      for (let row = 0; row < cloud.shape.length; row += 1) {
+        const line = cloud.shape[row];
+        const top = centreY - sceneHeight * 0.5 + row * cloud.cell;
+        for (let column = 0; column < line.length; column += 1) {
+          if (line[column] === '0') continue;
+          ctx.fillRect(centreX - sceneWidth * 0.5 + column * cloud.cell, top,
+            cloud.cell, cloud.cell);
+        }
+      }
+    });
+    ctx.restore();
+  }
+
+  function drawFloatingIsland(sunAltitude, sunAzimuth, sunHourAngle, cloudCover, code,
+    moon, cloudStates) {
+    ctx.save();
+    applyIslandTransform();
     const palette = islandPalette(sunAltitude, cloudCover, code);
     const sunlight = islandSunlight(sunAltitude, cloudCover, code);
     const centerX = WIDTH / 2;
@@ -1211,6 +1285,7 @@
       [centerX, topY], [rightX, middleY], [centerX, bottomY], [leftX, middleY]
     ], tileSeam, tileSeam);
     ISLAND_TILES.forEach(tile => drawGrassTile(tile, palette, sunlight));
+    drawCloudShadowsOnIsland(cloudStates, sunAltitude, sunHourAngle, cloudCover, code);
     const topRim = blendColor(palette.grassSeam, palette.grassDark, 0.32);
     drawSmoothIslandLine(leftX, middleY, centerX, bottomY, topRim, 0.60);
     drawSmoothIslandLine(centerX, bottomY, rightX, middleY, topRim, 0.60);
@@ -1321,7 +1396,6 @@
     // to behead any cloud tall enough to reach past it.
     ctx.rect(0, -HEIGHT, WIDTH, HEIGHT * 1.5);
     ctx.clip();
-    drawClouds(cloudStates, sun.altitude, sceneWeather.weatherCode);
     drawSun(sun, sceneWeather.cloudCover, motionTime);
     drawMoon(moonNow, motionTime, sun.altitude);
     ctx.restore();
@@ -1333,7 +1407,11 @@
     drawLightning(time, sceneWeather.weatherCode);
     ctx.restore();
     drawFloatingIsland(sun.altitude, sun.azimuth, sun.hourAngleDegrees,
-      sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow);
+      sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates);
+    // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
+    // cloud can hang below the horizon line, and clipping it there hid the cloud while its
+    // shadow still showed on the grass. Edge clamping already keeps every sprite in frame.
+    drawClouds(cloudStates, sun.altitude, sceneWeather.weatherCode);
     drawPrecipitation(sceneWeather);
     if (!REDUCED_MOTION) window.requestAnimationFrame(drawFrame);
   }
