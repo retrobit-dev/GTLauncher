@@ -186,7 +186,7 @@
   // or missing image leaves the panel untouched instead of throwing.
   // The farmer is an 18x24 sprite where one sprite pixel is exactly one scene unit, so his scale is
   // written in scene units rather than in tile fractions.
-  const CHARACTER_SOURCE = 'assets/farmer-18x24.png';
+  const CHARACTER_SOURCE = 'assets/farmer-26x34.png';
   const CHARACTER_TILE = 'E5';
   const CHARACTER_UNIT = 1.15;
   let characterImage = null;
