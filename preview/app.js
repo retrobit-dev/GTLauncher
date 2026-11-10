@@ -104,7 +104,7 @@
   // The lattice sits as a sheet above the plate rather than inked into it: lifted clear of the grass
   // so its own footprint stays whole instead of being clipped away by the plate. The whole overlay
   // is drawn under this one offset, so the shape and the grid inside it stay locked together.
-  const ISLAND_GRID_OVERLAY_LIFT = 50;
+  const ISLAND_GRID_OVERLAY_LIFT = 75;
   // A cloud crossing the island turns partly transparent so the tiles behind it stay readable.
   const CLOUD_ISLAND_ALPHA = 0.55;
   // Clouds travel right to left like real wind-driven cloud, cross the whole frame, then re-enter
