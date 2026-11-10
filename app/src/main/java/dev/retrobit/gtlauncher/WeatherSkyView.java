@@ -17,21 +17,6 @@ import java.util.Random;
 /** Full-screen, non-scrolling pixel-art sky driven by local astronomy and weather data. */
 public final class WeatherSkyView extends View {
     private static final int SCENE_WIDTH = 320;
-    /**
-     * The sea is a diamond the same shape as the island's own top face, not a band across the frame:
-     * it is the water the plate hangs over, so its outline mirrors the plate.
-     */
-    private static final float SEA_SCALE = 1.34f;
-    /**
-     * One flat blue for the whole surface. The sea is the calmest thing in the frame: no bands, no
-     * ripples, no rim, so nothing competes with the island.
-     */
-    private static final int SEA_COLOR = 0xFF4A7F99;
-    /**
-     * How far the water sits below the plate. Pushing it down opens a band of sky between the
-     * island's underside and the surface, so the plate reads as floating well above the water.
-     */
-    private static final float SEA_DROP = 24.0f;
     private static final int SCENE_HEIGHT = 200;
     // A 2x backing bitmap makes half-scene-unit clusters land on crisp source pixels.
     private static final int RENDER_SCALE = 2;
@@ -336,7 +321,6 @@ public final class WeatherSkyView extends View {
         int save = scene.save();
         scene.scale(RENDER_SCALE, RENDER_SCALE);
         drawSky(scene, sun, cloudCover, code);
-        drawSea(scene, sun.altitudeDegrees, cloudCover, code, sun.hourAngleDegrees);
         int skySave = scene.save();
         // The sky band runs from above the frame down to the horizon; clipping at half height
         // used to behead any cloud tall enough to reach past it.
@@ -689,101 +673,6 @@ public final class WeatherSkyView extends View {
                 shadowCenterX, shadowCenterY + halfHeight,
                 shadowCenterX - halfWidth, shadowCenterY,
                 shadowColor, 0);
-    }
-
-    /**
-     * Three flat bands with a scatter of one-unit ripples: the same limited-palette language as the
-     * island. Ripples lengthen toward the viewer, which is what sells the depth without a gradient.
-     */
-    private float[] seaSurfacePoints() {
-        float centerX = SCENE_WIDTH / 2.0f;
-        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f * SEA_SCALE;
-        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f * SEA_SCALE;
-        // Dropped so the upper half tucks behind the plate and the lower half shows as water under
-        // it, which is the composition the plate's own shadow needs in order to land somewhere.
-        // SEA_DROP pushes it further down, opening a band of sky between the plate's underside and
-        // the surface so the island reads as floating well above the water.
-        float centerY = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT + ISLAND_DEPTH
-                - halfHeight * 0.15f + SEA_DROP;
-        return new float[] {
-                centerX, centerY - halfHeight,
-                centerX + halfWidth, centerY,
-                centerX, centerY + halfHeight,
-                centerX - halfWidth, centerY
-        };
-    }
-
-    private Path seaDiamondPath(float[] p) {
-        Path path = new Path();
-        path.moveTo(p[0], p[1]);
-        path.lineTo(p[2], p[3]);
-        path.lineTo(p[4], p[5]);
-        path.lineTo(p[6], p[7]);
-        path.close();
-        return path;
-    }
-
-    /**
-     * A single flat tone inside a diamond that mirrors the island. The sea is deliberately the
-     * calmest thing in the frame: no bands, no ripples, no rim, so nothing competes with the island.
-     */
-    private void drawSea(Canvas canvas, double sunAltitude, double cloudCover, int code,
-            double sunHourAngle) {
-        SkyAtmosphere atmosphere = skyAtmosphere(sunAltitude, cloudCover, code);
-        // The light still moves over it: the same sky tint that pulls the island is applied here,
-        // so the water darkens at night and warms at dusk instead of glowing the same blue at 11pm.
-        int seaColor = blend(SEA_COLOR, atmosphere.tint, atmosphere.islandMix * 1.35);
-        float[] p = seaSurfacePoints();
-
-        paint.setColor(seaColor);
-        canvas.drawPath(seaDiamondPath(p), paint);
-
-        // The plate's shadow lands ON this surface, which is the point of the whole change.
-        drawIslandReflection(canvas, sunAltitude, cloudCover, code, sunHourAngle);
-    }
-
-    /**
-     * The plate's own cast shadow on the water. It keeps the island's shadow language: same colour,
-     * same opacity model, same sideways drift with the light, but squashed onto the sea surface.
-     */
-    private void drawIslandReflection(Canvas canvas, double sunAltitude, double cloudCover,
-            int code, double sunHourAngle) {
-        double directLight = clamp((sunAltitude + 8.0) / 28.0, 0.0, 1.0);
-        double cloudFilter = 1.0 - clamp(cloudCover / 100.0 * 0.45, 0.0, 0.45);
-        if (code >= 95) cloudFilter *= 0.82;
-        // Well above the island's ground-shadow opacity. The value that reads clearly on pale grass
-        // measures only a few levels per pixel on dark water, so the shadow was technically present
-        // and visually absent.
-        double opacity = (0.10 + directLight * 0.30) * cloudFilter
-                * ISLAND_BODY_SHADOW_OPACITY_SCALE * 3.0;
-        if (opacity <= 0.002) return;
-        // The shadow is the island's own footprint, slid down the water by a fixed offset. Only 18
-        // scene units of water are visible below the island's base, so the offset has to stay
-        // small: pushed much further and the lower half of the diamond falls off the bottom of the
-        // frame, which is why earlier attempts read as "there is no shadow at all" even though one
-        // was being drawn.
-        float centreY = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f
-                + ISLAND_DEPTH + SEA_DROP + 10.0f;
-        // Nearly the plate's own footprint: almost the same size is what makes it read as that
-        // plate's shadow, and the offset above is what keeps it from merging into the plate's base.
-        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f * 0.95f;
-        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f * 0.95f;
-        double progress = celestialProgress(sunHourAngle);
-        float drift = (float) ((0.5 - progress) * 2.0 * ISLAND_BODY_SHADOW_DRIFT);
-        float centreX = SCENE_WIDTH / 2.0f - drift;
-        Path path = new Path();
-        path.moveTo(centreX, centreY - halfHeight);
-        path.lineTo(centreX + halfWidth, centreY);
-        path.lineTo(centreX, centreY + halfHeight);
-        path.lineTo(centreX - halfWidth, centreY);
-        path.close();
-        // Clipped to the water, otherwise the far ends of a shadow this wide spill onto the land
-        // strip at the bottom corners and read as dirt rather than as shade on water.
-        int save = canvas.save();
-        canvas.clipPath(seaDiamondPath(seaSurfacePoints()));
-        paint.setColor(Color.argb((int) (255.0 * opacity), 10, 20, 32));
-        canvas.drawPath(path, paint);
-        canvas.restoreToCount(save);
     }
 
     private SkyAtmosphere skyAtmosphere(double sunAltitude, double cloudCover, int code) {
