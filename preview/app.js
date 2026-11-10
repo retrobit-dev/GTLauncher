@@ -79,16 +79,16 @@
   // both frame edges.
   const CLOUD_SLOT_X = [56, 264, 118, 206];
   // Clouds must hang below the sun so the light can reach past them and drop their shadow on the
-  // island. They spread from just under the sun down over the island's back half, which is the
-  // band they can actually cast into.
+  // island.
   const CLOUD_SUN_CLEARANCE = 4;
-  const CLOUD_BAND_REACH = 34;
-  const CLOUD_BAND_MIN_SPAN = 26;
-  const CLOUD_SCREEN_TOP_MARGIN = 4;
-  // The lower pair must float clear of the grass: sitting them at the island's own surface
-  // height made them read as pressed into it rather than hanging above it.
-  // Vertical ties per slot, used as a tiebreak when several clouds share the band.
-  const CLOUD_SLOT_ORDER = [0.12, 0.05, 0.68, 0.9];
+  // Clouds ride the same tilted arc as the Sun and Moon instead of a flat line: one dome across
+  // the frame, leaning the same way. Each cloud sits on its own parallel arc so they stack in
+  // depth instead of sharing one path.
+  const CLOUD_ARC_TOP = 46;
+  const CLOUD_ARC_RISE = 42;
+  const CLOUD_ARC_OFFSETS = [2, 0, 12, 20];
+  // A cloud crossing the island turns partly transparent so the tiles behind it stay readable.
+  const CLOUD_ISLAND_ALPHA = 0.55;
   // Clouds travel right to left like real wind-driven cloud, cross the whole frame, then re-enter
   // from the other side. Screen speed is derived from the reported wind so a breeze crawls and a
   // storm hurries; the old oscillating sway was fast and never actually went anywhere.
@@ -744,13 +744,9 @@
       const cell = CLOUD_CELL;
       const width = shape[0].length * cell;
       const height = shape.length * cell;
-      // Every cloud sits under the sun, which is what lets it shade the island at all. The band
-      // runs from just below the disc down to the island's back half; a low sun leaves a sliver,
-      // so a minimum span keeps the clouds from stacking on one line.
-      const bandTop = cloudBandTop(sunAltitude, sunHourAngle, height);
-      const bandBottom = cloudBandBottom();
-      const bandSpan = Math.max(bandBottom - bandTop - height, CLOUD_BAND_MIN_SPAN);
-      const order = count === 1 ? 0.45 : CLOUD_SLOT_ORDER[index % CLOUD_SLOT_ORDER.length];
+      const arcOffset = count === 1
+        ? 8
+        : CLOUD_ARC_OFFSETS[index % CLOUD_ARC_OFFSETS.length];
       // Each cloud starts at its own offset across the frame so they do not travel in a block.
       const startX = CLOUD_SLOT_X[index % CLOUD_SLOT_X.length]
         + (cloudHash(seed, index, 4) - 0.5) * 40;
@@ -760,8 +756,10 @@
       const span = WIDTH + width + CLOUD_EDGE_INSET * 2;
       const travelled = ((startX + travel + width + CLOUD_EDGE_INSET) % span + span) % span;
       const centreX = travelled - width * 0.5 - CLOUD_EDGE_INSET;
-      const bottomY = bandTop + height + order * bandSpan
-        + (cloudHash(seed, index, 3) - 0.5) * 4;
+      // Ride the arc, but never rise above the sun: a cloud above the light cannot shade anything.
+      const sunClear = mapCelestialY(sunAltitude, sunHourAngle) + CLOUD_SUN_CLEARANCE;
+      const bottomY = Math.max(cloudArcY(centreX, arcOffset) + height,
+        sunClear + height) + (cloudHash(seed, index, 3) - 0.5) * 3;
       clouds.push({ shape, cell, screenCenterX: centreX, screenBottomY: bottomY });
     }
     return clouds;
@@ -801,10 +799,40 @@
     }
   }
 
+  // The island's top surface as a screen-space diamond. Clouds pass in front of it, so this is the
+  // shape a cloud has to cross to be shading or hiding anything.
+  function cloudOverlapsIsland(cloud) {
+    const width = cloud.shape[0].length * cloud.cell;
+    const left = cloud.screenCenterX - width * 0.5;
+    const right = cloud.screenCenterX + width * 0.5;
+    const top = cloud.screenBottomY - cloud.shape.length * cloud.cell;
+    const bottom = cloud.screenBottomY;
+    for (const point of islandSurfacePoints()) {
+      if (point[0] >= left && point[0] <= right && point[1] >= top && point[1] <= bottom) {
+        return true;
+      }
+    }
+    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.5;
+    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight * 0.5;
+    const dx = (left + right) * 0.5 - WIDTH / 2;
+    const dy = (top + bottom) * 0.5 - islandCenterY;
+    return Math.abs(dx) / (halfWidth + width * 0.5)
+      + Math.abs(dy) / (halfHeight + (bottom - top) * 0.5) <= 1;
+  }
+
+  // A cloud crossing the island drops to partial opacity, so whatever sits on the tiles is not
+  // hidden behind it. The island's own surface shadows are unaffected: this is only the sprite.
+  function cloudOpacity(cloud) {
+    return cloudOverlapsIsland(cloud) ? CLOUD_ISLAND_ALPHA : 1;
+  }
+
   function drawClouds(clouds, sunAltitude, code) {
     if (clouds.length === 0) return;
     const palette = cloudPalette(sunAltitude, code);
     clouds.forEach(cloud => {
+      const alpha = cloudOpacity(cloud);
+      const previousAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = previousAlpha * alpha;
       drawCloudRows(cloud, palette);
       // Draw the wrapped copy too, so a cloud straddling an edge stays continuous instead of
       // being sliced in half while it leaves one side and arrives at the other.
@@ -815,6 +843,7 @@
       } else if (cloud.screenCenterX + width * 0.5 > WIDTH) {
         drawCloudRows({ ...cloud, screenCenterX: cloud.screenCenterX - span }, palette);
       }
+      ctx.globalAlpha = previousAlpha;
     });
   }
 
@@ -1217,17 +1246,18 @@
     if (outline) drawPixelPolyline(points, outline, true, 0.5);
   }
 
-  // Where clouds may hang: only under the sun, because a cloud above the light cannot shade
-  // anything. Exposed separately so the shadow pass maps a cloud to its ground point with the
-  // same band it was placed in.
-  function cloudBandTop(sunAltitude, sunHourAngle, cloudHeight) {
-    const sunY = mapCelestialY(sunAltitude, sunHourAngle);
-    return Math.max(CLOUD_SCREEN_TOP_MARGIN,
-      Math.min(sunY + CLOUD_SUN_CLEARANCE, islandTop + CLOUD_BAND_REACH - cloudHeight - 8));
+  // Progress across the frame, measured the same way the celestial arc measures it: 0 at the
+  // eastern (right) end, 1 at the western (left) end.
+  function cloudProgress(centreX) {
+    return clamp((SUN_RISE_X - centreX) / (SUN_RISE_X - SUN_SET_X), 0, 1);
   }
 
-  function cloudBandBottom() {
-    return islandTop + CLOUD_BAND_REACH;
+  // The same dome and the same lean as the Sun's arc, dropped into the cloud band. Keeping the
+  // tilt term identical is what makes the two paths read as parallel rather than merely curved.
+  function cloudArcY(centreX, offset) {
+    const progress = cloudProgress(centreX);
+    return CLOUD_ARC_TOP + CLOUD_ARC_RISE * (1 - Math.sin(Math.PI * progress))
+      + ARC_TILT * (0.5 - progress) + offset;
   }
 
   // A cloud dims the ground it covers the way the island's own shadow does: as one full diamond
@@ -1264,30 +1294,23 @@
     const lean = (0.5 - celestialProgress(light.hourAngle))
       * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.55;
     const throwFactor = Math.min(1 / elevationSine, 1.6);
-    const bandTop = cloudBandTop(sunAltitude, sunHourAngle, 0);
-    const bandSpan = Math.max(cloudBandBottom() - bandTop, CLOUD_BAND_MIN_SPAN);
     ctx.save();
     applyIslandTransform();
     clipIslandSurface();
     clouds.forEach(cloud => {
       const sceneWidth = cloud.shape[0].length * cloud.cell;
       const sceneHeight = cloud.shape.length * cloud.cell;
-      // The shadow lands where the cloud appears in its own band: clouds hang at a range where
-      // their whole band is only a few degrees above the island, so the ground point is close to
-      // the sprite, and this keeps a shadow on the island for every cloud the band puts there.
-      const bandTopCloud = cloudBandTop(sunAltitude, sunHourAngle, sceneHeight);
-      const bandSpanCloud = Math.max(cloudBandBottom() - bandTopCloud,
-        CLOUD_BAND_MIN_SPAN);
-      const bandMix = clamp(1 - (cloud.screenBottomY - bandTopCloud) / bandSpanCloud, 0, 1);
-      let centreX = (cloud.screenCenterX - WIDTH / 2) / islandZoom + WIDTH / 2
+      // Only a cloud actually crossing the island casts onto it. That is also what keeps the
+      // casting rule easy to read: the sprite dims and its shadow appears together.
+      if (!cloudOverlapsIsland(cloud)) return;
+      // The ground point tracks the cloud's own height on the arc, so a cloud higher up the dome
+      // throws its shadow onto the far half of the island.
+      const arcHeight = cloud.screenBottomY - cloudArcY(cloud.screenCenterX, 0);
+      const drop = clamp(arcHeight, 0, ISLAND_GRID_SIZE * islandTileHeight * 1.2);
+      const centreX = (cloud.screenCenterX - WIDTH / 2) / islandZoom + WIDTH / 2
         + clamp(lean * throwFactor, -sceneWidth, sceneWidth);
-      // Ground point of a cloud straight above comes out at this offset below the island centre.
-      // Kept inside the island: a physical drop would push the shadow off the front edge at this
-      // panel size, so the plane stays close enough to read as belonging to its cloud.
-      const straightAboveY = islandCenterY + ISLAND_GRID_SIZE * islandTileHeight * 0.12;
-      const centreY = straightAboveY - bandMix * ISLAND_GRID_SIZE * islandTileHeight * 0.45;
-      const halfIsland = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.5;
-      if (Math.abs(centreX - WIDTH / 2) > halfIsland * 0.9) return;
+      const centreY = islandCenterY - drop * 0.55
+        + (cloud.screenBottomY - islandCenterY) * 0.12;
       // The shadow is the cloud's own silhouette, shrunk. A diamond plate read as a generic smudge
       // that said nothing about which cloud threw it; the traced outline keeps the lobes.
       ctx.fillStyle = `rgba(12,23,40,${opacity})`;
