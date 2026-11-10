@@ -905,65 +905,9 @@ public final class WeatherSkyView extends View {
             }
         }
         drawIslandCloudShadows(canvas, clouds, sunAltitude, sunAzimuth, cloudCover, code);
-        drawIslandGridAxes(canvas, topY, centerX, palette, sunlight);
         int topRim = blend(palette.grassSeam, palette.grassDark, 0.32);
         drawSmoothIslandLine(canvas, leftX, middleY, centerX, bottomY, topRim, 0.60f);
         drawSmoothIslandLine(canvas, centerX, bottomY, rightX, middleY, topRim, 0.60f);
-    }
-
-    /**
-     * Draws the two cardinal grid axes through the middle of the island: the row through the
-     * centre tile is the 7°0′ S parallel of latitude and the column through it is the
-     * 111°0′ E meridian of longitude. Both lines pass through the centre of the middle tile
-     * (E5) so the cross is symmetric: nine tiles wide, nine tiles tall, 1,125 km per axis at
-     * the illustrative 250 m tile scale. Labels are deliberately not drawn.
-     */
-    private void drawIslandGridAxes(Canvas canvas, float topY, float centerX,
-                                    IslandPalette palette, IslandSunlight sunlight) {
-        int last = ISLAND_GRID_SIZE - 1;
-        int middle = ISLAND_GRID_SIZE / 2;
-        float tileHeight = ISLAND_TILE_HEIGHT;
-        float reach = ISLAND_TILE_WIDTH / 2.0f;
-        float[] latitude = extendAxis(
-                centerX + (0 - middle) * ISLAND_TILE_WIDTH / 2.0f,
-                topY + tileHeight / 2.0f + (0 + middle) * tileHeight / 2.0f,
-                centerX + (last - middle) * ISLAND_TILE_WIDTH / 2.0f,
-                topY + tileHeight / 2.0f + (last + middle) * tileHeight / 2.0f, reach);
-        float[] longitude = extendAxis(
-                centerX + (middle - 0) * ISLAND_TILE_WIDTH / 2.0f,
-                topY + tileHeight / 2.0f + (middle + 0) * tileHeight / 2.0f,
-                centerX + (middle - last) * ISLAND_TILE_WIDTH / 2.0f,
-                topY + tileHeight / 2.0f + (middle + last) * tileHeight / 2.0f, reach);
-
-        // Sunlit grass is pale, so the axis reads as a dark inlaid line; in dim light the grass
-        // darkens and the axis switches to a light inlaid line to stay legible.
-        int tone = blend(0xFFF0ECD2, 0xFF1C3A28, sunlight.strength);
-        float[] widths = { 2.0f, 0.9f, 0.35f };
-        float[] alphas = { 0.10f, 0.30f, 0.62f };
-        setIslandSurfacePath();
-        int save = canvas.save();
-        canvas.clipPath(islandSurfacePath);
-        for (int pass = 0; pass < widths.length; pass++) {
-            int alpha = (int) Math.round(alphas[pass] * 255.0);
-            int color = (tone & 0x00FFFFFF) | (alpha << 24);
-            drawSmoothIslandLine(canvas, latitude[0], latitude[1], latitude[2], latitude[3],
-                    color, widths[pass]);
-            drawSmoothIslandLine(canvas, longitude[0], longitude[1], longitude[2], longitude[3],
-                    color, widths[pass]);
-        }
-        canvas.restoreToCount(save);
-    }
-
-    /** Extends a segment by reach units at both ends so an axis spans a full row of tiles. */
-    private static float[] extendAxis(float x1, float y1, float x2, float y2, float reach) {
-        float dx = x2 - x1;
-        float dy = y2 - y1;
-        float length = (float) Math.hypot(dx, dy);
-        if (length <= 0.0f) return new float[] { x1, y1, x2, y2 };
-        float unitX = dx / length;
-        float unitY = dy / length;
-        return new float[] { x1 - unitX * reach, y1 - unitY * reach,
-                x2 + unitX * reach, y2 + unitY * reach };
     }
 
     private void drawCloudsOverIsland(Canvas canvas, CloudState[] clouds,
