@@ -67,8 +67,9 @@
   // Clouds are raster sprites traced from reference art, downsampled to a 30-column grid and
   // quantised into three flat bands. One `cell` value drives both axes, so each silhouette
   // keeps the ratio it was traced at instead of stretching into a flat smudge.
-  // Cloud cover breakpoints: below 12% the sky is left empty, 82% and up fills every slot.
-  const CLOUD_COVER_STEPS = [12, 32, 58, 82];
+  // Cloud cover breakpoints, one cloud per step cleared. The first step is 0 so even a fully
+  // clear sky keeps a single cloud in the panel; 82% and up fills every slot.
+  const CLOUD_COVER_STEPS = [0, 32, 58, 82];
   const CLOUD_CELL_MIN = 1.45;
   const CLOUD_CELL_RANGE = 0.65;
   // Slots are absolute scene units, not fractions, because the widest sprite must still clear

@@ -85,7 +85,8 @@ public final class WeatherSkyView extends View {
     // Clouds are raster sprites traced from reference art, downsampled to a 30-column grid and
     // quantised into three flat bands. One cell value drives both axes, so each silhouette keeps
     // the ratio it was traced at instead of stretching into a flat smudge.
-    private static final int[] CLOUD_COVER_STEPS = {12, 32, 58, 82};
+    // One cloud per step cleared; the first step is 0 so even a clear sky keeps one cloud.
+    private static final int[] CLOUD_COVER_STEPS = {0, 32, 58, 82};
     private static final float CLOUD_CELL_MIN = 1.45f;
     private static final float CLOUD_CELL_RANGE = 0.65f;
     // Slots are absolute scene units so the widest sprite still clears both frame edges.
