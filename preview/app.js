@@ -48,7 +48,7 @@
   const ISLAND_GRASS_OVERHANG = 4;
   const ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
   const ISLAND_BASE_BOTTOM_MARGIN = 8;
-  const ISLAND_VERTICAL_LIFT = 16;
+  const ISLAND_VERTICAL_LIFT = 10;
   const ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
   let islandTop = HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH
     - ISLAND_GRID_SIZE * islandTileHeight;
@@ -97,9 +97,10 @@
   const CLOUD_SCREEN_TOP_MARGIN = 8;
   const CLOUD_SHADOW_FOOTPRINT_SCALE = 0.52;
   const CLOUD_SHADOW_MAX_SPRITE_RATIO = 0.90;
-  const ISLAND_BODY_SHADOW_SCALE = 2.0;
-  const ISLAND_BODY_SHADOW_OPACITY_SCALE = 0.40;
-  const ISLAND_BODY_SHADOW_RISE = 3;
+  const ISLAND_BODY_SHADOW_SCALE = 1.55;
+  const ISLAND_BODY_SHADOW_OPACITY_SCALE = 0.46;
+  const ISLAND_BODY_SHADOW_RISE = 1;
+  const ISLAND_BODY_SHADOW_DRIFT = 10;
   const CLOUD_SHADOW_MIN_SUN_ALTITUDE = 3;
   const CLOUD_SHADOW_CLEAR_OPACITY = 0.10;
   const CLOUD_SHADOW_COVER_OPACITY = 0.08;
@@ -430,11 +431,24 @@
   // horizon. The horizontal position therefore comes from the body's own progress along that
   // arc rather than from the raw compass bearing, which would wrap to the opposite screen side
   // once the sun crosses due south shortly before solar noon at this latitude.
-  function mapCelestialX(hourAngleDegrees) {
+  function celestialProgress(hourAngleDegrees) {
     // Negative hour angle is before solar noon (east), positive is after it (west), so the
     // midpoint of a half circle lands the body dead centre at solar noon.
-    const progress = clamp(0.5 + hourAngleDegrees / 180, 0, 1);
+    return clamp(0.5 + hourAngleDegrees / 180, 0, 1);
+  }
+
+  function mapCelestialX(hourAngleDegrees) {
+    const progress = celestialProgress(hourAngleDegrees);
     return SUN_RISE_X + (SUN_SET_X - SUN_RISE_X) * progress;
+  }
+
+  // The arc is tilted a few units: the body starts slightly lower on the eastern side and
+  // finishes slightly higher on the western side, which matches the diamond frame where east
+  // sits at the lower-right corner and west at the upper-left one. The tilt is deliberately
+  // gentle so the sun still sinks toward the horizon instead of setting high in the sky.
+  function mapCelestialY(altitude, hourAngleDegrees) {
+    const progress = celestialProgress(hourAngleDegrees);
+    return mapAltitudeToCelestialBand(altitude) + ARC_TILT * (0.5 - progress);
   }
 
   function mapAltitudeToCelestialBand(altitude) {
@@ -456,6 +470,7 @@
   // and sets on the left, which is the reading most people expect from a sky panel.
   const SUN_RISE_X = 284;
   const SUN_SET_X = 36;
+  const ARC_TILT = 9;
   const GLOW_STEPS = 14;
   const GLOW_REACH = 15.0;
   const GLOW_ALPHA = 0.040;
@@ -536,8 +551,8 @@
     if (moon.altitude <= -1) return;
     const palette = moonPalette();
     const centerX = Math.round(mapCelestialX(moon.hourAngleDegrees) / RENDER_CELL) * RENDER_CELL;
-    const centerY = Math.round(mapAltitudeToCelestialBand(moon.altitude) / RENDER_CELL)
-      * RENDER_CELL;
+    const centerY = Math.round(mapCelestialY(moon.altitude, moon.hourAngleDegrees)
+      / RENDER_CELL) * RENDER_CELL;
     const visibility = clamp((moon.altitude + 1) / 3, 0, 1);
     const previousAlpha = ctx.globalAlpha;
     ctx.globalAlpha = previousAlpha * visibility;
@@ -587,7 +602,7 @@
     if (sun.altitude <= -1) return;
     const palette = sunPalette(sun.altitude, cloudCover);
     const centerX = Math.round(mapCelestialX(sun.hourAngleDegrees) / RENDER_CELL) * RENDER_CELL;
-    const centerY = Math.round(mapAltitudeToCelestialBand(sun.altitude) / RENDER_CELL)
+    const centerY = Math.round(mapCelestialY(sun.altitude, sun.hourAngleDegrees) / RENDER_CELL)
       * RENDER_CELL;
     const previousAlpha = ctx.globalAlpha;
     const visibility = clamp((sun.altitude + 1) / 3, 0, 1);
@@ -1154,17 +1169,43 @@
       CLOUD_SHADOW_MAX_SPRITE_RATIO * Math.min(widthLimit, heightLimit));
   }
 
-  function drawIslandShadow(centerX, lowerY, sunAltitude, cloudCover, code) {
-    const directLight = clamp((sunAltitude + 8) / 28, 0, 1);
+  // Chooses which body is currently lighting the scene: the sun whenever it is up, otherwise the
+  // moon when it is up and bright enough to cast anything. Returns a neutral light for the in
+  // between cases so the shadow simply fades rather than snapping to a new direction.
+  function pickLightSource(sunAltitude, sunHourAngle, moon, cloudCover) {
+    if (sunAltitude > 2) return { altitude: sunAltitude, hourAngle: sunHourAngle };
+    if (moon && moon.altitude > 2) {
+      // Moonlight is far weaker, so scale its apparent elevation down.
+      const moonlight = clamp(moon.altitude * (0.35 + moon.illumination * 0.65), 0, 90);
+      return { altitude: moonlight, hourAngle: moon.hourAngleDegrees };
+    }
+    return { altitude: Math.max(sunAltitude, moon ? moon.altitude : -90), hourAngle: sunHourAngle };
+  }
+
+  // The island's cast shadow is pushed away from whichever body is lighting the scene. It
+  // starts from the island's own progress along the celestial arc, so the shadow drifts to the
+  // opposite side of the arc as the sun or moon travels, then fades out once the light is too
+  // low to cast anything. Offset and size are both kept small so the shadow stays tucked close
+  // under the island instead of floating away from it.
+  function drawIslandShadow(centerX, lowerY, lightAltitude, lightHourAngle, cloudCover, code) {
+    const directLight = clamp((lightAltitude + 8) / 28, 0, 1);
     let cloudFilter = 1 - clamp(cloudCover / 100 * 0.45, 0, 0.45);
     if (weatherCodeIsStorm(code)) cloudFilter *= 0.82;
-    const opacity = (0.08 + directLight * 0.25) * cloudFilter * ISLAND_BODY_SHADOW_OPACITY_SCALE;
+    const opacity = (0.10 + directLight * 0.30) * cloudFilter * ISLAND_BODY_SHADOW_OPACITY_SCALE;
+    if (opacity <= 0.002) return;
+    // Light comes from the eastern half early and the western half late, so the shadow drifts
+    // the other way. The sign flips across solar noon and eases through zero at midday.
+    const progress = celestialProgress(lightHourAngle);
+    const drift = (0.5 - progress) * 2 * ISLAND_BODY_SHADOW_DRIFT;
+    const shadowCenterX = centerX - drift;
     const shadowCenterY = lowerY - ISLAND_DEPTH - ISLAND_BODY_SHADOW_RISE;
     const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4 * ISLAND_BODY_SHADOW_SCALE;
     const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 4 * ISLAND_BODY_SHADOW_SCALE;
     drawIslandPolygon([
-      [centerX, shadowCenterY - halfHeight], [centerX + halfWidth, shadowCenterY],
-      [centerX, shadowCenterY + halfHeight], [centerX - halfWidth, shadowCenterY]
+      [shadowCenterX, shadowCenterY - halfHeight],
+      [shadowCenterX + halfWidth, shadowCenterY],
+      [shadowCenterX, shadowCenterY + halfHeight],
+      [shadowCenterX - halfWidth, shadowCenterY]
     ], `rgba(12,23,40,${opacity})`, null);
   }
 
@@ -1491,7 +1532,8 @@
     if (outline) drawPixelPolyline(points, outline, true, 0.5);
   }
 
-  function drawFloatingIsland(sunAltitude, sunAzimuth, cloudCover, code, clouds) {
+  function drawFloatingIsland(sunAltitude, sunAzimuth, sunHourAngle, cloudCover, code,
+    clouds, moon) {
     ctx.save();
     const islandAnchorX = WIDTH / 2;
     const islandAnchorY = HEIGHT - ISLAND_BOTTOM_MARGIN;
@@ -1513,7 +1555,10 @@
     const soilLeftX = leftX + ISLAND_GRASS_OVERHANG;
     const soilRightX = rightX - ISLAND_GRASS_OVERHANG;
 
-    drawIslandShadow(centerX, lowerY, sunAltitude, cloudCover, code);
+    // The sun lights the island by day; once it is gone the moon takes over, so the cast
+    // shadow follows whichever body is actually in the sky.
+    const light = pickLightSource(sunAltitude, sunHourAngle, moon, cloudCover);
+    drawIslandShadow(centerX, lowerY, light.altitude, light.hourAngle, cloudCover, code);
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.
     drawIslandSoilBody(soilLeftX, centerX, soilRightX,
       middleY, soilFrontY, grassBandDepth, palette);
@@ -1650,6 +1695,8 @@
     const time = (performance.now() - animationStart) / 1000;
     const motionTime = REDUCED_MOTION ? 0 : time;
     const sun = sunPosition(skyNow, location.latitude, location.longitude);
+    const moonNow = moonPosition(skyNow, location.latitude, location.longitude,
+      sun.eclipticLongitude);
     const cloudStates = [];
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     drawSky(skyNow, sun, sceneWeather.weatherCode, sceneWeather.cloudCover);
@@ -1658,8 +1705,7 @@
     ctx.rect(0, 0, WIDTH, HEIGHT * 0.5);
     ctx.clip();
     drawSun(sun, sceneWeather.cloudCover, motionTime);
-    drawMoon(moonPosition(skyNow, location.latitude, location.longitude,
-      sunPosition(skyNow, location.latitude, location.longitude).eclipticLongitude), motionTime);
+    drawMoon(moonNow, motionTime);
     ctx.restore();
     ctx.save();
     ctx.beginPath();
@@ -1668,8 +1714,8 @@
     drawFog(sceneWeather.weatherCode);
     drawLightning(time, sceneWeather.weatherCode);
     ctx.restore();
-    drawFloatingIsland(sun.altitude, sun.azimuth,
-      sceneWeather.cloudCover, sceneWeather.weatherCode, cloudStates);
+    drawFloatingIsland(sun.altitude, sun.azimuth, sun.hourAngleDegrees,
+      sceneWeather.cloudCover, sceneWeather.weatherCode, cloudStates, moonNow);
     drawPrecipitation(sceneWeather);
     if (!REDUCED_MOTION) window.requestAnimationFrame(drawFrame);
   }

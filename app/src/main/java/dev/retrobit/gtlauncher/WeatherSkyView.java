@@ -48,7 +48,7 @@ public final class WeatherSkyView extends View {
     private static final float ISLAND_GRASS_OVERHANG = 4.0f;
     private static final int ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
     private static final int ISLAND_BASE_BOTTOM_MARGIN = 8;
-    private static final int ISLAND_VERTICAL_LIFT = 16;
+    private static final int ISLAND_VERTICAL_LIFT = 10;
     private static final int ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
     private static final float ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH
             - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
@@ -65,6 +65,7 @@ public final class WeatherSkyView extends View {
     // and sets on the left, which is the reading most people expect from a sky panel.
     private static final float SUN_RISE_X = 284.0f;
     private static final float SUN_SET_X = 36.0f;
+    private static final float ARC_TILT = 9.0f;
     private static final int GLOW_STEPS = 14;
     private static final float GLOW_REACH = 15.0f;
     private static final double GLOW_ALPHA = 0.040;
@@ -112,9 +113,10 @@ public final class WeatherSkyView extends View {
     private static final float CLOUD_SCREEN_TOP_MARGIN = 8.0f;
     private static final double CLOUD_SHADOW_FOOTPRINT_SCALE = 0.52;
     private static final double CLOUD_SHADOW_MAX_SPRITE_RATIO = 0.90;
-    private static final double ISLAND_BODY_SHADOW_SCALE = 2.0;
-    private static final double ISLAND_BODY_SHADOW_OPACITY_SCALE = 0.40;
-    private static final float ISLAND_BODY_SHADOW_RISE = 3.0f;
+    private static final double ISLAND_BODY_SHADOW_SCALE = 1.55;
+    private static final double ISLAND_BODY_SHADOW_OPACITY_SCALE = 0.46;
+    private static final float ISLAND_BODY_SHADOW_RISE = 1.0f;
+    private static final float ISLAND_BODY_SHADOW_DRIFT = 10.0f;
     private static final double CLOUD_SHADOW_MIN_SUN_ALTITUDE = 3.0;
     private static final double CLOUD_SHADOW_CLEAR_OPACITY = 0.10;
     private static final double CLOUD_SHADOW_COVER_OPACITY = 0.08;
@@ -241,6 +243,7 @@ public final class WeatherSkyView extends View {
         double elapsedSeconds = (now - animationStartMillis) / 1000.0;
         double motionSeconds = animationEnabled ? elapsedSeconds : 0.0;
         SkyMath.Position sun = SkyMath.sun(now, latitude, longitude);
+        SkyMath.Position moon = SkyMath.moon(now, latitude, longitude);
         double cloudCover = weather == null ? 42.0 : weather.cloudCoverPercent;
         int code = weather == null ? 3 : weather.weatherCode;
         CloudState[] cloudStates = new CloudState[0];
@@ -252,12 +255,12 @@ public final class WeatherSkyView extends View {
         int upperHalfSave = scene.save();
         scene.clipRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT * 0.5f);
         drawSun(scene, sun, cloudCover, motionSeconds);
-        drawMoon(scene, SkyMath.moon(now, latitude, longitude), motionSeconds);
+        drawMoon(scene, moon, motionSeconds);
         drawFog(scene, code);
         drawStormFlash(scene, elapsedSeconds, code);
         scene.restoreToCount(upperHalfSave);
         drawFloatingIsland(scene, sun.altitudeDegrees, sun.azimuthDegrees,
-                cloudCover, code, cloudStates);
+                sun.hourAngleDegrees, cloudCover, code, cloudStates, moon);
         drawPrecipitation(scene, elapsedSeconds);
         scene.restoreToCount(save);
 
@@ -638,7 +641,8 @@ public final class WeatherSkyView extends View {
     }
 
     private void drawFloatingIsland(Canvas canvas, double sunAltitude, double sunAzimuth,
-                                    double cloudCover, int code, CloudState[] clouds) {
+                                    double sunHourAngle, double cloudCover, int code,
+                                    CloudState[] clouds, SkyMath.Position moon) {
         IslandPalette palette = islandPalette(sunAltitude, cloudCover, code);
         IslandSunlight sunlight = islandSunlight(sunAltitude, cloudCover, code);
         float centerX = SCENE_WIDTH / 2.0f;
@@ -654,7 +658,17 @@ public final class WeatherSkyView extends View {
         float soilLeftX = leftX + ISLAND_GRASS_OVERHANG;
         float soilRightX = rightX - ISLAND_GRASS_OVERHANG;
 
-        drawIslandShadow(canvas, centerX, lowerY, sunAltitude, cloudCover, code);
+        // The sun lights the island by day; once it is gone the moon takes over, so the cast
+        // shadow follows whichever body is actually in the sky.
+        double lightAltitude = sunAltitude;
+        double lightHourAngle = sunHourAngle;
+        if (sunAltitude <= 2.0 && moon != null && moon.altitudeDegrees > 2.0) {
+            lightAltitude = clamp(moon.altitudeDegrees
+                    * (0.35 + moon.illumination * 0.65), 0.0, 90.0);
+            lightHourAngle = moon.hourAngleDegrees;
+        }
+        drawIslandShadow(canvas, centerX, lowerY, lightAltitude, lightHourAngle,
+                cloudCover, code);
 
         // One rounded, uninterrupted soil slab sits inside the wider grass cap.
         drawIslandSoilBody(canvas, soilLeftX, centerX, soilRightX,
@@ -1003,13 +1017,24 @@ public final class WeatherSkyView extends View {
         else path.lineTo(x, y);
     }
 
+    /**
+     * The island's cast shadow is pushed away from whichever body is lighting the scene. It
+     * starts from that body's progress along the celestial arc, so the shadow drifts to the
+     * opposite side as the sun or moon travels. Offset and size are kept small so the shadow
+     * stays tucked close under the island instead of floating away from it.
+     */
     private void drawIslandShadow(Canvas canvas, float centerX, float lowerY,
-                                  double sunAltitude, double cloudCover, int code) {
-        double directLight = clamp((sunAltitude + 8.0) / 28.0, 0.0, 1.0);
+                                  double lightAltitude, double lightHourAngle,
+                                  double cloudCover, int code) {
+        double directLight = clamp((lightAltitude + 8.0) / 28.0, 0.0, 1.0);
         double cloudFilter = 1.0 - clamp(cloudCover / 100.0 * 0.45, 0.0, 0.45);
         if (code >= 95) cloudFilter *= 0.82;
-        double opacity = (0.08 + directLight * 0.25) * cloudFilter
+        double opacity = (0.10 + directLight * 0.30) * cloudFilter
                 * ISLAND_BODY_SHADOW_OPACITY_SCALE;
+        if (opacity <= 0.002) return;
+        double progress = celestialProgress(lightHourAngle);
+        float drift = (float) ((0.5 - progress) * 2.0 * ISLAND_BODY_SHADOW_DRIFT);
+        float shadowCenterX = centerX - drift;
         float shadowCenterY = lowerY - ISLAND_DEPTH - ISLAND_BODY_SHADOW_RISE;
         float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4.0f
                 * (float) ISLAND_BODY_SHADOW_SCALE;
@@ -1017,10 +1042,10 @@ public final class WeatherSkyView extends View {
                 * (float) ISLAND_BODY_SHADOW_SCALE;
         int shadowColor = Color.argb((int) (255.0 * opacity), 12, 23, 40);
         drawIslandPolygon(canvas,
-                centerX, shadowCenterY - halfHeight,
-                centerX + halfWidth, shadowCenterY,
-                centerX, shadowCenterY + halfHeight,
-                centerX - halfWidth, shadowCenterY,
+                shadowCenterX, shadowCenterY - halfHeight,
+                shadowCenterX + halfWidth, shadowCenterY,
+                shadowCenterX, shadowCenterY + halfHeight,
+                shadowCenterX - halfWidth, shadowCenterY,
                 shadowColor, 0);
     }
 
@@ -1516,7 +1541,8 @@ public final class WeatherSkyView extends View {
         int[] palette = sunPalette(sun.altitudeDegrees, cloudCover);
         float centerX = Math.round(mapCelestialX(sun.hourAngleDegrees) / RENDER_CELL)
                 * RENDER_CELL;
-        float centerY = Math.round(mapAltitudeToCelestialBand(sun.altitudeDegrees) / RENDER_CELL)
+        float centerY = Math.round(mapCelestialY(sun.altitudeDegrees, sun.hourAngleDegrees)
+                / RENDER_CELL)
                 * RENDER_CELL;
         int save = canvas.save();
         paint.setAlpha((int) Math.round(255.0
@@ -1540,7 +1566,8 @@ public final class WeatherSkyView extends View {
         int[] palette = moonPalette();
         float centerX = Math.round(mapCelestialX(moon.hourAngleDegrees) / RENDER_CELL)
                 * RENDER_CELL;
-        float centerY = Math.round(mapAltitudeToCelestialBand(moon.altitudeDegrees) / RENDER_CELL)
+        float centerY = Math.round(mapCelestialY(moon.altitudeDegrees, moon.hourAngleDegrees)
+                / RENDER_CELL)
                 * RENDER_CELL;
         float visibility = (float) clamp((moon.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0);
         int save = canvas.save();
@@ -1606,10 +1633,26 @@ public final class WeatherSkyView extends View {
      * arc rather than from the raw compass bearing, which would wrap to the opposite screen side
      * once the sun crosses due south shortly before solar noon at this latitude.
      */
+    /** Progress along the arc: 0 at the eastern end, 1 at the western end, 0.5 at noon. */
+    private static double celestialProgress(double hourAngleDegrees) {
+        return clamp(0.5 + hourAngleDegrees / 180.0, 0.0, 1.0);
+    }
+
     private float mapCelestialX(double hourAngleDegrees) {
         // Negative hour angle is before solar noon (east), positive is after it (west).
-        double progress = clamp(0.5 + hourAngleDegrees / 180.0, 0.0, 1.0);
+        double progress = celestialProgress(hourAngleDegrees);
         return (float) (SUN_RISE_X + (SUN_SET_X - SUN_RISE_X) * progress);
+    }
+
+    /**
+     * The arc is tilted a few units: the body starts slightly lower on the eastern side and
+     * finishes slightly higher on the western side, matching the diamond frame where east sits
+     * at the lower-right corner and west at the upper-left one. The tilt stays gentle so the sun
+     * still sinks toward the horizon instead of setting high in the sky.
+     */
+    private float mapCelestialY(double altitude, double hourAngleDegrees) {
+        double progress = celestialProgress(hourAngleDegrees);
+        return (float) (mapAltitudeToCelestialBand(altitude) + ARC_TILT * (0.5 - progress));
     }
 
     private float mapAltitudeToCelestialBand(double altitude) {
