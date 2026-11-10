@@ -137,29 +137,38 @@
   // so the cloud silhouette parallels the two lower edges and the tip looks wedged in cloud
   // rather than pasted on. Heights and tints vary so it never looks like a copied outline.
   const CLOUD_CRADLE_BANKS = [
-    { cx: 0.255, top: 123.6, height: 32, tint: 0.05, sprite: 'bank' },
-    { cx: 0.315, top: 134.5, height: 26, tint: 0.05, sprite: 'mass' },
-    { cx: 0.375, top: 139.4, height: 36, tint: 0.05, sprite: 'bank' },
-    { cx: 0.435, top: 153.3, height: 28, tint: 0.05, sprite: 'mass' },
-    { cx: 0.495, top: 158.3, height: 38, tint: 0.05, sprite: 'bank' },
-    { cx: 0.555, top: 153.8, height: 30, tint: 0.05, sprite: 'mass' },
-    { cx: 0.615, top: 139.9, height: 36, tint: 0.05, sprite: 'bank' },
-    { cx: 0.675, top: 136.0, height: 26, tint: 0.05, sprite: 'mass' },
-    { cx: 0.735, top: 124.1, height: 32, tint: 0.05, sprite: 'bank' }
+    { cx: 0.235, top: 118.0, height: 30.0, tint: 0.10, sprite: 'bank' },
+    { cx: 0.293, top: 125.9, height: 33.4, tint: 0.10, sprite: 'mass' },
+    { cx: 0.351, top: 133.8, height: 36.4, tint: 0.10, sprite: 'bank' },
+    { cx: 0.409, top: 142.0, height: 38.7, tint: 0.10, sprite: 'mass' },
+    { cx: 0.467, top: 150.3, height: 39.8, tint: 0.10, sprite: 'bank' },
+    { cx: 0.525, top: 151.5, height: 39.8, tint: 0.10, sprite: 'mass' },
+    { cx: 0.583, top: 143.2, height: 38.7, tint: 0.10, sprite: 'bank' },
+    { cx: 0.641, top: 135.0, height: 36.4, tint: 0.10, sprite: 'mass' },
+    { cx: 0.699, top: 127.1, height: 33.4, tint: 0.10, sprite: 'bank' },
+    { cx: 0.757, top: 119.2, height: 30.0, tint: 0.10, sprite: 'mass' },
+    { cx: 0.264, top: 124.4, height: 35.4, tint: 0.10, sprite: 'mass' },
+    { cx: 0.322, top: 132.7, height: 38.0, tint: 0.10, sprite: 'mass' },
+    { cx: 0.380, top: 141.1, height: 40.1, tint: 0.10, sprite: 'mass' },
+    { cx: 0.438, top: 149.6, height: 41.5, tint: 0.10, sprite: 'mass' },
+    { cx: 0.496, top: 158.2, height: 42.0, tint: 0.10, sprite: 'mass' },
+    { cx: 0.554, top: 150.8, height: 41.5, tint: 0.10, sprite: 'mass' },
+    { cx: 0.612, top: 142.3, height: 40.1, tint: 0.10, sprite: 'mass' },
+    { cx: 0.670, top: 133.9, height: 38.0, tint: 0.10, sprite: 'mass' },
+    { cx: 0.728, top: 125.6, height: 35.4, tint: 0.10, sprite: 'mass' }
   ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   // Only this frontmost group drifts: a very slow sway and bob, so the scene breathes without
   // the island's framing shifting around.
   const CLOUD_FRONT_BANKS = [
-    { cx: 0.10, top: 150, height: 74, tint: 0.04, sprite: 'mass', sway: 2.6, bob: 0.8,
-      speed: 0.075, phase: 0.4 },
-    { cx: 0.895, top: 156, height: 66, tint: 0.04, sprite: 'bank', sway: 2.2, bob: 0.7,
-      speed: 0.062, phase: 2.1 },
-    { cx: 0.238, top: 164, height: 58, tint: 0.02, sprite: 'bank', sway: 3.1, bob: 0.9,
-      speed: 0.088, phase: 4.0 },
-    { cx: 0.782, top: 160, height: 62, tint: 0.02, sprite: 'mass', sway: 2.4, bob: 0.6,
-      speed: 0.070, phase: 5.3 },
-    { cx: 0.516, top: 174, height: 46, tint: 0, sprite: 'mass', sway: 3.4, bob: 1.0,
-      speed: 0.055, phase: 1.2 }
+    { cx: 0.1, top: 150, height: 74, tint: 0.07, sprite: 'mass', sway: 2.6, bob: 0.8, speed: 0.075, phase: 0.4 },
+    { cx: 0.895, top: 156, height: 66, tint: 0.07, sprite: 'bank', sway: 2.2, bob: 0.7, speed: 0.062, phase: 2.1 },
+    { cx: 0.497, top: 160, height: 53, tint: 0.07, sprite: 'bank', sway: 2.2, bob: 0.7, speed: 0.062, phase: 3.1 },
+    { cx: 0.238, top: 162, height: 58, tint: 0.07, sprite: 'bank', sway: 3.1, bob: 0.9, speed: 0.088, phase: 4 },
+    { cx: 0.567, top: 166, height: 46, tint: 0.07, sprite: 'mass', sway: 3.1, bob: 0.9, speed: 0.088, phase: 5.0 },
+    { cx: 0.782, top: 168, height: 62, tint: 0.07, sprite: 'mass', sway: 2.4, bob: 0.6, speed: 0.07, phase: 5.3 },
+    { cx: 0.510, top: 172, height: 50, tint: 0.07, sprite: 'bank', sway: 2.4, bob: 0.6, speed: 0.07, phase: 6.3 },
+    { cx: 0.516, top: 174, height: 46, tint: 0.07, sprite: 'mass', sway: 3.4, bob: 1, speed: 0.055, phase: 1.2 },
+    { cx: 0.649, top: 178, height: 37, tint: 0.07, sprite: 'mass', sway: 3.4, bob: 1, speed: 0.055, phase: 2.2 }
   ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   // Far background: an uneven band behind the island, most of it just above the middle of the
   // screen, so the island has a layered backdrop instead of bare sky.
@@ -1798,6 +1807,8 @@
     ctx.restore();
     // Side and front banks overlap the island's tiles, so they draw after it.
     drawCloudBanks(getSceneWeather(), sunAltitude);
+    const contact = getSceneWeather();
+    drawCloudContactShade(sunAltitude, contact.cloudCover, contact.weatherCode);
   }
 
   function cloudSprite(name) {
@@ -1977,6 +1988,29 @@
     const offsetY = bank.bob ? Math.cos(phase * 0.7) * bank.bob : 0;
     drawCloudSpriteAt(sprite, bank.cx * WIDTH - width / 2 + offsetX, bank.top + offsetY,
       bank.height, bank.cx < 0.5);
+  }
+
+  // Contact shade drawn after the banks: the puffs that touch the slab are darkened by the
+  // island too, which is what stops them reading as pasted onto the soil.
+  function drawCloudContactShade(sunAltitude, cloudCover, code) {
+    const directLight = clamp((sunAltitude + 8) / 28, 0, 1);
+    let filter = 1 - clamp(cloudCover / 100 * 0.45, 0, 0.45);
+    if (weatherCodeIsStorm(code)) filter *= 0.82;
+    const opacity = (0.12 + directLight * 0.22) * filter;
+    const centerX = WIDTH / 2;
+    const tipY = 152;
+    const radiusX = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.46;
+    const shade = ctx.createRadialGradient(centerX, tipY, 0, centerX, tipY, radiusX);
+    shade.addColorStop(0, `rgba(44, 62, 90, ${opacity})`);
+    shade.addColorStop(0.5, `rgba(48, 68, 96, ${opacity * 0.6})`);
+    shade.addColorStop(1, 'rgba(52, 74, 104, 0)');
+    ctx.save();
+    ctx.translate(centerX, tipY);
+    ctx.scale(1, 0.42);
+    ctx.translate(-centerX, -tipY);
+    ctx.fillStyle = shade;
+    ctx.fillRect(centerX - radiusX, tipY - radiusX, radiusX * 2, radiusX * 2);
+    ctx.restore();
   }
 
   function drawCloudBanks(sceneWeather, sunAltitude) {
