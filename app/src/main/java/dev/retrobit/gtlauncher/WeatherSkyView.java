@@ -777,8 +777,11 @@ public final class WeatherSkyView extends View {
         double directLight = clamp((sunAltitude + 8.0) / 28.0, 0.0, 1.0);
         double cloudFilter = 1.0 - clamp(cloudCover / 100.0 * 0.45, 0.0, 0.45);
         if (code >= 95) cloudFilter *= 0.82;
+        // Roughly double the island's ground-shadow opacity. The same value that reads clearly on
+        // pale grass measures only single-digit levels per pixel on dark water, so the shadow was
+        // technically present and visually absent.
         double opacity = (0.10 + directLight * 0.30) * cloudFilter
-                * ISLAND_BODY_SHADOW_OPACITY_SCALE;
+                * ISLAND_BODY_SHADOW_OPACITY_SCALE * 2.1;
         if (opacity <= 0.002) return;
         // Pinned just below the plate's own front edge. Measured from the sea diamond's centre it
         // landed past the bottom of the frame, and measured from the diamond's middle it sat behind
