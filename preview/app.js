@@ -392,6 +392,110 @@
     return (1 - verticalMix) * CLOUD_VISUAL_HORIZON_Y;
   }
 
+  // The sun is drawn as an isometric pixel-art object: its body is shaded with a fixed
+  // upper-left key light and then quantised into four flat bands, so the pixels stay crisp
+  // while the sphere still reads as a solid volume. The fixed light direction is what makes
+  // it look like an object in the scene instead of a flat sticker that follows the viewer.
+  const SUN_RAY_COUNT = 12;
+  const SUN_BODY_RADIUS = 10.5;
+  const SUN_RAY_INNER = 10.2;
+  const SUN_RAY_LONG = 6.4;
+  const SUN_RAY_SHORT = 4.6;
+
+  const SUN_LIGHT = (() => {
+    const vector = [-0.46, -0.52, 0.72];
+    const length = Math.hypot(vector[0], vector[1], vector[2]);
+    return [vector[0] / length, vector[1] / length, vector[2] / length];
+  })();
+
+  // Four flat tones, brightest first. The sun turns warm near the horizon and dulls under
+  // a heavy cloud deck; the light direction itself never changes.
+  function sunPalette(altitude, cloudCover) {
+    const daylight = clamp((altitude + 6) / 18, 0, 1);
+    const low = clamp(1 - daylight, 0, 1);
+    const warm = (highSun, lowSun) => blendColor(highSun, lowSun, low * 0.8);
+    const dull = clamp(cloudCover / 100, 0, 1) * 0.4;
+    const shaded = color => blendColor(color, '#7d8494', dull);
+    return [
+      shaded(warm('#fff8d6', '#ffeab4')),
+      shaded(warm('#ffd964', '#ffbc60')),
+      shaded(warm('#f7b32b', '#f0902c')),
+      shaded(warm('#d9871a', '#c2631c'))
+    ];
+  }
+
+  function drawSunBody(centerX, centerY, palette) {
+    const radius = SUN_BODY_RADIUS;
+    for (let row = -radius; row < radius; row += RENDER_CELL) {
+      const dy = row + RENDER_CELL / 2;
+      const halfWidth = Math.sqrt(Math.max(0, radius * radius - dy * dy));
+      const left = Math.round((centerX - halfWidth) / RENDER_CELL) * RENDER_CELL;
+      const right = Math.round((centerX + halfWidth) / RENDER_CELL) * RENDER_CELL;
+      for (let x = left; x < right; x += RENDER_CELL) {
+        const dx = x + RENDER_CELL / 2 - centerX;
+        const normalZ = Math.sqrt(Math.max(0, 1 - (dx * dx + dy * dy) / (radius * radius)));
+        const lambert = (dx / radius) * SUN_LIGHT[0] + (dy / radius) * SUN_LIGHT[1]
+          + normalZ * SUN_LIGHT[2];
+        const level = lambert > 0.84 ? 0 : lambert > 0.52 ? 1 : lambert > 0.20 ? 2 : 3;
+        ctx.fillStyle = palette[level];
+        ctx.fillRect(x, centerY + row, RENDER_CELL, RENDER_CELL);
+      }
+    }
+  }
+
+  // A cone split down its axis: the half facing the key light stays bright, the other half
+  // sits one tone lower. The tip is a rounded cap rather than a spike.
+  function drawSunRay(centerX, centerY, angle, length, palette) {
+    const dirX = Math.cos(angle);
+    const dirY = Math.sin(angle);
+    const perpX = -dirY;
+    const perpY = dirX;
+    const inner = SUN_RAY_INNER;
+    const tip = inner + length;
+    const baseHalf = 2.6;
+    const tipHalf = 1.0;
+    const shoulder = inner + (tip - inner) * 0.72;
+    const shoulderHalf = baseHalf * 0.28 + tipHalf * 0.72;
+    const at = (along, across) => [
+      centerX + dirX * along + perpX * across,
+      centerY + dirY * along + perpY * across
+    ];
+    const shadeSide = perpX * SUN_LIGHT[0] + perpY * SUN_LIGHT[1] > 0 ? 1 : -1;
+    drawPixelPolygon([
+      at(inner, -baseHalf), at(shoulder, -shoulderHalf),
+      at(shoulder, shoulderHalf), at(inner, baseHalf)
+    ], palette[1]);
+    drawPixelPolygon([at(shoulder, -shoulderHalf), at(tip, 0), at(shoulder, shoulderHalf)],
+      palette[1]);
+    drawPixelPolygon([
+      at(inner, 0), at(inner, shadeSide * baseHalf),
+      at(shoulder, shadeSide * shoulderHalf), at(shoulder, 0)
+    ], palette[2]);
+    drawPixelPolygon([
+      at(shoulder, 0), at(shoulder, shadeSide * shoulderHalf), at(tip, 0)
+    ], palette[2]);
+  }
+
+  // Position comes straight from the existing astronomy: azimuth picks the screen column and
+  // altitude picks the height inside the upper celestial band. The sun fades in just above
+  // the horizon and is gone below it.
+  function drawSun(sun, cloudCover) {
+    if (sun.altitude <= -1) return;
+    const palette = sunPalette(sun.altitude, cloudCover);
+    const centerX = Math.round(mapAzimuth(sun.azimuth) / RENDER_CELL) * RENDER_CELL;
+    const centerY = Math.round(mapAltitudeToCelestialBand(sun.altitude) / RENDER_CELL)
+      * RENDER_CELL;
+    const previousAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = previousAlpha * clamp((sun.altitude + 1) / 3, 0, 1);
+    for (let ray = 0; ray < SUN_RAY_COUNT; ray += 1) {
+      const angle = -Math.PI / 2 + ray * (Math.PI * 2 / SUN_RAY_COUNT);
+      drawSunRay(centerX, centerY, angle,
+        ray % 2 === 0 ? SUN_RAY_LONG : SUN_RAY_SHORT, palette);
+    }
+    drawSunBody(centerX, centerY, palette);
+    ctx.globalAlpha = previousAlpha;
+  }
+
   function drawSky(now, sun, code, cloudCover) {
     let palette;
     if (sun.altitude < -12) palette = NIGHT;
@@ -1447,6 +1551,12 @@
     const cloudStates = [];
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     drawSky(skyNow, sun, sceneWeather.weatherCode, sceneWeather.cloudCover);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, WIDTH, HEIGHT * 0.5);
+    ctx.clip();
+    drawSun(sun, sceneWeather.cloudCover);
+    ctx.restore();
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, 0, WIDTH, HEIGHT * 0.5);
