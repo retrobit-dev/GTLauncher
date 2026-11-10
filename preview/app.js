@@ -52,157 +52,44 @@
   // A deeper, finer-grained sea so the island reads as small and high above it.
   // A distant bank of cloud behind the sea fills the windows between the island's
   // underside and the cloud tops, so the island sits against cloud, never against sky.
-  function drawDistantCloudHaze(sceneWeather, sunAltitude) {
-    const storm = weatherCodeIsStorm(sceneWeather.weatherCode);
-    const cover = clamp(sceneWeather.cloudCover / 100, 0, 1);
-    const night = clamp(1 - sunAltitude / 8, 0, 1) * 0.85;
-    const gloom = clamp(cover * 0.3 + (storm ? 0.26 : 0), 0, 0.55);
-    const top = CLOUD_SEA_BASE - 54;
-    const haze = ctx.createLinearGradient(0, top, 0, CLOUD_SEA_BASE + 10);
-    haze.addColorStop(0, 'rgba(214, 227, 239, 0)');
-    haze.addColorStop(0.55, blendColor(blendColor('#d3e1ee', CLOUD_NIGHT_TINT, night),
-      CLOUD_STORM_TINT, gloom * 0.7));
-    haze.addColorStop(1, blendColor(blendColor('#c6d8e8', CLOUD_NIGHT_TINT, night),
-      CLOUD_STORM_TINT, gloom * 0.8));
-    ctx.save();
-    ctx.globalAlpha = 0.85;
-    ctx.fillStyle = haze;
-    ctx.fillRect(0, top, WIDTH, CLOUD_SEA_BASE + 10 - top);
-    ctx.restore();
-  }
 
-  // The sea rises until its crowns meet the island's underside, so the island reads as
-  // resting on the clouds instead of hovering over a gap.
-  const CLOUD_LAYERS = [
-    {
-      baseline: CLOUD_SEA_BASE + 8,
-      height: 28,
-      alpha: 0.9,
-      tint: 0.55,
-      tintColor: '#b6c8da',
-      salt: 11,
-      rowScale: 1
-    },
-    {
-      baseline: CLOUD_SEA_BASE + 22,
-      height: 36,
-      alpha: 1,
-      tint: 0.26,
-      tintColor: '#c9d9e7',
-      salt: 27,
-      rowScale: 1.04
-    },
-    {
-      baseline: CLOUD_SEA_BASE + 38,
-      height: 46,
-      alpha: 1,
-      tint: 0,
-      tintColor: '#dde9f3',
-      salt: 43,
-      rowScale: 1.1
-    }
-  ];
   // Banks are anchored by their centre fraction of the width. Nothing is an exact mirror
   // of its opposite: heights, widths and tints all vary, so the cloud walls read as natural
   // puffs rather than a symmetrical pattern.
-  const CLOUD_GAP_FILLERS = [
-    { cx: 0.335, top: 148, height: 46, tint: 0.06, sprite: 'bank' },
-    { cx: 0.672, top: 144, height: 52, tint: 0.04, sprite: 'mass' },
-    { cx: 0.418, top: 154, height: 44, tint: 0.03, sprite: 'mass' },
-    { cx: 0.60, top: 150, height: 40, tint: 0.05, sprite: 'bank' }
-  ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
-  const CLOUD_SIDE_BANKS = [
-    { cx: 0.045, top: 132, height: 84, tint: 0.12, sprite: 'mass' },
-    { cx: 0.118, top: 116, height: 92, tint: 0.07, sprite: 'bank' },
-    { cx: 0.172, top: 142, height: 68, tint: 0.05, sprite: 'bank' },
-    { cx: 0.072, top: 102, height: 78, tint: 0.16, sprite: 'mass' },
-    { cx: 0.958, top: 128, height: 80, tint: 0.11, sprite: 'bank' },
-    { cx: 0.877, top: 122, height: 86, tint: 0.06, sprite: 'mass' },
-    { cx: 0.812, top: 146, height: 64, tint: 0.04, sprite: 'bank' },
-    { cx: 0.936, top: 108, height: 72, tint: 0.15, sprite: 'bank' }
-  ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   // Blanket crowns climb high enough to cover the outermost tiles on every side, so the cloud
   // really does embrace the ground slab instead of stopping at its edge.
-  const CLOUD_BLANKET_BANKS = [
-    { cx: 0.020, top: 118, height: 92, tint: 0.14, sprite: 'mass' },
-    { cx: 0.098, top: 126, height: 84, tint: 0.08, sprite: 'bank' },
-    { cx: 0.262, top: 152, height: 72, tint: 0.05, sprite: 'bank' },
-    { cx: 0.986, top: 122, height: 88, tint: 0.12, sprite: 'mass' },
-    { cx: 0.906, top: 132, height: 80, tint: 0.07, sprite: 'mass' },
-    { cx: 0.742, top: 156, height: 68, tint: 0.04, sprite: 'bank' }
-    ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   // The cradle holds the island: these crowns sit directly under its soil slab and hug the
   // lowest tip, which is what makes the island look settled on the cloud tops.
   // The cradle holds the island: every crest sits a fixed gap under the slab underside,
   // so the cloud silhouette parallels the two lower edges and the tip looks wedged in cloud
   // rather than pasted on. Heights and tints vary so it never looks like a copied outline.
   const CLOUD_CRADLE_BANKS = [
-    { cx: 0.255, top: 123.6, height: 32, tint: 0.05, sprite: 'bank' },
-    { cx: 0.315, top: 134.5, height: 26, tint: 0.05, sprite: 'mass' },
-    { cx: 0.375, top: 139.4, height: 36, tint: 0.05, sprite: 'bank' },
-    { cx: 0.435, top: 153.3, height: 28, tint: 0.05, sprite: 'mass' },
-    { cx: 0.495, top: 158.3, height: 38, tint: 0.05, sprite: 'bank' },
-    { cx: 0.555, top: 153.8, height: 30, tint: 0.05, sprite: 'mass' },
-    { cx: 0.615, top: 139.9, height: 36, tint: 0.05, sprite: 'bank' },
-    { cx: 0.675, top: 136.0, height: 26, tint: 0.05, sprite: 'mass' },
-    { cx: 0.735, top: 124.1, height: 32, tint: 0.05, sprite: 'bank' }
+    { cx: 0.255, top: 119.6, height: 32, tint: 0.05, sprite: 'bank' },
+    { cx: 0.315, top: 130.5, height: 26, tint: 0.05, sprite: 'mass' },
+    { cx: 0.375, top: 135.4, height: 36, tint: 0.05, sprite: 'bank' },
+    { cx: 0.435, top: 149.3, height: 28, tint: 0.05, sprite: 'mass' },
+    { cx: 0.495, top: 154.3, height: 38, tint: 0.05, sprite: 'bank' },
+    { cx: 0.555, top: 149.8, height: 30, tint: 0.05, sprite: 'mass' },
+    { cx: 0.615, top: 135.9, height: 36, tint: 0.05, sprite: 'bank' },
+    { cx: 0.675, top: 132.0, height: 26, tint: 0.05, sprite: 'mass' },
+    { cx: 0.735, top: 120.1, height: 32, tint: 0.05, sprite: 'bank' }
   ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   // Only this frontmost group drifts: a very slow sway and bob, so the scene breathes without
   // the island's framing shifting around.
   const CLOUD_FRONT_BANKS = [
-    { cx: 0.10, top: 150, height: 74, tint: 0.04, sprite: 'mass', sway: 2.6, bob: 0.8,
+    { cx: 0.145, top: 176, height: 38, tint: 0.03, sprite: 'mass', sway: 2.6, bob: 0.8,
       speed: 0.075, phase: 0.4 },
-    { cx: 0.895, top: 156, height: 66, tint: 0.04, sprite: 'bank', sway: 2.2, bob: 0.7,
+    { cx: 0.855, top: 178, height: 36, tint: 0.03, sprite: 'bank', sway: 2.2, bob: 0.7,
       speed: 0.062, phase: 2.1 },
-    { cx: 0.238, top: 164, height: 58, tint: 0.02, sprite: 'bank', sway: 3.1, bob: 0.9,
+    { cx: 0.305, top: 184, height: 34, tint: 0.02, sprite: 'bank', sway: 3.1, bob: 0.9,
       speed: 0.088, phase: 4.0 },
-    { cx: 0.782, top: 160, height: 62, tint: 0.02, sprite: 'mass', sway: 2.4, bob: 0.6,
+    { cx: 0.700, top: 186, height: 32, tint: 0.02, sprite: 'mass', sway: 2.4, bob: 0.6,
       speed: 0.070, phase: 5.3 },
-    { cx: 0.516, top: 174, height: 46, tint: 0, sprite: 'mass', sway: 3.4, bob: 1.0,
+    { cx: 0.508, top: 190, height: 30, tint: 0.00, sprite: 'mass', sway: 3.4, bob: 1.0,
       speed: 0.055, phase: 1.2 }
   ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   // Far background: an uneven band behind the island, most of it just above the middle of the
   // screen, so the island has a layered backdrop instead of bare sky.
-  // Far layer: crests echo the island's upper edges (highest under its tip, sinking
-  // toward the frame edges) with uneven jitter, so the island reads as resting inside a cloud
-  // basin instead of sitting in open sky. The faintest a bank sits in the distance, the more
-  // transparent it is. These drift very slowly: far clouds move less than the front ones.
-  const CLOUD_BACK_BANKS = [
-    { cx: 0.005, top: 104, height: 42, tint: 0.46, alpha: 0.64, sprite: 'mass',
-      sway: 1.00, bob: 0.40, speed: 0.010, phase: 0.0 },
-    { cx: 0.050, top: 96, height: 32, tint: 0.43, alpha: 0.64, sprite: 'bank',
-      sway: 1.25, bob: 0.55, speed: 0.011, phase: 0.7 },
-    { cx: 0.095, top: 75, height: 36, tint: 0.39, alpha: 0.64, sprite: 'mass',
-      sway: 1.50, bob: 0.70, speed: 0.012, phase: 1.4 },
-    { cx: 0.145, top: 67, height: 28, tint: 0.46, alpha: 0.64, sprite: 'bank',
-      sway: 1.75, bob: 0.40, speed: 0.014, phase: 2.1 },
-    { cx: 0.200, top: 50, height: 32, tint: 0.43, alpha: 0.50, sprite: 'mass',
-      sway: 1.00, bob: 0.55, speed: 0.015, phase: 2.8 },
-    { cx: 0.265, top: 52, height: 26, tint: 0.39, alpha: 0.50, sprite: 'bank',
-      sway: 1.25, bob: 0.70, speed: 0.010, phase: 3.5 },
-    { cx: 0.335, top: 44, height: 30, tint: 0.46, alpha: 0.50, sprite: 'mass',
-      sway: 1.50, bob: 0.40, speed: 0.011, phase: 4.2 },
-    { cx: 0.410, top: 49, height: 26, tint: 0.43, alpha: 0.50, sprite: 'bank',
-      sway: 1.75, bob: 0.55, speed: 0.012, phase: 4.9 },
-    { cx: 0.490, top: 42, height: 28, tint: 0.39, alpha: 0.50, sprite: 'mass',
-      sway: 1.00, bob: 0.70, speed: 0.014, phase: 5.6 },
-    { cx: 0.565, top: 48, height: 26, tint: 0.46, alpha: 0.50, sprite: 'bank',
-      sway: 1.25, bob: 0.40, speed: 0.015, phase: 6.3 },
-    { cx: 0.640, top: 43, height: 30, tint: 0.43, alpha: 0.50, sprite: 'mass',
-      sway: 1.50, bob: 0.55, speed: 0.010, phase: 7.0 },
-    { cx: 0.710, top: 52, height: 26, tint: 0.39, alpha: 0.50, sprite: 'bank',
-      sway: 1.75, bob: 0.70, speed: 0.011, phase: 7.7 },
-    { cx: 0.775, top: 53, height: 32, tint: 0.46, alpha: 0.50, sprite: 'mass',
-      sway: 1.00, bob: 0.40, speed: 0.012, phase: 8.4 },
-    { cx: 0.835, top: 69, height: 28, tint: 0.43, alpha: 0.50, sprite: 'bank',
-      sway: 1.25, bob: 0.55, speed: 0.014, phase: 9.1 },
-    { cx: 0.895, top: 75, height: 36, tint: 0.39, alpha: 0.64, sprite: 'mass',
-      sway: 1.50, bob: 0.70, speed: 0.015, phase: 9.8 },
-    { cx: 0.950, top: 94, height: 32, tint: 0.46, alpha: 0.64, sprite: 'bank',
-      sway: 1.75, bob: 0.40, speed: 0.010, phase: 10.5 },
-    { cx: 0.995, top: 104, height: 44, tint: 0.43, alpha: 0.64, sprite: 'mass',
-      sway: 1.00, bob: 0.55, speed: 0.011, phase: 11.2 }
-  ].map(bank => ({ ...bank, tintColor: CLOUD_NEAR_TINT }));
   const CLOUD_SPRITE_SOURCES = {
     bank: './assets/cloud-bank.png',
     mass: './assets/cloud-mass.png'
@@ -1751,9 +1638,8 @@
 
     // The cloud sea acts as the ground plane, so the island shadow is a soft patch
     // brushed onto the cloud tops instead of a hard diamond in the open sky.
-    drawDistantCloudHaze(getSceneWeather(), sunAltitude);
-    drawBackCloudBanks(getSceneWeather(), sunAltitude);
-    drawCloudSea(getSceneWeather(), sunAltitude);
+    drawCloudCanopy(getSceneWeather(), sunAltitude);
+    drawCloudBed(getSceneWeather(), sunAltitude);
     drawIslandShadowOnClouds(centerX, sunAltitude, cloudCover, code);
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.
     drawIslandSoilBody(soilLeftX, centerX, soilRightX,
@@ -1830,7 +1716,6 @@
     return buffer;
   }
 
-  const CLOUD_SEA_TOP = CLOUD_SEA_BASE + 4;
   // A soft contact shadow where the island's mass darkens the cloud tops beneath it.
   function drawIslandShadowOnClouds(centerX, sunAltitude, cloudCover, code) {
     const directLight = clamp((sunAltitude + 8) / 28, 0, 1);
@@ -1885,85 +1770,609 @@
     ctx.restore();
   }
 
-  // A static bank of cloud: enough puffs to bury every gap between its neighbours.
-  function drawCloudRow(sceneWeather, sunAltitude, baseline, puffs) {
-    puffs.forEach(puff => {
-      const tint = cloudWeatherTint(sceneWeather, sunAltitude, puff);
-      const sprite = tintedCloudSprite(puff.sprite, tint.tintColor, tint.tintAmount);
-      if (sprite) drawCloudSpriteAt(sprite, puff.x, puff.y, puff.height, puff.mirror);
-    });
-  }
-
-  function buildCloudRow(layer, scale) {
-    const random = cloudSeaRandom(layer.salt);
-    const puffs = [];
-    const step = layer.height * 0.62;
-    for (let x = -step; x < WIDTH + step; x += step) {
-      const height = layer.height * scale * (0.9 + random() * 0.22);
-      const puffX = x - step * 0.25 + random() * step * 0.5;
-      puffs.push({
-        x: puffX,
-        y: layer.baseline - height * (0.9 + random() * 0.12),
-        height,
-        sprite: random() < 0.5 ? 'bank' : 'mass',
-        mirror: random() < 0.5,
-        tint: layer.tint,
-        tintColor: layer.tintColor
-      });
+  // The cloud body is defined by three silhouette curves rather than by stacked sprites, so
+  // its shape is predictable. Sky survives as a lens in the middle (where the island sits),
+  // as a wide band at the left/right edges, and as wedges in the lower corners.
+  // Points are [fraction of width, scene y]; the island crest is y=40, flanks y=96.
+  const CLOUD_CANOPY_EDGE = [
+    [0.00, 34], [0.05, 26], [0.12, 26], [0.20, 36], [0.30, 45], [0.40, 49],
+    [0.50, 50], [0.60, 49], [0.70, 45], [0.80, 36], [0.88, 26], [0.95, 26], [1.00, 34]
+  ];
+  // The bed's top edge follows the slab underside exactly (one unit of overlap, hidden behind
+  // the island): that is what makes every part of the island sit on cloud, with no sky sliver
+  // under the slab. Its bottom edge dips below the frame in the middle and lifts at the sides,
+  // so the lower corners keep their sky.
+  const CLOUD_BED_TOP = [
+    [0.00, 128], [0.05, 110], [0.11, 97], [0.20, 107], [0.30, 123], [0.40, 137],
+    [0.50, 152], [0.60, 137], [0.70, 123], [0.80, 107], [0.89, 97], [0.95, 110], [1.00, 128]
+  ];
+  // The band tapers to nothing at the frame edges, so the lower corners stay open sky
+  // instead of filling with cloud the way a full-width bed did.
+  const CLOUD_BED_BOTTOM = [
+    [0.00, 118], [0.05, 130], [0.11, 146], [0.20, 168], [0.30, 186], [0.40, 198],
+    [0.50, 205], [0.60, 198], [0.70, 186], [0.80, 168], [0.89, 146], [0.95, 130], [1.00, 118]
+  ];
+  // Linear interpolation with a smooth (cosine) ramp so the silhouette has no corners.
+  function cloudCurveAt(table, fraction) {
+    const t = clamp(fraction, 0, 1);
+    for (let i = 1; i < table.length; i += 1) {
+      const [x1, y1] = table[i];
+      if (t <= x1) {
+        const [x0, y0] = table[i - 1];
+        const span = x1 - x0;
+        const k = span <= 0 ? 0 : (t - x0) / span;
+        const eased = 0.5 - Math.cos(Math.PI * k) / 2;
+        return y0 + (y1 - y0) * eased;
+      }
     }
-    return puffs;
+    return table[table.length - 1][1];
   }
+  const cloudCanopyY = x => cloudCurveAt(CLOUD_CANOPY_EDGE, x / WIDTH);
+  const cloudBedTopY = x => cloudCurveAt(CLOUD_BED_TOP, x / WIDTH);
+  const cloudBedBottomY = x => cloudCurveAt(CLOUD_BED_BOTTOM, x / WIDTH);
 
-  const CLOUD_ROWS = CLOUD_LAYERS.map(layer => ({
-    layer,
-    puffs: buildCloudRow(layer, layer.rowScale)
-  }));
 
-  function drawCloudSea(sceneWeather, sunAltitude) {
+  // The canopy closes the top of the frame down to its edge curve. A soft wash holds the
+  // colour, and sprite puffs straddle the curve so the silhouette stays cloudy, not cut out.
+  function drawCloudCanopy(sceneWeather, sunAltitude) {
     const storm = weatherCodeIsStorm(sceneWeather.weatherCode);
     const cover = clamp(sceneWeather.cloudCover / 100, 0, 1);
-    const quantise = value => Math.round(value * 16) / 16;
-    const night = quantise(clamp(1 - sunAltitude / 8, 0, 1) * 0.85);
-    const gloom = quantise(clamp(cover * 0.30 + (storm ? 0.26 : 0), 0, 0.55));
-    // A soft cloud-toned body under the sprites hides sky gaps between puffs. It fades in
-    // from transparent at its top edge so the sea has no hard horizon line.
-    const bodyTop = Math.round(CLOUD_SEA_TOP);
-    const body = ctx.createLinearGradient(0, bodyTop, 0, HEIGHT);
-    body.addColorStop(0, 'rgba(220, 232, 242, 0)');
-    body.addColorStop(0.35, blendColor(blendColor('#c4d6e5', CLOUD_NIGHT_TINT, night),
-      CLOUD_STORM_TINT, gloom * 0.6));
-    body.addColorStop(1, blendColor(blendColor('#9fb6cc', CLOUD_NIGHT_TINT, night),
-      CLOUD_STORM_TINT, gloom * 0.7));
-    ctx.fillStyle = body;
-    ctx.fillRect(0, bodyTop, WIDTH, HEIGHT - bodyTop);
-    CLOUD_ROWS.forEach(({ layer, puffs }) => {
+    const night = clamp(1 - sunAltitude / 8, 0, 1) * 0.85;
+    const gloom = clamp(cover * 0.3 + (storm ? 0.26 : 0), 0, 0.55);
+    const shade = lift => blendColor(blendColor('#bdd2e4', CLOUD_NIGHT_TINT, clamp(night + lift, 0, 1)),
+      CLOUD_STORM_TINT, gloom * 0.7);
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i += 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, cloudCanopyY(x));
+    }
+    ctx.lineTo(WIDTH, -4);
+    ctx.lineTo(0, -4);
+    ctx.closePath();
+    const wash = ctx.createLinearGradient(0, 0, 0, 56);
+    wash.addColorStop(0, shade(0.10));
+    wash.addColorStop(1, shade(-0.06));
+    ctx.fillStyle = wash;
+    ctx.globalAlpha = 0.99;
+    ctx.fill();
+    ctx.restore();
+    // Puffs straddling the edge, alternating sprites and sizes so the line never repeats.
+    const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
+    const random = cloudSeaRandom(71);
+    for (let i = 0; i < 21; i += 1) {
+      const cx = WIDTH * (0.005 + (0.99 * i) / 20);
+      const edge = cloudCanopyY(cx);
+      const height = 32 + random() * 26;
+      const sprite = tintedCloudSprite(random() < 0.5 ? 'bank' : 'mass',
+        cloudWeatherTint(sceneWeather, sunAltitude,
+          { tint: 0.34, tintColor: CLOUD_NEAR_TINT }).tintColor, 0.42);
+      if (!sprite) continue;
+      const width = sprite.width * (height / sprite.height);
+      const phase = elapsed * 0.012 + i * 0.8;
       ctx.save();
-      ctx.globalAlpha = layer.alpha;
-      drawCloudRow(sceneWeather, sunAltitude, layer.baseline, puffs);
+      ctx.globalAlpha = 0.9;
+      drawCloudSpriteAt(sprite, cx - width / 2 + Math.sin(phase) * 1.2,
+        edge - height * 0.42 + Math.cos(phase * 0.7) * 0.5, height, i % 2 === 0);
       ctx.restore();
-    });
+    }
   }
 
-  // Side and front banks overlap the island itself, so they draw after it.
-  // Far-side clouds behind the island; the island and its foreground banks then cover them.
-  function drawBackCloudBanks(sceneWeather, sunAltitude) {
-    // The far layer drifts too, at roughly a tenth of the front group's speed.
+
+  // The bed carries the island. Its silhouette comes from the puffs themselves, never from a
+  // clipped fill: overlapping crowns trace the slab underside on top and an arch that lifts
+  // away at the sides on the bottom, so the clouds keep their lumpy edge and the lower
+  // corners stay open. A soft wash fills only the interior, well inside the crown rows.
+  function drawCloudBed(sceneWeather, sunAltitude) {
+    const storm = weatherCodeIsStorm(sceneWeather.weatherCode);
+    const cover = clamp(sceneWeather.cloudCover / 100, 0, 1);
+    const night = clamp(1 - sunAltitude / 8, 0, 1) * 0.85;
+    const gloom = clamp(cover * 0.3 + (storm ? 0.26 : 0), 0, 0.55);
+    const shade = lift => blendColor(blendColor('#c2d5e5', CLOUD_NIGHT_TINT, clamp(night + lift, 0, 1)),
+      CLOUD_STORM_TINT, gloom * 0.7);
+    // Interior wash, inset from every edge so it never becomes the visible outline.
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i += 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, cloudBedTopY(x) + 10);
+    }
+    for (let i = 40; i >= 0; i -= 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, Math.max(cloudBedTopY(x) + 14, cloudBedBottomY(x) - 12));
+    }
+    ctx.closePath();
+    const wash = ctx.createLinearGradient(0, 120, 0, HEIGHT);
+    wash.addColorStop(0, shade(0.04));
+    wash.addColorStop(1, shade(-0.12));
+    ctx.fillStyle = wash;
+    ctx.globalAlpha = 0.97;
+    ctx.fill();
+    ctx.restore();
     const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
-    CLOUD_BACK_BANKS.forEach(bank => {
-      const tint = cloudWeatherTint(sceneWeather, sunAltitude, bank);
-      const sprite = tintedCloudSprite(bank.sprite, tint.tintColor, tint.tintAmount);
+    const random = cloudSeaRandom(23);
+    const drawPuff = (cx, y, height, tintAmount, mirror) => {
+      const tint = cloudWeatherTint(sceneWeather, sunAltitude,
+        { tint: tintAmount, tintColor: CLOUD_NEAR_TINT });
+      const sprite = tintedCloudSprite(random() < 0.5 ? 'bank' : 'mass',
+        tint.tintColor, tint.tintAmount);
       if (!sprite) return;
-      const scale = bank.height / sprite.height;
-      const width = sprite.width * scale;
-      ctx.save();
-      ctx.globalAlpha = bank.alpha === undefined ? 0.92 : bank.alpha;
-      const phase = elapsed * (bank.speed || 0) + (bank.phase || 0);
-      const offsetX = bank.sway ? Math.sin(phase) * bank.sway : 0;
-      const offsetY = bank.bob ? Math.cos(phase * 0.7) * bank.bob : 0;
-      drawCloudSpriteAt(sprite, bank.cx * WIDTH - width / 2 + offsetX, bank.top + offsetY,
-        bank.height, bank.cx < 0.5);
-      ctx.restore();
-    });
+      const width = sprite.width * (height / sprite.height);
+      drawCloudSpriteAt(sprite, cx - width / 2, y, height, mirror);
+    };
+    // Interior fill: two staggered rows, no outlines to break the silhouette.
+    for (let i = 0; i < 22; i += 1) {
+      const cx = WIDTH * (0.02 + random() * 0.96);
+      const top = cloudBedTopY(cx);
+      const bottom = cloudBedBottomY(cx);
+      if (bottom - top < 26) continue;
+      const height = 40 + random() * 34;
+      drawPuff(cx, top + 8 + random() * (bottom - top - height * 0.5 - 8), height,
+        0.14, random() < 0.5);
+    }
+    // Crown row along the slab underside: these are the clouds that hold the island up.
+    for (let i = 0; i < 23; i += 1) {
+      const cx = WIDTH * (0.055 + (0.89 * i) / 22);
+      const height = 30 + random() * 18;
+      drawPuff(cx, cloudBedTopY(cx) - height * 0.42, height, 0.05, i % 2 === 0);
+    }
+    // Under row: bottoms ride the lifting arch, so the lower edge is lumpy and opens at the
+    // sides instead of cutting across the frame.
+    for (let i = 0; i < 19; i += 1) {
+      const cx = WIDTH * (0.015 + (0.97 * i) / 18);
+      const height = 30 + random() * 16;
+      drawPuff(cx, cloudBedBottomY(cx) - height * 0.86, height, 0.18, i % 2 === 1);
+    }
+    // A slow drift keeps the bed from looking frozen.
+    void elapsed;
+  }
+
+  function drawCloudBed(sceneWeather, sunAltitude) {
+    const storm = weatherCodeIsStorm(sceneWeather.weatherCode);
+    const cover = clamp(sceneWeather.cloudCover / 100, 0, 1);
+    const night = clamp(1 - sunAltitude / 8, 0, 1) * 0.85;
+    const gloom = clamp(cover * 0.3 + (storm ? 0.26 : 0), 0, 0.55);
+    const shade = lift => blendColor(blendColor('#c2d5e5', CLOUD_NIGHT_TINT, clamp(night + lift, 0, 1)),
+      CLOUD_STORM_TINT, gloom * 0.7);
+    // Interior wash, inset from every edge so it never becomes the visible outline.
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i += 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, cloudBedTopY(x) + 10);
+    }
+    for (let i = 40; i >= 0; i -= 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, Math.max(cloudBedTopY(x) + 14, cloudBedBottomY(x) - 12));
+    }
+    ctx.closePath();
+    const wash = ctx.createLinearGradient(0, 120, 0, HEIGHT);
+    wash.addColorStop(0, shade(0.04));
+    wash.addColorStop(1, shade(-0.12));
+    ctx.fillStyle = wash;
+    ctx.globalAlpha = 0.97;
+    ctx.fill();
+    ctx.restore();
+    const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
+    const random = cloudSeaRandom(23);
+    const drawPuff = (cx, y, height, tintAmount, mirror) => {
+      const tint = cloudWeatherTint(sceneWeather, sunAltitude,
+        { tint: tintAmount, tintColor: CLOUD_NEAR_TINT });
+      const sprite = tintedCloudSprite(random() < 0.5 ? 'bank' : 'mass',
+        tint.tintColor, tint.tintAmount);
+      if (!sprite) return;
+      const width = sprite.width * (height / sprite.height);
+      drawCloudSpriteAt(sprite, cx - width / 2, y, height, mirror);
+    };
+    // Interior fill: two staggered rows, no outlines to break the silhouette.
+    for (let i = 0; i < 22; i += 1) {
+      const cx = WIDTH * (0.02 + random() * 0.96);
+      const top = cloudBedTopY(cx);
+      const bottom = cloudBedBottomY(cx);
+      if (bottom - top < 26) continue;
+      const height = 40 + random() * 34;
+      drawPuff(cx, top + 8 + random() * (bottom - top - height * 0.5 - 8), height,
+        0.14, random() < 0.5);
+    }
+    // Crown row along the slab underside: these are the clouds that hold the island up.
+    for (let i = 0; i < 23; i += 1) {
+      const cx = WIDTH * (0.055 + (0.89 * i) / 22);
+      const height = 30 + random() * 18;
+      drawPuff(cx, cloudBedTopY(cx) - height * 0.42, height, 0.05, i % 2 === 0);
+    }
+    // Under row: bottoms ride the lifting arch, so the lower edge is lumpy and opens at the
+    // sides instead of cutting across the frame.
+    for (let i = 0; i < 19; i += 1) {
+      const cx = WIDTH * (0.015 + (0.97 * i) / 18);
+      const height = 30 + random() * 16;
+      drawPuff(cx, cloudBedBottomY(cx) - height * 0.86, height, 0.18, i % 2 === 1);
+    }
+    // A slow drift keeps the bed from looking frozen.
+    void elapsed;
+  }
+
+  function drawCloudBed(sceneWeather, sunAltitude) {
+    const storm = weatherCodeIsStorm(sceneWeather.weatherCode);
+    const cover = clamp(sceneWeather.cloudCover / 100, 0, 1);
+    const night = clamp(1 - sunAltitude / 8, 0, 1) * 0.85;
+    const gloom = clamp(cover * 0.3 + (storm ? 0.26 : 0), 0, 0.55);
+    const shade = lift => blendColor(blendColor('#c2d5e5', CLOUD_NIGHT_TINT, clamp(night + lift, 0, 1)),
+      CLOUD_STORM_TINT, gloom * 0.7);
+    // Interior wash, inset from every edge so it never becomes the visible outline.
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i += 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, cloudBedTopY(x) + 10);
+    }
+    for (let i = 40; i >= 0; i -= 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, Math.max(cloudBedTopY(x) + 14, cloudBedBottomY(x) - 12));
+    }
+    ctx.closePath();
+    const wash = ctx.createLinearGradient(0, 120, 0, HEIGHT);
+    wash.addColorStop(0, shade(0.04));
+    wash.addColorStop(1, shade(-0.12));
+    ctx.fillStyle = wash;
+    ctx.globalAlpha = 0.97;
+    ctx.fill();
+    ctx.restore();
+    const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
+    const random = cloudSeaRandom(23);
+    const drawPuff = (cx, y, height, tintAmount, mirror) => {
+      const tint = cloudWeatherTint(sceneWeather, sunAltitude,
+        { tint: tintAmount, tintColor: CLOUD_NEAR_TINT });
+      const sprite = tintedCloudSprite(random() < 0.5 ? 'bank' : 'mass',
+        tint.tintColor, tint.tintAmount);
+      if (!sprite) return;
+      const width = sprite.width * (height / sprite.height);
+      drawCloudSpriteAt(sprite, cx - width / 2, y, height, mirror);
+    };
+    // Interior fill: two staggered rows, no outlines to break the silhouette.
+    for (let i = 0; i < 22; i += 1) {
+      const cx = WIDTH * (0.02 + random() * 0.96);
+      const top = cloudBedTopY(cx);
+      const bottom = cloudBedBottomY(cx);
+      if (bottom - top < 26) continue;
+      const height = 40 + random() * 34;
+      drawPuff(cx, top + 8 + random() * (bottom - top - height * 0.5 - 8), height,
+        0.14, random() < 0.5);
+    }
+    // Crown row along the slab underside: these are the clouds that hold the island up.
+    for (let i = 0; i < 23; i += 1) {
+      const cx = WIDTH * (0.055 + (0.89 * i) / 22);
+      const height = 30 + random() * 18;
+      drawPuff(cx, cloudBedTopY(cx) - height * 0.42, height, 0.05, i % 2 === 0);
+    }
+    // Under row: bottoms ride the lifting arch, so the lower edge is lumpy and opens at the
+    // sides instead of cutting across the frame.
+    for (let i = 0; i < 19; i += 1) {
+      const cx = WIDTH * (0.015 + (0.97 * i) / 18);
+      const height = 30 + random() * 16;
+      drawPuff(cx, cloudBedBottomY(cx) - height * 0.86, height, 0.18, i % 2 === 1);
+    }
+    // A slow drift keeps the bed from looking frozen.
+    void elapsed;
+  }
+
+  function drawCloudBed(sceneWeather, sunAltitude) {
+    const storm = weatherCodeIsStorm(sceneWeather.weatherCode);
+    const cover = clamp(sceneWeather.cloudCover / 100, 0, 1);
+    const night = clamp(1 - sunAltitude / 8, 0, 1) * 0.85;
+    const gloom = clamp(cover * 0.3 + (storm ? 0.26 : 0), 0, 0.55);
+    const shade = lift => blendColor(blendColor('#c2d5e5', CLOUD_NIGHT_TINT, clamp(night + lift, 0, 1)),
+      CLOUD_STORM_TINT, gloom * 0.7);
+    // Interior wash, inset from every edge so it never becomes the visible outline.
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i += 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, cloudBedTopY(x) + 10);
+    }
+    for (let i = 40; i >= 0; i -= 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, Math.max(cloudBedTopY(x) + 14, cloudBedBottomY(x) - 12));
+    }
+    ctx.closePath();
+    const wash = ctx.createLinearGradient(0, 120, 0, HEIGHT);
+    wash.addColorStop(0, shade(0.04));
+    wash.addColorStop(1, shade(-0.12));
+    ctx.fillStyle = wash;
+    ctx.globalAlpha = 0.97;
+    ctx.fill();
+    ctx.restore();
+    const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
+    const random = cloudSeaRandom(23);
+    const drawPuff = (cx, y, height, tintAmount, mirror) => {
+      const tint = cloudWeatherTint(sceneWeather, sunAltitude,
+        { tint: tintAmount, tintColor: CLOUD_NEAR_TINT });
+      const sprite = tintedCloudSprite(random() < 0.5 ? 'bank' : 'mass',
+        tint.tintColor, tint.tintAmount);
+      if (!sprite) return;
+      const width = sprite.width * (height / sprite.height);
+      drawCloudSpriteAt(sprite, cx - width / 2, y, height, mirror);
+    };
+    // Interior fill: two staggered rows, no outlines to break the silhouette.
+    for (let i = 0; i < 22; i += 1) {
+      const cx = WIDTH * (0.02 + random() * 0.96);
+      const top = cloudBedTopY(cx);
+      const bottom = cloudBedBottomY(cx);
+      if (bottom - top < 26) continue;
+      const height = 40 + random() * 34;
+      drawPuff(cx, top + 8 + random() * (bottom - top - height * 0.5 - 8), height,
+        0.14, random() < 0.5);
+    }
+    // Crown row along the slab underside: these are the clouds that hold the island up.
+    for (let i = 0; i < 23; i += 1) {
+      const cx = WIDTH * (0.055 + (0.89 * i) / 22);
+      const height = 30 + random() * 18;
+      drawPuff(cx, cloudBedTopY(cx) - height * 0.42, height, 0.05, i % 2 === 0);
+    }
+    // Under row: bottoms ride the lifting arch, so the lower edge is lumpy and opens at the
+    // sides instead of cutting across the frame.
+    for (let i = 0; i < 19; i += 1) {
+      const cx = WIDTH * (0.015 + (0.97 * i) / 18);
+      const height = 30 + random() * 16;
+      drawPuff(cx, cloudBedBottomY(cx) - height * 0.86, height, 0.18, i % 2 === 1);
+    }
+    // A slow drift keeps the bed from looking frozen.
+    void elapsed;
+  }
+
+  function drawCloudBed(sceneWeather, sunAltitude) {
+    const storm = weatherCodeIsStorm(sceneWeather.weatherCode);
+    const cover = clamp(sceneWeather.cloudCover / 100, 0, 1);
+    const night = clamp(1 - sunAltitude / 8, 0, 1) * 0.85;
+    const gloom = clamp(cover * 0.3 + (storm ? 0.26 : 0), 0, 0.55);
+    const shade = lift => blendColor(blendColor('#c2d5e5', CLOUD_NIGHT_TINT, clamp(night + lift, 0, 1)),
+      CLOUD_STORM_TINT, gloom * 0.7);
+    // Interior wash, inset from every edge so it never becomes the visible outline.
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i += 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, cloudBedTopY(x) + 10);
+    }
+    for (let i = 40; i >= 0; i -= 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, Math.max(cloudBedTopY(x) + 14, cloudBedBottomY(x) - 12));
+    }
+    ctx.closePath();
+    const wash = ctx.createLinearGradient(0, 120, 0, HEIGHT);
+    wash.addColorStop(0, shade(0.04));
+    wash.addColorStop(1, shade(-0.12));
+    ctx.fillStyle = wash;
+    ctx.globalAlpha = 0.97;
+    ctx.fill();
+    ctx.restore();
+    const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
+    const random = cloudSeaRandom(23);
+    const drawPuff = (cx, y, height, tintAmount, mirror) => {
+      const tint = cloudWeatherTint(sceneWeather, sunAltitude,
+        { tint: tintAmount, tintColor: CLOUD_NEAR_TINT });
+      const sprite = tintedCloudSprite(random() < 0.5 ? 'bank' : 'mass',
+        tint.tintColor, tint.tintAmount);
+      if (!sprite) return;
+      const width = sprite.width * (height / sprite.height);
+      drawCloudSpriteAt(sprite, cx - width / 2, y, height, mirror);
+    };
+    // Interior fill: two staggered rows, no outlines to break the silhouette.
+    for (let i = 0; i < 22; i += 1) {
+      const cx = WIDTH * (0.02 + random() * 0.96);
+      const top = cloudBedTopY(cx);
+      const bottom = cloudBedBottomY(cx);
+      if (bottom - top < 26) continue;
+      const height = 40 + random() * 34;
+      drawPuff(cx, top + 8 + random() * (bottom - top - height * 0.5 - 8), height,
+        0.14, random() < 0.5);
+    }
+    // Crown row along the slab underside: these are the clouds that hold the island up.
+    for (let i = 0; i < 23; i += 1) {
+      const cx = WIDTH * (0.055 + (0.89 * i) / 22);
+      const height = 30 + random() * 18;
+      drawPuff(cx, cloudBedTopY(cx) - height * 0.42, height, 0.05, i % 2 === 0);
+    }
+    // Under row: bottoms ride the lifting arch, so the lower edge is lumpy and opens at the
+    // sides instead of cutting across the frame.
+    for (let i = 0; i < 19; i += 1) {
+      const cx = WIDTH * (0.015 + (0.97 * i) / 18);
+      const height = 30 + random() * 16;
+      drawPuff(cx, cloudBedBottomY(cx) - height * 0.86, height, 0.18, i % 2 === 1);
+    }
+    // A slow drift keeps the bed from looking frozen.
+    void elapsed;
+  }
+
+  function drawCloudBed(sceneWeather, sunAltitude) {
+    const storm = weatherCodeIsStorm(sceneWeather.weatherCode);
+    const cover = clamp(sceneWeather.cloudCover / 100, 0, 1);
+    const night = clamp(1 - sunAltitude / 8, 0, 1) * 0.85;
+    const gloom = clamp(cover * 0.3 + (storm ? 0.26 : 0), 0, 0.55);
+    const shade = lift => blendColor(blendColor('#c2d5e5', CLOUD_NIGHT_TINT, clamp(night + lift, 0, 1)),
+      CLOUD_STORM_TINT, gloom * 0.7);
+    // Interior wash, inset from every edge so it never becomes the visible outline.
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i += 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, cloudBedTopY(x) + 10);
+    }
+    for (let i = 40; i >= 0; i -= 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, Math.max(cloudBedTopY(x) + 14, cloudBedBottomY(x) - 12));
+    }
+    ctx.closePath();
+    const wash = ctx.createLinearGradient(0, 120, 0, HEIGHT);
+    wash.addColorStop(0, shade(0.04));
+    wash.addColorStop(1, shade(-0.12));
+    ctx.fillStyle = wash;
+    ctx.globalAlpha = 0.97;
+    ctx.fill();
+    ctx.restore();
+    const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
+    const random = cloudSeaRandom(23);
+    const drawPuff = (cx, y, height, tintAmount, mirror) => {
+      const tint = cloudWeatherTint(sceneWeather, sunAltitude,
+        { tint: tintAmount, tintColor: CLOUD_NEAR_TINT });
+      const sprite = tintedCloudSprite(random() < 0.5 ? 'bank' : 'mass',
+        tint.tintColor, tint.tintAmount);
+      if (!sprite) return;
+      const width = sprite.width * (height / sprite.height);
+      drawCloudSpriteAt(sprite, cx - width / 2, y, height, mirror);
+    };
+    // Interior fill: two staggered rows, no outlines to break the silhouette.
+    for (let i = 0; i < 22; i += 1) {
+      const cx = WIDTH * (0.02 + random() * 0.96);
+      const top = cloudBedTopY(cx);
+      const bottom = cloudBedBottomY(cx);
+      if (bottom - top < 26) continue;
+      const height = 40 + random() * 34;
+      drawPuff(cx, top + 8 + random() * (bottom - top - height * 0.5 - 8), height,
+        0.14, random() < 0.5);
+    }
+    // Crown row along the slab underside: these are the clouds that hold the island up.
+    for (let i = 0; i < 23; i += 1) {
+      const cx = WIDTH * (0.055 + (0.89 * i) / 22);
+      const height = 30 + random() * 18;
+      drawPuff(cx, cloudBedTopY(cx) - height * 0.42, height, 0.05, i % 2 === 0);
+    }
+    // Under row: bottoms ride the lifting arch, so the lower edge is lumpy and opens at the
+    // sides instead of cutting across the frame.
+    for (let i = 0; i < 19; i += 1) {
+      const cx = WIDTH * (0.015 + (0.97 * i) / 18);
+      const height = 30 + random() * 16;
+      drawPuff(cx, cloudBedBottomY(cx) - height * 0.86, height, 0.18, i % 2 === 1);
+    }
+    // A slow drift keeps the bed from looking frozen.
+    void elapsed;
+  }
+
+  function drawCloudBed(sceneWeather, sunAltitude) {
+    const storm = weatherCodeIsStorm(sceneWeather.weatherCode);
+    const cover = clamp(sceneWeather.cloudCover / 100, 0, 1);
+    const night = clamp(1 - sunAltitude / 8, 0, 1) * 0.85;
+    const gloom = clamp(cover * 0.3 + (storm ? 0.26 : 0), 0, 0.55);
+    const shade = lift => blendColor(blendColor('#c2d5e5', CLOUD_NIGHT_TINT, clamp(night + lift, 0, 1)),
+      CLOUD_STORM_TINT, gloom * 0.7);
+    // Interior wash, inset from every edge so it never becomes the visible outline.
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i += 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, cloudBedTopY(x) + 10);
+    }
+    for (let i = 40; i >= 0; i -= 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, Math.max(cloudBedTopY(x) + 14, cloudBedBottomY(x) - 12));
+    }
+    ctx.closePath();
+    const wash = ctx.createLinearGradient(0, 120, 0, HEIGHT);
+    wash.addColorStop(0, shade(0.04));
+    wash.addColorStop(1, shade(-0.12));
+    ctx.fillStyle = wash;
+    ctx.globalAlpha = 0.97;
+    ctx.fill();
+    ctx.restore();
+    const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
+    const random = cloudSeaRandom(23);
+    const drawPuff = (cx, y, height, tintAmount, mirror) => {
+      const tint = cloudWeatherTint(sceneWeather, sunAltitude,
+        { tint: tintAmount, tintColor: CLOUD_NEAR_TINT });
+      const sprite = tintedCloudSprite(random() < 0.5 ? 'bank' : 'mass',
+        tint.tintColor, tint.tintAmount);
+      if (!sprite) return;
+      const width = sprite.width * (height / sprite.height);
+      drawCloudSpriteAt(sprite, cx - width / 2, y, height, mirror);
+    };
+    // Interior fill: two staggered rows, no outlines to break the silhouette.
+    for (let i = 0; i < 22; i += 1) {
+      const cx = WIDTH * (0.02 + random() * 0.96);
+      const top = cloudBedTopY(cx);
+      const bottom = cloudBedBottomY(cx);
+      if (bottom - top < 26) continue;
+      const height = 40 + random() * 34;
+      drawPuff(cx, top + 8 + random() * (bottom - top - height * 0.5 - 8), height,
+        0.14, random() < 0.5);
+    }
+    // Crown row along the slab underside: these are the clouds that hold the island up.
+    for (let i = 0; i < 23; i += 1) {
+      const cx = WIDTH * (0.055 + (0.89 * i) / 22);
+      const height = 30 + random() * 18;
+      drawPuff(cx, cloudBedTopY(cx) - height * 0.42, height, 0.05, i % 2 === 0);
+    }
+    // Under row: bottoms ride the lifting arch, so the lower edge is lumpy and opens at the
+    // sides instead of cutting across the frame.
+    for (let i = 0; i < 19; i += 1) {
+      const cx = WIDTH * (0.015 + (0.97 * i) / 18);
+      const height = 30 + random() * 16;
+      drawPuff(cx, cloudBedBottomY(cx) - height * 0.86, height, 0.18, i % 2 === 1);
+    }
+    // A slow drift keeps the bed from looking frozen.
+    void elapsed;
+  }
+
+  function drawCloudBed(sceneWeather, sunAltitude) {
+    const storm = weatherCodeIsStorm(sceneWeather.weatherCode);
+    const cover = clamp(sceneWeather.cloudCover / 100, 0, 1);
+    const night = clamp(1 - sunAltitude / 8, 0, 1) * 0.85;
+    const gloom = clamp(cover * 0.3 + (storm ? 0.26 : 0), 0, 0.55);
+    const shade = lift => blendColor(blendColor('#c2d5e5', CLOUD_NIGHT_TINT, clamp(night + lift, 0, 1)),
+      CLOUD_STORM_TINT, gloom * 0.7);
+    // Interior wash, inset from every edge so it never becomes the visible outline.
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i += 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, cloudBedTopY(x) + 10);
+    }
+    for (let i = 40; i >= 0; i -= 1) {
+      const x = (WIDTH * i) / 40;
+      ctx.lineTo(x, Math.max(cloudBedTopY(x) + 14, cloudBedBottomY(x) - 12));
+    }
+    ctx.closePath();
+    const wash = ctx.createLinearGradient(0, 120, 0, HEIGHT);
+    wash.addColorStop(0, shade(0.04));
+    wash.addColorStop(1, shade(-0.12));
+    ctx.fillStyle = wash;
+    ctx.globalAlpha = 0.97;
+    ctx.fill();
+    ctx.restore();
+    const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
+    const random = cloudSeaRandom(23);
+    const drawPuff = (cx, y, height, tintAmount, mirror) => {
+      const tint = cloudWeatherTint(sceneWeather, sunAltitude,
+        { tint: tintAmount, tintColor: CLOUD_NEAR_TINT });
+      const sprite = tintedCloudSprite(random() < 0.5 ? 'bank' : 'mass',
+        tint.tintColor, tint.tintAmount);
+      if (!sprite) return;
+      const width = sprite.width * (height / sprite.height);
+      drawCloudSpriteAt(sprite, cx - width / 2, y, height, mirror);
+    };
+    // Interior fill: two staggered rows, no outlines to break the silhouette.
+    for (let i = 0; i < 22; i += 1) {
+      const cx = WIDTH * (0.02 + random() * 0.96);
+      const top = cloudBedTopY(cx);
+      const bottom = cloudBedBottomY(cx);
+      if (bottom - top < 26) continue;
+      const height = 40 + random() * 34;
+      drawPuff(cx, top + 8 + random() * (bottom - top - height * 0.5 - 8), height,
+        0.14, random() < 0.5);
+    }
+    // Crown row along the slab underside: these are the clouds that hold the island up.
+    for (let i = 0; i < 23; i += 1) {
+      const cx = WIDTH * (0.055 + (0.89 * i) / 22);
+      const height = 30 + random() * 18;
+      drawPuff(cx, cloudBedTopY(cx) - height * 0.42, height, 0.05, i % 2 === 0);
+    }
+    // Under row: bottoms ride the lifting arch, so the lower edge is lumpy and opens at the
+    // sides instead of cutting across the frame.
+    for (let i = 0; i < 19; i += 1) {
+      const cx = WIDTH * (0.015 + (0.97 * i) / 18);
+      const height = 30 + random() * 16;
+      drawPuff(cx, cloudBedBottomY(cx) - height * 0.86, height, 0.18, i % 2 === 1);
+    }
+    // A slow drift keeps the bed from looking frozen.
+    void elapsed;
   }
 
   function drawCloudBank(bank, sceneWeather, sunAltitude, elapsed) {
@@ -1982,9 +2391,12 @@
   function drawCloudBanks(sceneWeather, sunAltitude) {
     // Only the frontmost group animates; everything else stays perfectly still.
     const elapsed = REDUCED_MOTION ? 0 : (performance.now() - animationStart) / 1000;
-    [...CLOUD_GAP_FILLERS, ...CLOUD_SIDE_BANKS, ...CLOUD_BLANKET_BANKS, ...CLOUD_CRADLE_BANKS,
-      ...CLOUD_FRONT_BANKS]
-      .forEach(bank => drawCloudBank(bank, sceneWeather, sunAltitude, elapsed));
+    // The cradle is the layer that actually holds the slab, so its crests stay above the bed
+    // line where the island meets the cloud.
+    CLOUD_CRADLE_BANKS.forEach(bank => drawCloudBank(bank, sceneWeather, sunAltitude, elapsed));
+    // Foreground puffs are the only animated group; they sit low and small so they never
+    // rebuild the wall of cloud this composition just cleared out of the lower corners.
+    CLOUD_FRONT_BANKS.forEach(bank => drawCloudBank(bank, sceneWeather, sunAltitude, elapsed));
   }
 
   function rebuildParticles(sceneWeather) {
