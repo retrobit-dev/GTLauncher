@@ -93,7 +93,7 @@
   // from the other side. Screen speed is derived from the reported wind so a breeze crawls and a
   // storm hurries; the old oscillating sway was fast and never actually went anywhere.
   const CLOUD_DRIFT_BASE = 0.55;
-  const CLOUD_DRIFT_WIND_GAIN = 0.16;
+  const CLOUD_DRIFT_WIND_GAIN = 0.30;
   const CLOUD_DRIFT_MIN = 0.18;
   const CLOUD_DRIFT_MAX = 5.5;
   // A cloud is fully off-screen on the left only once its trail clears the frame with margin.
@@ -718,16 +718,34 @@
   // Cloud states are layered by slot rather than advected across a physical sky field: the panel
   // is a stylised diorama, so composition matters more than meteorology.
   function cloudDriftSpeed(sceneWeather) {
-    const wind = Math.max(0, sceneWeather.windSpeed ?? 4);
+    const wind = Math.max(0, sceneWeather.windSpeed ?? 4) * cloudScreenWindFactor(sceneWeather);
     return clamp(CLOUD_DRIFT_BASE + wind * CLOUD_DRIFT_WIND_GAIN,
       CLOUD_DRIFT_MIN, CLOUD_DRIFT_MAX);
   }
 
-  // Right to left, which is the direction a westbound wind blows in this compass frame: east sits
-  // at the right edge and west at the left. Wind "from" the east means travel toward the west.
+  // Wind blows AWAY from the direction it is reported from, projected onto the screen. The bearing
+  // is the downwind one, and it has to be rotated by the device heading exactly like the Sun is:
+  // using the raw compass bearing ignored which way the phone is pointing, so turning the device
+  // moved the Sun but left the clouds alone.
+  function cloudDowndraftBearing(sceneWeather) {
+    return normalizeDegrees((sceneWeather.windDirection ?? 90) + 180);
+  }
+
+  // +1 means travelling toward +x, which is the right of the frame; -1 is leftward.
   function cloudTravelDirection(sceneWeather) {
-    const windFromEast = Math.sin((sceneWeather.windDirection ?? 90) * Math.PI / 180);
-    return windFromEast >= 0 ? -1 : 1;
+    const screenBearing = wrap(cloudDowndraftBearing(sceneWeather)
+      - headingDegrees + 180, 360);
+    const towardEast = Math.sin(screenBearing * Math.PI / 180);
+    return towardEast >= 0 ? 1 : -1;
+  }
+
+  // On-screen wind strength: only the component across the view counts, because wind blowing
+  // toward or away from the viewer does not move a cloud sideways. A projected compass shows about
+  // half a turn, so a crosswind has to run faster on screen to read as the same wind.
+  function cloudScreenWindFactor(sceneWeather) {
+    const screenBearing = wrap(cloudDowndraftBearing(sceneWeather)
+      - headingDegrees + 180, 360);
+    return Math.abs(Math.sin(screenBearing * Math.PI / 180));
   }
 
   function createCloudStates(elapsedSeconds, sceneWeather, sunAltitude, sunHourAngle) {

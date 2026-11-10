@@ -107,7 +107,7 @@ public final class WeatherSkyView extends View {
     // Clouds travel across the frame like real wind-driven cloud, then re-enter from the other
     // side. Screen speed is derived from the reported wind so a breeze crawls and a storm hurries.
     private static final double CLOUD_DRIFT_BASE = 0.55;
-    private static final double CLOUD_DRIFT_WIND_GAIN = 0.16;
+    private static final double CLOUD_DRIFT_WIND_GAIN = 0.30;
     private static final double CLOUD_DRIFT_MIN = 0.18;
     private static final double CLOUD_DRIFT_MAX = 5.5;
     private static final float CLOUD_EDGE_INSET = 4.0f;
@@ -1243,17 +1243,37 @@ public final class WeatherSkyView extends View {
      * Clouds are laid out by slot rather than advected across a physical sky field: the panel is a
      * stylised diorama, so composition matters more than meteorology.
      */
-    private static double cloudDriftSpeed(double windSpeed) {
-        return clamp(CLOUD_DRIFT_BASE + Math.max(0.0, windSpeed) * CLOUD_DRIFT_WIND_GAIN,
+    private double cloudDriftSpeed(double windSpeed, double windDirection) {
+        double crosswind = Math.max(0.0, windSpeed) * cloudScreenWindFactor(windDirection);
+        return clamp(CLOUD_DRIFT_BASE + crosswind * CLOUD_DRIFT_WIND_GAIN,
                 CLOUD_DRIFT_MIN, CLOUD_DRIFT_MAX);
     }
 
     /**
-     * Right to left is what a wind from the east does in this compass frame, where east sits at the
-     * right edge and west at the left. A wind from the west reverses the travel.
+     * Wind blows AWAY from the direction it is reported from, and that bearing has to be rotated by
+     * the device heading exactly like the Sun is: using the raw compass bearing ignored which way
+     * the phone is pointing, so turning the device moved the Sun but left the clouds alone.
      */
-    private static int cloudTravelDirection(double windDirection) {
-        return Math.sin(windDirection * Math.PI / 180.0) >= 0 ? -1 : 1;
+    private static double cloudDowndraftBearing(double windDirection) {
+        return normalizeDegrees(windDirection + 180.0);
+    }
+
+    /** +1 is travel toward +x, the right of the frame; -1 is leftward. */
+    private int cloudTravelDirection(double windDirection) {
+        double screenBearing = normalizeDegrees(
+                cloudDowndraftBearing(windDirection) - headingDegrees + 180.0);
+        return Math.sin(screenBearing * Math.PI / 180.0) >= 0 ? 1 : -1;
+    }
+
+    /**
+     * On-screen wind strength: only the component across the view counts, because wind blowing
+     * toward or away from the viewer does not move a cloud sideways. A projected compass shows
+     * about half a turn, so a crosswind has to run faster on screen to read as the same wind.
+     */
+    private double cloudScreenWindFactor(double windDirection) {
+        double screenBearing = normalizeDegrees(
+                cloudDowndraftBearing(windDirection) - headingDegrees + 180.0);
+        return Math.abs(Math.sin(screenBearing * Math.PI / 180.0));
     }
 
     /** Progress across the frame, measured the same way the celestial arc measures it. */
@@ -1277,7 +1297,7 @@ public final class WeatherSkyView extends View {
         if (count == 0) return new CloudState[0];
         int seed = (int) Math.round(latitude * 37 + longitude * 17) ^ (count * 0x2545f491);
         int direction = cloudTravelDirection(windDirection);
-        double speed = cloudDriftSpeed(windSpeed);
+        double speed = cloudDriftSpeed(windSpeed, windDirection);
         CloudState[] clouds = new CloudState[count];
         for (int index = 0; index < count; index += 1) {
             int variant = (int) (cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length);
