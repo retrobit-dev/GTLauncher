@@ -740,8 +740,18 @@
   // viewer, which is what sells the depth without a gradient.
   function drawSea(sunAltitude, cloudCover, code, sunHourAngle) {
     const atmosphere = skyAtmosphere(sunAltitude, cloudCover, code);
-    const palette = SEA_PALETTES[Object.keys(SEA_PALETTES).find(key => atmosphere
+    const base = SEA_PALETTES[Object.keys(SEA_PALETTES).find(key => atmosphere
       === SKY_ATMOSPHERES[key]) || 'day'];
+    // The island is pulled toward the sky's tint as the light changes; the sea was not, so it stayed
+    // a separate, more saturated blue. Blending it the same way is what makes the water belong to
+    // the same scene instead of sitting on top of it as its own colour.
+    const mix = atmosphere.islandMix * 1.35;
+    const palette = {
+      light: blendColor(base.light, atmosphere.tint, mix),
+      mid: blendColor(base.mid, atmosphere.tint, mix),
+      deep: blendColor(base.deep, atmosphere.tint, mix),
+      ripple: blendColor(base.ripple, atmosphere.tint, mix)
+    };
     const points = seaSurfacePoints();
     const left = points[3], top = points[0], right = points[1], bottom = points[2];
     const centerY = top[1] + (bottom[1] - top[1]) / 2;
@@ -805,18 +815,34 @@
     // grass measures only 8 levels per pixel on dark water, so the shadow was technically present
     // and visually absent.
     const opacity = (0.10 + directLight * 0.30) * cloudFilter
-      * ISLAND_BODY_SHADOW_OPACITY_SCALE * 2.1;
+      * ISLAND_BODY_SHADOW_OPACITY_SCALE * 3.2;
     if (opacity <= 0.002) return;
-    // Pinned just below the plate's own front edge. Measured from the sea diamond's centre it landed
-    // past the bottom of the frame, and measured from the diamond's middle it sat behind the island,
-    // so in both cases the shadow existed but was never on screen.
-    const centerY = islandTop + ISLAND_GRID_SIZE * islandTileHeight + ISLAND_DEPTH + 9;
-    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4 * ISLAND_BODY_SHADOW_SCALE * 0.8;
-    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 8;
+    // Only 18 scene units of water are visible below the island's base, so the shadow is pinned in
+    // that band and kept short enough to fit inside it. Pinned any lower or any taller, half of it
+    // hid behind the island's own body and the rest fell off the bottom of the frame, which is why
+    // it kept looking like there was no shadow at all.
+    const waterTop = islandTop + ISLAND_GRID_SIZE * islandTileHeight + ISLAND_DEPTH;
+    const centerY = waterTop + (HEIGHT - waterTop) * 0.55;
+    // Wide and shallow rather than a copy of the island: at this camera angle a shadow on water is
+    // stretched across the surface, and a tall diamond would only show its top tip in the narrow
+    // strip of water that is actually visible below the plate.
+    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4 * ISLAND_BODY_SHADOW_SCALE * 1.15;
+    const halfHeight = (HEIGHT - waterTop) * 0.38;
     // Light from the eastern half pushes the patch west, exactly as the island's own shadow does.
     const progress = celestialProgress(sunHourAngle);
     const drift = (0.5 - progress) * 2 * ISLAND_BODY_SHADOW_DRIFT;
     const centerX = WIDTH / 2 - drift;
+    // Clipped to the water, otherwise the far ends of a shadow this wide spill onto the land strip
+    // at the bottom corners and read as dirt rather than as shade on water.
+    const sea = seaSurfacePoints();
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(sea[0][0], sea[0][1]);
+    ctx.lineTo(sea[1][0], sea[1][1]);
+    ctx.lineTo(sea[2][0], sea[2][1]);
+    ctx.lineTo(sea[3][0], sea[3][1]);
+    ctx.closePath();
+    ctx.clip();
     ctx.fillStyle = `rgba(10,20,32,${opacity})`;
     ctx.beginPath();
     ctx.moveTo(centerX, centerY - halfHeight);
@@ -825,6 +851,7 @@
     ctx.lineTo(centerX - halfWidth, centerY);
     ctx.closePath();
     ctx.fill();
+    ctx.restore();
   }
 
   function skyColorAt(y, sun, cloudCover) {
