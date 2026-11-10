@@ -61,7 +61,9 @@ public final class WeatherSkyView extends View {
     // The Sun's outer halo reaches about 18 scene units from its center.
     private static final float SUN_GLOW_SAFE_INSET = 20.0f;
     // Temporarily hide sky objects while retaining their renderer for later design iterations.
-    private static final boolean DRAW_SKY_OBJECTS = false;
+    // The previous sky objects (pixel sun, moon and star field) were removed. Weather still
+    // drives the sky gradient, fog and lightning, and the sun's position still drives the
+    // island lighting; only the drawn celestial bodies are gone while the replacement is designed.
     // This stylized 9 x 9 tile surface represents a 2.25 km square ground patch.
     private static final double ISLAND_TILE_METERS = 250.0;
     private static final float ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f
@@ -224,11 +226,9 @@ public final class WeatherSkyView extends View {
         double elapsedSeconds = (now - animationStartMillis) / 1000.0;
         double motionSeconds = animationEnabled ? elapsedSeconds : 0.0;
         SkyMath.Position sun = SkyMath.sun(now, latitude, longitude);
-        SkyMath.Position moon = DRAW_SKY_OBJECTS ? SkyMath.moon(now, latitude, longitude) : null;
         double cloudCover = weather == null ? 42.0 : weather.cloudCoverPercent;
         int code = weather == null ? 3 : weather.weatherCode;
-        CloudState[] cloudStates = DRAW_SKY_OBJECTS
-                ? createCloudStates(motionSeconds, code) : new CloudState[0];
+        CloudState[] cloudStates = new CloudState[0];
 
         Canvas scene = sceneCanvas;
         int save = scene.save();
@@ -236,22 +236,11 @@ public final class WeatherSkyView extends View {
         drawSky(scene, sun, cloudCover, code);
         int upperHalfSave = scene.save();
         scene.clipRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT * 0.5f);
-        if (DRAW_SKY_OBJECTS) {
-            drawSun(scene, sun, motionSeconds);
-            drawClouds(scene, cloudStates, sun.altitudeDegrees, code);
-            drawStars(scene, now, sun.altitudeDegrees, cloudCover, motionSeconds);
-            drawMoon(scene, moon, sun.altitudeDegrees, cloudCover, motionSeconds);
-        }
         drawFog(scene, code);
         drawStormFlash(scene, elapsedSeconds, code);
         scene.restoreToCount(upperHalfSave);
         drawFloatingIsland(scene, sun.altitudeDegrees, sun.azimuthDegrees,
                 cloudCover, code, cloudStates);
-        if (DRAW_SKY_OBJECTS) {
-            drawSunOverIsland(scene, sun, motionSeconds);
-            drawCloudsOverIsland(scene, cloudStates, sun.altitudeDegrees, code);
-            drawCelestialsOverIsland(scene, now, sun, moon, cloudCover, motionSeconds);
-        }
         drawPrecipitation(scene, elapsedSeconds);
         scene.restoreToCount(save);
 
@@ -296,211 +285,10 @@ public final class WeatherSkyView extends View {
             paint.setColor(skyColor);
             canvas.drawRect(0, y, SCENE_WIDTH, y + bandHeight, paint);
         }
-
-        if (DRAW_SKY_OBJECTS && sunAltitude > -5 && sunAltitude < 12) {
-            float horizonX = mapSunToUpperEdgeX(sun.hourAngleDegrees);
-            float horizonY = mapSunToUpperEdgeY(sun.hourAngleDegrees);
-            horizonX = Math.round(horizonX * RENDER_SCALE) / (float) RENDER_SCALE;
-            horizonY = Math.round(horizonY * RENDER_SCALE) / (float) RENDER_SCALE;
-            paint.setColor(Color.argb(32, 255, 189, 131));
-            canvas.drawRect(horizonX - 42, horizonY - 7, horizonX + 42, horizonY + 7, paint);
-            paint.setColor(Color.argb(22, 255, 211, 156));
-            canvas.drawRect(horizonX - 70, horizonY - 3, horizonX + 70, horizonY + 3, paint);
-        }
-    }
-
-    private void drawPixelRing(Canvas canvas, float centerX, float centerY,
-                               float radius, float thickness, int color) {
-        float cell = 1.0f / RENDER_SCALE;
-        float outerRadius = radius + thickness / 2.0f;
-        float innerRadius = Math.max(0.0f, radius - thickness / 2.0f);
-        float snappedX = Math.round(centerX * RENDER_SCALE) / (float) RENDER_SCALE;
-        float snappedY = Math.round(centerY * RENDER_SCALE) / (float) RENDER_SCALE;
-        int rows = (int) Math.ceil(outerRadius / cell);
-        paint.setColor(color);
-        for (int row = -rows; row <= rows; row++) {
-            float sampleY = (row + 0.5f) * cell;
-            if (Math.abs(sampleY) >= outerRadius) continue;
-            float outerHalf = (float) Math.sqrt(outerRadius * outerRadius - sampleY * sampleY);
-            float outerLeft = (float) Math.floor((snappedX - outerHalf) / cell) * cell;
-            float outerRight = (float) Math.ceil((snappedX + outerHalf) / cell) * cell;
-            float top = snappedY + row * cell;
-            if (innerRadius > 0.0f && Math.abs(sampleY) < innerRadius) {
-                float innerHalf = (float) Math.sqrt(innerRadius * innerRadius - sampleY * sampleY);
-                float innerLeft = (float) Math.floor((snappedX - innerHalf) / cell) * cell;
-                float innerRight = (float) Math.ceil((snappedX + innerHalf) / cell) * cell;
-                if (innerLeft > outerLeft) {
-                    canvas.drawRect(outerLeft, top, innerLeft, top + cell, paint);
-                }
-                if (outerRight > innerRight) {
-                    canvas.drawRect(innerRight, top, outerRight, top + cell, paint);
-                }
-            } else {
-                canvas.drawRect(outerLeft, top, outerRight, top + cell, paint);
-            }
-        }
-    }
-
-    private void drawGlowPulse(Canvas canvas, float centerX, float centerY,
-                               double elapsedSeconds, double phaseOffset,
-                               float maxRadius, float intensity, int color) {
-        if (intensity <= 0.0f) return;
-        int red = Color.red(color);
-        int green = Color.green(color);
-        int blue = Color.blue(color);
-        for (int pulseIndex = 0; pulseIndex < 2; pulseIndex++) {
-            float phase = wrap(elapsedSeconds * 0.13 + phaseOffset + pulseIndex * 0.5, 1.0);
-            float radius = 0.75f + phase * maxRadius;
-            float alpha = intensity * (float) Math.pow(1.0f - phase, 1.5);
-            if (alpha < 0.008f) continue;
-            int pulseColor = Color.argb(Math.round(alpha * 255.0f), red, green, blue);
-            drawPixelRing(canvas, centerX, centerY, radius, 1.25f, pulseColor);
-        }
-    }
-
-    private void drawSun(Canvas canvas, SkyMath.Position sun, double elapsedSeconds) {
-        if (sun.altitudeDegrees <= -1.0) return;
-        int centerX = Math.round(mapSunToUpperEdgeX(sun.hourAngleDegrees));
-        int centerY = Math.round(mapSunToUpperEdgeY(sun.hourAngleDegrees));
-        float pulse = 0.5f + 0.5f * (float) Math.sin(elapsedSeconds * 0.34
-                + Math.toRadians(sun.azimuthDegrees));
-        // Preserve the existing warm disc glow and its safe-inset footprint.
-        drawPixelDisc(canvas, centerX, centerY, 16, 0.5f,
-                Color.argb(Math.round(12 + pulse * 4), 255, 216, 152));
-        drawPixelDisc(canvas, centerX, centerY, 12, 0.5f,
-                Color.argb(Math.round(24 + pulse * 8), 255, 226, 170));
-        drawGlowPulse(canvas, centerX, centerY, elapsedSeconds, 0.0,
-                17.0f, 0.30f, Color.rgb(255, 225, 158));
-
-        double sunsetWarmth = clamp((8.0 - sun.altitudeDegrees) / 20.0, 0.0, 1.0);
-        int sunBase = blend(Color.rgb(241, 183, 104), Color.rgb(226, 135, 69), sunsetWarmth * 0.45);
-        int sunLight = blend(Color.rgb(255, 225, 157), Color.rgb(255, 205, 144), sunsetWarmth * 0.35);
-        int sunShade = blend(Color.rgb(202, 114, 45), Color.rgb(185, 84, 50), sunsetWarmth * 0.40);
-        for (int ray = 0; ray < 8; ray++) {
-            double angle = -Math.PI / 2.0 + ray * Math.PI / 4.0;
-            int rayColor = Math.sin(angle) < 0.0
-                    ? blend(sunBase, sunLight, 0.58) : blend(sunBase, sunShade, 0.45);
-            drawSunRay(canvas, centerX, centerY, angle,
-                    ray % 2 == 0 ? 3.2f : 2.5f, 1.25f, 0.75f, rayColor);
-        }
-        drawPixelDisc(canvas, centerX, centerY, 9, 0.5f, sunBase);
-        // Two flat facets give the sun a chunky, low-poly bevel without a face.
-        drawIslandPolygon(canvas,
-                centerX - 5.5f, centerY - 4.0f,
-                centerX - 1.5f, centerY - 7.0f,
-                centerX + 1.0f, centerY - 2.0f,
-                centerX - 2.0f, centerY + 1.0f,
-                sunLight, 0);
-        drawIslandPolygon(canvas,
-                centerX - 1.0f, centerY + 1.0f,
-                centerX + 3.5f, centerY - 1.0f,
-                centerX + 7.0f, centerY + 2.0f,
-                centerX + 4.0f, centerY + 6.0f,
-                sunShade, 0);
-    }
-
-    private void drawSunRay(Canvas canvas, float centerX, float centerY, double angle,
-                            float length, float baseHalfWidth, float tipHalfWidth, int color) {
-        double directionX = Math.cos(angle);
-        double directionY = Math.sin(angle);
-        double perpendicularX = -directionY;
-        double perpendicularY = directionX;
-        double innerRadius = 8.0;
-        double outerRadius = innerRadius + length;
-        float x1 = snapCelestialCoordinate((float) (centerX + directionX * innerRadius
-                + perpendicularX * baseHalfWidth));
-        float y1 = snapCelestialCoordinate((float) (centerY + directionY * innerRadius
-                + perpendicularY * baseHalfWidth));
-        float x2 = snapCelestialCoordinate((float) (centerX + directionX * outerRadius
-                + perpendicularX * tipHalfWidth));
-        float y2 = snapCelestialCoordinate((float) (centerY + directionY * outerRadius
-                + perpendicularY * tipHalfWidth));
-        float x3 = snapCelestialCoordinate((float) (centerX + directionX * outerRadius
-                - perpendicularX * tipHalfWidth));
-        float y3 = snapCelestialCoordinate((float) (centerY + directionY * outerRadius
-                - perpendicularY * tipHalfWidth));
-        float x4 = snapCelestialCoordinate((float) (centerX + directionX * innerRadius
-                - perpendicularX * baseHalfWidth));
-        float y4 = snapCelestialCoordinate((float) (centerY + directionY * innerRadius
-                - perpendicularY * baseHalfWidth));
-        drawIslandPolygon(canvas, x1, y1, x2, y2, x3, y3, x4, y4, color, 0);
     }
 
     private float snapCelestialCoordinate(float coordinate) {
         return Math.round(coordinate * RENDER_SCALE) / (float) RENDER_SCALE;
-    }
-
-    private void drawMoon(Canvas canvas, SkyMath.Position moon, double sunAltitude,
-                          double cloudCover, double elapsedSeconds) {
-        if (moon.altitudeDegrees <= 0.0 || sunAltitude > -3.0 || cloudCover > 96.0
-                || moon.illumination < 0.04) return;
-        int centerX = Math.round(mapAzimuthToX(moon.azimuthDegrees));
-        int centerY = Math.round(mapAltitudeToCelestialBand(moon.altitudeDegrees));
-        float pulse = 0.5f + 0.5f * (float) Math.sin(elapsedSeconds * 0.30
-                + Math.toRadians(moon.azimuthDegrees + 120.0));
-        drawGlowPulse(canvas, centerX, centerY, elapsedSeconds, 0.37,
-                14.0f, 0.23f, Color.rgb(244, 231, 194));
-        drawPixelDisc(canvas, centerX, centerY, 12, 0.5f,
-                Color.argb(Math.round(9 + pulse * 6), 221, 231, 216));
-        drawPixelDisc(canvas, centerX, centerY, 10, 0.5f,
-                Color.argb(Math.round(17 + pulse * 7), 232, 236, 220));
-        int moonBase = Color.rgb(232, 222, 193);
-        drawPixelDisc(canvas, centerX, centerY, 8, 0.5f, moonBase);
-        // Warm light and cool shade echo the island's beveled, faceted surfaces.
-        drawIslandPolygon(canvas,
-                centerX - 5.0f, centerY - 4.0f,
-                centerX - 1.0f, centerY - 7.0f,
-                centerX + 2.0f, centerY - 2.0f,
-                centerX - 2.0f, centerY + 1.0f,
-                Color.rgb(250, 243, 218), 0);
-        drawIslandPolygon(canvas,
-                centerX - 1.0f, centerY + 1.0f,
-                centerX + 3.0f, centerY - 1.0f,
-                centerX + 6.0f, centerY + 3.0f,
-                centerX + 2.0f, centerY + 6.0f,
-                Color.rgb(178, 194, 205), 0);
-        if (moon.illumination < 0.98) {
-            int skyAtMoon = colorForSkyHeight(centerY / (float) SCENE_HEIGHT,
-                    sunAltitude, cloudCover);
-            float shadowOffset = (float) (moon.illumination * 13.0);
-            drawPixelDisc(canvas, Math.round(centerX + shadowOffset), centerY, 8, 0.5f, skyAtMoon);
-        }
-    }
-
-    private void drawStars(Canvas canvas, long now, double sunAltitude, double cloudCover,
-                           double elapsedSeconds) {
-        if (sunAltitude > -6.0 || cloudCover > 88.0) return;
-        float cloudVisibility = (float) clamp((100.0 - cloudCover) / 48.0, 0.12, 1.0);
-        int index = 0;
-        for (SkyMath.Star star : SkyMath.BRIGHT_STARS) {
-            SkyMath.Position position = SkyMath.star(star, now, latitude, longitude);
-            if (position.altitudeDegrees <= 0.0) {
-                index++;
-                continue;
-            }
-            float x = mapAzimuthToX(position.azimuthDegrees);
-            float y = mapAltitudeToCelestialBand(position.altitudeDegrees);
-            float twinkle = 0.80f + 0.12f
-                    * (float) Math.sin(elapsedSeconds * 0.55 + index * 1.7);
-            int starColor = index % 3 == 0 ? Color.rgb(255, 235, 187) : Color.rgb(203, 216, 239);
-            float glowStrength = (float) (0.18 * (0.55 + star.brightness * 0.45) * cloudVisibility);
-            drawGlowPulse(canvas, x, y, elapsedSeconds, index * 0.137,
-                    5.0f, glowStrength, starColor);
-            paint.setColor(starColor);
-            paint.setAlpha((int) (255 * cloudVisibility * star.brightness * twinkle));
-            float pixelX = Math.round(x * RENDER_SCALE) / (float) RENDER_SCALE;
-            float pixelY = Math.round(y * RENDER_SCALE) / (float) RENDER_SCALE;
-            float size = star.brightness > 0.7 ? 1.5f : 1.0f;
-            canvas.drawRect(pixelX, pixelY, pixelX + size, pixelY + size, paint);
-            if (star.brightness > 0.75) {
-                canvas.drawRect(pixelX + 0.5f, pixelY - 0.5f,
-                        pixelX + 1.0f, pixelY, paint);
-                canvas.drawRect(pixelX - 0.5f, pixelY + 0.5f,
-                        pixelX, pixelY + 1.0f, paint);
-            }
-            index++;
-        }
-        paint.setAlpha(255);
     }
 
     private CloudState[] createCloudStates(double elapsedSeconds, int code) {
@@ -919,27 +707,6 @@ public final class WeatherSkyView extends View {
         canvas.clipRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT * 0.5f);
         // Only the part of a cloud's projection over the surface is redrawn in front.
         drawClouds(canvas, clouds, sunAltitude, code);
-        canvas.restoreToCount(save);
-    }
-
-    private void drawSunOverIsland(Canvas canvas, SkyMath.Position sun, double elapsedSeconds) {
-        setIslandSurfacePath();
-        int save = canvas.save();
-        canvas.clipPath(islandSurfacePath);
-        canvas.clipRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT * 0.5f);
-        drawSun(canvas, sun, elapsedSeconds);
-        canvas.restoreToCount(save);
-    }
-
-    private void drawCelestialsOverIsland(Canvas canvas, long now,
-                                          SkyMath.Position sun, SkyMath.Position moon,
-                                          double cloudCover, double elapsedSeconds) {
-        setIslandSurfacePath();
-        int save = canvas.save();
-        canvas.clipPath(islandSurfacePath);
-        canvas.clipRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT * 0.5f);
-        drawStars(canvas, now, sun.altitudeDegrees, cloudCover, elapsedSeconds);
-        drawMoon(canvas, moon, sun.altitudeDegrees, cloudCover, elapsedSeconds);
         canvas.restoreToCount(save);
     }
 
@@ -1648,58 +1415,9 @@ public final class WeatherSkyView extends View {
         }
     }
 
-    private void drawPixelDisc(Canvas canvas, int centerX, int centerY, int radius,
-                               float cell, int color) {
-        paint.setColor(color);
-        for (float row = -radius; row <= radius; row += cell) {
-            double sampleY = row + cell / 2.0;
-            int half = (int) Math.floor(Math.sqrt(Math.max(0.0, radius * radius - sampleY * sampleY)));
-            float left = (float) (Math.floor((centerX - half) / cell) * cell);
-            float right = (float) (Math.ceil((centerX + half) / cell) * cell);
-            canvas.drawRect(left, centerY + row, right, centerY + row + cell, paint);
-        }
-    }
-
     private float mapAzimuthToX(double azimuth) {
         double relative = normalizeDegrees(azimuth - headingDegrees + 180.0);
         return (float) (relative / 360.0 * SCENE_WIDTH);
-    }
-
-    /** Sunrise tracks the inset east/right edge, solar noon the top center, then sunset west/left. */
-    private float mapSunToUpperEdgeX(double hourAngleDegrees) {
-        double distance = sunEdgeDistance(hourAngleDegrees);
-        double sideLength = SCENE_HEIGHT / 3.0 - SUN_GLOW_SAFE_INSET;
-        double topHalfWidth = SCENE_WIDTH / 2.0 - SUN_GLOW_SAFE_INSET;
-        double centerX = SCENE_WIDTH / 2.0;
-        double rightX = SCENE_WIDTH - SUN_GLOW_SAFE_INSET;
-        double leftX = SUN_GLOW_SAFE_INSET;
-        if (hourAngleDegrees <= 0.0) {
-            return (float) (distance <= sideLength
-                    ? rightX : rightX - (distance - sideLength));
-        }
-        return (float) (distance <= topHalfWidth ? centerX - distance : leftX);
-    }
-
-    private float mapSunToUpperEdgeY(double hourAngleDegrees) {
-        double distance = sunEdgeDistance(hourAngleDegrees);
-        double sideLength = SCENE_HEIGHT / 3.0 - SUN_GLOW_SAFE_INSET;
-        double topHalfWidth = SCENE_WIDTH / 2.0 - SUN_GLOW_SAFE_INSET;
-        double topY = SUN_GLOW_SAFE_INSET;
-        double sideY = SCENE_HEIGHT / 3.0;
-        if (hourAngleDegrees <= 0.0) {
-            return (float) (distance <= sideLength ? sideY - distance : topY);
-        }
-        return (float) (distance <= topHalfWidth ? topY : topY + distance - topHalfWidth);
-    }
-
-    private double sunEdgeDistance(double hourAngleDegrees) {
-        double sideLength = SCENE_HEIGHT / 3.0 - SUN_GLOW_SAFE_INSET;
-        double topHalfWidth = SCENE_WIDTH / 2.0 - SUN_GLOW_SAFE_INSET;
-        double halfPathLength = sideLength + topHalfWidth;
-        double dayFraction = hourAngleDegrees <= 0.0
-                ? clamp((hourAngleDegrees + 90.0) / 90.0, 0.0, 1.0)
-                : clamp(hourAngleDegrees / 90.0, 0.0, 1.0);
-        return dayFraction * halfPathLength;
     }
 
     private float mapAltitudeToCelestialBand(double altitude) {

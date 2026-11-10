@@ -63,7 +63,9 @@
   // Keep the Sun's roughly 18-unit halo inside the canvas along the upper edge.
   const SUN_GLOW_SAFE_INSET = 20;
   // Temporarily hide sky objects while retaining their renderer for later design iterations.
-  const DRAW_SKY_OBJECTS = false;
+  // The previous sky objects (pixel sun, moon and star field) were removed. Weather still
+  // drives the sky gradient, fog and lightning, and the sun's position still drives the
+  // island lighting; only the drawn celestial bodies are gone while the replacement is designed.
   // A stylized 9 x 9 tile surface represents a 2.25 km square ground patch.
   const ISLAND_TILE_METERS = 250;
   const CLOUD_BASE_MIN_METERS = 800;
@@ -349,43 +351,6 @@
     return position;
   }
 
-  function moonPosition(timeMillis, latitude, longitude, sunLongitude) {
-    const jd = julianDay(timeMillis);
-    const days = jd - 2451543.5;
-    const radians = Math.PI / 180;
-    const node = (125.1228 - 0.0529538083 * days) * radians;
-    const inclination = 5.1454 * radians;
-    const periapsis = (318.0634 + 0.1643573223 * days) * radians;
-    const eccentricity = 0.0549;
-    const meanAnomaly = normalizeDegrees(115.3654 + 13.0649929509 * days) * radians;
-    let eccentricAnomaly = meanAnomaly + eccentricity * Math.sin(meanAnomaly)
-      * (1 + eccentricity * Math.cos(meanAnomaly));
-    for (let iteration = 0; iteration < 3; iteration += 1) {
-      eccentricAnomaly -= (eccentricAnomaly - eccentricity * Math.sin(eccentricAnomaly) - meanAnomaly)
-        / (1 - eccentricity * Math.cos(eccentricAnomaly));
-    }
-    const x = Math.cos(eccentricAnomaly) - eccentricity;
-    const y = Math.sqrt(1 - eccentricity * eccentricity) * Math.sin(eccentricAnomaly);
-    const trueAnomaly = Math.atan2(y, x);
-    const distance = Math.sqrt(x * x + y * y);
-    const argument = trueAnomaly + periapsis;
-    const ex = distance * (Math.cos(node) * Math.cos(argument)
-      - Math.sin(node) * Math.sin(argument) * Math.cos(inclination));
-    const ey = distance * (Math.sin(node) * Math.cos(argument)
-      + Math.cos(node) * Math.sin(argument) * Math.cos(inclination));
-    const ez = distance * Math.sin(argument) * Math.sin(inclination);
-    const longitudeEcliptic = Math.atan2(ey, ex);
-    const obliquity = 23.4393 * radians;
-    const equatorialY = ey * Math.cos(obliquity) - ez * Math.sin(obliquity);
-    const equatorialZ = ey * Math.sin(obliquity) + ez * Math.cos(obliquity);
-    const rightAscension = normalizeDegrees(Math.atan2(equatorialY, ex) / radians);
-    const declination = Math.atan2(equatorialZ, Math.sqrt(ex * ex + equatorialY * equatorialY)) / radians;
-    const position = horizonPosition(rightAscension, declination, jd, latitude, longitude);
-    const phase = normalizeDegrees(longitudeEcliptic / radians - sunLongitude) / 360;
-    position.illumination = (1 - Math.cos(phase * 2 * Math.PI)) / 2;
-    return position;
-  }
-
   // Bright-star catalog coordinates are J2000; apply Meeus' IAU 1976 precession.
   function starPosition(raDegrees, decDegrees, timeMillis, latitude, longitude) {
     const jd = julianDay(timeMillis);
@@ -416,39 +381,6 @@
   }
 
   // Dawn enters at the inset east/right edge, solar noon reaches top center, dusk exits west/left.
-  function sunEdgeDistance(hourAngleDegrees) {
-    const sideLength = HEIGHT / 3 - SUN_GLOW_SAFE_INSET;
-    const topHalfWidth = WIDTH / 2 - SUN_GLOW_SAFE_INSET;
-    const halfPathLength = sideLength + topHalfWidth;
-    const dayFraction = hourAngleDegrees <= 0
-      ? clamp((hourAngleDegrees + 90) / 90, 0, 1)
-      : clamp(hourAngleDegrees / 90, 0, 1);
-    return dayFraction * halfPathLength;
-  }
-
-  function mapSunToUpperEdgeX(hourAngleDegrees) {
-    const distance = sunEdgeDistance(hourAngleDegrees);
-    const sideLength = HEIGHT / 3 - SUN_GLOW_SAFE_INSET;
-    const topHalfWidth = WIDTH / 2 - SUN_GLOW_SAFE_INSET;
-    const centerX = WIDTH / 2;
-    const rightX = WIDTH - SUN_GLOW_SAFE_INSET;
-    const leftX = SUN_GLOW_SAFE_INSET;
-    if (hourAngleDegrees <= 0) {
-      return distance <= sideLength ? rightX : rightX - (distance - sideLength);
-    }
-    return distance <= topHalfWidth ? centerX - distance : leftX;
-  }
-
-  function mapSunToUpperEdgeY(hourAngleDegrees) {
-    const distance = sunEdgeDistance(hourAngleDegrees);
-    const sideLength = HEIGHT / 3 - SUN_GLOW_SAFE_INSET;
-    const topHalfWidth = WIDTH / 2 - SUN_GLOW_SAFE_INSET;
-    const topY = SUN_GLOW_SAFE_INSET;
-    const sideY = HEIGHT / 3;
-    if (hourAngleDegrees <= 0) return distance <= sideLength ? sideY - distance : topY;
-    return distance <= topHalfWidth ? topY : topY + distance - topHalfWidth;
-  }
-
   function mapAltitudeToCelestialBand(altitude) {
     return CELESTIAL_BAND_TOP
       + (1 - clamp(altitude, 0, 90) / 90) * CELESTIAL_BAND_HEIGHT;
@@ -476,181 +408,12 @@
       ctx.fillStyle = result;
       ctx.fillRect(0, y, WIDTH, band);
     }
-
-    if (DRAW_SKY_OBJECTS && sun.altitude > -5 && sun.altitude < 12) {
-      const x = Math.round(mapSunToUpperEdgeX(sun.hourAngleDegrees) * RENDER_SCALE) / RENDER_SCALE;
-      const y = Math.round(mapSunToUpperEdgeY(sun.hourAngleDegrees) * RENDER_SCALE) / RENDER_SCALE;
-      ctx.fillStyle = 'rgba(255, 189, 131, .12)';
-      ctx.fillRect(x - 42, y - 7, 84, 14);
-      ctx.fillStyle = 'rgba(255, 211, 156, .09)';
-      ctx.fillRect(x - 70, y - 3, 140, 6);
-    }
-  }
-
-  function pixelDisc(x, y, radius, color, cell = 0.5) {
-    ctx.fillStyle = color;
-    for (let row = -radius; row <= radius; row += cell) {
-      const sampleY = row + cell / 2;
-      const half = Math.floor(Math.sqrt(Math.max(0, radius * radius - sampleY * sampleY)));
-      const left = Math.floor((x - half) / cell) * cell;
-      const right = Math.ceil((x + half) / cell) * cell;
-      ctx.fillRect(left, y + row, right - left, cell);
-    }
-  }
-
-  function drawPixelRing(centerX, centerY, radius, thickness, color) {
-    const outerRadius = radius + thickness / 2;
-    const innerRadius = Math.max(0, radius - thickness / 2);
-    const snappedX = Math.round(centerX / RENDER_CELL) * RENDER_CELL;
-    const snappedY = Math.round(centerY / RENDER_CELL) * RENDER_CELL;
-    const rows = Math.ceil(outerRadius / RENDER_CELL);
-    ctx.fillStyle = color;
-    for (let row = -rows; row <= rows; row += 1) {
-      const sampleY = (row + 0.5) * RENDER_CELL;
-      if (Math.abs(sampleY) >= outerRadius) continue;
-      const outerHalf = Math.sqrt(outerRadius * outerRadius - sampleY * sampleY);
-      const outerLeft = Math.floor((snappedX - outerHalf) / RENDER_CELL) * RENDER_CELL;
-      const outerRight = Math.ceil((snappedX + outerHalf) / RENDER_CELL) * RENDER_CELL;
-      const top = snappedY + row * RENDER_CELL;
-      if (innerRadius > 0 && Math.abs(sampleY) < innerRadius) {
-        const innerHalf = Math.sqrt(innerRadius * innerRadius - sampleY * sampleY);
-        const innerLeft = Math.floor((snappedX - innerHalf) / RENDER_CELL) * RENDER_CELL;
-        const innerRight = Math.ceil((snappedX + innerHalf) / RENDER_CELL) * RENDER_CELL;
-        if (innerLeft > outerLeft) ctx.fillRect(outerLeft, top, innerLeft - outerLeft, RENDER_CELL);
-        if (outerRight > innerRight) ctx.fillRect(innerRight, top, outerRight - innerRight, RENDER_CELL);
-      } else {
-        ctx.fillRect(outerLeft, top, outerRight - outerLeft, RENDER_CELL);
-      }
-    }
-  }
-
-  function drawGlowPulse(centerX, centerY, time, phaseOffset, maxRadius, strength, color) {
-    if (strength <= 0) return;
-    const [red, green, blue] = hexRgb(color);
-    const previousAlpha = ctx.globalAlpha;
-    ctx.globalAlpha = 1;
-    for (let pulseIndex = 0; pulseIndex < 2; pulseIndex += 1) {
-      const phase = wrap(time * 0.13 + phaseOffset + pulseIndex * 0.5, 1);
-      const radius = 0.75 + phase * maxRadius;
-      const alpha = strength * Math.pow(1 - phase, 1.5);
-      if (alpha < 0.008) continue;
-      drawPixelRing(centerX, centerY, radius, 1.25,
-        `rgba(${red},${green},${blue},${alpha})`);
-    }
-    ctx.globalAlpha = previousAlpha;
-  }
-
-  function drawSun(sun, motionTime) {
-    if (sun.altitude <= -1) return;
-    const x = mapSunToUpperEdgeX(sun.hourAngleDegrees);
-    const y = mapSunToUpperEdgeY(sun.hourAngleDegrees);
-    const centerX = Math.round(x);
-    const centerY = Math.round(y);
-    const pulse = 0.5 + 0.5 * Math.sin(motionTime * 0.34 + sun.azimuth * Math.PI / 180);
-    // Preserve the existing warm disc glow and its safe-inset footprint.
-    pixelDisc(centerX, centerY, 16, `rgba(255,216,152,${(12 + pulse * 4) / 255})`);
-    pixelDisc(centerX, centerY, 12, `rgba(255,226,170,${(24 + pulse * 8) / 255})`);
-    drawGlowPulse(centerX, centerY, motionTime, 0, 17, 0.30, '#ffe19e');
-
-    const sunsetWarmth = clamp((8 - sun.altitude) / 20, 0, 1);
-    const sunBase = blendColor('#f1b768', '#e28745', sunsetWarmth * 0.45);
-    const sunLight = blendColor('#ffe19d', '#ffcd90', sunsetWarmth * 0.35);
-    const sunShade = blendColor('#ca722d', '#b95432', sunsetWarmth * 0.40);
-    for (let ray = 0; ray < 8; ray += 1) {
-      const angle = -Math.PI / 2 + ray * Math.PI / 4;
-      const rayColor = Math.sin(angle) < 0
-        ? blendColor(sunBase, sunLight, 0.58) : blendColor(sunBase, sunShade, 0.45);
-      drawSunRay(centerX, centerY, angle, ray % 2 === 0 ? 3.2 : 2.5,
-        1.25, 0.75, rayColor);
-    }
-    pixelDisc(centerX, centerY, 9, sunBase);
-    // Two flat facets give the sun a chunky, low-poly bevel without a face.
-    drawIslandPolygon([
-      [centerX - 5.5, centerY - 4], [centerX - 1.5, centerY - 7],
-      [centerX + 1, centerY - 2], [centerX - 2, centerY + 1]
-    ], sunLight, null);
-    drawIslandPolygon([
-      [centerX - 1, centerY + 1], [centerX + 3.5, centerY - 1],
-      [centerX + 7, centerY + 2], [centerX + 4, centerY + 6]
-    ], sunShade, null);
-  }
-
-  function drawSunRay(centerX, centerY, angle, length, baseHalfWidth, tipHalfWidth, color) {
-    const directionX = Math.cos(angle);
-    const directionY = Math.sin(angle);
-    const perpendicularX = -directionY;
-    const perpendicularY = directionX;
-    const innerRadius = 8;
-    const outerRadius = innerRadius + length;
-    const snap = value => Math.round(value * RENDER_SCALE) / RENDER_SCALE;
-    const points = [
-      [centerX + directionX * innerRadius + perpendicularX * baseHalfWidth,
-        centerY + directionY * innerRadius + perpendicularY * baseHalfWidth],
-      [centerX + directionX * outerRadius + perpendicularX * tipHalfWidth,
-        centerY + directionY * outerRadius + perpendicularY * tipHalfWidth],
-      [centerX + directionX * outerRadius - perpendicularX * tipHalfWidth,
-        centerY + directionY * outerRadius - perpendicularY * tipHalfWidth],
-      [centerX + directionX * innerRadius - perpendicularX * baseHalfWidth,
-        centerY + directionY * innerRadius - perpendicularY * baseHalfWidth]
-    ].map(([pointX, pointY]) => [snap(pointX), snap(pointY)]);
-    drawIslandPolygon(points, color, null);
   }
 
   function skyColorAt(y, sun, cloudCover) {
     const palette = sun.altitude < -12 ? NIGHT : sun.altitude > 2 ? DAY : DAWN;
     const base = colorFromPalette(palette, clamp(y / HEIGHT, 0, 1));
     return blendColor(base, '#586576', clamp(cloudCover / 100 * 0.58, 0, 0.58));
-  }
-
-  function drawMoon(moon, sun, cloudCover, motionTime) {
-    if (moon.altitude <= 0 || sun.altitude > -3 || cloudCover > 96 || moon.illumination < 0.04) return;
-    const centerX = Math.round(mapAzimuth(moon.azimuth));
-    const centerY = Math.round(mapAltitudeToCelestialBand(moon.altitude));
-    const pulse = 0.5 + 0.5 * Math.sin(motionTime * 0.30 + (moon.azimuth + 120) * Math.PI / 180);
-    drawGlowPulse(centerX, centerY, motionTime, 0.37, 14, 0.23, '#f4e7c2');
-    pixelDisc(centerX, centerY, 12, `rgba(221,231,216,${(9 + pulse * 6) / 255})`);
-    pixelDisc(centerX, centerY, 10, `rgba(232,236,220,${(17 + pulse * 7) / 255})`);
-    pixelDisc(centerX, centerY, 8, '#e8dec1');
-    // Warm light and cool shade echo the island's beveled, faceted surfaces.
-    drawIslandPolygon([
-      [centerX - 5, centerY - 4], [centerX - 1, centerY - 7],
-      [centerX + 2, centerY - 2], [centerX - 2, centerY + 1]
-    ], '#faf3da', null);
-    drawIslandPolygon([
-      [centerX - 1, centerY + 1], [centerX + 3, centerY - 1],
-      [centerX + 6, centerY + 3], [centerX + 2, centerY + 6]
-    ], '#b2c2cd', null);
-    if (moon.illumination < 0.98) {
-      const shadowOffset = moon.illumination * 13;
-      pixelDisc(Math.round(centerX + shadowOffset), centerY, 8,
-        skyColorAt(centerY, sun, cloudCover));
-    }
-  }
-
-  function drawStars(now, sun, cloudCover, motionTime) {
-    if (sun.altitude > -6 || cloudCover > 88) return;
-    const visibility = clamp((100 - cloudCover) / 48, 0.12, 1);
-    STARS.forEach(([ra, dec, brightness], index) => {
-      const position = starPosition(ra, dec, now, location.latitude, location.longitude);
-      if (position.altitude <= 0) return;
-      const x = mapAzimuth(position.azimuth);
-      const y = mapAltitudeToCelestialBand(position.altitude);
-      const twinkle = 0.80 + 0.12 * Math.sin(motionTime * 0.55 + index * 1.7);
-      const starColor = index % 3 === 0 ? '#ffebbb' : '#cbd8ef';
-      const glowStrength = 0.18 * (0.55 + brightness * 0.45) * visibility;
-      drawGlowPulse(x, y, motionTime, index * 0.137, 5, glowStrength, starColor);
-      ctx.globalAlpha = visibility * brightness * twinkle;
-      ctx.fillStyle = starColor;
-      const pixelX = Math.round(x * RENDER_SCALE) / RENDER_SCALE;
-      const pixelY = Math.round(y * RENDER_SCALE) / RENDER_SCALE;
-      const size = brightness > 0.7 ? 1.5 : 1;
-      ctx.fillRect(pixelX, pixelY, size, size);
-      if (brightness > 0.75) {
-        ctx.fillRect(pixelX + 0.5, pixelY - 0.5, 0.5, 0.5);
-        ctx.fillRect(pixelX - 0.5, pixelY + 0.5, 0.5, 0.5);
-      }
-    });
-    ctx.globalAlpha = 1;
   }
 
   function appendCloudRows(x, y, unitX, unitY, shape,
@@ -983,27 +746,6 @@
     ctx.rect(0, 0, WIDTH, HEIGHT * 0.5);
     ctx.clip();
     drawClouds(clouds, sunAltitude, code);
-    ctx.restore();
-  }
-
-  function drawSunOverIsland(sun, motionTime) {
-    ctx.save();
-    clipIslandSurface();
-    ctx.beginPath();
-    ctx.rect(0, 0, WIDTH, HEIGHT * 0.5);
-    ctx.clip();
-    drawSun(sun, motionTime);
-    ctx.restore();
-  }
-
-  function drawCelestialsOverIsland(now, sun, moon, cloudCover, motionTime) {
-    ctx.save();
-    clipIslandSurface();
-    ctx.beginPath();
-    ctx.rect(0, 0, WIDTH, HEIGHT * 0.5);
-    ctx.clip();
-    drawStars(now, sun, cloudCover, motionTime);
-    drawMoon(moon, sun, cloudCover, motionTime);
     ctx.restore();
   }
 
@@ -1702,31 +1444,18 @@
     const time = (performance.now() - animationStart) / 1000;
     const motionTime = REDUCED_MOTION ? 0 : time;
     const sun = sunPosition(skyNow, location.latitude, location.longitude);
-    const moon = DRAW_SKY_OBJECTS
-      ? moonPosition(skyNow, location.latitude, location.longitude, sun.eclipticLongitude) : null;
-    const cloudStates = DRAW_SKY_OBJECTS ? createCloudStates(motionTime, sceneWeather) : [];
+    const cloudStates = [];
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     drawSky(skyNow, sun, sceneWeather.weatherCode, sceneWeather.cloudCover);
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, 0, WIDTH, HEIGHT * 0.5);
     ctx.clip();
-    if (DRAW_SKY_OBJECTS) {
-      drawSun(sun, motionTime);
-      drawClouds(cloudStates, sun.altitude, sceneWeather.weatherCode);
-      drawStars(skyNow, sun, sceneWeather.cloudCover, motionTime);
-      drawMoon(moon, sun, sceneWeather.cloudCover, motionTime);
-    }
     drawFog(sceneWeather.weatherCode);
     drawLightning(time, sceneWeather.weatherCode);
     ctx.restore();
     drawFloatingIsland(sun.altitude, sun.azimuth,
       sceneWeather.cloudCover, sceneWeather.weatherCode, cloudStates);
-    if (DRAW_SKY_OBJECTS) {
-      drawSunOverIsland(sun, motionTime);
-      drawCloudsOverIsland(cloudStates, sun.altitude, sceneWeather.weatherCode);
-      drawCelestialsOverIsland(skyNow, sun, moon, sceneWeather.cloudCover, motionTime);
-    }
     drawPrecipitation(sceneWeather);
     if (!REDUCED_MOTION) window.requestAnimationFrame(drawFrame);
   }
