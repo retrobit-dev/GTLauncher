@@ -60,8 +60,10 @@ public final class WeatherSkyView extends View {
     // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
     // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
     private static final float SUN_BODY_RADIUS = 10.5f;
-    private static final int SUN_GLOW_STEPS = 14;
-    private static final float SUN_GLOW_REACH = 13.0f;
+    private static final int GLOW_STEPS = 14;
+    private static final float GLOW_REACH = 15.0f;
+    private static final double GLOW_ALPHA = 0.040;
+    private static final double GLOW_PULSE_SPEED = 1.15;
 
     private static final float CELESTIAL_BAND_TOP = SCENE_HEIGHT * 0.10f;
     private static final float CELESTIAL_BAND_HEIGHT = SCENE_HEIGHT / 3.0f
@@ -244,7 +246,8 @@ public final class WeatherSkyView extends View {
         drawSky(scene, sun, cloudCover, code);
         int upperHalfSave = scene.save();
         scene.clipRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT * 0.5f);
-        drawSun(scene, sun, cloudCover);
+        drawSun(scene, sun, cloudCover, motionSeconds);
+        drawMoon(scene, SkyMath.moon(now, latitude, longitude), motionSeconds);
         drawFog(scene, code);
         drawStormFlash(scene, elapsedSeconds, code);
         scene.restoreToCount(upperHalfSave);
@@ -1457,22 +1460,24 @@ public final class WeatherSkyView extends View {
     }
 
     /**
-     * Many faint stacked discs instead of a few hard rings. The shape comes from the sun's real
-     * position: a low sun spreads the halo wider across the horizon and flattens it, a high sun
-     * gets a tight round halo, so the glow reflects the current latitude and longitude.
+     * Many faint stacked discs instead of a few hard rings. The halo breathes: the discs slide
+     * outward and back on a slow cycle, which is what makes it visibly alive. Its shape comes
+     * from the sun's real position - a low sun spreads it wider and flatter while a high sun
+     * keeps it tight and round - so it reflects the current latitude and longitude. Shared by
+     * the sun and the moon.
      */
-    private void drawSunHalos(Canvas canvas, float centerX, float centerY, SkyMath.Position sun,
-                              int[] palette, float visibility) {
-        if (visibility <= 0.0f) return;
-        double altitude = clamp(sun.altitudeDegrees, 0.0, 90.0);
-        double high = clamp(altitude / 45.0, 0.0, 1.0);
+    private void drawCelestialGlow(Canvas canvas, float centerX, float centerY, double altitude,
+                                   double elapsedSeconds, int tint, float visibility,
+                                   float strength) {
+        if (visibility <= 0.0f || strength <= 0.0f) return;
+        double high = clamp(clamp(altitude, 0.0, 90.0) / 45.0, 0.0, 1.0);
         float squash = (float) (0.52 + high * 0.48);
-        float reach = (float) (SUN_GLOW_REACH * (1.25 - high * 0.55));
-        int glowColor = blend(palette[0], Color.rgb(255, 217, 138), 0.55);
-        int alpha = (int) Math.round(255.0 * 0.030 * visibility);
-        int color = (glowColor & 0x00FFFFFF) | (alpha << 24);
-        for (int step = 0; step < SUN_GLOW_STEPS; step++) {
-            float progress = step / (float) (SUN_GLOW_STEPS - 1);
+        double breathe = 0.5 + 0.5 * Math.sin(elapsedSeconds * GLOW_PULSE_SPEED);
+        float reach = (float) (GLOW_REACH * (1.25 - high * 0.55) * (0.68 + breathe * 0.72));
+        double alpha = GLOW_ALPHA * (0.55 + breathe * 0.75) * visibility * strength;
+        int color = (tint & 0x00FFFFFF) | ((int) Math.round(255.0 * alpha) << 24);
+        for (int step = 0; step < GLOW_STEPS; step++) {
+            float progress = step / (float) (GLOW_STEPS - 1);
             glowDisc(canvas, centerX, centerY, SUN_BODY_RADIUS + 1.0f + progress * reach,
                     squash, color);
         }
@@ -1500,7 +1505,8 @@ public final class WeatherSkyView extends View {
      * altitude picks the height inside the upper celestial band. The sun fades in just above
      * the horizon and is gone below it.
      */
-    private void drawSun(Canvas canvas, SkyMath.Position sun, double cloudCover) {
+    private void drawSun(Canvas canvas, SkyMath.Position sun, double cloudCover,
+                         double elapsedSeconds) {
         if (sun.altitudeDegrees <= -1.0) return;
         int[] palette = sunPalette(sun.altitudeDegrees, cloudCover);
         float centerX = Math.round(mapAzimuthToX(sun.azimuthDegrees) / RENDER_CELL)
@@ -1510,11 +1516,77 @@ public final class WeatherSkyView extends View {
         int save = canvas.save();
         paint.setAlpha((int) Math.round(255.0
                 * clamp((sun.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0)));
-        drawSunHalos(canvas, centerX, centerY, sun, palette,
-                (float) clamp((sun.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0));
+        drawCelestialGlow(canvas, centerX, centerY, sun.altitudeDegrees, elapsedSeconds,
+                blend(palette[0], Color.rgb(255, 217, 138), 0.55),
+                (float) clamp((sun.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0), 1.0f);
         drawSunBody(canvas, centerX, centerY, palette);
         canvas.restoreToCount(save);
         paint.setAlpha(255);
+    }
+
+
+    /** The moon reuses the sun's construction: one disc, the same halo, a cooler palette. */
+    private static int[] moonPalette() {
+        return new int[] { Color.rgb(244, 247, 251), Color.rgb(185, 198, 218) };
+    }
+
+    private void drawMoon(Canvas canvas, SkyMath.Position moon, double elapsedSeconds) {
+        if (moon.altitudeDegrees <= -1.0) return;
+        int[] palette = moonPalette();
+        float centerX = Math.round(mapAzimuthToX(moon.azimuthDegrees) / RENDER_CELL)
+                * RENDER_CELL;
+        float centerY = Math.round(mapAltitudeToCelestialBand(moon.altitudeDegrees) / RENDER_CELL)
+                * RENDER_CELL;
+        float visibility = (float) clamp((moon.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0);
+        int save = canvas.save();
+        paint.setAlpha((int) Math.round(255.0 * visibility));
+        drawCelestialGlow(canvas, centerX, centerY, moon.altitudeDegrees, elapsedSeconds,
+                blend(palette[0], Color.rgb(207, 224, 255), 0.45), visibility,
+                (float) (0.35 + clamp(moon.illumination, 0.0, 1.0) * 0.55));
+        drawMoonBody(canvas, centerX, centerY, palette, moon);
+        canvas.restoreToCount(save);
+        paint.setAlpha(255);
+    }
+
+    /**
+     * The terminator is projected as an ellipse rather than an offset circle, which is the
+     * difference between a correct gibbous moon and a permanent crescent. At half illumination
+     * the terminator is a straight line through the centre; as the moon fills out it bows toward
+     * the dark limb, and as it thins it bows back toward the lit limb.
+     */
+    private void drawMoonBody(Canvas canvas, float centerX, float centerY, int[] palette,
+                              SkyMath.Position moon) {
+        float radius = SUN_BODY_RADIUS;
+        double illumination = clamp(moon.illumination, 0.0, 1.0);
+        float terminator = (float) (1.0 - illumination * 2.0);
+        // In the southern hemisphere the lit limb faces the opposite side from the north.
+        boolean litOnRight = latitude >= 0.0 ? moon.waxing : !moon.waxing;
+        paint.setStyle(Paint.Style.FILL);
+        for (float row = -radius; row < radius; row += RENDER_CELL) {
+            float sampleY = row + RENDER_CELL / 2.0f;
+            float halfWidth = (float) Math.sqrt(Math.max(0.0,
+                    radius * radius - sampleY * sampleY));
+            if (halfWidth <= 0.0f) continue;
+            float mix = (float) clamp((sampleY + radius) / (radius * 2.0), 0.0, 1.0);
+            int bandColor = blend(palette[0], palette[1], mix);
+            float ellipse = (float) Math.sqrt(Math.max(0.0,
+                    1.0 - (sampleY / radius) * (sampleY / radius)));
+            float edge = terminator * radius * ellipse;
+            // Test each cell centre against the disc instead of rounding the row extent, which
+            // would leave single-cell steps poking out of the limb.
+            float left = (float) Math.floor((centerX - halfWidth) / RENDER_CELL) * RENDER_CELL;
+            float right = (float) Math.ceil((centerX + halfWidth) / RENDER_CELL) * RENDER_CELL;
+            paint.setColor(bandColor);
+            for (float x = left; x < right; x += RENDER_CELL) {
+                float offset = x + RENDER_CELL / 2.0f - centerX;
+                if (offset * offset + sampleY * sampleY > radius * radius) continue;
+                boolean lit = litOnRight ? offset >= edge : offset <= -edge;
+                if (lit) {
+                    canvas.drawRect(x, centerY + row, x + RENDER_CELL, centerY + row + RENDER_CELL,
+                            paint);
+                }
+            }
+        }
     }
 
     private float mapAzimuthToX(double azimuth) {

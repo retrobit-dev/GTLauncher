@@ -328,6 +328,50 @@
     return normalizeDegrees(meanLongitude + center);
   }
 
+
+  // Simplified Keplerian lunar elements, matching the Android SkyMath.moon implementation.
+  // Illumination follows the real Sun-Moon elongation, so the crescent is astronomical
+  // rather than decorative.
+  function moonPosition(timeMillis, latitude, longitude, sunLongitude) {
+    const jd = julianDay(timeMillis);
+    const days = jd - 2451543.5;
+    const radians = Math.PI / 180;
+    const node = (125.1228 - 0.0529538083 * days) * radians;
+    const inclination = 5.1454 * radians;
+    const periapsis = (318.0634 + 0.1643573223 * days) * radians;
+    const eccentricity = 0.0549;
+    const meanAnomaly = normalizeDegrees(115.3654 + 13.0649929509 * days) * radians;
+    let eccentricAnomaly = meanAnomaly + eccentricity * Math.sin(meanAnomaly)
+      * (1 + eccentricity * Math.cos(meanAnomaly));
+    for (let iteration = 0; iteration < 3; iteration += 1) {
+      eccentricAnomaly -= (eccentricAnomaly - eccentricity * Math.sin(eccentricAnomaly)
+        - meanAnomaly) / (1 - eccentricity * Math.cos(eccentricAnomaly));
+    }
+    const x = Math.cos(eccentricAnomaly) - eccentricity;
+    const y = Math.sqrt(1 - eccentricity * eccentricity) * Math.sin(eccentricAnomaly);
+    const trueAnomaly = Math.atan2(y, x);
+    const distance = Math.sqrt(x * x + y * y);
+    const argument = trueAnomaly + periapsis;
+    const eclipticX = distance * (Math.cos(node) * Math.cos(argument)
+      - Math.sin(node) * Math.sin(argument) * Math.cos(inclination));
+    const eclipticY = distance * (Math.sin(node) * Math.cos(argument)
+      + Math.cos(node) * Math.sin(argument) * Math.cos(inclination));
+    const eclipticZ = distance * Math.sin(argument) * Math.sin(inclination);
+    const longitudeEcliptic = Math.atan2(eclipticY, eclipticX);
+    const obliquity = 23.4393 * radians;
+    const equatorialY = eclipticY * Math.cos(obliquity) - eclipticZ * Math.sin(obliquity);
+    const equatorialZ = eclipticY * Math.sin(obliquity) + eclipticZ * Math.cos(obliquity);
+    const rightAscension = normalizeDegrees(Math.atan2(equatorialY, eclipticX) / radians);
+    const declination = Math.atan2(equatorialZ,
+      Math.sqrt(eclipticX * eclipticX + equatorialY * equatorialY)) / radians;
+    const position = horizonPosition(rightAscension, declination, jd, latitude, longitude);
+    const phase = normalizeDegrees(longitudeEcliptic / radians - sunLongitude) / 360;
+    position.illumination = (1 - Math.cos(phase * 2 * Math.PI)) / 2;
+    // Waxing means the moon is growing toward full; the lit limb then faces the sun.
+    position.waxing = phase < 0.5;
+    return position;
+  }
+
   function sunPosition(timeMillis, latitude, longitude) {
     const jd = julianDay(timeMillis);
     const centuries = (jd - 2451545) / 36525;
@@ -395,8 +439,10 @@
   // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
   // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
   const SUN_BODY_RADIUS = 10.5;
-  const SUN_GLOW_STEPS = 14;
-  const SUN_GLOW_REACH = 13.0;
+  const GLOW_STEPS = 14;
+  const GLOW_REACH = 15.0;
+  const GLOW_ALPHA = 0.040;
+  const GLOW_PULSE_SPEED = 1.15;
 
   // Light tone on top, deep tone at the bottom. The pair warms near the horizon and dulls
   // under a heavy cloud deck; the disc itself never changes shape.
@@ -413,11 +459,11 @@
   }
 
 
-  // The glow is a stack of many faint discs instead of a few hard rings, so it fades out
-  // smoothly. Its shape follows the sun's real position: low sun means a longer path through
-  // the air, so the halo spreads wider across the horizon and flattens vertically, while a
-  // high noon sun gets a tight round halo. Both size and tint therefore come from the
-  // astronomy for this latitude and longitude rather than being a fixed decoration.
+  // The glow is a stack of faint discs instead of a few hard rings, so it fades out smoothly.
+  // It also breathes: the discs slide outward and back on a slow cycle, which is what makes
+  // the halo visibly alive rather than a static ring. Its shape follows the sun's real
+  // position: a low sun spreads it wider and flatter (longer path through the air), a high
+  // sun keeps it tight and round, so the glow reflects the current latitude and longitude.
   function glowDisc(centerX, centerY, radius, squash) {
     for (let row = -radius; row < radius; row += RENDER_CELL) {
       const sampleY = row + RENDER_CELL / 2;
@@ -429,17 +475,18 @@
     }
   }
 
-  function drawSunHalos(centerX, centerY, sun, palette, visibility) {
-    if (visibility <= 0) return;
-    const altitude = clamp(sun.altitude, 0, 90);
-    // 0 at the horizon, 1 well up in the sky.
-    const high = clamp(altitude / 45, 0, 1);
+  // Shared by the sun and the moon so both halos breathe with the same rhythm.
+  function drawCelestialGlow(centerX, centerY, altitude, motionTime, tint, visibility,
+    strength) {
+    if (visibility <= 0 || strength <= 0) return;
+    const high = clamp(clamp(altitude, 0, 90) / 45, 0, 1);
     const squash = 0.52 + high * 0.48;
-    const reach = SUN_GLOW_REACH * (1.25 - high * 0.55);
-    ctx.fillStyle = blendColor(palette.top, '#ffd98a', 0.55)
-      .replace('rgb', 'rgba').replace(')', `, ${0.030 * visibility})`);
-    for (let step = 0; step < SUN_GLOW_STEPS; step += 1) {
-      const progress = step / (SUN_GLOW_STEPS - 1);
+    const breathe = 0.5 + 0.5 * Math.sin(motionTime * GLOW_PULSE_SPEED);
+    const reach = GLOW_REACH * (1.25 - high * 0.55) * (0.68 + breathe * 0.72);
+    const alpha = GLOW_ALPHA * (0.55 + breathe * 0.75) * visibility * strength;
+    ctx.fillStyle = tint.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
+    for (let step = 0; step < GLOW_STEPS; step += 1) {
+      const progress = step / (GLOW_STEPS - 1);
       glowDisc(centerX, centerY, SUN_BODY_RADIUS + 1.0 + progress * reach, squash);
     }
   }
@@ -459,10 +506,67 @@
     }
   }
 
+
+  // The moon reuses the sun's construction exactly: one flat disc with a soft two-colour
+  // vertical gradient, the same stack-of-discs halo, and the same astronomy-driven shape.
+  // Only the palette is cooler, and a crescent mask is carved out from the real Sun-Moon
+  // elongation so the shape matches the phase actually visible tonight.
+  function moonPalette() {
+    return { top: '#f4f7fb', bottom: '#b9c6da' };
+  }
+
+  function drawMoon(moon, motionTime) {
+    if (moon.altitude <= -1) return;
+    const palette = moonPalette();
+    const centerX = Math.round(mapAzimuth(moon.azimuth) / RENDER_CELL) * RENDER_CELL;
+    const centerY = Math.round(mapAltitudeToCelestialBand(moon.altitude) / RENDER_CELL)
+      * RENDER_CELL;
+    const visibility = clamp((moon.altitude + 1) / 3, 0, 1);
+    const previousAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = previousAlpha * visibility;
+    drawCelestialGlow(centerX, centerY, moon.altitude, motionTime,
+      blendColor(palette.top, '#cfe0ff', 0.45), visibility,
+      0.35 + clamp(moon.illumination, 0, 1) * 0.55);
+    drawMoonBody(centerX, centerY, palette, moon);
+    ctx.globalAlpha = previousAlpha;
+  }
+
+  // The terminator is projected as an ellipse rather than an offset circle, which is the
+  // difference between a correct gibbous moon and a permanent crescent. At half illumination
+  // the terminator is a straight line through the centre; as the moon fills out it bows toward
+  // the dark limb, and as it thins it bows back toward the lit limb.
+  function drawMoonBody(centerX, centerY, palette, moon) {
+    const radius = SUN_BODY_RADIUS;
+    const illumination = clamp(moon.illumination, 0, 1);
+    const terminator = 1 - illumination * 2;
+    // In the southern hemisphere the lit limb faces the opposite side from the north.
+    const litOnRight = location.latitude >= 0 ? moon.waxing : !moon.waxing;
+    for (let row = -radius; row < radius; row += RENDER_CELL) {
+      const sampleY = row + RENDER_CELL / 2;
+      const halfWidth = Math.sqrt(Math.max(0, radius * radius - sampleY * sampleY));
+      if (halfWidth <= 0) continue;
+      const mix = clamp((sampleY + radius) / (radius * 2), 0, 1);
+      const bandColor = blendColor(palette.top, palette.bottom, mix);
+      const ellipse = Math.sqrt(Math.max(0, 1 - (sampleY / radius) * (sampleY / radius)));
+      const edge = terminator * radius * ellipse;
+      // Test each cell centre against the disc instead of rounding the row extent, which
+      // would leave single-cell steps poking out of the limb.
+      const litLeft = Math.floor((centerX - halfWidth) / RENDER_CELL) * RENDER_CELL;
+      const litRight = Math.ceil((centerX + halfWidth) / RENDER_CELL) * RENDER_CELL;
+      ctx.fillStyle = bandColor;
+      for (let x = litLeft; x < litRight; x += RENDER_CELL) {
+        const offset = x + RENDER_CELL / 2 - centerX;
+        if (offset * offset + sampleY * sampleY > radius * radius) continue;
+        const lit = litOnRight ? offset >= edge : offset <= -edge;
+        if (lit) ctx.fillRect(x, centerY + row, RENDER_CELL, RENDER_CELL);
+      }
+    }
+  }
+
   // Position comes straight from the existing astronomy: azimuth picks the screen column and
   // altitude picks the height inside the upper celestial band. The sun fades in just above
   // the horizon and is gone below it.
-  function drawSun(sun, cloudCover) {
+  function drawSun(sun, cloudCover, motionTime) {
     if (sun.altitude <= -1) return;
     const palette = sunPalette(sun.altitude, cloudCover);
     const centerX = Math.round(mapAzimuth(sun.azimuth) / RENDER_CELL) * RENDER_CELL;
@@ -471,7 +575,8 @@
     const previousAlpha = ctx.globalAlpha;
     const visibility = clamp((sun.altitude + 1) / 3, 0, 1);
     ctx.globalAlpha = previousAlpha * visibility;
-    drawSunHalos(centerX, centerY, sun, palette, visibility);
+    drawCelestialGlow(centerX, centerY, sun.altitude, motionTime,
+      blendColor(palette.top, '#ffd98a', 0.55), visibility, 1);
     drawSunBody(centerX, centerY, palette);
     ctx.globalAlpha = previousAlpha;
   }
@@ -1535,7 +1640,9 @@
     ctx.beginPath();
     ctx.rect(0, 0, WIDTH, HEIGHT * 0.5);
     ctx.clip();
-    drawSun(sun, sceneWeather.cloudCover);
+    drawSun(sun, sceneWeather.cloudCover, motionTime);
+    drawMoon(moonPosition(skyNow, location.latitude, location.longitude,
+      sunPosition(skyNow, location.latitude, location.longitude).eclipticLongitude), motionTime);
     ctx.restore();
     ctx.save();
     ctx.beginPath();

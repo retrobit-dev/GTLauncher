@@ -95,7 +95,7 @@ public final class SkyMath {
         Position horizon = equatorialToHorizon(
                 rightAscension, declination, julianDay, latitude, longitude);
         return new Position(horizon.azimuthDegrees, horizon.altitudeDegrees,
-                illumination, horizon.hourAngleDegrees);
+                illumination, horizon.hourAngleDegrees, phase < 0.5);
     }
 
     /** Star catalogue coordinates are J2000; apply Meeus' IAU 1976 precession before projection. */
@@ -180,13 +180,21 @@ public final class SkyMath {
         public final double illumination;
         /** Local apparent hour angle: negative before solar noon, positive after it. */
         public final double hourAngleDegrees;
+        /** True while the moon is filling toward full, so the lit limb faces the sun. */
+        public final boolean waxing;
 
         Position(double azimuthDegrees, double altitudeDegrees, double illumination,
                  double hourAngleDegrees) {
+            this(azimuthDegrees, altitudeDegrees, illumination, hourAngleDegrees, false);
+        }
+
+        Position(double azimuthDegrees, double altitudeDegrees, double illumination,
+                 double hourAngleDegrees, boolean waxing) {
             this.azimuthDegrees = azimuthDegrees;
             this.altitudeDegrees = altitudeDegrees;
             this.illumination = illumination;
             this.hourAngleDegrees = hourAngleDegrees;
+            this.waxing = waxing;
         }
     }
 
