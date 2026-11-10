@@ -21,12 +21,7 @@ public final class WeatherSkyView extends View {
      * The sea is a diamond the same shape as the island's own top face, not a band across the frame:
      * it is the water the plate hangs over, so its outline mirrors the plate.
      */
-    /**
-     * Big enough that both side corners and the bottom corner are clear of the frame, so the water
-     * reaches every edge instead of ending in visible points partway up.
-     */
-    private static final float SEA_HALF_WIDTH = 232.0f;
-    private static final float SEA_TOP_TUCK = 26.0f;
+    private static final float SEA_SCALE = 1.34f;
     private static final int[] SEA_LIGHT = {0xFF2B3C53, 0xFF6D5F7C, 0xFF546974, 0xFF5E879B};
     private static final int[] SEA_MID = {0xFF1A2A3F, 0xFF4E4763, 0xFF3D4E58, 0xFF3D6A80};
     private static final int[] SEA_DEEP = {0xFF121E2E, 0xFF3A344B, 0xFF2E3C44, 0xFF2B5265};
@@ -696,11 +691,12 @@ public final class WeatherSkyView extends View {
      */
     private float[] seaSurfacePoints() {
         float centerX = SCENE_WIDTH / 2.0f;
-        float halfWidth = SEA_HALF_WIDTH;
-        // Same width-to-height ratio as the island's top face, which is what makes the sea follow
-        // the island's shape instead of being a generic rhombus.
-        float halfHeight = halfWidth * ISLAND_TILE_HEIGHT / ISLAND_TILE_WIDTH;
-        float centerY = ISLAND_TOP + SEA_TOP_TUCK + halfHeight;
+        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f * SEA_SCALE;
+        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f * SEA_SCALE;
+        // Dropped so the upper half tucks behind the plate and the lower half shows as water under
+        // it, which is the composition the plate's own shadow needs in order to land somewhere.
+        float centerY = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT + ISLAND_DEPTH
+                - halfHeight * 0.15f;
         return new float[] {
                 centerX, centerY - halfHeight,
                 centerX + halfWidth, centerY,

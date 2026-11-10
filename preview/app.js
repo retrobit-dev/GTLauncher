@@ -189,21 +189,17 @@
   // stops reading as a diamond. Half-width is therefore capped by WIDTH, and the centre is dropped
   // only as far as the bottom vertex allows, which leaves the upper half tucked behind the island
   // the way water under a floating plate should be.
-  // The water is wide enough that its side and bottom corners run off the frame, so it fills the
-  // left, right and bottom edges the way an ocean should, while its outline still follows the
-  // island's own isometric ratio. Only the top vertex stays on screen, tucked behind the plate, so
-  // the two shapes read as the same form at different scales.
-  // Big enough that both side corners and the bottom corner are clear of the frame, so the water
-  // reaches every edge instead of ending in visible points partway up.
-  const SEA_HALF_WIDTH = 232;
-  const SEA_TOP_TUCK = 26;
+  const SEA_SCALE = 1.34;
   function seaSurfacePoints() {
     const centerX = WIDTH / 2;
-    const halfWidth = SEA_HALF_WIDTH;
-    // Same width-to-height ratio as the island's top face, which is what makes the sea follow the
-    // island's shape instead of being a generic rhombus.
-    const halfHeight = halfWidth * islandTileHeight / ISLAND_TILE_WIDTH;
-    const centerY = islandTop + SEA_TOP_TUCK + halfHeight;
+    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2 * SEA_SCALE;
+    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 2 * SEA_SCALE;
+    // The diamond sits below the plate's front edge so the whole shape is visible under the island
+    // rather than being swallowed by it.
+    // Dropped so the upper half tucks behind the plate and the lower half shows as water under it,
+    // which is the composition the plate's own shadow needs in order to land somewhere.
+    const centerY = islandTop + ISLAND_GRID_SIZE * islandTileHeight + ISLAND_DEPTH
+      - halfHeight * 0.15;
     return [
       [centerX, centerY - halfHeight],
       [centerX + halfWidth, centerY],
