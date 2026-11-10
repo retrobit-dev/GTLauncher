@@ -124,8 +124,10 @@ public final class WeatherSkyView extends View {
     // The island's own cast shadow: close to the base, drifting with the light direction.
     private static final float ISLAND_BODY_SHADOW_SCALE = 1.55f;
     private static final float ISLAND_BODY_SHADOW_OPACITY_SCALE = 0.46f;
-    /** The plate's own cast shadow: same weight in every weather, only its position changes. */
-    private static final float ISLAND_BODY_SHADOW_OPACITY = 0.14f;
+    /** Target luminance drop for the plate's shadow, matched in every weather and at every hour. */
+    private static final double SHADOW_CONTRAST_TARGET = 24.0;
+    /** Relative luminance of the shade itself (#0c1728), used to solve the alpha for that target. */
+    private static final double SHADOW_LUMINANCE = 15.0;
     private static final float ISLAND_BODY_SHADOW_RISE = 1.0f;
     private static final float ISLAND_BODY_SHADOW_DRIFT = 10.0f;
     private static final int[] NIGHT_SKY = colors("#111a35", "#1d2948", "#35415d", "#514c65");
@@ -386,6 +388,31 @@ public final class WeatherSkyView extends View {
             paint.setColor(skyColor);
             canvas.drawRect(0, y, SCENE_WIDTH, y + bandHeight, paint);
         }
+    }
+
+    /**
+     * Relative luminance of what actually sits behind the plate's shadow: the sky gradient at the
+     * floor line, after the same weather blend drawSky applies. Measuring beats guessing here,
+     * because the whole problem is that a fixed alpha removes a fixed fraction of a backdrop whose
+     * own brightness swings by nearly an order of magnitude between noon and midnight.
+     */
+    private double floorLuminance(double cloudCover, int code) {
+        SkyMath.Position sun = SkyMath.sun(System.currentTimeMillis(), latitude, longitude);
+        int[] palette;
+        if (sun.altitudeDegrees < -12.0) palette = NIGHT_SKY;
+        else if (sun.altitudeDegrees < 2.0) {
+            palette = sun.azimuthDegrees > 180.0 ? SUNSET_SKY : DAWN_SKY;
+        } else palette = DAY_SKY;
+        float amount = (SCENE_HEIGHT - 6) / (float) SCENE_HEIGHT;
+        int base = paletteColor(palette, amount);
+        int overcast = Color.rgb(
+                interpolate(55, 130, amount),
+                interpolate(68, 140, amount),
+                interpolate(84, 151, amount));
+        double coverMix = clamp(cloudCover / 100.0 * 0.58, 0.0, 0.58);
+        if (code >= 95) coverMix = Math.max(coverMix, 0.38);
+        int mixed = blend(base, overcast, coverMix);
+        return 0.2126 * Color.red(mixed) + 0.7152 * Color.green(mixed) + 0.0722 * Color.blue(mixed);
     }
 
     private float snapCelestialCoordinate(float coordinate) {
@@ -654,11 +681,15 @@ public final class WeatherSkyView extends View {
     private void drawIslandShadow(Canvas canvas, float centerX, float lowerY,
                                   double lightAltitude, double lightHourAngle,
                                   double cloudCover, int code) {
-        // Constant, like the size: weather decides how the sky looks, not how dark the plate's
-        // shadow is. Opacity used to follow the light level, so the same shadow faded from 0.14 by
-        // day to 0.02 at night and looked as though it shrank and then vanished, when all that
-        // changed was its weight. Only its position moves now, driven by where the light comes from.
-        double opacity = ISLAND_BODY_SHADOW_OPACITY;
+        // A fixed alpha is not enough on its own, and that is why the shadow vanished after dark:
+        // alpha blends toward the shade colour, so it removes a fixed FRACTION of the backdrop. The
+        // same 0.14 takes 25 levels off bright daytime ground but only 9 at night, where there is
+        // barely any light left to take away. The silhouette keeps one colour and one size, and the
+        // alpha is solved for a target amount of contrast instead of being fixed, so the shade lands
+        // with the same visible weight in every weather and at every hour.
+        double floorLuminance = floorLuminance(cloudCover, code);
+        double opacity = clamp(SHADOW_CONTRAST_TARGET
+                / Math.max(floorLuminance - SHADOW_LUMINANCE, 1.0), 0.06, 0.45);
         // Light from the eastern half pushes the shadow west, light from the western half pushes it
         // east; the term eases through zero across solar noon and is capped at a fifth of the
         // plate's own width so the shadow always stays tucked under it.

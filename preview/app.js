@@ -107,8 +107,12 @@
   // The island's own cast shadow: close to the base, drifting with the light direction.
   const ISLAND_BODY_SHADOW_SCALE = 1.55;
   const ISLAND_BODY_SHADOW_OPACITY_SCALE = 0.46;
-  // The plate's own cast shadow: same weight in every weather, only its position changes.
-  const ISLAND_BODY_SHADOW_OPACITY = 0.14;
+  // The plate's own cast shadow keeps one size and one colour in every weather; only its position
+  // and the alpha it lands with change. The alpha is scaled against the brightness of the floor it
+  // lands on, so the shade reads at the same weight at noon and at midnight.
+  const SHADOW_CONTRAST_TARGET = 24;
+  // Relative luminance of the shade itself (#0c1728), used to solve the alpha for that target.
+  const SHADOW_LUMINANCE = 15;
   const ISLAND_BODY_SHADOW_RISE = 1;
   const ISLAND_BODY_SHADOW_DRIFT = 10;
   const FALLBACK = { latitude: -6.7097, longitude: 111.3476, fallback: true };
@@ -939,12 +943,41 @@
   // opposite side of the arc as the sun or moon travels, then fades out once the light is too
   // low to cast anything. Offset and size are both kept small so the shadow stays tucked close
   // under the island instead of floating away from it.
+  // Relative luminance of what actually sits behind the shadow: the sky gradient at the floor line,
+  // after the same weather blend drawSky uses. Measuring beats guessing here, because the whole
+  // problem is that a fixed alpha removes a fixed fraction of a backdrop whose own brightness swings
+  // by nearly an order of magnitude between noon and midnight.
+  function islandFloorLuminance(cloudCover, code) {
+    const now = getSceneTimestamp(Date.now());
+    const sun = sunPosition(new Date(now), location.latitude, location.longitude);
+    let palette;
+    if (sun.altitude < -12) palette = NIGHT;
+    else if (sun.altitude < 2) palette = sun.azimuth > 180 ? SUNSET : DAWN;
+    else palette = DAY;
+    const y = HEIGHT - 6;
+    const base = hexRgb(colorFromPalette(palette, clamp(y / HEIGHT, 0, 1)));
+    const overcast = [65 + y / HEIGHT * 70, 79 + y / HEIGHT * 70, 98 + y / HEIGHT * 66];
+    const cover = clamp(cloudCover / 100 * 0.58, 0, 0.58);
+    const blend = Math.max(cover, weatherCodeIsStorm(code) ? 0.18 : 0);
+    const rgb = base.map((value, index) => value + (overcast[index] - value) * blend);
+    return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+  }
+
   function drawIslandShadow(centerX, lowerY, lightAltitude, lightHourAngle, cloudCover, code) {
     // Constant, like the size: weather decides how the sky looks, not how dark the plate's shadow
     // is. Opacity used to follow the light level, so the same shadow faded from 0.14 by day to 0.02
     // at night -- it looked as if the shadow shrank and then disappeared, when all that changed was
     // its weight. Only its position moves now, driven by where the light comes from.
-    const opacity = ISLAND_BODY_SHADOW_OPACITY;
+    //
+    // A fixed alpha is not enough on its own, and that is why the shadow vanished after dark: alpha
+    // blends toward the shade colour, so it removes a fixed FRACTION of the backdrop. The same 0.14
+    // takes 25 levels off bright daytime ground but only 9 at night, where there is barely any light
+    // left to take away. The silhouette keeps one colour and one size, and the alpha is solved for a
+    // target amount of contrast instead of being fixed, so the shade lands with the same visible
+    // weight in every weather and at every hour.
+    const floorLuminance = islandFloorLuminance(cloudCover, code);
+    const opacity = clamp(SHADOW_CONTRAST_TARGET / Math.max(floorLuminance - SHADOW_LUMINANCE, 1),
+      0.06, 0.45);
     // Light from the eastern half pushes the shadow west, light from the western half pushes it
     // east; the term eases through zero across solar noon and is capped at 30% of the plate's own
     // width. It has to be capped rather than proportional to the light's height: the projection is
@@ -1201,7 +1234,7 @@
     ctx.restore();
   }
 
-  function drawPixelPolygon(points, color) {
+  function drawPixelPolygon(points, color, alpha) {
     if (points.length < 3) return;
     const minY = Math.min(...points.map(point => point[1]));
     const maxY = Math.max(...points.map(point => point[1]));
@@ -1231,8 +1264,12 @@
         }
       }
     }
+    // Optional alpha keeps the caller's colour and only varies how much of it lands, which is what
+    // lets a shadow hold one visual weight across wildly different backdrops.
+    ctx.globalAlpha = alpha === undefined ? 1 : clamp(alpha, 0, 1);
     ctx.fillStyle = color;
     ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
   function appendPixelLine(first, second, widthCells) {
@@ -1283,8 +1320,8 @@
     drawPixelPolyline([first, second], color, false, width);
   }
 
-  function drawIslandPolygon(points, fill, outline) {
-    drawPixelPolygon(points, fill);
+  function drawIslandPolygon(points, fill, outline, alpha) {
+    drawPixelPolygon(points, fill, alpha);
     if (outline) drawPixelPolyline(points, outline, true, 0.5);
   }
 
