@@ -182,21 +182,6 @@
       '000000031111110001111110000000',
       '000000001111100000000000000000'],
   ];
-  // The straw-hat farmer, restyled to this palette. Drawn only when the asset is ready, so a slow
-  // or missing image leaves the panel untouched instead of throwing.
-  // The farmer is an 18x24 sprite where one sprite pixel is exactly one scene unit, so his scale is
-  // written in scene units rather than in tile fractions.
-  const CHARACTER_SOURCE = 'assets/farmer-26x34.png';
-  const CHARACTER_TILE = 'E5';
-  const CHARACTER_UNIT = 1.15;
-  let characterImage = null;
-  function loadCharacter() {
-    const image = new Image();
-    image.onload = () => { characterImage = image; };
-    image.src = CHARACTER_SOURCE;
-  }
-  loadCharacter();
-
   const ISLAND_TILES = [];
   function rebuildIslandProjection() {
     islandTileHeight = ISLAND_TILE_WIDTH * Math.sin(islandCameraElevation * Math.PI / 180);
@@ -1508,60 +1493,12 @@
     const topRim = blendColor(palette.grassSeam, palette.grassDark, 0.32);
     drawSmoothIslandLine(leftX, middleY, centerX, bottomY, topRim, 0.60);
     drawSmoothIslandLine(centerX, bottomY, rightX, middleY, topRim, 0.60);
-    drawTileCharacter(sunAltitude, cloudCover, code);
     ctx.restore();
   }
 
   // The farmer stands on one named tile, so his feet sit on that tile's centre and his body rises
   // over the tiles behind it. He is drawn after the island surface but before the clouds, so a
   // cloud crossing the plate passes in front of him exactly as it does over the grass.
-  // The island is shaded toward the sky's tint as the light changes, so the farmer has to follow or
-  // he stays sunlit at midnight. The tint is baked into an offscreen copy and cached, because doing
-  // it per frame would mean a composite pass sixty times a second.
-  const characterTintCache = new Map();
-  function tintedCharacter(tint, mix, dim) {
-    const key = `${tint}|${mix.toFixed(3)}|${dim.toFixed(3)}`;
-    if (characterTintCache.has(key)) return characterTintCache.get(key);
-    const canvas = document.createElement('canvas');
-    canvas.width = characterImage.width;
-    canvas.height = characterImage.height;
-    const layer = canvas.getContext('2d');
-    layer.imageSmoothingEnabled = false;
-    layer.drawImage(characterImage, 0, 0);
-    layer.globalCompositeOperation = 'source-atop';
-    layer.fillStyle = tint;
-    layer.globalAlpha = mix;
-    layer.fillRect(0, 0, canvas.width, canvas.height);
-    // The sky tint alone only shifts hue; without this the farmer stayed as bright at midnight as
-    // at noon, because the night tint is a light wash at 18 percent.
-    if (dim > 0.001) {
-      layer.fillStyle = '#000000';
-      layer.globalAlpha = dim;
-      layer.fillRect(0, 0, canvas.width, canvas.height);
-    }
-    characterTintCache.set(key, canvas);
-    return canvas;
-  }
-
-  function drawTileCharacter(sunAltitude, cloudCover, code) {
-    if (!characterImage) return;
-    const tile = ISLAND_TILES.find(entry => entry.coordinate === CHARACTER_TILE);
-    if (!tile) return;
-    const atmosphere = skyAtmosphere(sunAltitude, cloudCover, code);
-    const daylight = clamp((sunAltitude + 8) / 28, 0, 1);
-    // In daylight the sprite is already the right weight, so the tint and the dim both scale down as
-    // the sun rises. Applying the full atmosphere wash all day was the other half of why he read as
-    // a dark blob: it darkened a sprite that needed no darkening.
-    const tintMix = atmosphere.islandMix * (1 - daylight * 0.55);
-    const sprite = tintedCharacter(atmosphere.tint, tintMix, (1 - daylight) * 0.55);
-    // One unit per sprite pixel, then half of what the old traced sprite took up.
-    const height = characterImage.height * CHARACTER_UNIT;
-    const width = characterImage.width * CHARACTER_UNIT;
-    const feetX = tile.x;
-    const feetY = tile.y + islandTileHeight * 0.18;
-    ctx.drawImage(sprite, feetX - width / 2, feetY - height, width, height);
-  }
-
   function rebuildParticles(sceneWeather) {
     const code = sceneWeather.weatherCode;
     const drizzle = weatherCodeIsDrizzle(code);
