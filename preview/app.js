@@ -182,9 +182,31 @@
       '000000031111110001111110000000',
       '000000001111100000000000000000'],
   ];
-  // The sea starts at the horizon and runs to the bottom of the frame. Everything below the island
-  // used to be a soft haze, which left the plate floating over nothing.
-  const SEA_HORIZON_Y = HEIGHT / 2;
+  // The sea is a diamond the same shape and size as the island's own top face, not a band across the
+  // frame: it is the water the plate hangs over, so its outline mirrors the plate. It sits just under
+  // the island's body so the whole diamond is visible with the plate above it.
+  // The diamond has to fit inside the frame on both axes, or its side corners get cut off and it
+  // stops reading as a diamond. Half-width is therefore capped by WIDTH, and the centre is dropped
+  // only as far as the bottom vertex allows, which leaves the upper half tucked behind the island
+  // the way water under a floating plate should be.
+  const SEA_SCALE = 1.34;
+  function seaSurfacePoints() {
+    const centerX = WIDTH / 2;
+    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2 * SEA_SCALE;
+    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 2 * SEA_SCALE;
+    // The diamond sits below the plate's front edge so the whole shape is visible under the island
+    // rather than being swallowed by it.
+    // Dropped so the upper half tucks behind the plate and the lower half shows as water under it,
+    // which is the composition the plate's own shadow needs in order to land somewhere.
+    const centerY = islandTop + ISLAND_GRID_SIZE * islandTileHeight + ISLAND_DEPTH
+      - halfHeight * 0.15;
+    return [
+      [centerX, centerY - halfHeight],
+      [centerX + halfWidth, centerY],
+      [centerX, centerY + halfHeight],
+      [centerX - halfWidth, centerY]
+    ];
+  }
   const SEA_PALETTES = {
     night: { light: '#2b3c53', mid: '#1a2a3f', deep: '#121e2e', ripple: '#3a5273' },
     twilight: { light: '#6d5f7c', mid: '#4e4763', deep: '#3a344b', ripple: '#8a7a92' },
@@ -716,57 +738,88 @@
   // Three flat bands with a scatter of one-unit ripples: the same limited-palette language as the
   // island, which uses three greens and no outlines. Ripples get shorter and denser toward the
   // viewer, which is what sells the depth without a gradient.
-  function drawSea(sunAltitude, cloudCover, code, sunAzimuth) {
+  function drawSea(sunAltitude, cloudCover, code, sunHourAngle) {
     const atmosphere = skyAtmosphere(sunAltitude, cloudCover, code);
     const palette = SEA_PALETTES[Object.keys(SEA_PALETTES).find(key => atmosphere
       === SKY_ATMOSPHERES[key]) || 'day'];
-    const top = SEA_HORIZON_Y;
-    const depth = HEIGHT - top;
-    // The band edge sits past the island's lowest point, so the deep tone is actually visible in
-    // front of the plate instead of being hidden behind it.
-    const midBand = top + depth * 0.72;
+    const points = seaSurfacePoints();
+    const left = points[3], top = points[0], right = points[1], bottom = points[2];
+    const centerY = top[1] + (bottom[1] - top[1]) / 2;
+    const halfHeight = (bottom[1] - top[1]) / 2;
+
+    // Base tone over the whole diamond.
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(top[0], top[1]);
+    ctx.lineTo(right[0], right[1]);
+    ctx.lineTo(bottom[0], bottom[1]);
+    ctx.lineTo(left[0], left[1]);
+    ctx.closePath();
+    ctx.clip();
     ctx.fillStyle = palette.mid;
-    ctx.fillRect(0, top, WIDTH, depth);
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    // The near half is the deeper tone, split along the diamond's own middle line, so the divide
+    // follows the shape instead of cutting across it.
     ctx.fillStyle = palette.deep;
-    ctx.fillRect(0, midBand, WIDTH, HEIGHT - midBand);
-    // A light line at the horizon and a second at the band edge: without them the water is one flat
-    // wall and reads as a continuation of the sky rather than as a surface.
-    ctx.fillStyle = palette.light;
-    ctx.fillRect(0, top, WIDTH, 1.5);
-    ctx.fillStyle = palette.light;
-    ctx.fillRect(0, midBand, WIDTH, 1);
+    ctx.beginPath();
+    ctx.moveTo(left[0], left[1]);
+    ctx.lineTo(right[0], right[1]);
+    ctx.lineTo(bottom[0], bottom[1]);
+    ctx.closePath();
+    ctx.fill();
+    // Ripples only inside the diamond, and only where they still have room before the edge.
     SEA_RIPPLES.forEach(ripple => {
-      const y = top + 4 + ripple.t * (depth - 8);
-      // Skip the band edge, so no ripple straddles two tones and reads as a seam.
-      if (Math.abs(y - midBand) < 1.5) return;
-      const shade = ripple.bright ? palette.light : palette.ripple;
-      ctx.fillStyle = shade;
-      ctx.fillRect(Math.round(ripple.x), Math.round(y), Math.round(ripple.length), 1);
+      const y = top[1] + 3 + ripple.t * (bottom[1] - top[1] - 6);
+      const span = (1 - Math.abs(y - centerY) / halfHeight);
+      const halfAt = (right[0] - left[0]) / 2 * Math.max(0, span);
+      const x = top[0] + (ripple.x - WIDTH / 2) / (WIDTH / 2) * halfAt;
+      if (Math.abs(x - top[0]) > halfAt - ripple.length) return;
+      ctx.fillStyle = ripple.bright ? palette.light : palette.ripple;
+      ctx.fillRect(Math.round(x), Math.round(y), Math.round(ripple.length), 1);
     });
-    // The island used to cast onto bare ground. Over water that becomes a dark patch on the
-    // surface, so it is drawn here, behind the island, instead of on the floor.
-    drawIslandReflection(sunAltitude, sunAzimuth, cloudCover, code);
+    ctx.restore();
+
+    // A light rim around the diamond, drawn after the clip is released so the edge stays crisp.
+    ctx.strokeStyle = palette.light;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(top[0], top[1]);
+    ctx.lineTo(right[0], right[1]);
+    ctx.lineTo(bottom[0], bottom[1]);
+    ctx.lineTo(left[0], left[1]);
+    ctx.closePath();
+    ctx.stroke();
+
+    // The plate's shadow lands ON this surface, which is the point of the whole change.
+    drawIslandReflection(sunAltitude, cloudCover, code, sunHourAngle);
   }
 
-  // A squashed copy of the island's own cast shadow, sitting on the water just under the plate.
-  // Same colour and opacity model as before, so it still reads as the same light.
-  function drawIslandReflection(sunAltitude, sunAzimuth, cloudCover, code) {
+  // The plate's own cast shadow, falling on the water. It keeps the island's shadow language: the
+  // same colour, the same opacity model and the same sideways drift with the light, but it is
+  // squashed onto the sea diamond and pinned to that surface so it never floats off it.
+  function drawIslandReflection(sunAltitude, cloudCover, code, sunHourAngle) {
     const directLight = clamp((sunAltitude + 8) / 28, 0, 1);
     let cloudFilter = 1 - clamp(cloudCover / 100 * 0.45, 0, 0.45);
     if (weatherCodeIsStorm(code)) cloudFilter *= 0.82;
     const opacity = (0.10 + directLight * 0.30) * cloudFilter
-      * ISLAND_BODY_SHADOW_OPACITY_SCALE * 0.75;
+      * ISLAND_BODY_SHADOW_OPACITY_SCALE;
     if (opacity <= 0.002) return;
-    const centreX = WIDTH / 2;
-    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4 * ISLAND_BODY_SHADOW_SCALE;
-    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 4 * ISLAND_BODY_SHADOW_SCALE * 0.55;
-    const centreY = islandTop + ISLAND_GRID_SIZE * islandTileHeight * 0.62;
+    // Pinned just below the plate's own front edge. Measured from the sea diamond's centre it landed
+    // past the bottom of the frame, and measured from the diamond's middle it sat behind the island,
+    // so in both cases the shadow existed but was never on screen.
+    const centerY = islandTop + ISLAND_GRID_SIZE * islandTileHeight + ISLAND_DEPTH + 9;
+    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4 * ISLAND_BODY_SHADOW_SCALE * 0.8;
+    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 8;
+    // Light from the eastern half pushes the patch west, exactly as the island's own shadow does.
+    const progress = celestialProgress(sunHourAngle);
+    const drift = (0.5 - progress) * 2 * ISLAND_BODY_SHADOW_DRIFT;
+    const centerX = WIDTH / 2 - drift;
     ctx.fillStyle = `rgba(10,20,32,${opacity})`;
     ctx.beginPath();
-    ctx.moveTo(centreX, centreY - halfHeight);
-    ctx.lineTo(centreX + halfWidth, centreY);
-    ctx.lineTo(centreX, centreY + halfHeight);
-    ctx.lineTo(centreX - halfWidth, centreY);
+    ctx.moveTo(centerX, centerY - halfHeight);
+    ctx.lineTo(centerX + halfWidth, centerY);
+    ctx.lineTo(centerX, centerY + halfHeight);
+    ctx.lineTo(centerX - halfWidth, centerY);
     ctx.closePath();
     ctx.fill();
   }
@@ -1432,6 +1485,16 @@
     const floorY = groundShadowY();
     const toFloor = Math.max(0, floorY - islandTop);
     ctx.save();
+    // Everything below is water, so a ground shadow that lands outside the sea diamond would be a
+    // smudge floating on empty sky. The clip keeps every one of them on a surface.
+    const sea = seaSurfacePoints();
+    ctx.beginPath();
+    ctx.moveTo(sea[0][0], sea[0][1]);
+    ctx.lineTo(sea[1][0], sea[1][1]);
+    ctx.lineTo(sea[2][0], sea[2][1]);
+    ctx.lineTo(sea[3][0], sea[3][1]);
+    ctx.closePath();
+    ctx.clip();
     clouds.forEach(cloud => {
       // Only clouds that are not already shading the plate draw down here, so nothing is doubled.
       if (cloudOverlapsIsland(cloud)) return;
@@ -1681,7 +1744,8 @@
       sun.altitude, sun.hourAngleDegrees);
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     drawSky(skyNow, sun, sceneWeather.weatherCode, sceneWeather.cloudCover);
-    drawSea(sun.altitude, sceneWeather.cloudCover, sceneWeather.weatherCode, sun.azimuth);
+    drawSea(sun.altitude, sceneWeather.cloudCover, sceneWeather.weatherCode,
+      sun.hourAngleDegrees);
     ctx.save();
     ctx.beginPath();
     // The sky band runs from above the frame down to the horizon; clipping at half height used
