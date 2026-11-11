@@ -19,4 +19,5 @@
     <string name="open_app_accessibility">Buka %1$s</string>
     <string name="app_launch_failed">Aplikasi tidak dapat dibuka.</string>
     <string name="app_info_failed">Info aplikasi tidak tersedia.</string>
+    <string name="world_button">World</string>
 </resources>

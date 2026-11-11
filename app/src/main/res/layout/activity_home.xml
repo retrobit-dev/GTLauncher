@@ -56,6 +56,21 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/world_button"
+                android:layout_width="wrap_content"
+                android:layout_height="42dp"
+                android:layout_marginEnd="12dp"
+                android:background="@drawable/bg_home_badge"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:text="@string/world_button"
+                android:textColor="@color/launcher_text"
+                android:textSize="13sp" />
+
+            <TextView
                 android:id="@+id/app_count"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

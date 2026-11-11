@@ -2,6 +2,7 @@ package dev.retrobit.gtlauncher;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.role.RoleManager;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
@@ -43,6 +44,11 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import org.json.JSONException;
+
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -58,6 +64,8 @@ public class HomeActivity extends Activity {
     private static final int COLOR_TEXT = Color.rgb(244, 246, 244);
     private static final int COLOR_ICON_BACKGROUND = Color.rgb(31, 39, 42);
     private static final int LOCATION_PERMISSION_REQUEST = 721;
+    private static final int IMPORT_WORLD_REQUEST = 722;
+    private static final int MAX_WORLD_BYTES = 64 * 1024;
     private static final String WEATHER_SETTINGS_PREFS = "weather_settings";
     private static final long WEATHER_REFRESH_INTERVAL_MS = 30L * 60L * 1000L;
     private static final long WEATHER_CACHE_MAX_AGE_MS = 6L * 60L * 60L * 1000L;
@@ -68,6 +76,7 @@ public class HomeActivity extends Activity {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService appLoader = Executors.newSingleThreadExecutor();
     private final ExecutorService weatherLoader = Executors.newSingleThreadExecutor();
+    private final ExecutorService worldLoader = Executors.newSingleThreadExecutor();
     private final List<AppEntry> apps = new ArrayList<>();
     private final float[] rotationMatrix = new float[9];
     private final float[] remappedRotationMatrix = new float[9];
@@ -88,6 +97,7 @@ public class HomeActivity extends Activity {
 
     private View homeScreen;
     private WeatherSkyView skyView;
+    private WorldStore worldStore;
     private SensorManager sensorManager;
     private Sensor rotationSensor;
     private WeatherSnapshot currentWeather;
@@ -164,6 +174,8 @@ public class HomeActivity extends Activity {
         homeScreen = findViewById(R.id.home_screen);
         skyView = (WeatherSkyView) homeScreen;
         skyView.setLocation(FALLBACK_LATITUDE, FALLBACK_LONGITUDE);
+        worldStore = new WorldStore(getSharedPreferences("worlds", MODE_PRIVATE));
+        applyActiveWorld();
         drawerScreen = findViewById(R.id.app_drawer_screen);
         appCountView = findViewById(R.id.app_count);
         emptyView = findViewById(R.id.empty_message);
@@ -192,6 +204,7 @@ public class HomeActivity extends Activity {
         });
         findViewById(R.id.drawer_back).setOnClickListener(view -> closeDrawer());
         defaultHomeButton.setOnClickListener(view -> requestDefaultLauncher());
+        findViewById(R.id.world_button).setOnClickListener(view -> showWorldDialog());
 
         searchView.addTextChangedListener(new TextWatcher() {
             @Override
@@ -262,7 +275,135 @@ public class HomeActivity extends Activity {
         mainHandler.removeCallbacksAndMessages(null);
         appLoader.shutdownNow();
         weatherLoader.shutdownNow();
+        worldLoader.shutdownNow();
         super.onDestroy();
+    }
+
+    private void applyActiveWorld() {
+        try {
+            WorldStore.World world = worldStore.activeWorld();
+            skyView.setWorldIslandTint(world == null ? null : Color.parseColor(world.color));
+            skyView.setWorldHouse(world != null && world.showHouse, world == null ? 0 : world.houseColumn,
+                    world == null ? 0 : world.houseRow, world == null ? 1.0f : (float) world.houseScale,
+                    world == null ? "S" : world.houseFacing);
+            skyView.setWorldCharacter(world != null && world.showCharacter,
+                    world == null ? 4 : world.characterColumn, world == null ? 4 : world.characterRow,
+                    world == null ? 1.0f : (float) world.characterScale,
+                    world == null ? "S" : world.characterFacing);
+        } catch (JSONException | IllegalArgumentException error) {
+            skyView.setWorldIslandTint(null);
+            skyView.setWorldHouse(false, 0, 0, 1.0f, "S");
+            skyView.setWorldCharacter(false, 4, 4, 1.0f, "S");
+            Toast.makeText(this, "Data world tidak dapat dibaca; data lama tidak ditimpa.",
+                    Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showWorldDialog() {
+        final List<WorldStore.World> worlds;
+        try {
+            worlds = worldStore.list();
+        } catch (JSONException error) {
+            new AlertDialog.Builder(this).setTitle("World")
+                    .setMessage("Data world tidak dapat dibaca. Data lama tidak akan ditimpa.")
+                    .setPositiveButton("Tutup", null).show();
+            return;
+        }
+        String[] labels = new String[worlds.size() + 1];
+        labels[0] = "Base World";
+        String active = worldStore.activeId();
+        int selected = 0;
+        for (int i = 0; i < worlds.size(); i++) {
+            WorldStore.World world = worlds.get(i);
+            labels[i + 1] = world.name + (world.description.isEmpty() ? "" : " — " + world.description);
+            if (world.id.equals(active)) selected = i + 1;
+        }
+        new AlertDialog.Builder(this).setTitle("Pilih world")
+                .setSingleChoiceItems(labels, selected, (dialog, which) -> {
+                    String id = which == 0 ? WorldStore.BASE_ID : worlds.get(which - 1).id;
+                    try {
+                        if (!worldStore.select(id)) throw new IllegalStateException("save failed");
+                        applyActiveWorld();
+                        dialog.dismiss();
+                        closeDrawer();
+                    } catch (JSONException | IllegalStateException error) {
+                        Toast.makeText(this, "Pilihan world tidak dapat disimpan.", Toast.LENGTH_LONG).show();
+                    }
+                }).setNeutralButton("Impor world", (dialog, which) -> chooseWorldFile())
+                .setNegativeButton("Tutup", null).show();
+    }
+
+    private void chooseWorldFile() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        // Some document providers label JSON as application/octet-stream. Show all files,
+        // then validate the selected content before making any changes.
+        try {
+            startActivityForResult(intent, IMPORT_WORLD_REQUEST);
+        } catch (ActivityNotFoundException error) {
+            Toast.makeText(this, "Tidak ada pemilih berkas di perangkat ini.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != IMPORT_WORLD_REQUEST || resultCode != RESULT_OK || data == null
+                || data.getData() == null) return;
+        final Uri uri = data.getData();
+        worldLoader.execute(() -> {
+            try (InputStream input = getContentResolver().openInputStream(uri);
+                 ByteArrayOutputStream bytes = new ByteArrayOutputStream()) {
+                if (input == null) throw new IllegalArgumentException("Empty stream");
+                byte[] buffer = new byte[4096];
+                int read;
+                while ((read = input.read(buffer)) != -1) {
+                    if (bytes.size() + read > MAX_WORLD_BYTES) throw new IllegalArgumentException("Too large");
+                    bytes.write(buffer, 0, read);
+                }
+                String json = new String(bytes.toByteArray(), StandardCharsets.UTF_8);
+                if (json.startsWith("\uFEFF")) json = json.substring(1);
+                WorldStore.World world = WorldStore.parseExport(json);
+                mainHandler.post(() -> {
+                    if (isFinishing() || isDestroyed()) return;
+                    confirmWorldImport(world);
+                });
+            } catch (Exception error) {
+                mainHandler.post(() -> {
+                    if (!isFinishing() && !isDestroyed())
+                        Toast.makeText(this, "Berkas world tidak valid atau tidak dapat dibaca.", Toast.LENGTH_LONG).show();
+                });
+            }
+        });
+    }
+
+    private void confirmWorldImport(WorldStore.World world) {
+        try {
+            WorldStore.World existing = null;
+            for (WorldStore.World item : worldStore.list()) {
+                if (item.id.equals(world.id)) { existing = item; break; }
+            }
+            if (existing == null) { saveImportedWorld(world); return; }
+            new AlertDialog.Builder(this).setTitle("Ganti world?")
+                    .setMessage("World dengan ID yang sama sudah ada: " + existing.name
+                            + ". Ganti isinya dengan data dari berkas?")
+                    .setPositiveButton("Ganti", (dialog, which) -> saveImportedWorld(world))
+                    .setNegativeButton("Batal", null).show();
+        } catch (JSONException error) {
+            Toast.makeText(this, "Data world tidak dapat dibaca; data lama tidak ditimpa.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void saveImportedWorld(WorldStore.World world) {
+        try {
+            if (!worldStore.upsertAndSelect(world)) throw new IllegalStateException("save failed");
+            applyActiveWorld();
+            closeDrawer();
+            Toast.makeText(this, "World " + world.name + " disimpan dan dibuka.", Toast.LENGTH_LONG).show();
+        } catch (JSONException | IllegalStateException error) {
+            Toast.makeText(this, "World tidak dapat disimpan; data lama tidak ditimpa.", Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override

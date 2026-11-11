@@ -2,10 +2,12 @@ package dev.retrobit.gtlauncher;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.PointF;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Shader;
@@ -13,6 +15,7 @@ import android.util.AttributeSet;
 import android.view.View;
 
 import java.util.Random;
+import java.util.Arrays;
 
 /** Full-screen, non-scrolling pixel-art sky driven by local astronomy and weather data. */
 public final class WeatherSkyView extends View {
@@ -62,19 +65,18 @@ public final class WeatherSkyView extends View {
     private static final float SUN_RISE_X = 284.0f;
     private static final float SUN_SET_X = 36.0f;
     private static final float ARC_TILT = 9.0f;
-    // Langit Pulau -- the island's sky frame. A 9 x 9 lattice hung above the plate, in the plate's
-    // own silhouette at the plate's own size with the same tile pitch. It is the frame the island
-    // reads the sky against: the ground grid the celestial arc, the clouds and the weather are
-    // measured on, which is why it is named for the sky rather than for the ground it is shaped
-    // like. It hangs as a sheet instead of being inked into the grass.
-    private static final boolean LANGIT_PULAU_ENABLED = true;
-    private static final float LANGIT_PULAU_LINE = 0.5f;
-    private static final float LANGIT_PULAU_INSET = 1.5f;
-    private static final float LANGIT_PULAU_ALPHA = 0.38f;
-    private static final float LANGIT_PULAU_EDGE_ALPHA = 0.62f;
-    // Screen units, so the frame clears the plate by a fixed distance. 53 is the highest lift that
-    // keeps the whole frame on screen.
-    private static final float LANGIT_PULAU_LIFT = 75.0f;
+    // Island-shaped sky frames. Langit Awan is 50 scene units below Langit Matahari;
+    // cloud and Sun movement remain unchanged until their new paths are implemented.
+    private static final boolean LANGIT_MATAHARI_ENABLED = false;
+    private static final boolean LANGIT_AWAN_ENABLED = false;
+    private static final float LANGIT_LINE = 0.5f;
+    private static final float LANGIT_INSET = 1.5f;
+    private static final float LANGIT_ALPHA = 0.38f;
+    private static final float LANGIT_EDGE_ALPHA = 0.62f;
+    private static final float LANGIT_MATAHARI_LIFT = 100.0f;
+    private static final float LANGIT_AWAN_LIFT = 50.0f;
+    private static final float LANGIT_MATAHARI_WEST_SHIFT = 20.0f;
+    private static final float LANGIT_AWAN_WEST_SHIFT = 10.0f;
     // The moon only appears once the sun has dropped below this altitude.
     private static final double MOON_VISIBLE_BELOW_SUN = -2.0;
     private static final int GLOW_STEPS = 14;
@@ -102,10 +104,8 @@ public final class WeatherSkyView extends View {
     // the ratio it was traced at instead of stretching into a flat smudge.
     // One cloud per step cleared; the first step is 0 so even a clear sky keeps one cloud.
     private static final int[] CLOUD_COVER_STEPS = {0, 32, 58, 82};
-    // Half the previous sprite size. The previous cell ran 1.45-2.10 scene units, so half is
-    // 0.73-1.05; 1 is the only whole-pixel step in that band at RENDER_SCALE 2, and it keeps every
-    // cell edge on the art grid. A fractional cell left antialiased seams across the cloud face.
-    private static final float CLOUD_CELL = 1.0f;
+    // Both axes are two thirds of the previous cloud size; shadows use the same cell size.
+    private static final float CLOUD_CELL = 2.0f / 3.0f;
     // Slots are absolute scene units so the widest sprite still clears both frame edges. The last
     // two sit above the island so their shadows fall on its top surface.
     private static final float[] CLOUD_SLOT_X = {56.0f, 264.0f, 118.0f, 206.0f};
@@ -257,6 +257,19 @@ public final class WeatherSkyView extends View {
     private double longitude = 111.3476;
     private float headingDegrees;
     private boolean animationEnabled = true;
+    private Integer worldIslandTint;
+    private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage;
+    private boolean showHouse;
+    private int houseColumn = 0, houseRow = 0;
+    private float houseScale = 1.0f;
+    private String houseFacing = "S";
+    private String characterFacing = "S";
+    private boolean showCharacter;
+    private int characterColumn = 4, characterRow = 4;
+    private float characterScale = 1.0f;
+    private double cloudEastTravel, cloudNorthTravel;
+    private double cloudLastElapsed = Double.NaN;
+    private double cloudWindCardinal = Double.NaN;
     private Raindrop[] raindrops = new Raindrop[0];
 
     public WeatherSkyView(Context context) {
@@ -287,6 +300,10 @@ public final class WeatherSkyView extends View {
         renderBitmapPaint.setDither(false);
         sceneBitmap = Bitmap.createBitmap(RENDER_WIDTH, RENDER_HEIGHT, Bitmap.Config.ARGB_8888);
         sceneCanvas = new Canvas(sceneBitmap);
+        mainCharacter = BitmapFactory.decodeResource(getResources(), R.drawable.main_character);
+        mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.main_character_back);
+        houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house);
+        houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_back);
         setContentDescription("Langit pixel art dan pulau terapung yang mengikuti waktu dan cuaca");
     }
 
@@ -312,6 +329,129 @@ public final class WeatherSkyView extends View {
         // device heading is shifted to keep the sky aligned with real compass bearings.
         this.headingDegrees = (float) normalizeDegrees(headingDegrees - COMPASS_FRAME_OFFSET_DEGREES);
         postInvalidateOnAnimation();
+    }
+
+    /** Set the imported world's island tint; null restores the unmodified Base World. */
+    public void setWorldIslandTint(Integer color) {
+        worldIslandTint = color;
+        invalidate();
+    }
+
+    /** Set the character's world-specific tile and scale from the imported world. */
+    public void setWorldCharacter(boolean visible, int column, int row, float scale, String facing) {
+        showCharacter = visible;
+        characterFacing = facing;
+        characterColumn = Math.max(0, Math.min(8, column));
+        characterRow = Math.max(0, Math.min(8, row));
+        characterScale = Math.max(0.5f, Math.min(1.5f, scale));
+        invalidate();
+    }
+
+    public void setWorldHouse(boolean visible, int column, int row, float scale, String facing) {
+        showHouse = visible; houseColumn = Math.max(0, Math.min(6, column));
+        houseRow = Math.max(0, Math.min(6, row)); houseScale = Math.max(0.5f, Math.min(1.5f, scale));
+        houseFacing = facing; invalidate();
+    }
+
+    // Shared projection for surface objects; future types provide their footprint and height.
+    private static float shadowCross(PointF a, PointF b, PointF c) {
+        return (b.x-a.x)*(c.y-a.y) - (b.y-a.y)*(c.x-a.x);
+    }
+
+    private void drawObjectShadow(Canvas canvas, float x, float y, float width, float depth,
+            float height, float[] light) {
+        float h = Math.max(0, Math.min(height, LANGIT_MATAHARI_LIFT * 0.8f));
+        float ratio = h / (LANGIT_MATAHARI_LIFT - h);
+        float dx = (x - light[0]) * ratio;
+        float dy = (y - light[1] - LANGIT_MATAHARI_LIFT) * ratio;
+        PointF[] points = new PointF[] {new PointF(x, y-depth/2), new PointF(x+width/2, y),
+            new PointF(x, y+depth/2), new PointF(x-width/2, y),
+            new PointF(x+dx, y-depth/2+dy), new PointF(x+width/2+dx, y+dy),
+            new PointF(x+dx, y+depth/2+dy), new PointF(x-width/2+dx, y+dy)};
+        Arrays.sort(points, (a, b) -> { int c = Float.compare(a.x, b.x); return c != 0 ? c : Float.compare(a.y, b.y); });
+        PointF[] hull = new PointF[16]; int n = 0;
+        for (PointF point : points) {
+            while (n >= 2 && shadowCross(hull[n-2], hull[n-1], point) <= 0) n--;
+            hull[n++] = point;
+        }
+        int lowerSize = n;
+        for (int i = points.length - 2; i >= 0; i--) {
+            PointF point = points[i];
+            while (n > lowerSize && shadowCross(hull[n-2], hull[n-1], point) <= 0) n--;
+            hull[n++] = point;
+        }
+        if (n < 4) return;
+        float minX = hull[0].x, maxX = minX, minY = hull[0].y, maxY = minY;
+        for (int i = 1; i < n-1; i++) {
+            minX = Math.min(minX, hull[i].x); maxX = Math.max(maxX, hull[i].x);
+            minY = Math.min(minY, hull[i].y); maxY = Math.max(maxY, hull[i].y);
+        }
+        float shrink = Math.min(0.5f, Math.min(width * 0.5f / Math.max(maxX - minX, 0.000001f),
+                height * 0.5f / Math.max(maxY - minY, 0.000001f)));
+        Path path = new Path();
+        path.moveTo(x + (hull[0].x - x) * shrink, y + (hull[0].y - y) * shrink);
+        for (int i = 1; i < n-1; i++)
+            path.lineTo(x + (hull[i].x - x) * shrink, y + (hull[i].y - y) * shrink);
+        path.close(); canvas.drawPath(path, paint);
+    }
+
+    private void drawSurfaceObjectShadows(Canvas canvas, SkyMath.Position light, double cloudCover, int code) {
+        int save = canvas.save();
+        setClipIslandSurface(canvas);
+        paint.setStyle(Paint.Style.FILL);
+        paint.setColor(Color.argb((int) (255 * Math.max(0.28,
+                cloudShadowOpacity(Math.max(light.altitudeDegrees, 0), cloudCover, code) * 1.8)), 12, 23, 40));
+        float[] lightPoint = sunPlanePosition(light.hourAngleDegrees);
+        Bitmap houseSprite = ("N".equals(houseFacing) || "W".equals(houseFacing)) ? houseBackImage : houseImage;
+        if (showHouse && houseSprite != null) {
+            float x = SCENE_WIDTH / 2.0f + (houseColumn - houseRow) * ISLAND_TILE_WIDTH / 2.0f;
+            float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (houseColumn + houseRow + 2) * ISLAND_TILE_HEIGHT / 2.0f
+                    + 1.25f * ISLAND_TILE_HEIGHT * houseScale;
+            drawObjectShadow(canvas, x, y, 70 * houseScale, ISLAND_TILE_HEIGHT * 2.5f * houseScale, 67 * houseScale, lightPoint);
+        }
+        Bitmap sprite = ("N".equals(characterFacing) || "W".equals(characterFacing)) ? mainCharacterBack : mainCharacter;
+        if (showCharacter && sprite != null) {
+            float x = SCENE_WIDTH / 2.0f + (characterColumn - characterRow) * ISLAND_TILE_WIDTH / 2.0f;
+            float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (characterColumn + characterRow) * ISLAND_TILE_HEIGHT / 2.0f;
+            drawObjectShadow(canvas, x, y, 13.5f * characterScale, 5 * characterScale, 25 * characterScale, lightPoint);
+        }
+        canvas.restoreToCount(save);
+    }
+
+    private void drawHouse(Canvas canvas) {
+        boolean back = "N".equals(houseFacing) || "W".equals(houseFacing);
+        boolean mirror = "N".equals(houseFacing) || "E".equals(houseFacing);
+        Bitmap sprite = back ? houseBackImage : houseImage;
+        if (!showHouse || sprite == null) return;
+        float x = SCENE_WIDTH / 2.0f + (houseColumn - houseRow) * ISLAND_TILE_WIDTH / 2.0f;
+        float bottom = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (houseColumn + houseRow + 2) * ISLAND_TILE_HEIGHT / 2.0f
+                + 1.25f * ISLAND_TILE_HEIGHT * houseScale;
+        paint.setColor(Color.WHITE); paint.setAlpha(255); paint.setFilterBitmap(false);
+        int save = canvas.save();
+        if (mirror) canvas.scale(-1, 1, x, 0);
+        canvas.drawBitmap(sprite, null, new RectF(x - 35 * houseScale, bottom - 67 * houseScale, x + 35 * houseScale, bottom), paint);
+        canvas.restoreToCount(save);
+    }
+
+    private void drawMainCharacter(Canvas canvas, double motionTime) {
+        boolean back = "N".equals(characterFacing) || "W".equals(characterFacing);
+        boolean mirror = "N".equals(characterFacing) || "E".equals(characterFacing);
+        Bitmap sprite = back ? mainCharacterBack : mainCharacter;
+        if (!showCharacter || sprite == null) return;
+        float x = SCENE_WIDTH / 2.0f + (characterColumn - characterRow) * ISLAND_TILE_WIDTH / 2.0f;
+        float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f
+                + (characterColumn + characterRow) * ISLAND_TILE_HEIGHT / 2.0f;
+        float width = 13.5f * characterScale;
+        float idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5f : 0.0f;
+        float height = 25.0f * characterScale + idle;
+        paint.setColor(Color.WHITE);
+        paint.setAlpha(255);
+        paint.setFilterBitmap(false);
+        int save = canvas.save();
+        if (mirror) canvas.scale(-1, 1, x, 0);
+        canvas.drawBitmap(sprite, null, new RectF(x - width / 2, y - height,
+                x + width / 2, y), paint);
+        canvas.restoreToCount(save);
     }
 
     public void setAnimationEnabled(boolean enabled) {
@@ -344,6 +484,10 @@ public final class WeatherSkyView extends View {
         // The sky band runs from above the frame down to the horizon; clipping at half height
         // used to behead any cloud tall enough to reach past it.
         scene.clipRect(0, -SCENE_HEIGHT, SCENE_WIDTH, SCENE_HEIGHT * 2);
+        // A virtual Moon continues to cast shadows while it is below the horizon.
+        SkyMath.Position shadowLight = sun.altitudeDegrees <= MOON_VISIBLE_BELOW_SUN ? moon : sun;
+        float sunY = sunPlanePosition(shadowLight.hourAngleDegrees)[1];
+        drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, true);
         drawSun(scene, sun, cloudCover, motionSeconds);
         drawMoon(scene, moon, motionSeconds, sun.altitudeDegrees);
         drawFog(scene, code);
@@ -351,14 +495,17 @@ public final class WeatherSkyView extends View {
         scene.restoreToCount(skySave);
         // Ground shadows go down before the island so the plate covers them, and before the clouds
         // so no sprite is ever painted over by a shadow it did not come from.
-        drawGroundCloudShadows(scene, cloudStates, sun.altitudeDegrees, sun.hourAngleDegrees,
-                cloudCover, code);
+        drawProjectedCloudShadows(scene, cloudStates, shadowLight.altitudeDegrees,
+                shadowLight.hourAngleDegrees, cloudCover, code, false);
         drawFloatingIsland(scene, sun.altitudeDegrees, sun.azimuthDegrees,
                 sun.hourAngleDegrees, cloudCover, code, moon, cloudStates);
+        drawSurfaceObjectShadows(scene, shadowLight, cloudCover, code);
+        drawHouse(scene);
+        drawMainCharacter(scene, motionSeconds);
         // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
         // cloud can hang below the horizon line, and clipping it there hid the cloud while its
         // shadow still showed on the grass. Edge clamping already keeps every sprite in frame.
-        drawClouds(scene, cloudStates, sun.altitudeDegrees, code);
+        drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, false);
         drawPrecipitation(scene, elapsedSeconds);
         scene.restoreToCount(save);
 
@@ -504,95 +651,22 @@ public final class WeatherSkyView extends View {
      * colour, the same opacity model and the same squash, so a shadow on the ground reads as the
      * same material as the one under the island rather than as a second effect.
      */
-    private void drawGroundCloudShadows(Canvas canvas, CloudState[] clouds, double sunAltitude,
-            double sunHourAngle, double cloudCover, int code) {
+    private void drawProjectedCloudShadows(Canvas canvas, CloudState[] clouds, double sunAltitude,
+            double sunHourAngle, double cloudCover, int code, boolean clipToIsland) {
         if (clouds.length == 0) return;
-        double altitude = Math.max(sunAltitude, 0.0);
-        double elevationSine = Math.max(Math.sin(altitude * Math.PI / 180.0), 0.35);
-        double opacity = cloudShadowOpacity(altitude, cloudCover, code);
-        if (opacity <= 0.002) return;
-        double throwFactor = clamp(1.0 / elevationSine, 0.6, 2.2);
-        double lean = cloudShadowLean(sunHourAngle);
-        float floorY = groundShadowY();
-        float toFloor = Math.max(0.0f, floorY - ISLAND_TOP);
-        for (CloudState cloud : clouds) {
-            // Only clouds that are not already shading the plate draw down here, so nothing is
-            // doubled.
-            if (cloudOverlapsIsland(cloud)) continue;
-            float sceneWidth = cloud.shape[0].length() * cloud.cell;
-            float sceneHeight = cloud.shape.length * cloud.cell;
-            float offsetX = (float) clamp(lean * throwFactor * 1.35,
-                    -sceneWidth * 1.6, sceneWidth * 1.6);
-            float heightAboveFloor = Math.max(0.0f, cloud.screenBottomY - floorY) + toFloor;
-            // On the floor the throw reads much flatter than on the plate, because the floor is
-            // further from the light. Held close to the island shadow's line so the two read as one
-            // ground plane; drifting any further down left a lone smudge near the bottom edge,
-            // disconnected from everything.
-            float centreX = cloud.screenCenterX + offsetX;
-            float centreY = (float) clamp(floorY + heightAboveFloor * 0.055 * throwFactor,
-                    floorY - 8.0, floorY + 20.0);
-            paint.setColor(Color.argb((int) (255.0 * opacity * 0.82), 12, 23, 40));
-            drawGroundSilhouette(canvas, cloud.shape, centreX, centreY,
-                    sceneWidth * CLOUD_SHADOW_SCALE * 1.25f, sceneHeight * CLOUD_SHADOW_SCALE * 0.52f);
-        }
-    }
-
-    private void drawCloudShadowsOnIsland(Canvas canvas, CloudState[] clouds, double sunAltitude,
-            double sunHourAngle, double cloudCover, int code) {
-        if (clouds.length == 0) return;
-        double altitude = Math.max(sunAltitude, 0.0);
-        double elevationSine = Math.max(Math.sin(altitude * Math.PI / 180.0), 0.35);
-        double opacity = cloudShadowOpacity(altitude, cloudCover, code);
-        if (opacity <= 0.002) return;
-        double lean = cloudShadowLean(sunHourAngle);
-        // A low light throws a shadow further along the ground, so the horizontal lean and the
-        // forward throw are driven by the same factor. The cap is wider than the lean's used to be,
-        // because the forward distance is what makes dawn and dusk read differently from noon.
-        double throwFactor = clamp(1.0 / elevationSine, 0.6, 2.2);
+        double opacity = cloudShadowOpacity(Math.max(sunAltitude, 0.0), cloudCover, code);
+        float[] sun = sunPlanePosition(sunHourAngle);
+        float ratio = LANGIT_MATAHARI_LIFT / (LANGIT_MATAHARI_LIFT - LANGIT_AWAN_LIFT);
         int save = canvas.save();
-        setClipIslandSurface(canvas);
+        if (clipToIsland) setClipIslandSurface(canvas);
+        paint.setColor(Color.argb((int) (255.0 * opacity), 12, 23, 40));
         for (CloudState cloud : clouds) {
-            float sceneWidth = cloud.shape[0].length() * cloud.cell;
-            float sceneHeight = cloud.shape.length * cloud.cell;
-            // Only a cloud actually crossing the island casts onto it. That is also what keeps
-            // the casting rule easy to read: the sprite dims and its shadow appears together.
-            if (!cloudOverlapsIsland(cloud)) continue;
-            float centreX = cloud.screenCenterX
-                    + (float) clamp(lean * throwFactor, -sceneWidth, sceneWidth);
-            // The shadow lands FORWARD of the cloud, which is lower on the screen: the light is
-            // above, the plate is below, so the ground point has to be beneath the sprite rather
-            // than behind it. How far forward grows with the cloud's height above the plate and
-            // with how low the light is. The term this replaced subtracted the cloud's arc height,
-            // which pulled the shadow upward as the cloud climbed, so a high cloud shaded the far
-            // half of the plate while its own sprite sat in front of that shading.
-            float heightAbovePlate = Math.max(0.0f, cloud.screenBottomY - ISLAND_TOP);
-            float thrownY = cloud.screenBottomY
-                    + heightAbovePlate * 0.55f * (float) throwFactor;
-            // The plate is a diamond, so the room a ground point has shrinks toward every corner.
-            // Scaling the offset vector as a whole, rather than each axis on its own, keeps the
-            // shadow inside the plate without straightening the throw: a per-axis clamp froze the
-            // shadow on a flat line the moment it reached the edge, which read as the shadow
-            // refusing to move.
-            float halfPlateW = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f;
-            float halfPlateH = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f;
-            float halfShadow = sceneHeight * CLOUD_SHADOW_SCALE / 2.0f;
-            float inset = 1.0f - (float) clamp(halfShadow / halfPlateH, 0.0, 0.8);
-            float offsetX = centreX - SCENE_WIDTH / 2.0f;
-            float offsetY = thrownY - ISLAND_CENTER_Y;
-            float reach = Math.abs(offsetX) / (halfPlateW * inset)
-                    + Math.abs(offsetY) / (halfPlateH * inset);
-            if (reach > 1.0f) {
-                offsetX /= reach;
-                offsetY /= reach;
-            }
-            float shadowX = SCENE_WIDTH / 2.0f + offsetX;
-            float centreY = ISLAND_CENTER_Y + offsetY;
-            // The shadow is the cloud's own silhouette, shrunk. A diamond plate read as a generic
-            // smudge that said nothing about which cloud threw it; the traced outline keeps the
-            // lobes.
-            paint.setColor(Color.argb((int) (255.0 * opacity), 12, 23, 40));
-            drawGroundSilhouette(canvas, cloud.shape, shadowX, centreY,
-                    sceneWidth * CLOUD_SHADOW_SCALE, sceneHeight * CLOUD_SHADOW_SCALE);
+            float cloudY = cloud.screenBottomY - cloud.shape.length * cloud.cell / 2;
+            float x = sun[0] + ratio * (cloud.screenCenterX - sun[0]);
+            float y = sun[1] + ratio * (cloudY - sun[1]);
+            drawGroundSilhouette(canvas, cloud.shape, x, y,
+                    cloud.shape[0].length() * cloud.cell * CLOUD_SHADOW_SCALE,
+                    cloud.shape.length * cloud.cell * CLOUD_SHADOW_SCALE);
         }
         canvas.restoreToCount(save);
     }
@@ -624,8 +698,9 @@ public final class WeatherSkyView extends View {
                     * (0.35 + moon.illumination * 0.65), 0.0, 90.0);
             lightHourAngle = moon.hourAngleDegrees;
         }
-        // The island's cast shadow used to fall on the floor. That floor is water now, so the shadow
-        // is drawn there as a reflection instead; drawing it here too left two overlapping diamonds.
+        // Keep the island's original, independent shadow model; cloud ray projection does not
+        // position or resize the island shadow. The island remains close to its own shadow.
+        drawIslandShadow(canvas, centerX, lowerY, lightAltitude, lightHourAngle, cloudCover, code);
 
         // One rounded, uninterrupted soil slab sits inside the wider grass cap.
         drawIslandSoilBody(canvas, soilLeftX, centerX, soilRightX,
@@ -680,10 +755,23 @@ public final class WeatherSkyView extends View {
                         column, row, palette, sunlight);
             }
         }
-        drawCloudShadowsOnIsland(canvas, cloudStates, sunAltitude, sunHourAngle,
-                cloudCover, code);
-        if (LANGIT_PULAU_ENABLED) {
-            drawLangitPulau(canvas);
+        SkyMath.Position shadowLight = sunAltitude <= MOON_VISIBLE_BELOW_SUN ? moon : null;
+        drawProjectedCloudShadows(canvas, cloudStates,
+                shadowLight != null ? shadowLight.altitudeDegrees : sunAltitude,
+                shadowLight != null ? shadowLight.hourAngleDegrees : sunHourAngle,
+                cloudCover, code, true);
+        // Draw the upper frame last where the two projections overlap.
+        if (LANGIT_AWAN_ENABLED) {
+            float axisLength = (float) Math.hypot(ISLAND_TILE_WIDTH, ISLAND_TILE_HEIGHT);
+            drawLangitFrame(canvas, LANGIT_AWAN_LIFT, 0xFFFFFFFF,
+                    -LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_WIDTH / axisLength,
+                    -LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_HEIGHT / axisLength);
+        }
+        if (LANGIT_MATAHARI_ENABLED) {
+            float axisLength = (float) Math.hypot(ISLAND_TILE_WIDTH, ISLAND_TILE_HEIGHT);
+            drawLangitFrame(canvas, LANGIT_MATAHARI_LIFT, 0xFF0B1420,
+                    -LANGIT_MATAHARI_WEST_SHIFT * ISLAND_TILE_WIDTH / axisLength,
+                    -LANGIT_MATAHARI_WEST_SHIFT * ISLAND_TILE_HEIGHT / axisLength);
         }
         int topRim = blend(palette.grassSeam, palette.grassDark, 0.32);
         drawSmoothIslandLine(canvas, leftX, middleY, centerX, bottomY, topRim, 0.60f);
@@ -708,12 +796,8 @@ public final class WeatherSkyView extends View {
         double floorLuminance = floorLuminance(cloudCover, code);
         double opacity = clamp(SHADOW_CONTRAST_TARGET
                 / Math.max(floorLuminance - SHADOW_LUMINANCE, 1.0), 0.06, 0.45);
-        // Light from the eastern half pushes the shadow west, light from the western half pushes it
-        // east; the term eases through zero across solar noon and is capped at a fifth of the
-        // plate's own width so the shadow always stays tucked under it.
-        double progress = celestialProgress(lightHourAngle);
-        float lean = (float) clamp((0.5 - progress) * 2.0, -1.0, 1.0);
-        float shadowCenterX = centerX - lean * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.10f;
+        // The island shadow stays centred beneath the island, independent of celestial motion.
+        float shadowCenterX = centerX;
         float shadowCenterY = lowerY - ISLAND_DEPTH - ISLAND_BODY_SHADOW_RISE;
         // One size, never a function of the light or the weather.
         float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4.0f
@@ -764,6 +848,14 @@ public final class WeatherSkyView extends View {
         soil = blend(soil, atmosphere.tint, atmosphere.islandMix * 0.22);
         int soilLight = blend(soil, Color.rgb(190, 106, 26), 0.20);
         int soilDark = blend(soil, Color.rgb(58, 27, 7), 0.50);
+        if (worldIslandTint != null) {
+            grass = blend(grass, worldIslandTint, 0.55);
+            grassDark = blend(grassDark, worldIslandTint, 0.55);
+            grassTileSoftFern = blend(grassTileSoftFern, worldIslandTint, 0.55);
+            grassTileFernSage = blend(grassTileFernSage, worldIslandTint, 0.55);
+            grassSeam = blend(grassSeam, worldIslandTint, 0.55);
+            grassWall = blend(grassWall, worldIslandTint, 0.55);
+        }
         return new IslandPalette(grass, grassDark, grassTileSoftFern, grassTileFernSage,
                 grassSeam, grassWall, soilLight, soilDark);
     }
@@ -995,7 +1087,7 @@ public final class WeatherSkyView extends View {
     }
 
     /**
-     * Draws Langit Pulau: a dark 9 x 9 lattice hung above the plate. Every line is a tile seam, so it is
+     * Draws either sky frame: a 9 x 9 lattice hung above the plate. Every line is a tile seam, so it is
      * addressed in the projection's own (column, row) coordinates: integer values land on tile
      * centres, which means the seam between two tiles sits at a half value. The plate is the
      * diamond |a| + |b| = 9 with a = column - row and b = column + row - 8, which is why each seam
@@ -1005,16 +1097,16 @@ public final class WeatherSkyView extends View {
      * than a separate diamond that merely lines up. Round joins matter: the rim's four vertices
      * turn by about 53 degrees and a miter join there shoots a spike outside the plate.
      */
-    private void drawLangitPulau(Canvas canvas) {
+    private void drawLangitFrame(Canvas canvas, float lift, int color, float offsetX, float offsetY) {
         float centerX = SCENE_WIDTH / 2.0f;
         float centerY = ISLAND_CENTER_Y;
         float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f;
         float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f;
-        float line = LANGIT_PULAU_LINE;
-        float inset = LANGIT_PULAU_INSET;
+        float line = LANGIT_LINE;
+        float inset = LANGIT_INSET;
         int save = canvas.save();
         // Screen units, so the overlay clears the plate by a fixed distance.
-        canvas.translate(0, -LANGIT_PULAU_LIFT);
+        canvas.translate(offsetX, offsetY - lift);
         // Clip the lattice a whole unit inside the plate; see the inset constant.
         islandClipPath.reset();
         traceSmoothIslandDiamondPath(islandClipPath, centerX, centerY,
@@ -1037,15 +1129,15 @@ public final class WeatherSkyView extends View {
         islandPolyPaint.setStrokeWidth(line);
         islandPolyPaint.setStrokeCap(Paint.Cap.BUTT);
         islandPolyPaint.setStrokeJoin(Paint.Join.ROUND);
-        islandPolyPaint.setColor(0xFF0B1420);
-        islandPolyPaint.setAlpha(Math.round(LANGIT_PULAU_ALPHA * 255));
+        islandPolyPaint.setColor(color);
+        islandPolyPaint.setAlpha(Math.round(LANGIT_ALPHA * 255));
         canvas.drawPath(grid, islandPolyPaint);
 
         Path rim = gridPath;
         rim.reset();
         traceSmoothIslandDiamondPath(rim, centerX, centerY,
                 halfWidth - inset - line / 2.0f, halfHeight - inset - line / 2.0f);
-        islandPolyPaint.setAlpha(Math.round(LANGIT_PULAU_EDGE_ALPHA * 255));
+        islandPolyPaint.setAlpha(Math.round(LANGIT_EDGE_ALPHA * 255));
         canvas.drawPath(rim, islandPolyPaint);
 
         islandPolyPaint.setAlpha(255);
@@ -1303,11 +1395,9 @@ public final class WeatherSkyView extends View {
                          double elapsedSeconds) {
         if (sun.altitudeDegrees <= -1.0) return;
         int[] palette = sunPalette(sun.altitudeDegrees, cloudCover);
-        float centerX = Math.round(mapCelestialX(sun.hourAngleDegrees) / RENDER_CELL)
-                * RENDER_CELL;
-        float centerY = Math.round(mapCelestialY(sun.altitudeDegrees, sun.hourAngleDegrees)
-                / RENDER_CELL)
-                * RENDER_CELL;
+        float[] position = sunPlanePosition(sun.hourAngleDegrees);
+        float centerX = Math.round(position[0] / RENDER_CELL) * RENDER_CELL;
+        float centerY = Math.round(position[1] / RENDER_CELL) * RENDER_CELL;
         int save = canvas.save();
         paint.setAlpha((int) Math.round(255.0
                 * clamp((sun.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0)));
@@ -1334,11 +1424,9 @@ public final class WeatherSkyView extends View {
         double nightFall = clamp((MOON_VISIBLE_BELOW_SUN - sunAltitude) / 4.0, 0.0, 1.0);
         if (nightFall <= 0.0) return;
         int[] palette = moonPalette();
-        float centerX = Math.round(mapCelestialX(moon.hourAngleDegrees) / RENDER_CELL)
-                * RENDER_CELL;
-        float centerY = Math.round(mapCelestialY(moon.altitudeDegrees, moon.hourAngleDegrees)
-                / RENDER_CELL)
-                * RENDER_CELL;
+        float[] position = sunPlanePosition(moon.hourAngleDegrees);
+        float centerX = Math.round(position[0] / RENDER_CELL) * RENDER_CELL;
+        float centerY = Math.round(position[1] / RENDER_CELL) * RENDER_CELL;
         float visibility = (float) (clamp((moon.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0)
                 * nightFall);
         int save = canvas.save();
@@ -1464,90 +1552,55 @@ public final class WeatherSkyView extends View {
         return Integer.toUnsignedLong(value) / 4294967296.0;
     }
 
-    /**
-     * Clouds are laid out by slot rather than advected across a physical sky field: the panel is a
-     * stylised diorama, so composition matters more than meteorology.
-     */
-    private double cloudDriftSpeed(double windSpeed, double windDirection) {
-        // No base term: still air has to leave the clouds where they are. There used to be a
-        // constant 0.55 units per second here, so a dead calm drifted as fast as a light breeze.
-        double crosswind = Math.max(0.0, windSpeed) * cloudScreenWindFactor(windDirection);
-        return Math.min(crosswind * CLOUD_DRIFT_WIND_GAIN, CLOUD_DRIFT_MAX);
-    }
-
-    /**
-     * Wind blows AWAY from the direction it is reported from, and that bearing has to be rotated by
-     * the device heading exactly like the Sun is: using the raw compass bearing ignored which way
-     * the phone is pointing, so turning the device moved the Sun but left the clouds alone.
-     */
-    private static double cloudDowndraftBearing(double windDirection) {
-        return normalizeDegrees(windDirection + 180.0);
-    }
-
-    /** +1 is travel toward +x, the right of the frame; -1 is leftward. */
-    private int cloudTravelDirection(double windDirection) {
-        double screenBearing = normalizeDegrees(
-                cloudDowndraftBearing(windDirection) - headingDegrees + 180.0);
-        return Math.sin(screenBearing * Math.PI / 180.0) >= 0 ? 1 : -1;
-    }
-
-    /**
-     * On-screen wind strength: only the component across the view counts, because wind blowing
-     * toward or away from the viewer does not move a cloud sideways. A projected compass shows
-     * about half a turn, so a crosswind has to run faster on screen to read as the same wind.
-     */
-    private double cloudScreenWindFactor(double windDirection) {
-        double screenBearing = normalizeDegrees(
-                cloudDowndraftBearing(windDirection) - headingDegrees + 180.0);
-        return Math.abs(Math.sin(screenBearing * Math.PI / 180.0));
-    }
-
-    /** Progress across the frame, measured the same way the celestial arc measures it. */
-    private static double cloudProgress(double centreX) {
-        return clamp((SUN_RISE_X - centreX) / (SUN_RISE_X - SUN_SET_X), 0.0, 1.0);
-    }
-
-    /**
-     * The same dome and the same lean as the Sun's arc, dropped into the cloud band. Keeping the
-     * tilt term identical is what makes the two paths read as parallel rather than merely curved.
-     */
-    private float cloudArcY(double centreX, double offset) {
-        double progress = cloudProgress(centreX);
-        return (float) (CLOUD_ARC_TOP + CLOUD_ARC_RISE * (1.0 - Math.sin(Math.PI * progress))
-                + ARC_TILT * (0.5 - progress) + offset);
+    // The Sun stays on Langit Matahari. The same continuous orbit is used as a virtual
+    // light at night, although the visible Sun is suppressed below the horizon.
+    private float[] sunPlanePosition(double hourAngle) {
+        double a = Math.toRadians(hourAngle);
+        double dx = -40.0 * Math.sin(a);
+        double dy = 15.0 * (1.0 - Math.cos(a));
+        double len = Math.hypot(ISLAND_TILE_WIDTH, ISLAND_TILE_HEIGHT);
+        return new float[] {
+            (float) (SCENE_WIDTH / 2.0 - LANGIT_MATAHARI_WEST_SHIFT * ISLAND_TILE_WIDTH / len
+                    + dx),
+            (float) (ISLAND_CENTER_Y - LANGIT_MATAHARI_LIFT
+                    - LANGIT_MATAHARI_WEST_SHIFT * ISLAND_TILE_HEIGHT / len
+                    + dy)
+        };
     }
 
     private CloudState[] createCloudStates(double elapsedSeconds, double cloudCover,
             double windSpeed, double windDirection, double sunAltitude, double sunHourAngle) {
+        double bearing = normalizeDegrees(windDirection + 180.0);
+        if (windSpeed >= 3.0) {
+            double difference = Double.isNaN(cloudWindCardinal) ? 180.0
+                    : Math.abs((bearing - cloudWindCardinal + 540.0) % 360.0 - 180.0);
+            if (difference > 50.0) {
+                cloudWindCardinal = normalizeDegrees(Math.round(bearing / 90.0) * 90.0);
+            }
+            double delta = Double.isNaN(cloudLastElapsed) ? 0.0
+                    : Math.max(0.0, elapsedSeconds - cloudLastElapsed);
+            double axisLength = Math.hypot(ISLAND_TILE_WIDTH, ISLAND_TILE_HEIGHT) / 2.0;
+            double distance = Math.min(windSpeed * CLOUD_DRIFT_WIND_GAIN, CLOUD_DRIFT_MAX)
+                    * delta / axisLength;
+            cloudEastTravel += Math.sin(Math.toRadians(cloudWindCardinal)) * distance;
+            cloudNorthTravel += Math.cos(Math.toRadians(cloudWindCardinal)) * distance;
+        }
+        cloudLastElapsed = elapsedSeconds;
         int count = cloudCountForCover(cloudCover);
-        if (count == 0) return new CloudState[0];
-        int seed = (int) Math.round(latitude * 37 + longitude * 17) ^ (count * 0x2545f491);
-        int direction = cloudTravelDirection(windDirection);
-        double speed = cloudDriftSpeed(windSpeed, windDirection);
+        int seed = (int) (latitude * 37 + longitude * 17) ^ (count * 0x2545f491);
         CloudState[] clouds = new CloudState[count];
-        for (int index = 0; index < count; index += 1) {
+        double len = Math.hypot(ISLAND_TILE_WIDTH, ISLAND_TILE_HEIGHT);
+        for (int index = 0; index < count; index++) {
             int variant = (int) (cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length);
             String[] shape = CLOUD_SHAPE_VARIANTS[variant];
-            float cell = CLOUD_CELL;
-            float width = shape[0].length() * cell;
-            float height = shape.length * cell;
-            float arcOffset = count == 1
-                    ? 8.0f
-                    : CLOUD_ARC_OFFSETS[index % CLOUD_ARC_OFFSETS.length];
-            // Each cloud starts at its own offset across the frame so they do not travel in a block.
-            float startX = CLOUD_SLOT_X[index % CLOUD_SLOT_X.length]
-                    + (float) ((cloudHash(seed, index, 4) - 0.5) * 40.0);
-            double travel = direction * speed * elapsedSeconds * (0.85 + index * 0.06);
-            // Wrapping over frame width plus sprite width keeps re-entry seamless: the sprite is
-            // fully clear of one edge before it appears at the other.
-            double span = SCENE_WIDTH + width + CLOUD_EDGE_INSET * 2.0;
-            double travelled = ((startX + travel + width + CLOUD_EDGE_INSET) % span + span) % span;
-            float centreX = (float) (travelled - width * 0.5 - CLOUD_EDGE_INSET);
-            // Ride the arc, but never rise above the sun.
-            float sunClear = (float) mapCelestialY(sunAltitude, sunHourAngle) + CLOUD_SUN_CLEARANCE;
-            float bottomY = Math.max(cloudArcY(centreX, arcOffset) + height, sunClear + height)
-                    + (float) ((cloudHash(seed, index, 3) - 0.5) * 3.0);
-            clouds[index] = new CloudState(shape, cell, centreX, bottomY);
+            double east = ((cloudHash(seed, index, 2) * 9 + cloudEastTravel) % 9 + 9) % 9 - 4.5;
+            double north = ((cloudHash(seed, index, 3) * 9 + cloudNorthTravel) % 9 + 9) % 9 - 4.5;
+            float x = (float) (SCENE_WIDTH / 2.0 - LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_WIDTH / len
+                    + (east + north) * ISLAND_TILE_WIDTH / 2.0);
+            float y = (float) (ISLAND_CENTER_Y - LANGIT_AWAN_LIFT
+                    - LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_HEIGHT / len
+                    + (east - north) * ISLAND_TILE_HEIGHT / 2.0);
+            clouds[index] = new CloudState(shape, CLOUD_CELL, x, y + shape.length * CLOUD_CELL / 2);
         }
         return clouds;
     }
@@ -1602,10 +1655,12 @@ public final class WeatherSkyView extends View {
                 + Math.abs(dy) / (halfHeight + height * 0.5f) <= 1.0f;
     }
 
-    private void drawClouds(Canvas canvas, CloudState[] clouds, double sunAltitude, int code) {
+    private void drawClouds(Canvas canvas, CloudState[] clouds, double sunAltitude, int code,
+            float sunY, boolean behind) {
         if (clouds.length == 0) return;
         int[] palette = cloudPalette(sunAltitude, code);
         for (CloudState cloud : clouds) {
+            if ((cloud.screenBottomY - cloud.shape.length * cloud.cell / 2 < sunY) != behind) continue;
             // A cloud crossing the island drops to partial opacity, so whatever sits on the tiles
             // is not hidden behind it.
             int previousAlpha = paint.getAlpha();
@@ -1614,17 +1669,6 @@ public final class WeatherSkyView extends View {
             // on, which read as the cloud flickering rather than as depth.
             int layerAlpha = (int) (255 * CLOUD_ISLAND_ALPHA);
             drawCloudRows(canvas, cloud, palette, layerAlpha);
-            // Draw the wrapped copy too, so a cloud straddling an edge stays continuous instead of
-            // being sliced in half while it leaves one side and arrives at the other.
-            float width = cloud.shape[0].length() * cloud.cell;
-            float span = SCENE_WIDTH + width + CLOUD_EDGE_INSET * 2.0f;
-            if (cloud.screenCenterX - width * 0.5f < 0.0f) {
-                drawCloudRows(canvas, cloud.withCentreX(cloud.screenCenterX + span), palette,
-                        layerAlpha);
-            } else if (cloud.screenCenterX + width * 0.5f > SCENE_WIDTH) {
-                drawCloudRows(canvas, cloud.withCentreX(cloud.screenCenterX - span), palette,
-                        layerAlpha);
-            }
             paint.setAlpha(previousAlpha);
         }
     }

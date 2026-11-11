@@ -1,0 +1,251 @@
+package dev.retrobit.gtlauncher;
+
+import android.content.SharedPreferences;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Iterator;
+import java.util.UUID;
+
+/** Browser-exported world data stored locally on this Android device. */
+final class WorldStore {
+    private static final String WORLDS_KEY = "worlds_v1";
+    private static final String ACTIVE_KEY = "active_world_v1";
+    static final String BASE_ID = "base";
+    private final SharedPreferences prefs;
+
+    static final class World {
+        final String id, name, description, color;
+        final boolean showCharacter, showHouse, hasHouse;
+        final int houseColumn, houseRow;
+        final double houseScale;
+        final String houseFacing;
+        final int formatVersion;
+        final int characterColumn, characterRow;
+        final double characterScale;
+        final String characterFacing;
+        World(String id, String name, String description, String color,
+                boolean showCharacter, int column, int row, double scale, String facing,
+                boolean hasHouse, boolean showHouse, int houseColumn, int houseRow, double houseScale, String houseFacing, int formatVersion) {
+            this.id = id; this.name = name; this.description = description; this.color = color;
+            this.showCharacter = showCharacter; this.characterColumn = column;
+            this.characterRow = row; this.characterScale = scale; this.characterFacing = facing;
+            this.hasHouse = hasHouse; this.showHouse = showHouse; this.houseColumn = houseColumn;
+            this.houseRow = houseRow; this.houseScale = houseScale; this.houseFacing = houseFacing;
+            this.formatVersion = formatVersion;
+        }
+    }
+
+    WorldStore(SharedPreferences prefs) { this.prefs = prefs; }
+
+    private static String requiredString(JSONObject object, String key) throws JSONException {
+        Object value = object.get(key);
+        if (!(value instanceof String)) throw new JSONException("Invalid " + key);
+        return (String) value;
+    }
+
+    private static World parseWorld(JSONObject object, String id, int formatVersion) throws JSONException {
+        String name = requiredString(object, "name").trim();
+        String description = requiredString(object, "description").trim();
+        String color = requiredString(object, "color");
+        if (name.isEmpty() || name.length() > 48 || description.length() > 160
+                || !color.matches("#[0-9a-fA-F]{6}")) throw new JSONException("Invalid world fields");
+        boolean visible = false, house = false, houseVisible = false;
+        int houseColumn = 0, houseRow = 0;
+        double houseScale = 1.0;
+        String houseFacing = "S";
+        int column = 4, row = 4;
+        double scale = 1.0;
+        String facing = "S";
+        if (object.has("objects")) {
+            Object value = object.get("objects");
+            if (!(value instanceof JSONArray)) throw new JSONException("Invalid objects");
+            JSONArray objects = (JSONArray) value;
+            if (objects.length() > (formatVersion >= 5 ? 2 : 1)) throw new JSONException("Unsupported objects");
+            for (int i = 0; i < objects.length(); i++) {
+                JSONObject character = objects.getJSONObject(i);
+                String type = requiredString(character, "type");
+                if ("house".equals(type)) {
+                    if (formatVersion < 5 || house) throw new JSONException("Unsupported house");
+                    if (formatVersion >= 6) {
+                        requireOnlyKeys(character, "type", "column", "row", "scale", "facing", "visible");
+                        Object hc = character.get("column"), hr = character.get("row"), hs = character.get("scale"), hv = character.get("visible");
+                        if (!(hc instanceof Number) || !(hr instanceof Number) || !(hs instanceof Number) || !(hv instanceof Boolean))
+                            throw new JSONException("Invalid house geometry");
+                        double c = ((Number) hc).doubleValue(), r = ((Number) hr).doubleValue();
+                        houseScale = ((Number) hs).doubleValue();
+                        houseFacing = requiredString(character, "facing");
+                        if (c != Math.rint(c) || r != Math.rint(r) || c < 0 || c > 6 || r < 0 || r > 6
+                                || !Double.isFinite(houseScale) || houseScale < 0.5 || houseScale > 1.5
+                                || !(houseFacing.equals("N") || houseFacing.equals("E") || houseFacing.equals("S") || houseFacing.equals("W")))
+                            throw new JSONException("Invalid house geometry");
+                        houseColumn = (int) c; houseRow = (int) r; houseVisible = (Boolean) hv;
+                    } else {
+                        requireOnlyKeys(character, "type", "column", "row");
+                        Object hc = character.get("column"), hr = character.get("row");
+                        if (!(hc instanceof Number) || !(hr instanceof Number)
+                                || ((Number) hc).doubleValue() != 0 || ((Number) hr).doubleValue() != 0)
+                            throw new JSONException("Unsupported house location");
+                        houseVisible = true;
+                    }
+                    house = true; continue;
+                }
+                if (visible || !"character".equals(type)) throw new JSONException("Unsupported object");
+                requireOnlyKeys(character, "type", "column", "row", "scale", "facing");
+                if (formatVersion >= 4) {
+                    facing = requiredString(character, "facing");
+                    if (!facing.equals("N") && !facing.equals("E") && !facing.equals("S") && !facing.equals("W"))
+                        throw new JSONException("Invalid character direction");
+                } else if (character.has("facing")) throw new JSONException("Unexpected direction");
+                if (!"character".equals(requiredString(character, "type"))) throw new JSONException("Unsupported object");
+                Object col = character.get("column"), r = character.get("row"), size = character.get("scale");
+                if (!(col instanceof Number) || !(r instanceof Number) || !(size instanceof Number))
+                    throw new JSONException("Invalid character geometry");
+                double colValue = ((Number) col).doubleValue(), rowValue = ((Number) r).doubleValue();
+                scale = ((Number) size).doubleValue();
+                if (colValue != Math.rint(colValue) || rowValue != Math.rint(rowValue)
+                        || colValue < 0 || colValue > 8 || rowValue < 0 || rowValue > 8
+                        || !Double.isFinite(scale) || scale < 0.5 || scale > 1.5)
+                    throw new JSONException("Invalid character geometry");
+                column = (int) colValue; row = (int) rowValue; visible = true;
+            }
+        }
+        return new World(id, name, description, color, visible, column, row, scale, facing,
+                house, houseVisible, houseColumn, houseRow, houseScale, houseFacing, formatVersion);
+    }
+
+    private static void requireOnlyKeys(JSONObject object, String... allowed) throws JSONException {
+        Iterator<String> keys = object.keys();
+        while (keys.hasNext()) {
+            String key = keys.next();
+            boolean found = false;
+            for (String item : allowed) if (item.equals(key)) found = true;
+            if (!found) throw new JSONException("Unsupported field: " + key);
+        }
+    }
+
+    static World parseExport(String json) throws JSONException {
+        JSONObject root = new JSONObject(json);
+        if (!"gtlauncher-world".equals(requiredString(root, "format"))
+                || !(root.get("version") instanceof Number)
+                || !(root.get("world") instanceof JSONObject)) {
+            throw new JSONException("Unsupported world format");
+        }
+        double version = ((Number) root.get("version")).doubleValue();
+        JSONObject object = root.getJSONObject("world");
+        if (version == 1.0) {
+            // Legacy exports had no stable identifier; reject unknown fields rather than discard them.
+            requireOnlyKeys(root, "format", "version", "world");
+            requireOnlyKeys(object, "name", "description", "color");
+            return parseWorld(object, UUID.randomUUID().toString(), 1);
+        }
+        if (version != 2.0 && version != 3.0 && version != 4.0 && version != 5.0 && version != 6.0) throw new JSONException("Unsupported world version");
+        requireOnlyKeys(root, "format", "version", "world");
+        requireOnlyKeys(object, "id", "name", "description", "color", "objects");
+        String id = requiredString(object, "id");
+        if (!id.matches("[A-Za-z0-9_-]{1,128}") || BASE_ID.equals(id))
+            throw new JSONException("Invalid world id");
+        Object objects = object.get("objects");
+        if (!(objects instanceof JSONArray) || (version == 2.0 && ((JSONArray) objects).length() != 0))
+            throw new JSONException("Unsupported world objects");
+        return parseWorld(object, id, (int) version);
+    }
+
+    private static int storedVersion(JSONObject item) throws JSONException {
+        if (!item.has("objects")) return 3;
+        Object value = item.get("objects");
+        if (!(value instanceof JSONArray)) throw new JSONException("Invalid objects");
+        JSONArray objects = (JSONArray) value;
+        int version = 3;
+        for (int i = 0; i < objects.length(); i++) {
+            JSONObject obj = objects.getJSONObject(i);
+            if ("house".equals(obj.optString("type"))) version = Math.max(version, obj.has("visible") || obj.has("scale") || obj.has("facing") ? 6 : 5);
+            else if (obj.has("facing")) version = Math.max(version, 4);
+        }
+        return version;
+    }
+
+    List<World> list() throws JSONException {
+        JSONArray array = new JSONArray(prefs.getString(WORLDS_KEY, "[]"));
+        if (array.length() > 1000) throw new JSONException("Too many worlds");
+        List<World> worlds = new ArrayList<>();
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject item = array.getJSONObject(i);
+            String id = requiredString(item, "id");
+            if (id.isEmpty() || BASE_ID.equals(id)) throw new JSONException("Invalid world id");
+            for (World previous : worlds) if (previous.id.equals(id)) throw new JSONException("Duplicate world id");
+            worlds.add(parseWorld(item, id, storedVersion(item)));
+        }
+        return worlds;
+    }
+
+    String activeId() { return prefs.getString(ACTIVE_KEY, BASE_ID); }
+
+    World activeWorld() throws JSONException {
+        String id = activeId();
+        for (World world : list()) if (world.id.equals(id)) return world;
+        return null; // Base World (or the removed built-in Home) has the base appearance
+    }
+
+    boolean select(String id) throws JSONException {
+        boolean found = BASE_ID.equals(id);
+        for (World world : list()) if (world.id.equals(id)) found = true;
+        return found && prefs.edit().putString(ACTIVE_KEY, id).commit();
+    }
+
+    boolean upsertAndSelect(World world) throws JSONException {
+        List<World> existing = list(); // Never overwrite unreadable stored data.
+        boolean found = false;
+        for (int i = 0; i < existing.size(); i++) {
+            if (existing.get(i).id.equals(world.id)) {
+                // A legacy file cannot express characters: reject rather than silently erase one.
+                if (world.formatVersion < 3 && existing.get(i).showCharacter)
+                    throw new JSONException("Legacy export cannot replace a world with a character");
+                if (world.formatVersion < 4 && existing.get(i).showCharacter
+                        && !"S".equals(existing.get(i).characterFacing))
+                    throw new JSONException("Legacy export cannot replace a rotated character");
+                if (world.formatVersion < 5 && existing.get(i).hasHouse)
+                    throw new JSONException("Legacy export cannot replace a world with a house");
+                if (world.formatVersion == 5 && existing.get(i).hasHouse &&
+                        (existing.get(i).houseColumn != 0 || existing.get(i).houseRow != 0 || existing.get(i).houseScale != 1.0
+                        || !"S".equals(existing.get(i).houseFacing) || !existing.get(i).showHouse))
+                    throw new JSONException("Legacy export cannot replace edited house");
+                existing.set(i, world);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            if (existing.size() >= 1000) throw new JSONException("Too many worlds");
+            existing.add(world);
+        }
+        JSONArray array = new JSONArray();
+        for (World item : existing) {
+            JSONObject object = new JSONObject();
+            object.put("id", item.id); object.put("name", item.name);
+            object.put("description", item.description); object.put("color", item.color);
+            JSONArray objects = new JSONArray();
+            if (item.showCharacter) {
+                JSONObject character = new JSONObject();
+                character.put("type", "character"); character.put("column", item.characterColumn);
+                character.put("row", item.characterRow); character.put("scale", item.characterScale);
+                character.put("facing", item.characterFacing);
+                objects.put(character);
+            }
+            if (item.hasHouse) {
+                JSONObject house = new JSONObject();
+                house.put("type", "house"); house.put("column", item.houseColumn); house.put("row", item.houseRow);
+                house.put("scale", item.houseScale); house.put("facing", item.houseFacing); house.put("visible", item.showHouse);
+                objects.put(house);
+            }
+            object.put("objects", objects);
+            array.put(object);
+        }
+        return prefs.edit().putString(WORLDS_KEY, array.toString())
+                .putString(ACTIVE_KEY, world.id).commit();
+    }
+}

@@ -19,6 +19,22 @@
   canvas.height = HEIGHT * RENDER_SCALE;
   ctx.imageSmoothingEnabled = false;
   ctx.scale(RENDER_SCALE, RENDER_SCALE);
+  // Reference-derived stationary front view; a single logical character shared by worlds.
+  // The per-world visibility flag is currently a preview-only setting.
+  const playerImage = new Image();
+  playerImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
+  playerImage.src = './assets/main-character.png';
+  const playerBackImage = new Image();
+  playerBackImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
+  playerBackImage.src = './assets/main-character-back.png';
+  const houseImage = new Image();
+  houseImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
+  houseImage.src = './assets/house.png';
+  const houseBackImage = new Image();
+  houseBackImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
+  houseBackImage.src = './assets/house-back.png';
+  const PLAYER_WIDTH = 13.5;
+  const PLAYER_HEIGHT = 25;
   const ISLAND_GRID_SIZE = 9;
   const ISLAND_TILE_WIDTH = 28;
   const ISLAND_COLUMN_LABELS = 'ABCDEFGHI';
@@ -70,11 +86,8 @@
   // Cloud cover breakpoints, one cloud per step cleared. The first step is 0 so even a fully
   // clear sky keeps a single cloud in the panel; 82% and up fills every slot.
   const CLOUD_COVER_STEPS = [0, 32, 58, 82];
-  // Half the previous sprite size. The previous cell ran 1.45-2.10 scene units, so half is
-  // 0.73-1.05; 1 is the only whole-pixel step in that band at RENDER_SCALE 2, and it keeps every
-  // cell edge on the art grid. A fractional cell left antialiased seams across the cloud face,
-  // and re-rounding each cell independently made the silhouette zigzag.
-  const CLOUD_CELL = 1;
+  // Two thirds of the previous cloud size, in both axes. Shadows share this cell size.
+  const CLOUD_CELL = 2 / 3;
   // Horizontal slots are absolute scene units, not fractions, so the widest sprite still clears
   // both frame edges.
   const CLOUD_SLOT_X = [56, 264, 118, 206];
@@ -87,21 +100,24 @@
   const CLOUD_ARC_TOP = 46;
   const CLOUD_ARC_RISE = 42;
   const CLOUD_ARC_OFFSETS = [2, 0, 12, 20];
-  // Langit Pulau — the island's sky frame. A 9 x 9 lattice hung above the plate, in the plate's own
-  // silhouette at the plate's own size with the same tile pitch. It is the frame the island reads
-  // the sky against: the ground grid the celestial arc, the clouds and the weather are measured on,
-  // which is why it is named for the sky rather than for the ground it is shaped like. It hangs as
-  // a sheet instead of being inked into the grass, so its footprint stays whole.
-  const LANGIT_PULAU_ENABLED = true;
-  const LANGIT_PULAU_LINE = 0.5;
-  // Distance from the frame's own edge to the outermost ink, so the boundary stroke's outer half
-  // stays inside the shape.
-  const LANGIT_PULAU_INSET = 1.5;
-  const LANGIT_PULAU_ALPHA = 0.38;
-  const LANGIT_PULAU_EDGE_ALPHA = 0.62;
-  // Screen units, so the frame clears the plate by a fixed distance regardless of the plate's own
-  // tilt or zoom. 53 is the highest lift that keeps the whole frame on screen.
-  const LANGIT_PULAU_LIFT = 75;
+  // Two identical island-shaped 9 x 9 frames: Langit Matahari above and Langit Awan
+  // 50 scene units below it. The latter is intended as the future cloud-motion reference;
+  // the existing Sun and cloud motion are unchanged for now.
+  const LANGIT_MATAHARI_ENABLED = false;
+  const LANGIT_AWAN_ENABLED = false;
+  const LANGIT_LINE = 0.5;
+  // Distance from a frame's own edge to the outermost ink, so the boundary stroke's outer half stays
+  // inside the shape.
+  const LANGIT_INSET = 1.5;
+  const LANGIT_ALPHA = 0.38;
+  const LANGIT_EDGE_ALPHA = 0.62;
+  // Screen units, so the frames clear the plate by a fixed distance regardless of the plate's own
+  // tilt or zoom. 53 is the highest lift that keeps a whole frame on screen.
+  const LANGIT_MATAHARI_LIFT = 100;
+  const LANGIT_AWAN_LIFT = 50;
+  // Distance along the projected westward grid axis, in scene units.
+  const LANGIT_MATAHARI_WEST_SHIFT = 20;
+  const LANGIT_AWAN_WEST_SHIFT = 10;
   // A cloud crossing the island turns partly transparent so the tiles behind it stay readable.
   const CLOUD_ISLAND_ALPHA = 0.55;
   // Clouds travel right to left like real wind-driven cloud, cross the whole frame, then re-enter
@@ -261,7 +277,7 @@
   const PREVIEW_MODES = [
     { label: 'Live · Open-Meteo', live: true },
     {
-      label: 'Cerah · Siang', solarHour: 12,
+      label: 'Cerah · Siang', solarHour: 12, sunAtSkyCenter: true,
       weather: { weatherCode: 0, cloudCover: 5, precipitation: 0, rain: 0, windSpeed: 3, windDirection: 90 }
     },
     {
@@ -306,7 +322,16 @@
     if (mode.live || !Number.isFinite(mode.solarHour)) return now;
     const date = new Date(now);
     const utcDayStart = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-    return utcDayStart + (mode.solarHour - location.longitude / 15) * 60 * 60 * 1000;
+    let timestamp = utcDayStart + (mode.solarHour - location.longitude / 15) * 60 * 60 * 1000;
+    // Mean solar noon differs from apparent solar noon. For the clear-day demo, converge on
+    // the Sun's meridian transit so the weather and lighting also reflect its daily peak.
+    if (mode.sunAtSkyCenter) {
+      for (let i = 0; i < 2; i += 1) {
+        const hourAngle = sunPosition(timestamp, location.latitude, location.longitude).hourAngleDegrees;
+        timestamp -= hourAngle / 15 * 60 * 60 * 1000;
+      }
+    }
+    return timestamp;
   }
 
   function updateWeatherModeControls() {
@@ -628,9 +653,10 @@
     const nightFall = clamp((MOON_VISIBLE_BELOW_SUN - sunAltitude) / 4, 0, 1);
     if (nightFall <= 0) return;
     const palette = moonPalette();
-    const centerX = Math.round(mapCelestialX(moon.hourAngleDegrees) / RENDER_CELL) * RENDER_CELL;
-    const centerY = Math.round(mapCelestialY(moon.altitude, moon.hourAngleDegrees)
-      / RENDER_CELL) * RENDER_CELL;
+    const position = sunPlanePosition(moon.hourAngleDegrees);
+    const screen = planeToScreen(position.x, position.y);
+    const centerX = Math.round(screen.x / RENDER_CELL) * RENDER_CELL;
+    const centerY = Math.round(screen.y / RENDER_CELL) * RENDER_CELL;
     const visibility = clamp((moon.altitude + 1) / 3, 0, 1) * nightFall;
     const previousAlpha = ctx.globalAlpha;
     ctx.globalAlpha = previousAlpha * visibility;
@@ -676,12 +702,35 @@
   // Position comes straight from the existing astronomy: azimuth picks the screen column and
   // altitude picks the height inside the upper celestial band. The sun fades in just above
   // the horizon and is gone below it.
+  // Coordinates in the island projection, before island zoom. At night this same continuous
+  // orbit provides a virtual light for cloud shadows, while the visible Sun remains hidden.
+  function sunPlanePosition(hourAngle) {
+    const a = hourAngle * Math.PI / 180;
+    const axisLength = Math.hypot(ISLAND_TILE_WIDTH, islandTileHeight);
+    const dx = -40 * Math.sin(a);
+    const dy = 15 * (1 - Math.cos(a));
+    return {
+      x: WIDTH / 2 - LANGIT_MATAHARI_WEST_SHIFT * ISLAND_TILE_WIDTH / axisLength
+        + dx,
+      y: islandCenterY - LANGIT_MATAHARI_LIFT
+        - LANGIT_MATAHARI_WEST_SHIFT * islandTileHeight / axisLength
+        + dy
+    };
+  }
+
+  function planeToScreen(x, y) {
+    const [anchorX, anchorY] = islandAnchor();
+    return { x: anchorX + (x - anchorX) * islandZoom,
+      y: anchorY + (y - anchorY) * islandZoom };
+  }
+
   function drawSun(sun, cloudCover, motionTime) {
     if (sun.altitude <= -1) return;
     const palette = sunPalette(sun.altitude, cloudCover);
-    const centerX = Math.round(mapCelestialX(sun.hourAngleDegrees) / RENDER_CELL) * RENDER_CELL;
-    const centerY = Math.round(mapCelestialY(sun.altitude, sun.hourAngleDegrees) / RENDER_CELL)
-      * RENDER_CELL;
+    const position = sunPlanePosition(sun.hourAngleDegrees);
+    const screen = planeToScreen(position.x, position.y);
+    const centerX = Math.round(screen.x / RENDER_CELL) * RENDER_CELL;
+    const centerY = Math.round(screen.y / RENDER_CELL) * RENDER_CELL;
     const previousAlpha = ctx.globalAlpha;
     const visibility = clamp((sun.altitude + 1) / 3, 0, 1);
     ctx.globalAlpha = previousAlpha * visibility;
@@ -741,72 +790,47 @@
     return (value >>> 0) / 4294967296;
   }
 
-  // Cloud states are layered by slot rather than advected across a physical sky field: the panel
-  // is a stylised diorama, so composition matters more than meteorology.
-  // No base term: still air has to leave the clouds where they are. There used to be a constant
-  // 0.55 units per second here, so a dead calm drifted as fast as a light breeze.
-  function cloudDriftSpeed(sceneWeather) {
-    const crosswind = Math.max(0, sceneWeather.windSpeed ?? 4)
-      * cloudScreenWindFactor(sceneWeather);
-    return Math.min(crosswind * CLOUD_DRIFT_WIND_GAIN, CLOUD_DRIFT_MAX);
-  }
-
-  // Wind blows AWAY from the direction it is reported from, projected onto the screen. The bearing
-  // is the downwind one, and it has to be rotated by the device heading exactly like the Sun is:
-  // using the raw compass bearing ignored which way the phone is pointing, so turning the device
-  // moved the Sun but left the clouds alone.
-  function cloudDowndraftBearing(sceneWeather) {
-    return normalizeDegrees((sceneWeather.windDirection ?? 90) + 180);
-  }
-
-  // +1 means travelling toward +x, which is the right of the frame; -1 is leftward.
-  function cloudTravelDirection(sceneWeather) {
-    const screenBearing = wrap(cloudDowndraftBearing(sceneWeather)
-      - headingDegrees + 180, 360);
-    const towardEast = Math.sin(screenBearing * Math.PI / 180);
-    return towardEast >= 0 ? 1 : -1;
-  }
-
-  // On-screen wind strength: only the component across the view counts, because wind blowing
-  // toward or away from the viewer does not move a cloud sideways. A projected compass shows about
-  // half a turn, so a crosswind has to run faster on screen to read as the same wind.
-  function cloudScreenWindFactor(sceneWeather) {
-    const screenBearing = wrap(cloudDowndraftBearing(sceneWeather)
-      - headingDegrees + 180, 360);
-    return Math.abs(Math.sin(screenBearing * Math.PI / 180));
-  }
-
-  function createCloudStates(elapsedSeconds, sceneWeather, sunAltitude, sunHourAngle) {
+  // Integrate distance instead of multiplying the latest wind by total elapsed time: changing
+  // weather or axis must not teleport clouds. Hysteresis holds the current cardinal direction
+  // until the new direction is more than 50 degrees away.
+  let cloudEastTravel = 0;
+  let cloudNorthTravel = 0;
+  let cloudLastElapsed = null;
+  let cloudWindCardinal = null;
+  function createCloudStates(elapsedSeconds, sceneWeather) {
+    const speedKmh = Math.max(0, sceneWeather.windSpeed ?? 0);
+    const bearing = normalizeDegrees((sceneWeather.windDirection ?? 0) + 180);
+    if (speedKmh >= 3) {
+      if (cloudWindCardinal === null ||
+          Math.abs(normalizeSigned(bearing - cloudWindCardinal)) > 50) {
+        cloudWindCardinal = wrap(Math.round(bearing / 90) * 90, 360);
+      }
+      const delta = cloudLastElapsed === null ? 0 : Math.max(0, elapsedSeconds - cloudLastElapsed);
+      const axisLength = Math.hypot(ISLAND_TILE_WIDTH, islandTileHeight) / 2;
+      const distance = Math.min(speedKmh * CLOUD_DRIFT_WIND_GAIN, CLOUD_DRIFT_MAX)
+        * delta / axisLength;
+      const angle = cloudWindCardinal * Math.PI / 180;
+      cloudEastTravel += Math.sin(angle) * distance;
+      cloudNorthTravel += Math.cos(angle) * distance;
+    }
+    cloudLastElapsed = elapsedSeconds;
     const count = cloudCountForCover(sceneWeather.cloudCover ?? 0);
-    if (count === 0) return [];
     const seed = Math.trunc(location.latitude * 37 + location.longitude * 17)
       ^ Math.imul(count, 0x2545f491);
-    const direction = cloudTravelDirection(sceneWeather);
-    const speed = cloudDriftSpeed(sceneWeather);
+    const axisLength = Math.hypot(ISLAND_TILE_WIDTH, islandTileHeight);
     const clouds = [];
     for (let index = 0; index < count; index += 1) {
-      const variant = Math.floor(cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length);
-      const shape = CLOUD_SHAPE_VARIANTS[variant];
-      const cell = CLOUD_CELL;
-      const width = shape[0].length * cell;
-      const height = shape.length * cell;
-      const arcOffset = count === 1
-        ? 8
-        : CLOUD_ARC_OFFSETS[index % CLOUD_ARC_OFFSETS.length];
-      // Each cloud starts at its own offset across the frame so they do not travel in a block.
-      const startX = CLOUD_SLOT_X[index % CLOUD_SLOT_X.length]
-        + (cloudHash(seed, index, 4) - 0.5) * 40;
-      const travel = direction * speed * elapsedSeconds * (0.85 + index * 0.06);
-      // Wrapping over frame width plus sprite width keeps the re-entry seamless: the sprite is
-      // fully clear of one edge before it appears at the other.
-      const span = WIDTH + width + CLOUD_EDGE_INSET * 2;
-      const travelled = ((startX + travel + width + CLOUD_EDGE_INSET) % span + span) % span;
-      const centreX = travelled - width * 0.5 - CLOUD_EDGE_INSET;
-      // Ride the arc, but never rise above the sun: a cloud above the light cannot shade anything.
-      const sunClear = mapCelestialY(sunAltitude, sunHourAngle) + CLOUD_SUN_CLEARANCE;
-      const bottomY = Math.max(cloudArcY(centreX, arcOffset) + height,
-        sunClear + height) + (cloudHash(seed, index, 3) - 0.5) * 3;
-      clouds.push({ shape, cell, screenCenterX: centreX, screenBottomY: bottomY });
+      const shape = CLOUD_SHAPE_VARIANTS[Math.floor(cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length)];
+      const east = wrap(cloudHash(seed, index, 2) * 9 + cloudEastTravel, 9) - 4.5;
+      const north = wrap(cloudHash(seed, index, 3) * 9 + cloudNorthTravel, 9) - 4.5;
+      const x = WIDTH / 2 - LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_WIDTH / axisLength
+        + (east + north) * ISLAND_TILE_WIDTH / 2;
+      const y = islandCenterY - LANGIT_AWAN_LIFT
+        - LANGIT_AWAN_WEST_SHIFT * islandTileHeight / axisLength
+        + (east - north) * islandTileHeight / 2;
+      const screen = planeToScreen(x, y);
+      clouds.push({ shape, cell: CLOUD_CELL, planeX: x, planeY: y,
+        screenCenterX: screen.x, screenBottomY: screen.y + shape.length * CLOUD_CELL / 2 });
     }
     return clouds;
   }
@@ -827,20 +851,20 @@
     const shape = cloud.shape;
     const cell = cloud.cell;
     const snap = value => Math.round(value * RENDER_SCALE) / RENDER_SCALE;
-    // Snap the sprite's origin only. Each cell then advances by the exact same pitch, so the
-    // silhouette stays regular instead of being re-rounded per cell.
-    const left = snap(cloud.screenCenterX - shape[0].length * cell * 0.5);
-    const top = snap(cloud.screenBottomY - shape.length * cell);
+    // Snap shared cell boundaries to device pixels; fractional cell widths then meet without seams.
+    const left = cloud.screenCenterX - shape[0].length * cell * 0.5;
+    const top = cloud.screenBottomY - shape.length * cell;
     for (let row = 0; row < shape.length; row += 1) {
       const line = shape[row];
-      const rowTop = top + row * cell;
+      const rowTop = snap(top + row * cell);
+      const rowBottom = snap(top + (row + 1) * cell);
       for (let column = 0; column < line.length; column += 1) {
         const band = line[column];
         if (band === '0') continue;
-        // Sprite cells carry band digits '1'..'3', darkest first.
         ctx.fillStyle = palette[Number(band) - 1];
-        // A hair of overlap stops seams opening between cells at fractional pitch.
-        ctx.fillRect(left + column * cell, rowTop, cell + 0.03, cell + 0.03);
+        const x1 = snap(left + column * cell);
+        const x2 = snap(left + (column + 1) * cell);
+        ctx.fillRect(x1, rowTop, x2 - x1, rowBottom - rowTop);
       }
     }
   }
@@ -883,15 +907,6 @@
       const previousAlpha = ctx.globalAlpha;
       ctx.globalAlpha = previousAlpha * alpha;
       drawCloudRows(cloud, palette);
-      // Draw the wrapped copy too, so a cloud straddling an edge stays continuous instead of
-      // being sliced in half while it leaves one side and arrives at the other.
-      const width = cloud.shape[0].length * cloud.cell;
-      const span = WIDTH + width + CLOUD_EDGE_INSET * 2;
-      if (cloud.screenCenterX - width * 0.5 < 0) {
-        drawCloudRows({ ...cloud, screenCenterX: cloud.screenCenterX + span }, palette);
-      } else if (cloud.screenCenterX + width * 0.5 > WIDTH) {
-        drawCloudRows({ ...cloud, screenCenterX: cloud.screenCenterX - span }, palette);
-      }
       ctx.globalAlpha = previousAlpha;
     });
   }
@@ -982,7 +997,7 @@
     // Constant, like the size: weather decides how the sky looks, not how dark the plate's shadow
     // is. Opacity used to follow the light level, so the same shadow faded from 0.14 by day to 0.02
     // at night -- it looked as if the shadow shrank and then disappeared, when all that changed was
-    // its weight. Only its position moves now, driven by where the light comes from.
+    // its weight. Its position and size are fixed beneath the island.
     //
     // A fixed alpha is not enough on its own, and that is why the shadow vanished after dark: alpha
     // blends toward the shade colour, so it removes a fixed FRACTION of the backdrop. The same 0.14
@@ -993,14 +1008,8 @@
     const floorLuminance = islandFloorLuminance(cloudCover, code);
     const opacity = clamp(SHADOW_CONTRAST_TARGET / Math.max(floorLuminance - SHADOW_LUMINANCE, 1),
       0.06, 0.45);
-    // Light from the eastern half pushes the shadow west, light from the western half pushes it
-    // east; the term eases through zero across solar noon and is capped at 30% of the plate's own
-    // width. It has to be capped rather than proportional to the light's height: the projection is
-    // fixed at 25 degrees, so a geometric throw would be the same length at every hour, and what the
-    // eye actually reads is the sideways lean rather than a long shadow sliding off the plate.
-    const progress = celestialProgress(lightHourAngle);
-    const lean = clamp((0.5 - progress) * 2, -1, 1);
-    const shadowCenterX = centerX - lean * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.10;
+    // The island shadow is fixed directly beneath the island, independent of celestial motion.
+    const shadowCenterX = centerX;
     const shadowCenterY = lowerY - ISLAND_DEPTH - ISLAND_BODY_SHADOW_RISE;
     // One size, never a function of the light or the weather.
     const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4 * ISLAND_BODY_SHADOW_SCALE;
@@ -1045,8 +1054,16 @@
     soil = blendColor(soil, atmosphere.tint, atmosphere.islandMix * 0.22);
     const soilLight = blendColor(soil, '#be6a1a', 0.20);
     const soilDark = blendColor(soil, '#3a1b07', 0.50);
-    return { grass, grassDark, grassTileSoftFern, grassTileFernSage,
+    const palette = { grass, grassDark, grassTileSoftFern, grassTileFernSage,
       grassSeam, grassWall, soilLight, soilDark };
+    // Base World stays byte-for-byte unchanged. A custom world applies a tint to the island
+    // only; weather, paths, shadows and the rest of the shared world remain unchanged.
+    const worldColor = window.worldManager?.getActive()?.color;
+    if (worldColor) {
+      for (const key of ['grass', 'grassDark', 'grassTileSoftFern', 'grassTileFernSage',
+        'grassSeam', 'grassWall']) palette[key] = blendColor(palette[key], worldColor, 0.55);
+    }
+    return palette;
   }
 
   function islandSunlight(sunAltitude, cloudCover, code) {
@@ -1249,49 +1266,44 @@
     ctx.restore();
   }
 
-  // Sinks a dark 9 x 9 lattice into the grass. Every line is the plate's own tile grid shifted by a
-  // hard pixel, so the overlay reads as inlaid rather than drawn on: no antialiased hairlines, no
-  // second colour, no labels. The four outer lines reuse the plate silhouette and the rounded
-  // corner helper, which is what makes the overlay the same shape as the island instead of a
-  // separate diamond that merely happens to line up. Caller has already clipped to the surface.
-  function drawLangitPulau() {
+  // One sky frame: a 9 x 9 lattice hung above the plate, traced on the plate's own tile seams
+  // so the two share a pitch. Both Langit Matahari and Langit Awan are this function with different
+  // lifts and colors; the geometry and opacity are shared.
+  //
+  // Every line is a tile seam, so the lattice is addressed in the projection's own (column, row)
+  // coordinates: integer values land on tile centres, which means the seam between two tiles sits
+  // at a half value. The plate is the diamond |a| + |b| = 9 with a = column - row and
+  // b = column + row - 8, which is why each seam runs from -0.5 to 8.5 along the other axis.
+  function drawLangitFrame(lift, color, offsetX = 0, offsetY = 0) {
     const centreX = WIDTH / 2;
     const centreY = islandCenterY;
     const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2;
     const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 2;
     const snap = value => Math.round(value * RENDER_SCALE) / RENDER_SCALE;
-    // Tiles are addressed by (column, row): x = centreX + (column - row) * tileWidth / 2 and
-    // y = islandTop + tileHeight / 2 + (column + row) * tileHeight / 2. Integer values land on
-    // tile CENTRES, so the seam between two tiles sits at a half value: column = 1.5 is the line
-    // between columns B and C. Drawing at whole values instead put the lattice through the middle
-    // of every tile. The plate itself is the diamond |a| + |b| = 9, with a = column - row and
-    // b = column + row - 8, which is why each seam runs from -0.5 to 8.5 along the other axis.
     const tilePoint = (column, row) => [
       centreX + (column - row) * ISLAND_TILE_WIDTH / 2,
       islandTop + islandTileHeight / 2 + (column + row) * islandTileHeight / 2
     ];
     const first = -0.5;
     const last = ISLAND_GRID_SIZE - 0.5;
-    const line = LANGIT_PULAU_LINE;
+    const line = LANGIT_LINE;
     ctx.save();
-    // Screen units, so the overlay clears the plate by a fixed distance regardless of the island's
-    // own tilt or zoom.
-    ctx.translate(0, -LANGIT_PULAU_LIFT);
+    ctx.translate(offsetX, offsetY - lift);
     // Own silhouette, own clip. The lattice is meant to stay whole, so it no longer relies on the
     // plate's surface clip; it clips to itself instead. The inset is the hair of margin that keeps
     // the boundary stroke's outer half inside the shape.
-    const inset = LANGIT_PULAU_INSET;
+    const inset = LANGIT_INSET;
     ctx.beginPath();
     traceSmoothIslandDiamond(centreX, centreY, halfWidth - inset, halfHeight - inset, 2.2);
     ctx.clip();
-    ctx.strokeStyle = '#0b1420';
+    ctx.strokeStyle = color;
     ctx.lineWidth = line;
     ctx.lineCap = 'butt';
     // Round joins, not miter: the rim's four vertices turn by about 53 degrees, and a miter join
     // there shoots a spike well outside the plate. The spike was the only ink that escaped the
     // silhouette.
     ctx.lineJoin = 'round';
-    ctx.globalAlpha = LANGIT_PULAU_ALPHA;
+    ctx.globalAlpha = LANGIT_ALPHA;
     ctx.beginPath();
     for (let edge = 1; edge < ISLAND_GRID_SIZE; edge += 1) {
       // The seam between columns edge-1 and edge, and the seam between rows edge-1 and edge.
@@ -1307,14 +1319,30 @@
     }
     ctx.stroke();
     // The rim is the plate's own silhouette, inset by a line so its outer half stays inside the
-    // clip. Drawn darker than the seams because it is the boundary of the grid, not one of its
+    // clip. Drawn more opaque than the seams because it is the boundary of the frame, not one of its
     // cells.
-    ctx.globalAlpha = LANGIT_PULAU_EDGE_ALPHA;
+    ctx.globalAlpha = LANGIT_EDGE_ALPHA;
     ctx.beginPath();
     traceSmoothIslandDiamond(centreX, centreY,
       halfWidth - inset - line / 2, halfHeight - inset - line / 2, 2.2);
     ctx.stroke();
     ctx.restore();
+  }
+
+  // The upper sheet: Langit Matahari.
+  function drawLangitMatahari() {
+    const axisLength = Math.hypot(ISLAND_TILE_WIDTH, islandTileHeight);
+    drawLangitFrame(LANGIT_MATAHARI_LIFT, '#0b1420',
+      -LANGIT_MATAHARI_WEST_SHIFT * ISLAND_TILE_WIDTH / axisLength,
+      -LANGIT_MATAHARI_WEST_SHIFT * islandTileHeight / axisLength);
+  }
+
+  // The lower sheet: intended as the future reference for cloud movement.
+  function drawLangitAwan() {
+    const axisLength = Math.hypot(ISLAND_TILE_WIDTH, islandTileHeight);
+    drawLangitFrame(LANGIT_AWAN_LIFT, '#ffffff',
+      -LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_WIDTH / axisLength,
+      -LANGIT_AWAN_WEST_SHIFT * islandTileHeight / axisLength);
   }
 
   function drawPixelPolygon(points, color, alpha) {
@@ -1460,99 +1488,151 @@
     return (0.10 + directLight * 0.30) * cloudFilter * ISLAND_BODY_SHADOW_OPACITY_SCALE * 0.9;
   }
 
-  // Ground shadows sit on the floor the island floats over, drawn before the island so the plate
-  // covers them where they overlap. They borrow the island's own cast-shadow language: the same
-  // colour, the same opacity model and the same diamond squash, so a shadow on the ground reads as
-  // the same material as the one under the island rather than as a second effect.
-  function drawGroundCloudShadows(clouds, sunAltitude, sunHourAngle, cloudCover, code) {
-    if (clouds.length === 0) return;
-    const light = pickLightSource(sunAltitude, sunHourAngle, null, cloudCover);
-    const altitude = Math.max(light.altitude, 0);
-    const elevationSine = Math.max(Math.sin(altitude * Math.PI / 180), 0.35);
-    const opacity = cloudShadowOpacity(light, cloudCover, code);
-    if (opacity <= 0.002) return;
-    const throwFactor = clamp(1 / elevationSine, 0.6, 2.2);
-    const floorY = groundShadowY();
-    const toFloor = Math.max(0, floorY - islandTop);
+  // The floor outside the island is a visual continuation of the island plane. Drawing it
+  // before the island lets the island cover it; the clipped surface pass uses the same ray.
+  function drawProjectedCloudShadows(clouds, lightAltitude, lightHourAngle, cloudCover, code,
+    clipToIsland) {
+    if (!clouds.length) return;
+    const opacity = cloudShadowOpacity({altitude: lightAltitude}, cloudCover, code);
+    const light = sunPlanePosition(lightHourAngle);
+    const ratio = LANGIT_MATAHARI_LIFT / (LANGIT_MATAHARI_LIFT - LANGIT_AWAN_LIFT);
     ctx.save();
+    applyIslandTransform();
+    if (clipToIsland) clipIslandSurface();
+    ctx.fillStyle = `rgba(12,23,40,${opacity})`;
     clouds.forEach(cloud => {
-      // Only clouds that are not already shading the plate draw down here, so nothing is doubled.
-      if (cloudOverlapsIsland(cloud)) return;
-      const sceneWidth = cloud.shape[0].length * cloud.cell;
-      const sceneHeight = cloud.shape.length * cloud.cell;
-      const offsetX = clamp(cloudShadowLean(light.hourAngle) * throwFactor * 1.35,
-        -sceneWidth * 1.6, sceneWidth * 1.6);
-      const heightAboveFloor = Math.max(0, cloud.screenBottomY - floorY) + toFloor;
-      // On the floor the throw reads much flatter than on the plate, because the floor is further
-      // from the light, so it is weighted down to a fraction of the plate's throw. It is then held
-      // inside the band of floor the panel actually shows: pushed any lower and the shadow fell
-      // behind the island mass, where the plate hid it and the feature looked broken.
-      const centreX = cloud.screenCenterX + offsetX;
-      // Held close to the island shadow's line so the two read as one ground plane; drifting any
-      // further down left a lone smudge near the bottom edge, disconnected from everything.
-      const centreY = clamp(floorY + heightAboveFloor * 0.055 * throwFactor,
-        floorY - 8, floorY + 20);
-      ctx.fillStyle = `rgba(12,23,40,${opacity * 0.82})`;
-      drawGroundSilhouette(cloud.shape, centreX, centreY, sceneWidth * CLOUD_SHADOW_SCALE * 1.25,
-        sceneHeight * CLOUD_SHADOW_SCALE * 0.52);
+      const x = light.x + ratio * (cloud.planeX - light.x);
+      const y = light.y + ratio * (cloud.planeY - light.y);
+      drawGroundSilhouette(cloud.shape, x, y,
+        cloud.shape[0].length * cloud.cell * CLOUD_SHADOW_SCALE,
+        cloud.shape.length * cloud.cell * CLOUD_SHADOW_SCALE);
     });
     ctx.restore();
   }
 
-  function drawCloudShadowsOnIsland(clouds, sunAltitude, sunHourAngle, cloudCover, code) {
-    if (clouds.length === 0) return;
-    const light = pickLightSource(sunAltitude, sunHourAngle, null, cloudCover);
-    const altitude = Math.max(light.altitude, 0);
-    const elevationSine = Math.max(Math.sin(altitude * Math.PI / 180), 0.35);
-    const opacity = cloudShadowOpacity(light, cloudCover, code);
-    if (opacity <= 0.002) return;
-    // A low light throws a shadow further along the ground, so the horizontal lean and the
-    // forward throw are driven by the same factor. The cap is wider than the lean's used to be,
-    // because the forward distance is what makes dawn and dusk read differently from noon.
-    const throwFactor = clamp(1 / elevationSine, 0.6, 2.2);
+  function drawCloudShadowsOnIsland(clouds, lightAltitude, lightHourAngle, cloudCover, code) {
+    drawProjectedCloudShadows(clouds, lightAltitude, lightHourAngle, cloudCover, code, true);
+  }
+
+  let editingDraft = null, editingHouseDraft = null;
+  let editingSelected = false, editingHouseSelected = false;
+  function characterCentre(character) {
+    return {x: WIDTH / 2 + (character.column - character.row) * ISLAND_TILE_WIDTH / 2,
+      y: islandTop + islandTileHeight / 2 + (character.column + character.row) * islandTileHeight / 2};
+  }
+
+  // Shared ground-shadow primitive for surface objects. Each renderer supplies a ground
+  // anchor, inset footprint and visual height. Future object types must use this same helper.
+  function objectShadowPolygon(anchor, width, depth, height, light) {
+    // The light's displayed point is lifted above the ground plane by the sky-frame lift.
+    const h = clamp(height, 0, LANGIT_MATAHARI_LIFT * 0.8);
+    const ratio = h / (LANGIT_MATAHARI_LIFT - h);
+    const dx = (anchor.x - light.x) * ratio;
+    const dy = (anchor.y - light.y - LANGIT_MATAHARI_LIFT) * ratio;
+    const base = [[anchor.x, anchor.y - depth / 2], [anchor.x + width / 2, anchor.y],
+      [anchor.x, anchor.y + depth / 2], [anchor.x - width / 2, anchor.y]];
+    const points = [...base, ...base.map(([x, y]) => [x + dx, y + dy])]
+      .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cross = (a, b, c) => (b[0]-a[0])*(c[1]-a[1])-(b[1]-a[1])*(c[0]-a[0]);
+    const lower = [], upper = [];
+    for (const p of points) { while (lower.length > 1 && cross(lower.at(-2), lower.at(-1), p) <= 0) lower.pop(); lower.push(p); }
+    for (const p of points.slice().reverse()) { while (upper.length > 1 && cross(upper.at(-2), upper.at(-1), p) <= 0) upper.pop(); upper.push(p); }
+    lower.pop(); upper.pop();
+    // Uniformly shrink the full projected shape around the anchor. It must fit within
+    // half the sprite width and height, even when a low-angle light stretches it.
+    const hull = lower.concat(upper);
+    if (!hull.length) return hull;
+    const xs = hull.map(p => p[0]), ys = hull.map(p => p[1]);
+    const spanX = Math.max(...xs) - Math.min(...xs), spanY = Math.max(...ys) - Math.min(...ys);
+    const scale = Math.min(0.5, width * 0.5 / Math.max(spanX, 1e-6), height * 0.5 / Math.max(spanY, 1e-6));
+    return hull.map(([x, y]) => [anchor.x + (x - anchor.x) * scale,
+      anchor.y + (y - anchor.y) * scale]);
+  }
+  function drawSurfaceObjectShadows(light, cloudCover, code) {
+    const world = window.worldManager?.getActive();
+    if (!world || world.id === 'base') return;
+    const shadows = [];
+    const house = editingHouseDraft || window.worldManager.getHouse?.();
+    const houseSprite = house && (house.facing === 'N' || house.facing === 'W') ? houseBackImage : houseImage;
+    if (house?.visible && houseSprite.complete && houseSprite.naturalWidth) {
+      const centre = characterCentre({column: house.column + 1, row: house.row + 1});
+      // Anchor to the front base of the sprite, so the smaller shadow remains visible.
+      shadows.push({anchor: {x: centre.x, y: centre.y + 1.25 * islandTileHeight * house.scale},
+        width: 70 * house.scale, depth: islandTileHeight * 2.5 * house.scale, height: 67 * house.scale});
+    }
+    const character = editingDraft || window.worldManager.getCharacter();
+    const sprite = character.facing === 'N' || character.facing === 'W' ? playerBackImage : playerImage;
+    if (character.visible && sprite.complete && sprite.naturalWidth) {
+      shadows.push({anchor: characterCentre(character), width: PLAYER_WIDTH * character.scale,
+        depth: 5 * character.scale, height: PLAYER_HEIGHT * character.scale});
+    }
+    if (!shadows.length) return;
+    const lightPoint = sunPlanePosition(light.hourAngleDegrees);
+    ctx.save(); applyIslandTransform(); clipIslandSurface();
+    // Object shadows remain legible even under overcast conditions or virtual moonlight.
+    const opacity = Math.max(0.28, cloudShadowOpacity(light, cloudCover, code) * 1.8);
+    ctx.fillStyle = `rgba(12,23,40,${opacity})`;
+    for (const spec of shadows) {
+      const points = objectShadowPolygon(spec.anchor, spec.width, spec.depth, spec.height, lightPoint);
+      if (points.length < 3) continue;
+      ctx.beginPath(); ctx.moveTo(points[0][0], points[0][1]);
+      for (const [x, y] of points.slice(1)) ctx.lineTo(x, y);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function drawHouse() {
+    const house = editingHouseDraft || window.worldManager?.getHouse?.();
+    if (!house?.visible) return;
+    const back = house.facing === 'N' || house.facing === 'W';
+    const mirror = house.facing === 'N' || house.facing === 'E';
+    const sprite = back ? houseBackImage : houseImage;
+    if (!sprite.complete || !sprite.naturalWidth) return;
+    // column/row are the north-west corner of the house's 3×3 logical footprint.
+    const centre = characterCentre({column: house.column + 1, row: house.row + 1});
+    const bottom = centre.y + 1.25 * islandTileHeight * house.scale;
+    const width = 70 * house.scale, height = 67 * house.scale;
+    ctx.save(); applyIslandTransform(); ctx.imageSmoothingEnabled = false;
+    if (mirror) { ctx.save(); ctx.translate(centre.x, 0); ctx.scale(-1, 1);
+      ctx.drawImage(sprite, -width / 2, bottom - height, width, height); ctx.restore();
+    } else ctx.drawImage(sprite, centre.x - width / 2, bottom - height, width, height);
+    if (editingHouseSelected) {
+      ctx.strokeStyle = '#fff4a8'; ctx.lineWidth = 1;
+      ctx.strokeRect(centre.x - width / 2 - 2, bottom - height - 2, width + 4, height + 4);
+    }
+    ctx.restore();
+  }
+
+  function drawMainCharacter(motionTime) {
+    const world = window.worldManager?.getActive();
+    if (!world || world.id === 'base') return;
+    const character = editingDraft || window.worldManager.getCharacter();
+    if (!character.visible) return;
+    const back = character.facing === 'N' || character.facing === 'W';
+    const mirror = character.facing === 'N' || character.facing === 'E';
+    const sprite = back ? playerBackImage : playerImage;
+    if (!sprite.complete || !sprite.naturalWidth) return;
+    const {x, y} = characterCentre(character);
+    const width = PLAYER_WIDTH * character.scale;
+    // Breathing changes height only, never the ground anchor. With reduced motion time is zero.
+    const idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5 : 0;
+    const height = PLAYER_HEIGHT * character.scale + idle;
     ctx.save();
     applyIslandTransform();
-    clipIslandSurface();
-    clouds.forEach(cloud => {
-      const sceneWidth = cloud.shape[0].length * cloud.cell;
-      const sceneHeight = cloud.shape.length * cloud.cell;
-      // Only a cloud actually crossing the island casts onto it. That is also what keeps the
-      // casting rule easy to read: the sprite dims and its shadow appears together.
-      if (!cloudOverlapsIsland(cloud)) return;
-      const centreX = (cloud.screenCenterX - WIDTH / 2) / islandZoom + WIDTH / 2
-        + clamp(cloudShadowLean(light.hourAngle) * throwFactor, -sceneWidth, sceneWidth);
-      // The shadow lands FORWARD of the cloud, which is lower on the screen: the light is above, the
-      // plate is below, so the ground point has to be beneath the sprite rather than behind it. How
-      // far forward grows with the cloud's height above the plate and with how low the light is.
-      // The term this replaced subtracted the cloud's arc height, which pulled the shadow upward as
-      // the cloud climbed, so a high cloud shaded the far half of the plate while its own sprite
-      // sat in front of that shading.
-      const heightAbovePlate = Math.max(0, cloud.screenBottomY - islandTop);
-      const thrownY = cloud.screenBottomY + heightAbovePlate * 0.55 * throwFactor;
-      // The plate is a diamond, so the room a ground point has shrinks toward every corner. Scaling
-      // the offset vector as a whole, rather than each axis on its own, keeps the shadow inside the
-      // plate without straightening the throw: a per-axis clamp froze the shadow on a flat line the
-      // moment it reached the edge, which read as the shadow refusing to move.
-      const halfPlateW = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2;
-      const halfPlateH = ISLAND_GRID_SIZE * islandTileHeight / 2;
-      const halfShadow = sceneHeight * CLOUD_SHADOW_SCALE / 2;
-      const inset = 1 - clamp(halfShadow / halfPlateH, 0, 0.8);
-      let offsetX = centreX - WIDTH / 2;
-      let offsetY = thrownY - islandCenterY;
-      const reach = Math.abs(offsetX) / (halfPlateW * inset)
-        + Math.abs(offsetY) / (halfPlateH * inset);
-      if (reach > 1) {
-        offsetX /= reach;
-        offsetY /= reach;
-      }
-      const shadowX = WIDTH / 2 + offsetX;
-      const centreY = islandCenterY + offsetY;
-      // The shadow is the cloud's own silhouette, shrunk. A diamond plate read as a generic smudge
-      // that said nothing about which cloud threw it; the traced outline keeps the lobes.
-      ctx.fillStyle = `rgba(12,23,40,${opacity})`;
-      drawGroundSilhouette(cloud.shape, shadowX, centreY, sceneWidth * CLOUD_SHADOW_SCALE,
-        sceneHeight * CLOUD_SHADOW_SCALE);
-    });
+    ctx.imageSmoothingEnabled = false;
+    if (mirror) {
+      ctx.save();
+      ctx.translate(x, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(sprite, -width / 2, y - height, width, height);
+      ctx.restore();
+    } else ctx.drawImage(sprite, x - width / 2, y - height, width, height);
+    if (editingSelected) {
+      ctx.strokeStyle = '#fff4a8';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - width / 2 - 2, y - height - 2, width + 4, height + 4);
+    }
     ctx.restore();
   }
 
@@ -1578,6 +1658,7 @@
     // The sun lights the island by day; once it is gone the moon takes over, so the cast
     // shadow follows whichever body is actually in the sky. With the water gone the plate's shadow
     // lands straight on the ground again, so it is drawn here, in the same pass as the plate.
+    // The island keeps its original independent shadow, not the cloud ray projection.
     const light = pickLightSource(sunAltitude, sunHourAngle, moon, cloudCover);
     drawIslandShadow(centerX, lowerY, light.altitude, light.hourAngle, cloudCover, code);
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.
@@ -1616,11 +1697,18 @@
       [centerX, topY], [rightX, middleY], [centerX, bottomY], [leftX, middleY]
     ], tileSeam, tileSeam);
     ISLAND_TILES.forEach(tile => drawGrassTile(tile, palette, sunlight));
-    drawCloudShadowsOnIsland(cloudStates, sunAltitude, sunHourAngle, cloudCover, code);
+    const shadowLight = sunAltitude <= MOON_VISIBLE_BELOW_SUN && moon
+      ? moon : {altitude: sunAltitude, hourAngleDegrees: sunHourAngle};
+    drawCloudShadowsOnIsland(cloudStates, shadowLight.altitude, shadowLight.hourAngleDegrees,
+      cloudCover, code);
     // No surface clip here any more: the overlay carries its own, and clipping to the plate as well
     // would slice the top off a lattice that has been lifted clear of it.
-    if (LANGIT_PULAU_ENABLED) {
-      drawLangitPulau();
+    // Draw the upper frame last so it remains on top where the projections overlap.
+    if (LANGIT_AWAN_ENABLED) {
+      drawLangitAwan();
+    }
+    if (LANGIT_MATAHARI_ENABLED) {
+      drawLangitMatahari();
     }
     const topRim = blendColor(palette.grassSeam, palette.grassDark, 0.32);
     drawSmoothIslandLine(leftX, middleY, centerX, bottomY, topRim, 0.60);
@@ -1736,6 +1824,15 @@
     // to behead any cloud tall enough to reach past it.
     ctx.rect(0, -HEIGHT, WIDTH, HEIGHT * 1.5);
     ctx.clip();
+    // At night the Moon is the light source, even below its horizon (virtual Moon), so
+    // cloud shadows remain visible as requested.
+    const shadowLight = sun.altitude <= MOON_VISIBLE_BELOW_SUN ? moonNow : sun;
+    const lightPlane = sunPlanePosition(shadowLight.hourAngleDegrees);
+    const sunScreen = planeToScreen(lightPlane.x, lightPlane.y);
+    const behindSun = cloudStates.filter(cloud => cloud.screenBottomY
+      - cloud.shape.length * cloud.cell / 2 < sunScreen.y);
+    const inFrontOfSun = cloudStates.filter(cloud => !behindSun.includes(cloud));
+    drawClouds(behindSun, sun.altitude, sceneWeather.weatherCode);
     drawSun(sun, sceneWeather.cloudCover, motionTime);
     drawMoon(moonNow, motionTime, sun.altitude);
     ctx.restore();
@@ -1748,14 +1845,17 @@
     ctx.restore();
     // Ground shadows go down before the island so the plate covers them, and before the clouds so
     // no sprite is ever painted over by a shadow it did not come from.
-    drawGroundCloudShadows(cloudStates, sun.altitude, sun.hourAngleDegrees,
-      sceneWeather.cloudCover, sceneWeather.weatherCode);
+    drawProjectedCloudShadows(cloudStates, shadowLight.altitude, shadowLight.hourAngleDegrees,
+      sceneWeather.cloudCover, sceneWeather.weatherCode, false);
     drawFloatingIsland(sun.altitude, sun.azimuth, sun.hourAngleDegrees,
       sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates);
+    drawSurfaceObjectShadows(shadowLight, sceneWeather.cloudCover, sceneWeather.weatherCode);
+    drawHouse();
+    drawMainCharacter(motionTime);
     // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
     // cloud can hang below the horizon line, and clipping it there hid the cloud while its
     // shadow still showed on the grass. Edge clamping already keeps every sprite in frame.
-    drawClouds(cloudStates, sun.altitude, sceneWeather.weatherCode);
+    drawClouds(inFrontOfSun, sun.altitude, sceneWeather.weatherCode);
     drawPrecipitation(sceneWeather);
     if (!REDUCED_MOTION) window.requestAnimationFrame(drawFrame);
   }
@@ -1853,6 +1953,9 @@
     });
   }
 
+  window.addEventListener('worldchange', () => {
+    if (REDUCED_MOTION) drawFrame();
+  });
   updateWeatherModeControls();
   if (weatherModeButton) {
     weatherModeButton.addEventListener('click', () => {
@@ -1877,6 +1980,46 @@
     }, true);
   }
 
+  // Geometry bridge for the preview editor. Coordinates are transformed through the actual
+  // canvas bounds and island zoom, so dragging remains correct on different device sizes.
+  window.sceneEditing = Object.freeze({
+    toLocal(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (clientX - rect.left) * WIDTH / rect.width;
+      const y = (clientY - rect.top) * HEIGHT / rect.height;
+      const [anchorX, anchorY] = islandAnchor();
+      return {x: anchorX + (x - anchorX) / islandZoom,
+        y: anchorY + (y - anchorY) / islandZoom};
+    },
+    centre: characterCentre,
+    centreHouse(house) { return characterCentre({column: house.column + 1, row: house.row + 1}); },
+    hitHouse(point, house) {
+      if (!house?.visible) return false;
+      const {x, y} = characterCentre({column: house.column + 1, row: house.row + 1});
+      const bottom = y + 1.25 * islandTileHeight * house.scale;
+      return Math.abs(point.x - x) <= 35 * house.scale + 3
+        && point.y >= bottom - 67 * house.scale - 3 && point.y <= bottom + 3;
+    },
+    hit(point, character) {
+      if (!character.visible) return false;
+      const {x, y} = characterCentre(character);
+      return Math.abs(point.x - x) <= PLAYER_WIDTH * character.scale / 2 + 4
+        && point.y >= y - PLAYER_HEIGHT * character.scale - 4.5 && point.y <= y + 4;
+    },
+    tile(point) {
+      const dx = (point.x - WIDTH / 2) / (ISLAND_TILE_WIDTH / 2);
+      const dy = (point.y - islandTop - islandTileHeight / 2) / (islandTileHeight / 2);
+      return {column: clamp(Math.round((dx + dy) / 2), 0, 8),
+        row: clamp(Math.round((dy - dx) / 2), 0, 8)};
+    },
+    update(draft, selected, type = 'character') {
+      editingDraft = type === 'character' ? draft : null;
+      editingSelected = type === 'character' && selected;
+      editingHouseDraft = type === 'house' ? draft : null;
+      editingHouseSelected = type === 'house' && selected;
+      if (REDUCED_MOTION) drawFrame();
+    }
+  });
   drawFrame();
   initializeWeather();
 })();
