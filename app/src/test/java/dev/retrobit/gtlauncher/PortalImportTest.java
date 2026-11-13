@@ -56,6 +56,8 @@ public class PortalImportTest {
         String banana="{\"type\":\"tree\",\"column\":8,\"row\":8,\"species\":\"banana\"}";
         String palm="{\"type\":\"tree\",\"column\":7,\"row\":8,\"species\":\"palm\"}";
         String flower="{\"type\":\"sunflower\",\"column\":6,\"row\":8,\"facing\":\"N\"}";
+        String basicFlower=world(flower.replace(",\"facing\":\"N\"","")).replace("\"version\":28","\"version\":18");
+        WorldStore basicStore=new WorldStore(prefs());assertTrue(basicStore.upsertAndSelect(WorldStore.parseExport(basicFlower)));assertTrue(basicStore.upsertAndSelect(WorldStore.parseExport(basicFlower)));
         String file=world(banana+","+palm+","+flower).replace("\"version\":28","\"version\":25");
         WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(file)));
         assertEquals("banana",store.activeWorld().surfaces.get(0).material);assertEquals("palm",store.activeWorld().surfaces.get(1).material);assertEquals("N",store.activeWorld().surfaces.get(2).material);

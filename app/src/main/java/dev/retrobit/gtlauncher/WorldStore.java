@@ -292,7 +292,7 @@ final class WorldStore {
         for (int i = 0; i < existing.size(); i++) {
             if (existing.get(i).id.equals(world.id)) {
                 if (world.formatVersion < 25 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("tree") && (o.material.equals("banana") || o.material.equals("palm")))) throw new JSONException("Legacy export cannot replace tropical trees");
-                if (world.formatVersion < 19 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("sunflower"))) throw new JSONException("Legacy export cannot replace sunflower");
+                if (world.formatVersion < 18 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("sunflower")) || world.formatVersion < 19 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("sunflower") && !o.material.equals("S"))) throw new JSONException("Legacy export cannot replace sunflower");
                 if (world.formatVersion < 29 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("bush") && o.material.equals("wild-grass"))) throw new JSONException("Legacy export cannot replace wild grass");
                 if (world.formatVersion < 16 && existing.get(i).houseId != null) throw new JSONException("Legacy export cannot replace house identity");
                 if (world.formatVersion < 27 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("storage-box") && !o.material.isEmpty())) throw new JSONException("Legacy export cannot replace storage direction");
