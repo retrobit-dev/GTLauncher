@@ -37,18 +37,32 @@
 </LinearLayout>
     </LinearLayout>
 
-    <ImageButton
-        android:id="@+id/home_phone_button"
-        android:layout_width="44dp"
+    <!-- The fixed phone and its reserved empty slot remain together on every world. -->
+    <LinearLayout
+        android:id="@+id/home_phone_slots"
+        android:layout_width="88dp"
         android:layout_height="44dp"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="12dp"
-        android:translationX="100dp"
-        android:padding="5dp"
-        android:background="@drawable/bg_date_hud_panel"
-        android:src="@drawable/dock_phone"
-        android:scaleType="fitCenter"
-        android:contentDescription="@string/open_apps_drawer" />
+        android:translationX="122dp"
+        android:orientation="horizontal">
+        <ImageButton
+            android:id="@+id/home_phone_button"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:padding="5dp"
+            android:background="@drawable/bg_date_hud_panel"
+            android:src="@drawable/dock_phone"
+            android:scaleType="fitCenter"
+            android:contentDescription="@string/open_apps_drawer" />
+        <View
+            android:id="@+id/home_phone_empty_slot"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_date_hud_panel"
+            android:contentDescription="Slot di kanan HP kosong"
+            android:importantForAccessibility="yes" />
+    </LinearLayout>
 
     <!-- Non-interactive device clock and estimated season. -->
     <LinearLayout
