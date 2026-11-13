@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://retrobit.dev/gtlauncher/world-v5.schema.json",
+  "title": "GTLauncher portable world, version 5",
+  "description": "Portable world with optional character and a fixed 3\u00d73 house at A1\u2013C3.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "format",
+    "version",
+    "world"
+  ],
+  "properties": {
+    "format": {
+      "const": "gtlauncher-world"
+    },
+    "version": {
+      "const": 5
+    },
+    "world": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "description",
+        "color",
+        "objects"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,128}$",
+          "not": {
+            "const": "base"
+          }
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48,
+          "pattern": "\\S"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "objects": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "column",
+                  "row",
+                  "scale",
+                  "facing"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "character"
+                  },
+                  "column": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 8
+                  },
+                  "row": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 8
+                  },
+                  "scale": {
+                    "type": "number",
+                    "minimum": 0.5,
+                    "maximum": 1.5
+                  },
+                  "facing": {
+                    "enum": [
+                      "N",
+                      "E",
+                      "S",
+                      "W"
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "column",
+                  "row"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "house"
+                  },
+                  "column": {
+                    "const": 0
+                  },
+                  "row": {
+                    "const": 0
+                  }
+                }
+              }
+            ]
+          },
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "type": {
+                    "const": "character"
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "type": {
+                    "const": "house"
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            }
+          ]
+        }
+      }
+    }
+  }
+}

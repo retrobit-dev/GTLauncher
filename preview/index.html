@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#e2e4e1">
+  <title>GTLauncher — Live Weather Preview</title>
+  <link rel="stylesheet" href="./styles.css?v=live-sky-39">
+  <script src="./vendor/qrcode.js" defer></script>
+  <script src="./worlds.js?v=18" defer></script>
+  <script src="./object-editor.js?v=6" defer></script>
+  <script src="./app.js?v=live-sky-161" defer></script>
+</head>
+<body>
+  <main class="preview-stage" aria-label="Pratinjau GTLauncher">
+    <div class="world-topbar"><button id="world-button" class="weather-cycle-button world-button" type="button" aria-haspopup="dialog" aria-controls="world-dialog">World</button><span id="active-world-label" class="active-world-label" aria-live="polite">World: Base World</span><div class="history-controls" aria-label="Riwayat edit"><button id="object-undo" class="world-secondary object-history-button" type="button" disabled aria-label="Urungkan perubahan objek" title="Undo">↶</button><button id="object-redo" class="world-secondary object-history-button" type="button" disabled aria-label="Ulangi perubahan objek" title="Redo">↷</button></div></div>
+    <div class="device-wrap"><div class="device-frame" aria-label="Huawei MatePad Mini dalam orientasi lanskap">
+      <div class="device-display" aria-label="Homescreen GTLauncher dengan langit dan pulau terapung pixel art yang mengikuti cuaca">
+        <canvas id="sky-canvas" class="sky-canvas" aria-label="Langit pixel art dan pulau terapung dengan pencahayaan adaptif serta efek cuaca"></canvas>
+        <span class="camera-punch-hole" aria-hidden="true"></span>
+      </div>
+    </div><aside id="rotate-controls" class="rotate-controls" aria-label="Putar arah objek" hidden>
+      <button id="rotate-left" type="button" aria-label="Putar ke kiri" title="Putar ke kiri">↶</button>
+      <span id="rotate-direction" aria-live="polite">Selatan</span>
+      <button id="rotate-right" type="button" aria-label="Putar ke kanan" title="Putar ke kanan">↷</button>
+    </aside></div>
+    <section class="preview-controls" aria-label="Kontrol suasana preview">
+      <p id="weather-mode-label" class="weather-mode-label" aria-live="polite">Suasana: Live · Open-Meteo</p>
+      <button id="weather-cycle-button" class="weather-cycle-button" type="button" aria-label="Ganti suasana preview">
+        Ganti suasana
+      </button>
+      <button id="object-library-button" class="weather-cycle-button" type="button" aria-haspopup="dialog" aria-controls="object-library-dialog">Objek</button>
+      <button id="object-edit-button" class="weather-cycle-button object-edit-button" type="button" aria-pressed="false">Edit</button>
+      <span id="edit-status" class="edit-status" role="status" aria-live="polite" hidden></span>
+      <button id="object-select-button" class="world-secondary" type="button" hidden>Pilih karakter</button>
+      <button id="object-select-house" class="world-secondary" type="button" hidden>Pilih rumah</button>
+      <button id="object-details-button" class="world-secondary" type="button" aria-haspopup="dialog" aria-controls="object-dialog" hidden>Pengaturan objek</button>
+    </section>
+  </main>
+  <dialog id="world-dialog" class="world-dialog" aria-labelledby="world-dialog-title">
+    <div class="world-header">
+      <div><p class="world-eyebrow">GTLAUNCHER</p><h2 id="world-dialog-title">World</h2><p class="world-subtitle">Buat world dari Base World dan pilih yang ingin ditampilkan.</p></div>
+      <button id="world-close" class="world-close" type="button" aria-label="Tutup">×</button>
+    </div>
+    <div class="world-content">
+      <section aria-labelledby="world-list-title">
+        <div class="world-list-heading"><h3 id="world-list-title">Pilihan world</h3><button id="world-new" class="world-primary" type="button">+ World baru</button></div>
+        <div class="world-import-controls"><label class="world-secondary world-import-label" for="world-import-file">Impor JSON</label><input id="world-import-file" type="file" accept=".json,application/json,text/plain"></div>
+        <div id="world-import-confirm" class="world-import-confirm" hidden><p id="world-import-prompt"></p><button id="world-import-replace" class="world-primary" type="button">Ganti world</button> <button id="world-import-cancel" class="world-secondary" type="button">Batal</button></div>
+        <button id="world-create-home" class="world-secondary world-create-home" type="button" hidden>Buat Home baru</button>
+        <p class="world-help">Base World tetap di atas; gunakan ↑ dan ↓ untuk mengurutkan world buatan. Tersimpan di browser ini, bukan di akun atau aplikasi Android.</p>
+        <div id="world-list" class="world-list"></div>
+        <p id="world-storage-info" class="world-help" aria-live="polite"></p>
+      </section>
+      <section id="world-editor" class="world-editor" hidden aria-labelledby="world-editor-title">
+        <h3 id="world-editor-title">World baru</h3>
+        <form id="world-form">
+          <label for="world-name">Nama world</label>
+          <input id="world-name" name="name" type="text" maxlength="48" required autocomplete="off" placeholder="Contoh: Pulau Kebun">
+          <label for="world-description">Fungsi atau catatan <span>(opsional)</span></label>
+          <textarea id="world-description" name="description" maxlength="160" rows="2" placeholder="Untuk apa world ini digunakan?"></textarea>
+          <label for="world-color">Warna pulau</label>
+          <div class="world-color-row"><input id="world-color" name="color" type="color" value="#a8c795"><span>Diwarnai di atas palet Base World.</span></div>
+          <label class="world-character-option"><input id="world-character" type="checkbox"> Tampilkan karakter utama</label>
+          <div class="world-form-actions"><button class="world-primary" type="submit">Simpan</button><button id="world-cancel" class="world-secondary" type="button">Batal</button></div>
+        </form>
+      </section>
+    </div>
+    <section id="world-export-result" class="world-export-result" aria-labelledby="world-export-title" hidden>
+      <h3 id="world-export-title">Hasil ekspor</h3>
+      <img id="world-export-qr" alt="Kode QR berisi data world yang diekspor" hidden>
+      <p id="world-export-help"></p>
+      <a id="world-export-download" class="world-primary world-export-download">Unduh file</a>
+      <button id="world-export-save" class="world-secondary" type="button" hidden>Simpan JSON ke perangkat</button>
+      <button id="world-export-share" class="world-secondary" type="button" hidden>Bagikan file JSON</button>
+      <p id="world-export-file-status" role="status" aria-live="polite"></p>
+      <div id="world-export-text-section" class="world-export-text" hidden>
+        <label for="world-export-json">Isi JSON (dapat dipilih dan disalin)</label>
+        <textarea id="world-export-json" rows="8" readonly spellcheck="false"></textarea>
+        <button id="world-export-copy" class="world-secondary" type="button">Salin JSON</button>
+        <p id="world-export-copy-status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+    <p id="world-message" class="world-message" role="status" aria-live="polite"></p><button id="world-backup" class="world-secondary world-backup" type="button" hidden>Unduh cadangan data asli</button>
+  </dialog>
+  <dialog id="object-library-dialog" class="world-dialog" aria-labelledby="object-library-title">
+    <div class="world-header"><div><p class="world-eyebrow">WORLD AKTIF</p><h2 id="object-library-title">Objek</h2><p id="object-library-world" class="world-subtitle"></p></div><button id="object-library-close" class="world-close" type="button" aria-label="Tutup">×</button></div>
+    <div class="world-content"><section><h3>Objek di world ini</h3><div id="object-library-list" class="world-list"></div>
+      <p class="world-help">Daftar ini menunjukkan objek yang sudah ada. Menyimpan objek ke katalog bersama dan menambahkan salinan belum tersedia.</p>
+      <p class="world-help">Aset pagar sudah dibuat, tetapi belum bisa ditambahkan ke world.</p>
+    </section></div>
+  </dialog>
+  <dialog id="object-dialog" class="world-dialog" aria-labelledby="object-dialog-title">
+    <div class="world-header"><div><p class="world-eyebrow">WORLD AKTIF</p><h2 id="object-dialog-title">Edit objek</h2><p id="object-world-name" class="world-subtitle"></p></div><button id="object-close" class="world-close" type="button" aria-label="Tutup">×</button></div>
+    <div class="world-content"><section class="world-editor"><h3 id="object-kind-title">Karakter utama</h3>
+      <form id="object-form">
+        <label class="world-character-option"><input id="object-visible" type="checkbox"> <span id="object-visible-label">Tampilkan karakter</span></label>
+        <label id="object-move-label">Move · pusat tile</label>
+        <div class="object-tile-row"><label for="object-column">Kolom</label><select id="object-column"></select><label for="object-row">Baris</label><select id="object-row"></select></div>
+        <label for="object-scale">Scale · <output id="object-scale-value">100%</output></label>
+        <input id="object-scale" type="range" min="50" max="150" step="5" value="100">
+        <p id="object-help" class="world-help">Kaki karakter terkunci pada pusat tile. Pengaturan ini juga dapat digunakan tanpa gestur sentuh.</p>
+        <div class="world-form-actions"><button class="world-primary" type="submit">Simpan</button><button id="object-cancel" class="world-secondary" type="button">Batal</button></div>
+      </form>
+    </section></div><p id="object-message" class="world-message" role="status" aria-live="polite"></p>
+  </dialog>
+</body>
+</html>
