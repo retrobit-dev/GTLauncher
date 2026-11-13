@@ -1,0 +1,45 @@
+name: Android build
+
+on:
+  push:
+    branches: ['arena/35f7a876-gtlauncher']
+    paths: ['app/**', 'build.gradle', 'settings.gradle', 'gradle.properties', 'tools/test_android_*.py', 'tools/test_date_hud_android.py', 'tools/test_battery_hud_android.py', 'tools/test_location_permission_android.py', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  debug-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Static Android checks
+        run: |
+          python3 tools/test_android_drawer.py
+          python3 tools/test_android_pixel_icons.py
+          python3 tools/test_android_character_hud.py
+          python3 tools/test_android_portal_compatibility.py
+          python3 tools/test_date_hud_android.py
+          python3 tools/test_battery_hud_android.py
+          python3 tools/test_location_permission_android.py
+      - name: Build debug APK and run unit tests
+        run: gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: GTLauncher-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

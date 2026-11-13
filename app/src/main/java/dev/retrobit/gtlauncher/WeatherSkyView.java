@@ -5,6 +5,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
+import android.graphics.Matrix;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PointF;
@@ -381,41 +384,77 @@ public final class WeatherSkyView extends View {
             hull[n++] = point;
         }
         if (n < 4) return;
-        float minX = hull[0].x, maxX = minX, minY = hull[0].y, maxY = minY;
-        for (int i = 1; i < n-1; i++) {
-            minX = Math.min(minX, hull[i].x); maxX = Math.max(maxX, hull[i].x);
-            minY = Math.min(minY, hull[i].y); maxY = Math.max(maxY, hull[i].y);
-        }
-        float shrink = Math.min(0.5f, Math.min(width * 0.5f / Math.max(maxX - minX, 0.000001f),
-                height * 0.5f / Math.max(maxY - minY, 0.000001f)));
+        // Draw the full light projection rather than shrinking it to a fixed sprite fraction.
         Path path = new Path();
-        path.moveTo(x + (hull[0].x - x) * shrink, y + (hull[0].y - y) * shrink);
-        for (int i = 1; i < n-1; i++)
-            path.lineTo(x + (hull[i].x - x) * shrink, y + (hull[i].y - y) * shrink);
+        path.moveTo(hull[0].x, hull[0].y);
+        for (int i = 1; i < n-1; i++) path.lineTo(hull[i].x, hull[i].y);
         path.close(); canvas.drawPath(path, paint);
+    }
+
+    // Project the sprite alpha onto the ground as a 2D silhouette approximation.
+    // There is no 3D object model, so the ground-depth component is stylized.
+    private static final PorterDuffColorFilter OBJECT_SHADOW_FILTER =
+            new PorterDuffColorFilter(Color.rgb(12, 23, 40), PorterDuff.Mode.SRC_IN);
+    private void drawObjectSilhouette(Canvas canvas, Bitmap sprite, float x, float y,
+                                      float width, float height, float[] light, boolean mirror) {
+        float h = Math.max(0, Math.min(height, LANGIT_MATAHARI_LIFT * 0.8f));
+        float ratio = h / (LANGIT_MATAHARI_LIFT - h);
+        float dx = (x - light[0]) * ratio;
+        float dy = (y - light[1] - LANGIT_MATAHARI_LIFT) * ratio + height * 0.4f;
+        Matrix transform = new Matrix();
+        transform.setValues(new float[]{1, -dx / height, x - width / 2 + dx,
+                0, -dy / height, y + dy, 0, 0, 1});
+        int saved = canvas.save();
+        canvas.concat(transform);
+        if (mirror) { canvas.translate(width, 0); canvas.scale(-1, 1); }
+        paint.setColorFilter(OBJECT_SHADOW_FILTER);
+        paint.setFilterBitmap(false);
+        canvas.drawBitmap(sprite, null, new RectF(0, 0, width, height), paint);
+        paint.setColorFilter(null);
+        canvas.restoreToCount(saved);
     }
 
     private void drawSurfaceObjectShadows(Canvas canvas, SkyMath.Position light, double cloudCover, int code) {
         int save = canvas.save();
         setClipIslandSurface(canvas);
         paint.setStyle(Paint.Style.FILL);
-        paint.setColor(Color.argb((int) (255 * Math.max(0.28,
-                cloudShadowOpacity(Math.max(light.altitudeDegrees, 0), cloudCover, code) * 1.8)), 12, 23, 40));
+        paint.setColor(Color.argb((int) (255 * Math.max(0.12,
+                cloudShadowOpacity(Math.max(light.altitudeDegrees, 0), cloudCover, code))), 12, 23, 40));
         float[] lightPoint = sunPlanePosition(light.hourAngleDegrees);
         Bitmap houseSprite = ("N".equals(houseFacing) || "W".equals(houseFacing)) ? houseBackImage : houseImage;
         if (showHouse && houseSprite != null) {
             float x = SCENE_WIDTH / 2.0f + (houseColumn - houseRow) * ISLAND_TILE_WIDTH / 2.0f;
-            float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (houseColumn + houseRow + 2) * ISLAND_TILE_HEIGHT / 2.0f
-                    + 1.25f * ISLAND_TILE_HEIGHT * houseScale;
-            drawObjectShadow(canvas, x, y, 70 * houseScale, ISLAND_TILE_HEIGHT * 2.5f * houseScale, 67 * houseScale, lightPoint);
+            float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (houseColumn + houseRow + 2) * ISLAND_TILE_HEIGHT / 2.0f;
+            drawObjectSilhouette(canvas, houseSprite, x, y, 70 * houseScale, 67 * houseScale, lightPoint,
+                    "N".equals(houseFacing) || "E".equals(houseFacing));
         }
         Bitmap sprite = ("N".equals(characterFacing) || "W".equals(characterFacing)) ? mainCharacterBack : mainCharacter;
         if (showCharacter && sprite != null) {
             float x = SCENE_WIDTH / 2.0f + (characterColumn - characterRow) * ISLAND_TILE_WIDTH / 2.0f;
             float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (characterColumn + characterRow) * ISLAND_TILE_HEIGHT / 2.0f;
-            drawObjectShadow(canvas, x, y, 13.5f * characterScale, 5 * characterScale, 25 * characterScale, lightPoint);
+            drawObjectSilhouette(canvas, sprite, x, y, 13.5f * characterScale, 25 * characterScale, lightPoint,
+                    "N".equals(characterFacing) || "E".equals(characterFacing));
+        }
+        // Faint contact diamonds stay attached to the ground anchors as objects move or scale.
+        paint.setColor(Color.argb((int) (255 * 0.09), 12, 23, 40));
+        if (showHouse && houseSprite != null) {
+            float x = SCENE_WIDTH / 2.0f + (houseColumn - houseRow) * ISLAND_TILE_WIDTH / 2.0f;
+            float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (houseColumn + houseRow + 2) * ISLAND_TILE_HEIGHT / 2.0f;
+            drawObjectContact(canvas, x, y, 70 * houseScale, ISLAND_TILE_HEIGHT * 2.5f * houseScale);
+        }
+        if (showCharacter && sprite != null) {
+            float x = SCENE_WIDTH / 2.0f + (characterColumn - characterRow) * ISLAND_TILE_WIDTH / 2.0f;
+            float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (characterColumn + characterRow) * ISLAND_TILE_HEIGHT / 2.0f;
+            drawObjectContact(canvas, x, y, 13.5f * characterScale, 5 * characterScale);
         }
         canvas.restoreToCount(save);
+    }
+
+    private void drawObjectContact(Canvas canvas, float x, float y, float width, float depth) {
+        Path path = new Path();
+        path.moveTo(x, y - depth / 2); path.lineTo(x + width / 2, y);
+        path.lineTo(x, y + depth / 2); path.lineTo(x - width / 2, y);
+        path.close(); canvas.drawPath(path, paint);
     }
 
     private void drawHouse(Canvas canvas) {
@@ -828,7 +867,7 @@ public final class WeatherSkyView extends View {
         if (code >= 95) weatherShade = Math.max(weatherShade, 0.34);
         SkyAtmosphere atmosphere = skyAtmosphere(sunAltitude, cloudCover, code);
 
-        int grass = blend(Color.rgb(56, 83, 68), Color.rgb(90, 115, 101), daylight);
+        int grass = blend(Color.rgb(63, 79, 40), Color.rgb(124, 157, 44), daylight);
         grass = blend(grass, Color.rgb(195, 157, 96), twilight * 0.25);
         grass = blend(grass, Color.rgb(120, 131, 111), weatherShade);
         boolean wet = (code >= 51 && code <= 67) || (code >= 80 && code <= 82);
@@ -837,8 +876,8 @@ public final class WeatherSkyView extends View {
 
         int grassDark = blend(grass, Color.rgb(45, 73, 56), 0.24);
         double grassTileMix = (0.18 + daylight * 0.77) * (1.0 - weatherShade * 0.30);
-        int grassTileSoftFern = blend(grass, Color.rgb(168, 199, 149), grassTileMix);
-        int grassTileFernSage = blend(grass, Color.rgb(152, 186, 135), grassTileMix);
+        int grassTileSoftFern = blend(grass, Color.rgb(164, 207, 54), grassTileMix);
+        int grassTileFernSage = blend(grass, Color.rgb(148, 189, 43), grassTileMix);
         int grassSeam = blend(grass, Color.rgb(49, 77, 55), 0.08);
         int grassWall = blend(grass, Color.rgb(35, 72, 44), 0.28);
 
@@ -848,13 +887,15 @@ public final class WeatherSkyView extends View {
         soil = blend(soil, atmosphere.tint, atmosphere.islandMix * 0.22);
         int soilLight = blend(soil, Color.rgb(190, 106, 26), 0.20);
         int soilDark = blend(soil, Color.rgb(58, 27, 7), 0.50);
-        if (worldIslandTint != null) {
-            grass = blend(grass, worldIslandTint, 0.55);
-            grassDark = blend(grassDark, worldIslandTint, 0.55);
-            grassTileSoftFern = blend(grassTileSoftFern, worldIslandTint, 0.55);
-            grassTileFernSage = blend(grassTileFernSage, worldIslandTint, 0.55);
-            grassSeam = blend(grassSeam, worldIslandTint, 0.55);
-            grassWall = blend(grassWall, worldIslandTint, 0.55);
+        if (worldIslandTint != null && worldIslandTint != Color.rgb(168, 199, 149)
+                && worldIslandTint != Color.rgb(164, 207, 54)) {
+            int tint = worldIslandTint;
+            grass = blend(grass, tint, 0.55);
+            grassDark = blend(grassDark, tint, 0.55);
+            grassTileSoftFern = blend(grassTileSoftFern, tint, 0.55);
+            grassTileFernSage = blend(grassTileFernSage, tint, 0.55);
+            grassSeam = blend(grassSeam, tint, 0.55);
+            grassWall = blend(grassWall, tint, 0.55);
         }
         return new IslandPalette(grass, grassDark, grassTileSoftFern, grassTileFernSage,
                 grassSeam, grassWall, soilLight, soilDark);
@@ -899,6 +940,18 @@ public final class WeatherSkyView extends View {
         // Each top stays solid; direct sunlight adds only a uniform, subtle color lift.
         drawSunlitIslandDiamond(canvas, centerX, centerY, halfWidth, halfHeight,
                 cornerRadius, fill, sunlight);
+        int seed = column * 17 + row * 29;
+        if (seed % 5 == 0) {
+            float x = centerX + (seed % 7 - 3), y = centerY + (seed % 3 - 1) * 0.5f;
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(blend(fill, Color.rgb(60, 89, 17), 0.55));
+            canvas.drawRect(x, y, x + 0.5f, y + 1.5f, paint);
+            canvas.drawRect(x - 1.0f, y - 0.5f, x - 0.5f, y + 0.5f, paint);
+            canvas.drawRect(x + 1.0f, y - 0.5f, x + 1.5f, y + 0.5f, paint);
+            canvas.drawRect(x - 0.5f, y + 1.0f, x + 1.0f, y + 1.5f, paint);
+            paint.setColor(blend(fill, Color.rgb(209, 228, 108), 0.35));
+            canvas.drawRect(x - 0.5f, y, x, y + 0.5f, paint);
+        }
     }
 
     private void drawGrassTileSide(Canvas canvas, float centerX, float centerY,
@@ -966,6 +1019,26 @@ public final class WeatherSkyView extends View {
                 soilLeftX, middleY + grassBandDepth,
                 soilRightX, soilFrontY + ISLAND_DEPTH,
                 palette.soilLight, palette.soilDark, 0, 0.0f);
+        // Same static, clipped soil flecks as the browser preview.
+        canvas.save();
+        canvas.clipPath(islandBodyPath);
+        int previousColor = paint.getColor(), previousAlpha = paint.getAlpha();
+        Paint.Style previousStyle = paint.getStyle();
+        paint.setStyle(Paint.Style.FILL);
+        for (int i = 0; i < 32; i++) {
+            float x = soilLeftX + (soilRightX - soilLeftX) * (i + 0.5f) / 32.0f;
+            float t = x <= centerX ? (x - soilLeftX) / (centerX - soilLeftX)
+                    : (soilRightX - x) / (soilRightX - centerX);
+            float y = middleY + (soilFrontY - middleY) * t + grassBandDepth + 3 + (i * 7 % 9);
+            paint.setColor(blend(palette.soilLight, palette.soilDark, i % 3 == 0 ? 0.25 : 0.8));
+            paint.setAlpha(115);
+            canvas.drawRect(x, y, x + 1.5f, y + 0.75f, paint);
+            if (i % 4 == 0) canvas.drawRect(x + 0.5f, y + 0.75f, x + 1.25f, y + 1.25f, paint);
+        }
+        paint.setColor(previousColor);
+        paint.setAlpha(previousAlpha);
+        paint.setStyle(previousStyle);
+        canvas.restore();
     }
 
     private void traceRoundedIslandPolygon(Path path, float[] vertices,
@@ -1056,7 +1129,7 @@ public final class WeatherSkyView extends View {
                                          float halfWidth, float halfHeight, float cornerRadius,
                                          int baseColor, IslandSunlight sunlight) {
         int tileColor = sunlight.strength > 0.015
-                ? blend(baseColor, Color.rgb(182, 208, 161), 0.10 * sunlight.strength)
+                ? blend(baseColor, Color.rgb(209, 228, 108), 0.10 * sunlight.strength)
                 : baseColor;
         drawSmoothIslandDiamond(canvas, centerX, centerY, halfWidth, halfHeight,
                 cornerRadius, tileColor, tileColor, 0, 0.0f);

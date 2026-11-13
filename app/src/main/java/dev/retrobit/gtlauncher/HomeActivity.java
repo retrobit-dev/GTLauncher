@@ -7,11 +7,17 @@ import android.app.role.RoleManager;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Rect;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.hardware.GeomagneticField;
 import android.hardware.Sensor;
@@ -23,6 +29,7 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
+import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.CancellationSignal;
 import android.os.Handler;
@@ -31,6 +38,7 @@ import android.provider.Settings;
 import android.content.SharedPreferences;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.Surface;
@@ -62,7 +70,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** A non-scrollable, weather-driven home screen with a separate app drawer. */
 public class HomeActivity extends Activity {
     private static final int COLOR_TEXT = Color.rgb(244, 246, 244);
-    private static final int COLOR_ICON_BACKGROUND = Color.rgb(31, 39, 42);
     private static final int LOCATION_PERMISSION_REQUEST = 721;
     private static final int IMPORT_WORLD_REQUEST = 722;
     private static final int MAX_WORLD_BYTES = 64 * 1024;
@@ -96,6 +103,20 @@ public class HomeActivity extends Activity {
     private boolean lastPrecisePermission;
 
     private View homeScreen;
+    private View homeDateHud;
+    private ImageView seasonIcon;
+    private TextView batteryHud;
+    private ImageView batteryIcon;
+    private boolean batteryReceiverRegistered;
+    private final BroadcastReceiver batteryReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (intent != null && Intent.ACTION_BATTERY_CHANGED.equals(intent.getAction())) updateBatteryHud(intent);
+        }
+    };
+    private int seasonRequestGeneration;
+    private long seasonLastAttempt;
+    private double seasonLatitude = Double.NaN, seasonLongitude = Double.NaN;
+    private boolean seasonFallback;
     private WeatherSkyView skyView;
     private WorldStore worldStore;
     private SensorManager sensorManager;
@@ -105,7 +126,7 @@ public class HomeActivity extends Activity {
     private double currentLongitude = FALLBACK_LONGITUDE;
     private TextView weatherSourceView;
     private TextView weatherLicenseView;
-    private LinearLayout drawerScreen;
+    private View drawerScreen;
     private final Runnable periodicWeatherRefresh = new Runnable() {
         @Override
         public void run() {
@@ -172,6 +193,16 @@ public class HomeActivity extends Activity {
         configureSystemBars();
 
         homeScreen = findViewById(R.id.home_screen);
+        homeDateHud = findViewById(R.id.home_date_hud);
+        // The right edge remains fixed when the entire HUD is scaled.
+        homeDateHud.addOnLayoutChangeListener((view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            view.setPivotX(right - left);
+            view.setPivotY(0f);
+        });
+        seasonIcon = findViewById(R.id.hud_season_icon);
+        batteryHud = findViewById(R.id.hud_battery);
+        batteryIcon = findViewById(R.id.hud_battery_icon);
+        resizeHudReadouts();
         skyView = (WeatherSkyView) homeScreen;
         skyView.setLocation(FALLBACK_LATITUDE, FALLBACK_LONGITUDE);
         worldStore = new WorldStore(getSharedPreferences("worlds", MODE_PRIVATE));
@@ -203,7 +234,9 @@ public class HomeActivity extends Activity {
             return true;
         });
         findViewById(R.id.drawer_back).setOnClickListener(view -> closeDrawer());
+        findViewById(R.id.home_phone_button).setOnClickListener(view -> openDrawer());
         defaultHomeButton.setOnClickListener(view -> requestDefaultLauncher());
+        findViewById(R.id.location_permission_button).setOnClickListener(view -> showLocationPermissionExplanation());
         findViewById(R.id.world_button).setOnClickListener(view -> showWorldDialog());
 
         searchView.addTextChangedListener(new TextWatcher() {
@@ -239,12 +272,11 @@ public class HomeActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        startBatteryUpdates();
         updateDefaultLauncherButton();
         refreshApps();
-        boolean homeVisible = drawerScreen == null || drawerScreen.getVisibility() != View.VISIBLE;
-        if (skyView != null) skyView.setAnimationEnabled(homeVisible);
-        if (homeVisible) registerOrientationSensor();
-        else if (sensorManager != null) sensorManager.unregisterListener(orientationListener);
+        if (skyView != null) skyView.setAnimationEnabled(true);
+        registerOrientationSensor();
         if (precisePermissionKnown) {
             boolean preciseNow = hasPreciseLocationPermission();
             if (preciseNow != lastPrecisePermission) lastWeatherAttemptMillis = 0L;
@@ -260,6 +292,7 @@ public class HomeActivity extends Activity {
 
     @Override
     protected void onPause() {
+        stopBatteryUpdates();
         mainHandler.removeCallbacks(periodicWeatherRefresh);
         if (sensorManager != null) sensorManager.unregisterListener(orientationListener);
         if (skyView != null) skyView.setAnimationEnabled(false);
@@ -272,11 +305,75 @@ public class HomeActivity extends Activity {
         loadGeneration++;
         weatherRequestGeneration++;
         locationRequestGeneration++;
+        seasonRequestGeneration++;
         mainHandler.removeCallbacksAndMessages(null);
         appLoader.shutdownNow();
         weatherLoader.shutdownNow();
         worldLoader.shutdownNow();
         super.onDestroy();
+    }
+
+    private void updateBatteryHud(Intent intent) {
+        int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+        int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+        boolean present = intent.getBooleanExtra(BatteryManager.EXTRA_PRESENT, true);
+        if (!present || level < 0 || scale <= 0 || level > scale) {
+            batteryIcon.setImageResource(R.drawable.hud_battery_unknown);
+            batteryHud.setText("--.--");
+            batteryHud.setTextSize(TypedValue.COMPLEX_UNIT_PX, ((TextView) findViewById(R.id.hud_time)).getTextSize());
+            batteryHud.setContentDescription(getString(R.string.battery_unknown));
+            resizeHudReadouts();
+            return;
+        }
+        String value = String.format(Locale.US, "%.2f", 100.0 * level / scale);
+        batteryHud.setText(value);
+        TextView time = findViewById(R.id.hud_time);
+        batteryHud.setTextSize(TypedValue.COMPLEX_UNIT_PX, time.getTextSize() * (value.length() > 5 ? 5f / 6f : 1f));
+        boolean charging = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1) == BatteryManager.BATTERY_STATUS_CHARGING;
+        boolean low = level * 5L <= scale;
+        int icon = charging ? R.drawable.hud_battery_charging : low ? R.drawable.hud_battery_low : R.drawable.hud_battery_icon;
+        int description = charging ? R.string.battery_accessibility_charging : low ? R.string.battery_accessibility_low : R.string.battery_accessibility;
+        batteryIcon.setImageResource(icon);
+        batteryHud.setContentDescription(getString(description, value));
+        resizeHudReadouts();
+    }
+
+    private void resizeHudReadouts() {
+        TextView time = findViewById(R.id.hud_time);
+        View timePanel = findViewById(R.id.hud_time_panel);
+        View batteryPanel = findViewById(R.id.hud_battery_panel);
+        // Keep the clock panel width fixed as battery readings change.
+        float textWidth = time.getPaint().measureText("88:88");
+        int width = dp(8) + dp(14) + dp(3) + dp(8) + (int) Math.ceil(textWidth);
+        for (View panel : new View[]{timePanel, batteryPanel}) {
+            if (panel.getLayoutParams().width != width) {
+                android.view.ViewGroup.LayoutParams params = panel.getLayoutParams();
+                params.width = width;
+                panel.setLayoutParams(params);
+            }
+        }
+    }
+
+    private void startBatteryUpdates() {
+        if (batteryReceiverRegistered) return;
+        try {
+            // ACTION_BATTERY_CHANGED is a protected sticky system broadcast.
+            Intent current = registerReceiver(batteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            batteryReceiverRegistered = true;
+            if (current != null) updateBatteryHud(current);
+        } catch (RuntimeException ignored) {
+            batteryIcon.setImageResource(R.drawable.hud_battery_unknown);
+            batteryHud.setText("--.--");
+            batteryHud.setTextSize(TypedValue.COMPLEX_UNIT_PX, ((TextView) findViewById(R.id.hud_time)).getTextSize());
+            batteryHud.setContentDescription(getString(R.string.battery_unknown));
+            resizeHudReadouts();
+        }
+    }
+
+    private void stopBatteryUpdates() {
+        if (!batteryReceiverRegistered) return;
+        unregisterReceiver(batteryReceiver);
+        batteryReceiverRegistered = false;
     }
 
     private void applyActiveWorld() {
@@ -370,9 +467,14 @@ public class HomeActivity extends Activity {
                     confirmWorldImport(world);
                 });
             } catch (Exception error) {
+                // Do not imply that a newer, intact world is corrupt or silently strip its objects.
+                final boolean unsupportedVersion = error instanceof JSONException
+                        && "Unsupported world version".equals(error.getMessage());
                 mainHandler.post(() -> {
                     if (!isFinishing() && !isDestroyed())
-                        Toast.makeText(this, "Berkas world tidak valid atau tidak dapat dibaca.", Toast.LENGTH_LONG).show();
+                        Toast.makeText(this, unsupportedVersion
+                                ? "Versi world ini belum didukung Android. Data tidak diubah."
+                                : "Berkas world tidak valid atau tidak dapat dibaca.", Toast.LENGTH_LONG).show();
                 });
             }
         });
@@ -498,17 +600,41 @@ public class HomeActivity extends Activity {
         }
 
         fetchWeather(FALLBACK_LATITUDE, FALLBACK_LONGITUDE, true);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            SharedPreferences settings = getSharedPreferences(WEATHER_SETTINGS_PREFS, MODE_PRIVATE);
-            if (!settings.getBoolean("location_permission_requested", false)) {
-                settings.edit().putBoolean("location_permission_requested", true).apply();
-                permissionRequestPending = true;
-                requestPermissions(new String[]{
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                }, LOCATION_PERMISSION_REQUEST);
-            }
+        SharedPreferences settings = getSharedPreferences(WEATHER_SETTINGS_PREFS, MODE_PRIVATE);
+        if (!settings.getBoolean("location_permission_explanation_shown", false)) {
+            settings.edit().putBoolean("location_permission_explanation_shown", true).apply();
+            showLocationPermissionExplanation();
         }
+    }
+
+    private void showLocationPermissionExplanation() {
+        if (isFinishing() || isDestroyed() || permissionRequestPending) return;
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.location_permission_title)
+                .setMessage(R.string.location_permission_explanation)
+                .setPositiveButton(R.string.location_permission_continue, (dialog, which) -> requestLocationPermissionOrSettings())
+                .setNegativeButton(R.string.location_permission_later, null)
+                .show();
+    }
+
+    private void requestLocationPermissionOrSettings() {
+        if (permissionRequestPending) return;
+        SharedPreferences settings = getSharedPreferences(WEATHER_SETTINGS_PREFS, MODE_PRIVATE);
+        boolean requested = settings.getBoolean("location_permission_requested", false);
+        // After a permanent denial or an approximate-only grant, Android may no longer
+        // show a permission dialog. Offer app settings instead of silently failing.
+        if (hasPreciseLocationPermission() || (requested && !shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION))) {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            try { startActivity(intent); }
+            catch (ActivityNotFoundException | SecurityException error) {
+                Toast.makeText(this, R.string.location_permission_settings_unavailable, Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        settings.edit().putBoolean("location_permission_requested", true).apply();
+        permissionRequestPending = true;
+        requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, LOCATION_PERMISSION_REQUEST);
     }
 
     private boolean hasPreciseLocationPermission() {
@@ -641,6 +767,7 @@ public class HomeActivity extends Activity {
             currentWeather = null;
             currentLatitude = location.getLatitude();
             currentLongitude = location.getLongitude();
+            updateSeason(currentLatitude, currentLongitude, false);
             if (skyView != null) skyView.setLocation(currentLatitude, currentLongitude);
             fetchWeather(currentLatitude, currentLongitude, false);
         } else {
@@ -648,8 +775,40 @@ public class HomeActivity extends Activity {
         }
     }
 
+    private void clearSeason() {
+        seasonRequestGeneration++;
+        seasonLastAttempt = 0;
+        seasonLatitude = seasonLongitude = Double.NaN;
+        if (seasonIcon != null) {
+            seasonIcon.setImageResource(R.drawable.season_unknown);
+            seasonIcon.setContentDescription(getString(R.string.season_unknown));
+        }
+    }
+
+    private void updateSeason(double latitude, double longitude, boolean fallback) {
+        boolean changed = !Double.isFinite(seasonLatitude) || seasonFallback != fallback || Math.abs(latitude-seasonLatitude)>0.02 || Math.abs(longitude-seasonLongitude)>0.02;
+        if (!changed && System.currentTimeMillis()-seasonLastAttempt < 6L*60*60*1000) return;
+        clearSeason(); seasonLatitude=latitude; seasonLongitude=longitude; seasonFallback=fallback; seasonLastAttempt=System.currentTimeMillis();
+        final int request=++seasonRequestGeneration;
+        weatherLoader.execute(() -> {
+            String result;
+            try { result=SeasonEstimate.fetch(latitude, longitude); } catch (Exception error) { result="unknown"; }
+            final String value=result;
+            runOnUiThread(() -> {
+                if (request!=seasonRequestGeneration || isFinishing() || isDestroyed() || (!fallback && !hasPreciseLocationPermission())) return;
+                if ("unknown".equals(value)) seasonLastAttempt=0;
+                int image="wet".equals(value)?R.drawable.season_wet:"dry".equals(value)?R.drawable.season_dry:R.drawable.season_unknown;
+                int label="wet".equals(value)?R.string.season_wet:"dry".equals(value)?R.string.season_dry:R.string.season_unknown;
+                seasonIcon.setImageResource(image); seasonIcon.setContentDescription(getString(label) + (fallback ? getString(R.string.season_fallback_suffix) : getString(R.string.season_device_suffix)));
+            });
+        });
+    }
+
     private void fetchWeather(double latitude, double longitude, boolean fallbackLocation) {
-        if (fallbackLocation) useFallbackLocationForDisplay();
+        if (fallbackLocation) {
+            updateSeason(FALLBACK_LATITUDE, FALLBACK_LONGITUDE, true);
+            useFallbackLocationForDisplay();
+        }
         final int generation = ++weatherRequestGeneration;
         lastWeatherAttemptMillis = System.currentTimeMillis();
         weatherLoader.execute(() -> {
@@ -687,6 +846,7 @@ public class HomeActivity extends Activity {
 
     private void discardPreciseWeatherIfPermissionRevoked() {
         if (hasPreciseLocationPermission()) return;
+        updateSeason(FALLBACK_LATITUDE, FALLBACK_LONGITUDE, true);
         boolean hasPreciseSnapshot = currentWeather != null && !currentWeather.fallbackLocation;
         boolean awayFromFallback = Math.abs(currentLatitude - FALLBACK_LATITUDE) > 0.001
                 || Math.abs(currentLongitude - FALLBACK_LONGITUDE) > 0.001;
@@ -884,7 +1044,7 @@ public class HomeActivity extends Activity {
             try {
                 CharSequence label = resolveInfo.loadLabel(packageManager);
                 String appLabel = label == null ? activityInfo.packageName : label.toString();
-                Drawable icon = resolveInfo.loadIcon(packageManager);
+                Drawable icon = pixelArtIcon(resolveInfo.loadIcon(packageManager));
                 result.add(new AppEntry(appLabel, activityInfo.packageName, activityInfo.name, icon));
             } catch (RuntimeException ignored) {
                 // An app can be removed while the launcher is enumerating its activities.
@@ -932,24 +1092,25 @@ public class HomeActivity extends Activity {
 
         GridLayout.LayoutParams layoutParams = new GridLayout.LayoutParams();
         layoutParams.width = cellWidth;
-        layoutParams.height = dp(112);
+        layoutParams.height = dp(88);
         item.setLayoutParams(layoutParams);
 
         ImageView iconView = new ImageView(this);
-        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(48), dp(48));
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(40), dp(40));
         iconView.setLayoutParams(iconParams);
         iconView.setScaleType(ImageView.ScaleType.FIT_CENTER);
         iconView.setImageDrawable(app.icon);
-        iconView.setBackground(tintedCircle());
-        int iconInset = dp(7);
+        iconView.setBackgroundResource(R.drawable.bg_pixel_app_icon);
+        int iconInset = dp(5);
         iconView.setPadding(iconInset, iconInset, iconInset, iconInset);
         iconView.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         item.addView(iconView);
 
         TextView label = new TextView(this);
         label.setText(app.label);
-        label.setTextColor(COLOR_TEXT);
-        label.setTextSize(12);
+        label.setTextColor(Color.rgb(52, 43, 30));
+        label.setTypeface(getResources().getFont(R.font.press_start_2p));
+        label.setTextSize(8);
         label.setGravity(Gravity.CENTER);
         label.setMaxLines(2);
         label.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -969,13 +1130,11 @@ public class HomeActivity extends Activity {
     }
 
     private void openDrawer() {
-        if (skyView != null) skyView.setAnimationEnabled(false);
-        if (sensorManager != null) sensorManager.unregisterListener(orientationListener);
-        homeScreen.setVisibility(View.GONE);
         drawerScreen.setVisibility(View.VISIBLE);
         searchView.setText("");
         searchView.clearFocus();
         renderApps("");
+        appGrid.post(() -> { if (drawerScreen.getVisibility() == View.VISIBLE) renderApps(searchView.getText().toString()); });
     }
 
     private void closeDrawer() {
@@ -983,9 +1142,6 @@ public class HomeActivity extends Activity {
         searchView.setText("");
         searchView.clearFocus();
         drawerScreen.setVisibility(View.GONE);
-        homeScreen.setVisibility(View.VISIBLE);
-        if (skyView != null) skyView.setAnimationEnabled(true);
-        registerOrientationSensor();
     }
 
     private void launchApp(AppEntry app) {
@@ -1031,17 +1187,40 @@ public class HomeActivity extends Activity {
         return (int) (widthPx / getResources().getDisplayMetrics().density);
     }
 
-    private Drawable tintedCircle() {
-        android.graphics.drawable.GradientDrawable background =
-                new android.graphics.drawable.GradientDrawable();
-        background.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-        background.setColor(COLOR_ICON_BACKGROUND);
-        background.setStroke(dp(1), Color.rgb(53, 65, 67));
-        return background;
-    }
-
-    private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    /** Rasterize once while loading apps; nearest-neighbour enlargement keeps the pixels crisp. */
+    private Drawable pixelArtIcon(Drawable original) {
+        if (original == null) return getDrawable(android.R.drawable.sym_def_app_icon);
+        try {
+            final int pixels = 24;
+            Bitmap bitmap = Bitmap.createBitmap(pixels, pixels, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            Rect oldBounds = new Rect(original.getBounds());
+            try {
+                original.setBounds(0, 0, pixels, pixels);
+                original.draw(canvas);
+            } finally {
+                original.setBounds(oldBounds);
+            }
+            // A modest color reduction unifies the look without replacing brand colors.
+            int[] colors = new int[pixels * pixels];
+            bitmap.getPixels(colors, 0, pixels, 0, 0, pixels, pixels);
+            for (int i = 0; i < colors.length; i++) {
+                int color = colors[i];
+                int r = Math.min(255, ((Color.red(color) + 8) / 16) * 16);
+                int g = Math.min(255, ((Color.green(color) + 8) / 16) * 16);
+                int b = Math.min(255, ((Color.blue(color) + 8) / 16) * 16);
+                colors[i] = Color.argb(Color.alpha(color), r, g, b);
+            }
+            bitmap.setPixels(colors, 0, pixels, 0, 0, pixels, pixels);
+            bitmap.setDensity(Bitmap.DENSITY_NONE);
+            BitmapDrawable pixelIcon = new BitmapDrawable(getResources(), bitmap);
+            pixelIcon.setFilterBitmap(false);
+            pixelIcon.setDither(false);
+            return pixelIcon;
+        } catch (RuntimeException exception) {
+            // Unusual or broken third-party drawables must not remove the app from the drawer.
+            return original;
+        }
     }
 
     private static final class AppEntry {

@@ -20,4 +20,21 @@
     <string name="app_launch_failed">Aplikasi tidak dapat dibuka.</string>
     <string name="app_info_failed">Info aplikasi tidak tersedia.</string>
     <string name="world_button">World</string>
+    <string name="season_unknown">Musim belum diketahui</string>
+    <string name="season_dry">Perkiraan musim kemarau</string>
+    <string name="season_wet">Perkiraan musim hujan</string>
+    <string name="season_fallback_suffix"> · lokasi cadangan Rembang, Jawa Tengah</string>
+    <string name="season_device_suffix"> · lokasi perangkat</string>
+    <string name="location_permission_button">IZIN LOKASI</string>
+    <string name="location_permission_title">Izin lokasi</string>
+    <string name="location_permission_explanation">GTLauncher menggunakan lokasi akurat untuk menyesuaikan cuaca dan perkiraan musim. Koordinat dikirim ke Open-Meteo untuk mendapatkan data cuaca. Jika izin tidak diberikan atau GPS tidak tersedia, lokasi cadangan Rembang digunakan.</string>
+    <string name="location_permission_continue">Lanjut</string>
+    <string name="location_permission_later">Nanti</string>
+    <string name="location_permission_settings_unavailable">Pengaturan izin aplikasi tidak tersedia pada perangkat ini.</string>
+    <string name="battery_unknown">Baterai tidak tersedia</string>
+    <string name="battery_accessibility">Baterai %1$s persen</string>
+    <string name="battery_accessibility_low">Baterai %1$s persen, baterai lemah</string>
+    <string name="battery_accessibility_charging">Baterai %1$s persen, sedang mengisi daya</string>
+    <string name="open_apps_drawer">Buka daftar aplikasi</string>
+    <string name="close_apps_drawer">Tutup daftar aplikasi</string>
 </resources>
