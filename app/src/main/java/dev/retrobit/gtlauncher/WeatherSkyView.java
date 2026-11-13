@@ -266,6 +266,7 @@ public final class WeatherSkyView extends View {
     private final java.util.Set<String> openStorage = new java.util.HashSet<>();
     private String surfaceWorldId="";
     private java.util.List<PortalTravel.Portal> worldPortals = java.util.Collections.emptyList();
+    private boolean portalWalkActive;
     private java.util.List<WorldStore.SurfaceObject> worldSurfaces = java.util.Collections.emptyList();
     private boolean showHouse;
     private int houseColumn = 0, houseRow = 0;
@@ -313,7 +314,7 @@ public final class WeatherSkyView extends View {
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_back);
         portalImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_gate);
-        portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation);
+        portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation_red);
         bushSpiky=BitmapFactory.decodeResource(getResources(),R.drawable.bush_spiky);bushTiered=BitmapFactory.decodeResource(getResources(),R.drawable.bush_tiered);
         treeMango=BitmapFactory.decodeResource(getResources(),R.drawable.tree_mango);mailboxBirdhouse=BitmapFactory.decodeResource(getResources(),R.drawable.mailbox_birdhouse);
         storageClosed=BitmapFactory.decodeResource(getResources(),R.drawable.storage_closed);storageOpen=BitmapFactory.decodeResource(getResources(),R.drawable.storage_open);
@@ -468,21 +469,31 @@ public final class WeatherSkyView extends View {
     }
     private RectF portalMarkerBounds(PortalTravel.Portal portal) {
         RectF bounds=new RectF(0,0,64,64);portalMatrix(portal).mapRect(bounds);
-        float x=Math.max(0,Math.min(SCENE_WIDTH-14,bounds.centerX()-7));
-        float y=Math.max(0,Math.min(SCENE_HEIGHT-14,bounds.top-15));
-        return new RectF(x,y,x+14,y+14);
+        float width=10f,height=12.5f;
+        float x=Math.max(0,Math.min(SCENE_WIDTH-width,bounds.right-width*.35f));
+        float y=Math.max(0,Math.min(SCENE_HEIGHT-height,bounds.top-height*.75f));
+        return new RectF(x,y,x+width,y+height);
+    }
+    void setPortalWalkActive(boolean walking) { portalWalkActive=walking;invalidate(); }
+    boolean portalMarkerVisible(PortalTravel.Portal portal) {
+        return !portalWalkActive && showCharacter && characterColumn==portal.tile.column && characterRow==portal.tile.row && portal.edge.equals(characterFacing);
     }
     private void drawPortalMarkers(Canvas canvas) {
         if(portalMarkerImage==null)return;
         paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
-        for(PortalTravel.Portal portal:worldPortals) canvas.drawBitmap(portalMarkerImage,null,portalMarkerBounds(portal),paint);
+        for(PortalTravel.Portal portal:worldPortals) if(portalMarkerVisible(portal)) canvas.drawBitmap(portalMarkerImage,null,portalMarkerBounds(portal),paint);
+    }
+    String portalMarkerAt(float screenX,float screenY) {
+        if(getWidth()<=0 || getHeight()<=0) return null;
+        float x=screenX*SCENE_WIDTH/getWidth(),y=screenY*SCENE_HEIGHT/getHeight();
+        for(int i=worldPortals.size()-1;i>=0;i--){PortalTravel.Portal portal=worldPortals.get(i);
+            if(portalMarkerVisible(portal) && portalMarkerBounds(portal).contains(x,y)) return portal.id;
+        }
+        return null;
     }
     String portalAt(float screenX,float screenY) {
         if(getWidth()<=0 || getHeight()<=0) return null;
         float[] xy={screenX*SCENE_WIDTH/getWidth(),screenY*SCENE_HEIGHT/getHeight()};
-        for(int i=worldPortals.size()-1;i>=0;i--){PortalTravel.Portal portal=worldPortals.get(i);
-            if(portalMarkerBounds(portal).contains(xy[0],xy[1]))return portal.id;
-        }
         for(int i=worldPortals.size()-1;i>=0;i--){PortalTravel.Portal portal=worldPortals.get(i);Matrix inverse=new Matrix();
             if(!portalMatrix(portal).invert(inverse)) continue;float[] p=xy.clone();inverse.mapPoints(p);
             if(p[0]>=0 && p[0]<=64 && p[1]>=0 && p[1]<=64) return portal.id;

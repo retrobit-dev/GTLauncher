@@ -221,6 +221,7 @@ public class HomeActivity extends Activity {
         homeScreen.setOnTouchListener((view, event) -> {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
                 portalWalkGeneration++;
+                skyView.setPortalWalkActive(false);
                 applyActiveWorld(); // Restore the last saved position if a walk was interrupted.
                 swipeStartX = event.getX();
                 swipeStartY = event.getY();
@@ -232,8 +233,10 @@ public class HomeActivity extends Activity {
                 if (deltaY < -dp(72) && Math.abs(deltaY) > Math.abs(deltaX) * 1.15f) {
                     openDrawer();
                 } else if (Math.hypot(deltaX,deltaY) < dp(8)) {
-                    String portal=skyView.portalAt(event.getX(),event.getY());
-                    if(portal!=null) walkToPortal(portal);
+                    String marker=skyView.portalMarkerAt(event.getX(),event.getY());
+                    String portal=marker==null ? skyView.portalAt(event.getX(),event.getY()) : null;
+                    if(marker!=null) confirmPortalMarker(marker);
+                    else if(portal!=null) walkToPortal(portal);
                     else if(skyView.toggleStorageAt(event.getX(),event.getY())) Toast.makeText(this,"Storage box terbuka atau tertutup. Penyimpanan barang belum tersedia.",Toast.LENGTH_SHORT).show();
                     else applyActiveWorld();
                 }
@@ -389,6 +392,8 @@ public class HomeActivity extends Activity {
     }
 
     private void applyActiveWorld() {
+        portalWalkGeneration++;
+        skyView.setPortalWalkActive(false);
         try {
             WorldStore.World world = worldStore.activeWorld();
             skyView.setWorldIslandTint(world == null ? null : Color.parseColor(world.color));
@@ -532,6 +537,7 @@ public class HomeActivity extends Activity {
             java.util.List<PortalTravel.Tile> route=PortalTravel.pathToPortal(new PortalTravel.Tile(source.characterColumn,source.characterRow),from,portalTerrain(source));
             if(route==null) {Toast.makeText(this,"Jalan ke depan portal terhalang.",Toast.LENGTH_SHORT).show();return;}
             final int generation=++portalWalkGeneration;
+            skyView.setPortalWalkActive(true);
             walkPortalStep(source,chosen,destination,route,1,generation,source.characterFacing);
         } catch(JSONException e) {Toast.makeText(this,"Data portal tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }
@@ -541,10 +547,10 @@ public class HomeActivity extends Activity {
         if(index>=route.size()) {
             try {
                 PortalTravel.Tile end=route.get(route.size()-1);
-                if(!worldStore.moveCharacter(source.id,end.column,end.row,facing)) throw new JSONException("Move failed");
-                applyActiveWorld();
-                showPortalConfirmation(source.id,portal.id,destination.name);
-            } catch(JSONException e) {applyActiveWorld();Toast.makeText(this,"Karakter tidak dapat dipindahkan.",Toast.LENGTH_SHORT).show();}
+                if(!worldStore.moveCharacter(source.id,end.column,end.row,portal.edge)) throw new JSONException("Move failed");
+                skyView.setPortalWalkActive(false);applyActiveWorld();
+                Toast.makeText(this,"Ketuk tanda seru untuk memilih tujuan.",Toast.LENGTH_SHORT).show();
+            } catch(JSONException e) {skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Karakter tidak dapat dipindahkan.",Toast.LENGTH_SHORT).show();}
             return;
         }
         PortalTravel.Tile previous=route.get(index-1), next=route.get(index);
@@ -553,6 +559,18 @@ public class HomeActivity extends Activity {
         mainHandler.postDelayed(()->walkPortalStep(source,portal,destination,route,index+1,generation,direction),180);
     }
 
+    private void confirmPortalMarker(String id) {
+        try {
+            WorldStore.World source=worldStore.activeWorld(),target=null;PortalTravel.Portal from=null,to=null;
+            if(source==null || !source.showCharacter)return;
+            for(PortalTravel.Portal p:source.portals) if(p.id.equals(id))from=p;
+            if(from==null || source.characterColumn!=from.tile.column || source.characterRow!=from.tile.row || !source.characterFacing.equals(from.edge)) return;
+            for(WorldStore.World w:worldStore.list()) if(w.id.equals(from.destinationWorldId))target=w;
+            if(target!=null)for(PortalTravel.Portal p:target.portals)if(p.id.equals(from.destinationPortalId))to=p;
+            if(!PortalTravel.arePaired(from,to)){Toast.makeText(this,"Portal belum memiliki pasangan yang valid.",Toast.LENGTH_SHORT).show();return;}
+            showPortalConfirmation(source.id,id,target.name);
+        } catch(JSONException e){Toast.makeText(this,"Data portal tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
+    }
     private TextView portalButton(String label) {
         TextView button=new TextView(this);button.setText(label);button.setTextColor(Color.rgb(66,42,28));
         button.setTextSize(10);button.setTypeface(getResources().getFont(R.font.press_start_2p));
@@ -574,6 +592,9 @@ public class HomeActivity extends Activity {
         buttons.addView(yes,left);buttons.addView(no,right);
         AlertDialog dialog=new AlertDialog.Builder(this).setView(panel).create();
         yes.setOnClickListener(v->{dialog.dismiss();try {
+            WorldStore.World current=worldStore.activeWorld();PortalTravel.Portal currentPortal=null;
+            if(current!=null)for(PortalTravel.Portal p:current.portals)if(p.id.equals(portalId))currentPortal=p;
+            if(current==null || !current.id.equals(sourceId) || currentPortal==null || current.characterColumn!=currentPortal.tile.column || current.characterRow!=currentPortal.tile.row || !current.characterFacing.equals(currentPortal.edge)) {Toast.makeText(this,"Karakter tidak lagi menghadap portal.",Toast.LENGTH_SHORT).show();return;}
             if(!worldStore.travel(sourceId,portalId)) Toast.makeText(this,"Portal tidak tersedia atau tujuan terhalang.",Toast.LENGTH_LONG).show(); else applyActiveWorld();
         } catch(JSONException e){Toast.makeText(this,"Perpindahan gagal; data tidak diubah.",Toast.LENGTH_LONG).show();}});
         no.setOnClickListener(v->dialog.dismiss());
