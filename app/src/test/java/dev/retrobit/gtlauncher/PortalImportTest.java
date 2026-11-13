@@ -64,6 +64,13 @@ public class PortalImportTest {
         try {WorldStore.parseExport(world(banana+","+flower.replace("\"column\":6","\"column\":8")));fail("overlap");}catch(JSONException expected){}
         try {store.upsertAndSelect(WorldStore.parseExport(world("").replace("\"version\":28","\"version\":22")));fail("older import cannot erase plants");}catch(JSONException expected){}
     }
+    @Test public void sellingBoxVersionAndPersistence() throws JSONException {
+        String box="{\"type\":\"selling-box\",\"column\":1,\"row\":1,\"facing\":\"N\"}";
+        WorldStore store=new WorldStore(prefs());String file=world(box).replace("\"version\":28","\"version\":30");
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(file)));assertEquals("selling-box",store.activeWorld().surfaces.get(0).type);assertEquals("N",store.activeWorld().surfaces.get(0).material);
+        try {WorldStore.parseExport(world(box));fail("selling box requires v30");}catch(JSONException expected){}
+        try {store.upsertAndSelect(WorldStore.parseExport(world("")));fail("legacy must not erase selling box");}catch(JSONException expected){}
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {

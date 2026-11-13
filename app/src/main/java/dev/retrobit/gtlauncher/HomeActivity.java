@@ -237,7 +237,7 @@ public class HomeActivity extends Activity {
                     String portal=marker==null ? skyView.portalAt(event.getX(),event.getY()) : null;
                     if(marker!=null) confirmPortalMarker(marker);
                     else if(portal!=null) walkToPortal(portal);
-                    else if(skyView.toggleStorageAt(event.getX(),event.getY())) Toast.makeText(this,"Storage box terbuka atau tertutup. Penyimpanan barang belum tersedia.",Toast.LENGTH_SHORT).show();
+                    else if(skyView.toggleStorageAt(event.getX(),event.getY())) Toast.makeText(this,"Box terbuka atau tertutup. Penjualan dan penyimpanan barang belum tersedia.",Toast.LENGTH_SHORT).show();
                     else applyActiveWorld();
                 }
                 return true;
@@ -512,7 +512,7 @@ public class HomeActivity extends Activity {
                 if(world.showHouse && c>=world.houseColumn && c<=world.houseColumn+2 && r>=world.houseRow && r<=world.houseRow+2) return false;
                 for(WorldStore.SurfaceObject o:world.surfaces) {
                     if(o.type.equals("tree") && c>=o.column && c<o.column+(o.material.equals("mango")?2:1) && r>=o.row && r<o.row+(o.material.equals("mango")?2:1)) return false;
-                    if((o.type.equals("bush")||o.type.equals("sunflower")||o.type.equals("mailbox")||o.type.equals("storage-box")||(o.type.equals("road") && "water".equals(o.material))) && o.column==c && o.row==r)return false;
+                    if((o.type.equals("bush")||o.type.equals("sunflower")||o.type.equals("mailbox")||o.type.equals("storage-box")||o.type.equals("selling-box")||(o.type.equals("road") && "water".equals(o.material))) && o.column==c && o.row==r)return false;
                 }
                 return true;
             }
