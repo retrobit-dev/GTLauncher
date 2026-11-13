@@ -78,16 +78,16 @@ final class WorldStore {
                     Object c=character.get("column"), r=character.get("row");
                     if (!portalId.matches("[A-Za-z0-9_-]{1,128}") || !(c instanceof Number) || !(r instanceof Number)
                             || ((Number)c).doubleValue()!=Math.rint(((Number)c).doubleValue()) || ((Number)r).doubleValue()!=Math.rint(((Number)r).doubleValue())) throw new JSONException("Invalid portal");
-                    int col=((Number)c).intValue(), row=((Number)r).intValue();
-                    if (col<0 || col>8 || row<0 || row>8 || !((edge.equals("N") && row==0) || (edge.equals("S") && row==8) || (edge.equals("W") && col==0) || (edge.equals("E") && col==8))) throw new JSONException("Invalid portal edge");
+                    int col=((Number)c).intValue(), portalRow=((Number)r).intValue();
+                    if (col<0 || col>8 || portalRow<0 || portalRow>8 || !((edge.equals("N") && portalRow==0) || (edge.equals("S") && portalRow==8) || (edge.equals("W") && col==0) || (edge.equals("E") && col==8))) throw new JSONException("Invalid portal edge");
                     if (character.has("destinationWorldId") != character.has("destinationPortalId")) throw new JSONException("Incomplete portal pair");
                     String destWorld=null,destPortal=null;
                     if (character.has("destinationWorldId")) {
                         destWorld=requiredString(character,"destinationWorldId");destPortal=requiredString(character,"destinationPortalId");
                         if (!destWorld.matches("[A-Za-z0-9_-]{1,128}") || !destPortal.matches("[A-Za-z0-9_-]{1,128}")) throw new JSONException("Invalid portal pair");
                     }
-                    for (PortalTravel.Portal previous : portals) if (previous.id.equals(portalId) || (previous.tile.column==col && previous.tile.row==row && previous.edge.equals(edge))) throw new JSONException("Duplicate portal");
-                    portals.add(new PortalTravel.Portal(id,portalId,edge,new PortalTravel.Tile(col,row),destWorld,destPortal)); continue;
+                    for (PortalTravel.Portal previous : portals) if (previous.id.equals(portalId) || (previous.tile.column==col && previous.tile.row==portalRow && previous.edge.equals(edge))) throw new JSONException("Duplicate portal");
+                    portals.add(new PortalTravel.Portal(id,portalId,edge,new PortalTravel.Tile(col,portalRow),destWorld,destPortal)); continue;
                 }
                 if ("house".equals(type)) {
                     if (formatVersion < 5 || house) throw new JSONException("Unsupported house");
