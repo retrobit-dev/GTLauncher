@@ -260,9 +260,10 @@ public final class WeatherSkyView extends View {
     private double longitude = 111.3476;
     private float headingDegrees;
     private boolean animationEnabled = true;
+    private double plantMotionSeconds;
     private Integer worldIslandTint;
     private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, portalImage, portalMarkerImage;
-    private Bitmap bushSpiky,bushTiered,wildGrass,treeMango,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
+    private Bitmap bushSpiky,bushTiered,wildGrass,treeMango,treeBanana,treeCoconut,sunflowerFront,sunflowerBack,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
     private final java.util.Set<String> openStorage = new java.util.HashSet<>();
     private String surfaceWorldId="";
     private java.util.List<PortalTravel.Portal> worldPortals = java.util.Collections.emptyList();
@@ -316,7 +317,7 @@ public final class WeatherSkyView extends View {
         portalImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_gate);
         portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation_red);
         wildGrass=BitmapFactory.decodeResource(getResources(),R.drawable.wild_grass);bushSpiky=BitmapFactory.decodeResource(getResources(),R.drawable.bush_spiky);bushTiered=BitmapFactory.decodeResource(getResources(),R.drawable.bush_tiered);
-        treeMango=BitmapFactory.decodeResource(getResources(),R.drawable.tree_mango);mailboxBirdhouse=BitmapFactory.decodeResource(getResources(),R.drawable.mailbox_birdhouse);
+        treeBanana=BitmapFactory.decodeResource(getResources(),R.drawable.tree_banana_simple);treeCoconut=BitmapFactory.decodeResource(getResources(),R.drawable.tree_coconut_small);sunflowerFront=BitmapFactory.decodeResource(getResources(),R.drawable.sunflower_front);sunflowerBack=BitmapFactory.decodeResource(getResources(),R.drawable.sunflower_back);treeMango=BitmapFactory.decodeResource(getResources(),R.drawable.tree_mango);mailboxBirdhouse=BitmapFactory.decodeResource(getResources(),R.drawable.mailbox_birdhouse);
         storageClosed=BitmapFactory.decodeResource(getResources(),R.drawable.storage_closed);storageOpen=BitmapFactory.decodeResource(getResources(),R.drawable.storage_open);
         storageBackClosed=BitmapFactory.decodeResource(getResources(),R.drawable.storage_back_closed);storageBackOpen=BitmapFactory.decodeResource(getResources(),R.drawable.storage_back_open);
         setContentDescription("Langit pixel art dan pulau terapung yang mengikuti waktu dan cuaca");
@@ -377,7 +378,8 @@ public final class WeatherSkyView extends View {
         float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
         float width,height,bottom;
         switch(o.type) {
-            case "tree": width=48;height=60;bottom=y+ISLAND_TILE_HEIGHT*.5f+ISLAND_TILE_HEIGHT*.55f;break;
+            case "tree": boolean small=!o.material.equals("mango");width=small?24:48;height=small?30:60;bottom=y+ISLAND_TILE_HEIGHT*(small?.275f:1.05f);break;
+            case "sunflower": width=15;height=23;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
             case "bush": width=o.material.equals("wild-grass")?10f:18.5f;height=o.material.equals("wild-grass")?8f:14.5f;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
             case "mailbox": width=13;height=30;bottom=y+ISLAND_TILE_HEIGHT*.15f;break;
             default: width=18;height=18;bottom=y+ISLAND_TILE_HEIGHT*.15f;
@@ -387,11 +389,12 @@ public final class WeatherSkyView extends View {
     private void drawSurfaceSprites(Canvas canvas,boolean front) {
         for(WorldStore.SurfaceObject o:worldSurfaces) {
             if(o.type.equals("road") || o.type.equals("fence")) continue;
-            float depth=o.column+o.row+(o.type.equals("tree")?1f:0f);
+            float depth=o.column+o.row+(o.type.equals("tree") && o.material.equals("mango")?1f:0f);
             if(showCharacter && (depth>=characterColumn+characterRow)!=front) continue;
             if(!showCharacter && front) continue;
             Bitmap image; boolean mirror=false;
-            if(o.type.equals("tree")) image=treeMango;
+            if(o.type.equals("tree")) image=o.material.equals("banana")?treeBanana:o.material.equals("palm")?treeCoconut:treeMango;
+            else if(o.type.equals("sunflower")) { image=(o.material.equals("N")||o.material.equals("W"))?sunflowerBack:sunflowerFront;mirror=o.material.equals("N")||o.material.equals("E"); }
             else if(o.type.equals("bush")) image=o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:bushTiered;
             else if(o.type.equals("mailbox")) image=mailboxBirdhouse;
             else {boolean back=o.material.equals("N")||o.material.equals("W"),opened=openStorage.contains(o.column+","+o.row);
@@ -401,6 +404,13 @@ public final class WeatherSkyView extends View {
             if(image==null)continue;RectF g=surfaceSpriteBounds(o);
             paint.setColor(Color.argb(35,12,23,40));paint.setStyle(Paint.Style.FILL);canvas.drawOval(new RectF(g.centerX()-g.width()*.3f,g.bottom-1,g.centerX()+g.width()*.3f,g.bottom+1),paint);
             paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);int saved=canvas.save();
+            if(animationEnabled && weather!=null && weather.windSpeedKmh>=1 && (o.type.equals("sunflower") || o.type.equals("tree") && !o.material.equals("mango"))) {
+                double bearing=Math.toRadians(weather.windDirectionDegrees+180-headingDegrees);
+                double direction=Math.sin(bearing)+.25*Math.cos(bearing),strength=Math.min(1,.25+weather.windSpeedKmh/35);
+                double phase=o.column*1.73+o.row*2.31,frequency=o.type.equals("tree")?.6:.9,amplitude=o.type.equals("tree")?1.1:.65;
+                double sway=amplitude*strength*direction*(.18+.82*Math.sin(plantMotionSeconds*frequency+phase));
+                canvas.rotate((float)Math.toDegrees(Math.atan2(sway,g.height())),g.centerX(),g.bottom);
+            }
             if(mirror)canvas.scale(-1,1,g.centerX(),0);canvas.drawBitmap(image,null,g,paint);canvas.restoreToCount(saved);
         }
     }
@@ -658,6 +668,7 @@ public final class WeatherSkyView extends View {
         long now = System.currentTimeMillis();
         double elapsedSeconds = (now - animationStartMillis) / 1000.0;
         double motionSeconds = animationEnabled ? elapsedSeconds : 0.0;
+        plantMotionSeconds=motionSeconds;
         SkyMath.Position sun = SkyMath.sun(now, latitude, longitude);
         SkyMath.Position moon = SkyMath.moon(now, latitude, longitude);
         double cloudCover = weather == null ? 42.0 : weather.cloudCoverPercent;

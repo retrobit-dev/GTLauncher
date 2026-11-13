@@ -52,6 +52,16 @@ public class PortalImportTest {
         try {WorldStore.parseExport(world(grass));fail("grass requires version 29");} catch(JSONException expected) {}
         try {store.upsertAndSelect(WorldStore.parseExport(world("")));fail("older import cannot erase grass");} catch(JSONException expected) {}
     }
+    @Test public void tropicalPlantsPersistAndRespectTiles() throws JSONException {
+        String banana="{\"type\":\"tree\",\"column\":8,\"row\":8,\"species\":\"banana\"}";
+        String palm="{\"type\":\"tree\",\"column\":7,\"row\":8,\"species\":\"palm\"}";
+        String flower="{\"type\":\"sunflower\",\"column\":6,\"row\":8,\"facing\":\"N\"}";
+        String file=world(banana+","+palm+","+flower).replace("\"version\":28","\"version\":25");
+        WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(file)));
+        assertEquals("banana",store.activeWorld().surfaces.get(0).material);assertEquals("palm",store.activeWorld().surfaces.get(1).material);assertEquals("N",store.activeWorld().surfaces.get(2).material);
+        try {WorldStore.parseExport(world(banana+","+flower.replace("\"column\":6","\"column\":8")));fail("overlap");}catch(JSONException expected){}
+        try {store.upsertAndSelect(WorldStore.parseExport(world("")));fail("older import cannot erase plants");}catch(JSONException expected){}
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {
