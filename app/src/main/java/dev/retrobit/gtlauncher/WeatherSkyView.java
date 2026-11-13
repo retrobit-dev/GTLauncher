@@ -265,6 +265,7 @@ public final class WeatherSkyView extends View {
     private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, portalImage, portalMarkerImage;
     private Bitmap bushSpiky,bushTiered,wildGrass,treeMango,treeBanana,treeCoconut,sunflowerFront,sunflowerBack,sellingBoxClosed,sellingBoxOpen,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
     private final java.util.Set<String> openStorage = new java.util.HashSet<>();
+    private final java.util.Map<String,Long> sellingOpenedAt = new java.util.HashMap<>();
     private String surfaceWorldId="";
     private java.util.List<PortalTravel.Portal> worldPortals = java.util.Collections.emptyList();
     private boolean portalWalkActive;
@@ -370,7 +371,7 @@ public final class WeatherSkyView extends View {
     }
 
     void setWorldSurfaces(String worldId,java.util.List<WorldStore.SurfaceObject> objects) {
-        String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();surfaceWorldId=id;}
+        String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;}
         worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects); invalidate();
     }
     private RectF surfaceSpriteBounds(WorldStore.SurfaceObject o) {
@@ -411,12 +412,39 @@ public final class WeatherSkyView extends View {
                 double sway=amplitude*strength*direction*(.18+.82*Math.sin(plantMotionSeconds*frequency+phase));
                 canvas.rotate((float)Math.toDegrees(Math.atan2(sway,g.height())),g.centerX(),g.bottom);
             }
-            if(mirror)canvas.scale(-1,1,g.centerX(),0);canvas.drawBitmap(image,null,g,paint);canvas.restoreToCount(saved);
+            if(mirror)canvas.scale(-1,1,g.centerX(),0);
+            Long started=sellingOpenedAt.get(o.column+","+o.row);
+            if(o.type.equals("selling-box") && started!=null && animationEnabled && sellingBoxClosed!=null && sellingBoxOpen!=null) {
+                float t=Math.max(0,Math.min(1,(android.os.SystemClock.uptimeMillis()-started)/260f));
+                paint.setAlpha((int)(255*(1-t)));canvas.drawBitmap(sellingBoxClosed,null,g,paint);
+                paint.setAlpha((int)(255*t));canvas.drawBitmap(sellingBoxOpen,null,g,paint);paint.setAlpha(255);
+                if(t>=1)sellingOpenedAt.remove(o.column+","+o.row);
+            } else canvas.drawBitmap(image,null,g,paint);
+            canvas.restoreToCount(saved);
         }
     }
+    private RectF sellingMarkerBounds(WorldStore.SurfaceObject o) {
+        RectF box=surfaceSpriteBounds(o);float x=Math.max(0,Math.min(SCENE_WIDTH-11,box.right-5)),y=Math.max(0,Math.min(SCENE_HEIGHT-13,box.top-9));return new RectF(x,y,x+11,y+13);
+    }
+    private boolean sellingMarkerVisible(WorldStore.SurfaceObject o) {
+        return o.type.equals("selling-box") && !portalWalkActive && showCharacter && Math.abs(characterColumn-o.column)+Math.abs(characterRow-o.row)==1 && !openStorage.contains(o.column+","+o.row);
+    }
+    private void drawSellingMarkers(Canvas canvas) {
+        if(portalMarkerImage==null)return;paint.setAlpha(255);paint.setFilterBitmap(false);
+        for(WorldStore.SurfaceObject o:worldSurfaces)if(sellingMarkerVisible(o)) {
+            RectF g=sellingMarkerBounds(o);paint.setColor(Color.rgb(110,67,43));canvas.drawRect(g.left,g.top,g.right,g.bottom-2,paint);canvas.drawRect(g.left+2,g.bottom-2,g.left+6,g.bottom,paint);
+            paint.setColor(Color.rgb(255,241,206));canvas.drawRect(g.left+1,g.top+1,g.right-1,g.bottom-3,paint);canvas.drawRect(g.left+3,g.bottom-3,g.left+5,g.bottom-1,paint);
+            paint.setColor(Color.WHITE);canvas.drawBitmap(portalMarkerImage,null,new RectF(g.left+2.5f,g.top+1,g.right-2.5f,g.bottom-3),paint);
+        }
+    }
+    WorldStore.SurfaceObject sellingMarkerAt(float sx,float sy) {
+        if(getWidth()<=0 || getHeight()<=0)return null;float x=sx*SCENE_WIDTH/getWidth(),y=sy*SCENE_HEIGHT/getHeight();
+        for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);RectF hit=sellingMarkerBounds(o);hit.inset(-3,-3);if(sellingMarkerVisible(o) && hit.contains(x,y))return o;}return null;
+    }
+    void setSellingOpen(WorldStore.SurfaceObject o,boolean opened) {if(o==null)return;String key=o.column+","+o.row;if(opened){openStorage.add(key);sellingOpenedAt.put(key,android.os.SystemClock.uptimeMillis());}else{openStorage.remove(key);sellingOpenedAt.remove(key);}invalidate();}
     boolean toggleStorageAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return false;float x=sx*SCENE_WIDTH/getWidth(),y=sy*SCENE_HEIGHT/getHeight();
-        for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if(!o.type.equals("storage-box") && !o.type.equals("selling-box"))continue;
+        for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if(!o.type.equals("storage-box"))continue;
             if(surfaceSpriteBounds(o).contains(x,y)){String key=o.column+","+o.row;if(!openStorage.add(key))openStorage.remove(key);invalidate();return true;}}
         return false;
     }
@@ -717,6 +745,7 @@ public final class WeatherSkyView extends View {
         drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, false);
         drawPrecipitation(scene, elapsedSeconds);
         drawPortalMarkers(scene);
+        drawSellingMarkers(scene);
         scene.restoreToCount(save);
 
         renderedSceneBounds.set(0, 0, getWidth(), getHeight());

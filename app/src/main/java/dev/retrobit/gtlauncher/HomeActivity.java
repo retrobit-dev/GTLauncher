@@ -233,9 +233,11 @@ public class HomeActivity extends Activity {
                 if (deltaY < -dp(72) && Math.abs(deltaY) > Math.abs(deltaX) * 1.15f) {
                     openDrawer();
                 } else if (Math.hypot(deltaX,deltaY) < dp(8)) {
-                    String marker=skyView.portalMarkerAt(event.getX(),event.getY());
-                    String portal=marker==null ? skyView.portalAt(event.getX(),event.getY()) : null;
-                    if(marker!=null) confirmPortalMarker(marker);
+                    WorldStore.SurfaceObject selling=skyView.sellingMarkerAt(event.getX(),event.getY());
+                    String marker=selling==null ? skyView.portalMarkerAt(event.getX(),event.getY()) : null;
+                    String portal=marker==null && selling==null ? skyView.portalAt(event.getX(),event.getY()) : null;
+                    if(selling!=null) showSellingPlaceholder(selling);
+                    else if(marker!=null) confirmPortalMarker(marker);
                     else if(portal!=null) walkToPortal(portal);
                     else if(skyView.toggleStorageAt(event.getX(),event.getY())) Toast.makeText(this,"Box terbuka atau tertutup. Penjualan dan penyimpanan barang belum tersedia.",Toast.LENGTH_SHORT).show();
                     else applyActiveWorld();
@@ -557,6 +559,17 @@ public class HomeActivity extends Activity {
         String direction=next.column>previous.column ? "E" : next.column<previous.column ? "W" : next.row>previous.row ? "S" : "N";
         skyView.setWorldCharacter(true,next.column,next.row,(float)source.characterScale,direction);
         mainHandler.postDelayed(()->walkPortalStep(source,portal,destination,route,index+1,generation,direction),180);
+    }
+
+    private void showSellingPlaceholder(WorldStore.SurfaceObject box) {
+        String worldId=worldStore.activeId();int generation=portalWalkGeneration;skyView.setSellingOpen(box,true);
+        mainHandler.postDelayed(()->{
+            if(generation!=portalWalkGeneration || !worldId.equals(worldStore.activeId())) {skyView.setSellingOpen(box,false);return;}
+            LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(18),dp(18),dp(18),dp(18));panel.setBackgroundResource(R.drawable.bg_portal_dialog);
+            TextView title=new TextView(this);title.setText("Selling box");title.setTextColor(Color.rgb(52,43,30));title.setTextSize(12);title.setTypeface(getResources().getFont(R.font.press_start_2p));panel.addView(title);
+            TextView content=new TextView(this);content.setText("Tas: inventaris belum tersedia.\n\nBarang dijual: belum ada barang.\n\nPenjualan dan saldo belum tersedia. Tidak ada barang yang dipindahkan.");content.setTextColor(Color.rgb(52,43,30));content.setTextSize(10);content.setLineSpacing(dp(4),1f);content.setTypeface(getResources().getFont(R.font.press_start_2p));content.setPadding(0,dp(12),0,dp(12));panel.addView(content);
+            AlertDialog dialog=new AlertDialog.Builder(this).setView(panel).setPositiveButton("Tutup",(d,which)->d.dismiss()).create();dialog.setOnDismissListener(d->skyView.setSellingOpen(box,false));dialog.show();
+        },260);
     }
 
     private void confirmPortalMarker(String id) {

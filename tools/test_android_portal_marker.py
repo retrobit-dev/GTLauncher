@@ -13,6 +13,9 @@ assert 'R.drawable.character_hud_portrait' in activity and 'name.setText("Portal
 assert 'portrait.setScaleX(-1f)' in activity and 'portrait.setBackgroundResource(R.drawable.bg_character_hud)' in activity
 assert 'worldStore.travel(sourceId,portalId)' in activity
 assert 'no.setOnClickListener(v->dialog.dismiss())' in activity
+assert 'sellingMarkerAt(event.getX(),event.getY())' in activity and 'showSellingPlaceholder(selling)' in activity
+assert 'Math.abs(characterColumn-o.column)+Math.abs(characterRow-o.row)==1' in view
+assert 'drawSellingMarkers(scene);' in view and 'setSellingOpen(box,false)' in activity
 assert '@font/press_start_2p' in (root/'app/src/main/res/layout/activity_home.xml').read_text()
 for name in ['bg_portal_dialog.xml','bg_portal_button.xml']:
  ET.parse(root/'app/src/main/res/drawable'/name)
