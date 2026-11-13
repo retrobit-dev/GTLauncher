@@ -338,6 +338,10 @@ public class HomeActivity extends Activity {
         resizeHudReadouts();
     }
 
+    private int dp(float value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
     private void resizeHudReadouts() {
         TextView time = findViewById(R.id.hud_time);
         View timePanel = findViewById(R.id.hud_time_panel);
