@@ -10,6 +10,9 @@ assert 'portalMarkerAt(event.getX(),event.getY())' in activity
 assert 'if(marker!=null) confirmPortalMarker(marker)' in activity
 assert 'setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL)' in activity and 'FLAG_DIM_BEHIND' in activity
 assert 'R.drawable.character_hud_portrait' in activity and 'name.setText("Portal")' in activity
+assert 'portrait.setScaleX(-1f)' in activity and 'portrait.setBackgroundResource(R.drawable.bg_character_hud)' in activity
+html=(root/'preview/index.html').read_text()
+assert '<div class="portal-dialog-portrait" aria-hidden="true"><div class="character-hud-portrait"></div></div>' in html
 assert 'worldStore.travel(sourceId,portalId)' in activity
 assert 'no.setOnClickListener(v->dialog.dismiss())' in activity
 assert '@font/press_start_2p' in (root/'app/src/main/res/layout/activity_home.xml').read_text()
