@@ -315,7 +315,7 @@ public final class WeatherSkyView extends View {
         mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.main_character_back);
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_back);
-        portalImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_gate);
+        portalImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_ground);
         portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation_red);
         wildGrass=BitmapFactory.decodeResource(getResources(),R.drawable.wild_grass);bushSpiky=BitmapFactory.decodeResource(getResources(),R.drawable.bush_spiky);bushTiered=BitmapFactory.decodeResource(getResources(),R.drawable.bush_tiered);
         treeBanana=BitmapFactory.decodeResource(getResources(),R.drawable.tree_banana_simple);treeCoconut=BitmapFactory.decodeResource(getResources(),R.drawable.tree_coconut_small);sunflowerFront=BitmapFactory.decodeResource(getResources(),R.drawable.sunflower_front);sunflowerBack=BitmapFactory.decodeResource(getResources(),R.drawable.sunflower_back);treeMango=BitmapFactory.decodeResource(getResources(),R.drawable.tree_mango);mailboxBirdhouse=BitmapFactory.decodeResource(getResources(),R.drawable.mailbox_birdhouse);
@@ -493,24 +493,20 @@ public final class WeatherSkyView extends View {
         float e=x1-a*leftX,f=y1-b*leftX-d*leftY;
         Matrix result=new Matrix(); result.setValues(new float[]{a,0,e,b,d,f,0,0,1});return result;
     }
+    private RectF groundPortalBounds(PortalTravel.Portal portal) {
+        float cx=SCENE_WIDTH/2f+(portal.tile.column-portal.tile.row)*ISLAND_TILE_WIDTH/2f;
+        float cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(portal.tile.column+portal.tile.row)*ISLAND_TILE_HEIGHT/2f;
+        return new RectF(cx-12,cy-8,cx+12,cy+8);
+    }
     private void drawPortals(Canvas canvas, boolean front) {
-        if(portalImage==null) return;
-        for(PortalTravel.Portal portal:worldPortals) {
-            float depth=portal.tile.column+portal.tile.row + ((portal.edge.equals("S") || portal.edge.equals("E")) ? .5f : -.5f);
-            float playerDepth=characterColumn+characterRow;
-            if(showCharacter && (depth>=playerDepth)!=front) continue;
-            if(!showCharacter && front) continue;
-            int save=canvas.save(); canvas.concat(portalMatrix(portal));
-            if(portal.edge.equals("E") || portal.edge.equals("W")) { canvas.translate(64,0);canvas.scale(-1,1); }
-            paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);canvas.drawBitmap(portalImage,0,0,paint);canvas.restoreToCount(save);
-        }
+        if(front || portalImage==null)return;
+        paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
+        for(PortalTravel.Portal portal:worldPortals)canvas.drawBitmap(portalImage,null,groundPortalBounds(portal),paint);
     }
     private RectF portalMarkerBounds(PortalTravel.Portal portal) {
-        boolean rising=portal.edge.equals("E") || portal.edge.equals("W");
-        float[] post={rising?46:44,rising?44:56};portalMatrix(portal).mapPoints(post);
-        float width=11f,height=13f;
-        float x=Math.max(0,Math.min(SCENE_WIDTH-width,post[0]-width*.45f));
-        float y=Math.max(0,Math.min(SCENE_HEIGHT-height,post[1]-22.5f-height+3f));
+        RectF g=groundPortalBounds(portal);float width=11f,height=13f;
+        float x=Math.max(0,Math.min(SCENE_WIDTH-width,g.right-5));
+        float y=Math.max(0,Math.min(SCENE_HEIGHT-height,g.top-height+2));
         return new RectF(x,y,x+width,y+height);
     }
     void setPortalWalkActive(boolean walking) { portalWalkActive=walking;invalidate(); }
@@ -538,10 +534,9 @@ public final class WeatherSkyView extends View {
     }
     String portalAt(float screenX,float screenY) {
         if(getWidth()<=0 || getHeight()<=0) return null;
-        float[] xy={screenX*SCENE_WIDTH/getWidth(),screenY*SCENE_HEIGHT/getHeight()};
-        for(int i=worldPortals.size()-1;i>=0;i--){PortalTravel.Portal portal=worldPortals.get(i);Matrix inverse=new Matrix();
-            if(!portalMatrix(portal).invert(inverse)) continue;float[] p=xy.clone();inverse.mapPoints(p);
-            if(p[0]>=0 && p[0]<=64 && p[1]>=0 && p[1]<=64) return portal.id;
+        float x=screenX*SCENE_WIDTH/getWidth(),y=screenY*SCENE_HEIGHT/getHeight();
+        for(int i=worldPortals.size()-1;i>=0;i--){PortalTravel.Portal portal=worldPortals.get(i);
+            if(groundPortalBounds(portal).contains(x,y))return portal.id;
         }
         return null;
     }
