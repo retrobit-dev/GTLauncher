@@ -4,7 +4,7 @@ root=Path(__file__).resolve().parents[1]
 view=(root/'app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java').read_text()
 activity=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
 assert 'drawPortalMarkers(scene);' in view
-assert 'portalMarkerVisible(portal) && portalMarkerBounds(portal).contains(x,y)' in view
+assert 'portalMarkerVisible(portal) && hit.contains(x,y)' in view
 assert '!portalWalkActive && showCharacter && characterColumn==portal.tile.column && characterRow==portal.tile.row && portal.edge.equals(characterFacing)' in view
 assert 'portalMarkerAt(event.getX(),event.getY())' in activity
 assert 'if(marker!=null) confirmPortalMarker(marker)' in activity

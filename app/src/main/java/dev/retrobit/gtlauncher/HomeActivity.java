@@ -567,7 +567,7 @@ public class HomeActivity extends Activity {
             if(from==null || source.characterColumn!=from.tile.column || source.characterRow!=from.tile.row || !source.characterFacing.equals(from.edge)) return;
             for(WorldStore.World w:worldStore.list()) if(w.id.equals(from.destinationWorldId))target=w;
             if(target!=null)for(PortalTravel.Portal p:target.portals)if(p.id.equals(from.destinationPortalId))to=p;
-            if(!PortalTravel.arePaired(from,to)){Toast.makeText(this,"Portal belum memiliki pasangan yang valid.",Toast.LENGTH_SHORT).show();return;}
+            if(!PortalTravel.arePaired(from,to)){new AlertDialog.Builder(this).setMessage("Portal belum memiliki pasangan yang valid. Impor kedua world dan pasangkan portal.").setPositiveButton("Tutup",(dialog,which)->dialog.dismiss()).show();return;}
             showPortalConfirmation(source.id,id,target.name);
         } catch(JSONException e){Toast.makeText(this,"Data portal tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }

@@ -468,10 +468,11 @@ public final class WeatherSkyView extends View {
         }
     }
     private RectF portalMarkerBounds(PortalTravel.Portal portal) {
-        RectF bounds=new RectF(0,0,64,64);portalMatrix(portal).mapRect(bounds);
-        float width=10f,height=12.5f;
-        float x=Math.max(0,Math.min(SCENE_WIDTH-width,bounds.right-width*.35f));
-        float y=Math.max(0,Math.min(SCENE_HEIGHT-height,bounds.top-height*.75f));
+        boolean rising=portal.edge.equals("E") || portal.edge.equals("W");
+        float[] post={rising?46:44,rising?44:56};portalMatrix(portal).mapPoints(post);
+        float width=11f,height=13f;
+        float x=Math.max(0,Math.min(SCENE_WIDTH-width,post[0]-width*.45f));
+        float y=Math.max(0,Math.min(SCENE_HEIGHT-height,post[1]-22.5f-height+3f));
         return new RectF(x,y,x+width,y+height);
     }
     void setPortalWalkActive(boolean walking) { portalWalkActive=walking;invalidate(); }
@@ -481,13 +482,19 @@ public final class WeatherSkyView extends View {
     private void drawPortalMarkers(Canvas canvas) {
         if(portalMarkerImage==null)return;
         paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
-        for(PortalTravel.Portal portal:worldPortals) if(portalMarkerVisible(portal)) canvas.drawBitmap(portalMarkerImage,null,portalMarkerBounds(portal),paint);
+        for(PortalTravel.Portal portal:worldPortals) if(portalMarkerVisible(portal)) {
+            RectF g=portalMarkerBounds(portal);
+            paint.setColor(Color.rgb(110,67,43));canvas.drawRect(g.left,g.top,g.right,g.bottom-2,paint);canvas.drawRect(g.left+2,g.bottom-2,g.left+6,g.bottom,paint);
+            paint.setColor(Color.rgb(255,241,206));canvas.drawRect(g.left+1,g.top+1,g.right-1,g.bottom-3,paint);canvas.drawRect(g.left+3,g.bottom-3,g.left+5,g.bottom-1,paint);
+            paint.setColor(Color.WHITE);canvas.drawBitmap(portalMarkerImage,null,new RectF(g.left+2.5f,g.top+1,g.right-2.5f,g.bottom-3),paint);
+        }
     }
     String portalMarkerAt(float screenX,float screenY) {
         if(getWidth()<=0 || getHeight()<=0) return null;
         float x=screenX*SCENE_WIDTH/getWidth(),y=screenY*SCENE_HEIGHT/getHeight();
         for(int i=worldPortals.size()-1;i>=0;i--){PortalTravel.Portal portal=worldPortals.get(i);
-            if(portalMarkerVisible(portal) && portalMarkerBounds(portal).contains(x,y)) return portal.id;
+            RectF hit=portalMarkerBounds(portal);hit.inset(-3,-3);
+            if(portalMarkerVisible(portal) && hit.contains(x,y)) return portal.id;
         }
         return null;
     }
