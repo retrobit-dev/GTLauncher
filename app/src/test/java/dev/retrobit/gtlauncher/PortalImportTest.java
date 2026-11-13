@@ -44,6 +44,14 @@ public class PortalImportTest {
         assertEquals("mango",restored.surfaces.get(1).material);assertEquals("farm",restored.portals.get(0).destinationWorldId);
         try {store.upsertAndSelect(WorldStore.parseExport(world("").replace("\"version\":28","\"version\":26")));fail("legacy import cannot erase orientation");} catch(JSONException expected) {}
     }
+    @Test public void wildGrassVersionAndPersistence() throws JSONException {
+        String grass="{\"type\":\"bush\",\"column\":1,\"row\":2,\"variant\":\"wild-grass\"}";
+        String input=world(grass).replace("\"version\":28","\"version\":29");
+        WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(input)));
+        assertEquals("wild-grass",store.activeWorld().surfaces.get(0).material);
+        try {WorldStore.parseExport(world(grass));fail("grass requires version 29");} catch(JSONException expected) {}
+        try {store.upsertAndSelect(WorldStore.parseExport(world("")));fail("older import cannot erase grass");} catch(JSONException expected) {}
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {

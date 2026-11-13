@@ -130,7 +130,7 @@ final class WorldStore {
                     int c=((Number)co).intValue(),r=((Number)ro).intValue();
                     if(c<0||c>8||r<0||r>8||(type.equals("tree") && (c>7||r>7))) throw new JSONException("Invalid object tile");
                     String variant=type.equals("bush") ? requiredString(character,"variant") : type.equals("tree") ? requiredString(character,"species") : type.equals("storage-box") && character.has("facing") ? requiredString(character,"facing") : "";
-                    if(type.equals("bush") && !variant.equals("spiky") && !variant.equals("tiered")) throw new JSONException("Unsupported object");
+                    if(type.equals("bush") && !variant.equals("spiky") && !variant.equals("tiered") && !(formatVersion>=29 && variant.equals("wild-grass"))) throw new JSONException("Unsupported object");
                     if(type.equals("tree") && !variant.equals("mango")) throw new JSONException("Unsupported object");
                     if(type.equals("storage-box") && !variant.isEmpty() && !java.util.Arrays.asList("N","E","S","W").contains(variant)) throw new JSONException("Invalid direction");
                     for(SurfaceObject previous:surfaces) if(!previous.type.equals("road") && !previous.type.equals("fence") && previous.column==c && previous.row==r) throw new JSONException("Object collision");
@@ -213,7 +213,7 @@ final class WorldStore {
             requireOnlyKeys(object, "name", "description", "color");
             return parseWorld(object, UUID.randomUUID().toString(), 1);
         }
-        if (version != 2.0 && version != 3.0 && version != 4.0 && version != 5.0 && version != 6.0 && version != 7.0 && version != 8.0 && version != 11.0 && version != 22.0 && version != 27.0 && version != 28.0) throw new JSONException("Unsupported world version");
+        if (version != 2.0 && version != 3.0 && version != 4.0 && version != 5.0 && version != 6.0 && version != 7.0 && version != 8.0 && version != 11.0 && version != 22.0 && version != 27.0 && version != 28.0 && version != 29.0) throw new JSONException("Unsupported world version");
         requireOnlyKeys(root, "format", "version", "world");
         requireOnlyKeys(object, "id", "name", "description", "color", "objects");
         String id = requiredString(object, "id");
@@ -233,7 +233,8 @@ final class WorldStore {
         int version = 3;
         for (int i = 0; i < objects.length(); i++) {
             JSONObject obj = objects.getJSONObject(i);
-            if ("fence".equals(obj.optString("type")) || "road".equals(obj.optString("type")) || "bush".equals(obj.optString("type")) || "tree".equals(obj.optString("type")) || "mailbox".equals(obj.optString("type")) || "storage-box".equals(obj.optString("type"))) version = Math.max(version, 28);
+            if ("bush".equals(obj.optString("type")) && "wild-grass".equals(obj.optString("variant"))) version = Math.max(version, 29);
+            else if ("fence".equals(obj.optString("type")) || "road".equals(obj.optString("type")) || "bush".equals(obj.optString("type")) || "tree".equals(obj.optString("type")) || "mailbox".equals(obj.optString("type")) || "storage-box".equals(obj.optString("type"))) version = Math.max(version, 28);
             else if ("house".equals(obj.optString("type"))) version = Math.max(version, obj.has("id") ? 28 : obj.has("visible") || obj.has("scale") || obj.has("facing") ? 6 : 5);
             else if (obj.has("facing")) version = Math.max(version, 4);
         }
@@ -273,6 +274,7 @@ final class WorldStore {
         boolean found = false;
         for (int i = 0; i < existing.size(); i++) {
             if (existing.get(i).id.equals(world.id)) {
+                if (world.formatVersion < 29 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("bush") && o.material.equals("wild-grass"))) throw new JSONException("Legacy export cannot replace wild grass");
                 if (world.formatVersion < 16 && existing.get(i).houseId != null) throw new JSONException("Legacy export cannot replace house identity");
                 if (world.formatVersion < 27 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("storage-box") && !o.material.isEmpty())) throw new JSONException("Legacy export cannot replace storage direction");
                 if (world.formatVersion < 26 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("storage-box"))) throw new JSONException("Legacy export cannot replace storage");

@@ -262,7 +262,7 @@ public final class WeatherSkyView extends View {
     private boolean animationEnabled = true;
     private Integer worldIslandTint;
     private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, portalImage, portalMarkerImage;
-    private Bitmap bushSpiky,bushTiered,treeMango,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
+    private Bitmap bushSpiky,bushTiered,wildGrass,treeMango,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
     private final java.util.Set<String> openStorage = new java.util.HashSet<>();
     private String surfaceWorldId="";
     private java.util.List<PortalTravel.Portal> worldPortals = java.util.Collections.emptyList();
@@ -315,7 +315,7 @@ public final class WeatherSkyView extends View {
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_back);
         portalImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_gate);
         portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation_red);
-        bushSpiky=BitmapFactory.decodeResource(getResources(),R.drawable.bush_spiky);bushTiered=BitmapFactory.decodeResource(getResources(),R.drawable.bush_tiered);
+        wildGrass=BitmapFactory.decodeResource(getResources(),R.drawable.wild_grass);bushSpiky=BitmapFactory.decodeResource(getResources(),R.drawable.bush_spiky);bushTiered=BitmapFactory.decodeResource(getResources(),R.drawable.bush_tiered);
         treeMango=BitmapFactory.decodeResource(getResources(),R.drawable.tree_mango);mailboxBirdhouse=BitmapFactory.decodeResource(getResources(),R.drawable.mailbox_birdhouse);
         storageClosed=BitmapFactory.decodeResource(getResources(),R.drawable.storage_closed);storageOpen=BitmapFactory.decodeResource(getResources(),R.drawable.storage_open);
         storageBackClosed=BitmapFactory.decodeResource(getResources(),R.drawable.storage_back_closed);storageBackOpen=BitmapFactory.decodeResource(getResources(),R.drawable.storage_back_open);
@@ -392,7 +392,7 @@ public final class WeatherSkyView extends View {
             if(!showCharacter && front) continue;
             Bitmap image; boolean mirror=false;
             if(o.type.equals("tree")) image=treeMango;
-            else if(o.type.equals("bush")) image=o.material.equals("spiky")?bushSpiky:bushTiered;
+            else if(o.type.equals("bush")) image=o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:bushTiered;
             else if(o.type.equals("mailbox")) image=mailboxBirdhouse;
             else {boolean back=o.material.equals("N")||o.material.equals("W"),opened=openStorage.contains(o.column+","+o.row);
                 mirror=o.material.equals("N")||o.material.equals("E");
