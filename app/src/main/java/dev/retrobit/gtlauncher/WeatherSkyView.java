@@ -1680,7 +1680,7 @@ public final class WeatherSkyView extends View {
 
     /** Three flat bands keyed to the sun's height, matching the Sun and Moon's own light model. */
     private int[] cloudPalette(double sunAltitude, int code) {
-        if (weatherCodeIsStorm(code)) return CLOUD_STORM_BANDS;
+        if (code >= 95 && code <= 99) return CLOUD_STORM_BANDS;
         if (sunAltitude < -6.0) return CLOUD_NIGHT_BANDS;
         if (sunAltitude < 10.0) return CLOUD_DUSK_BANDS;
         return CLOUD_DAY_BANDS;
