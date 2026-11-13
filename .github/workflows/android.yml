@@ -35,7 +35,13 @@ jobs:
           python3 tools/test_battery_hud_android.py
           python3 tools/test_location_permission_android.py
       - name: Build debug APK and run unit tests
-        run: gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle --no-daemon :app:assembleDebug :app:testDebugUnitTest 2>&1 | tee /tmp/android-build.log || {
+            python3 -c 'import pathlib; s=pathlib.Path("/tmp/android-build.log").read_text(errors="replace"); print("::error::" + s[-5000:].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))'
+            exit 1
+          }
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
