@@ -239,7 +239,7 @@ public class HomeActivity extends Activity {
                     if(selling!=null) showSellingPlaceholder(selling);
                     else if(marker!=null) confirmPortalMarker(marker);
                     else if(portal!=null) walkToPortal(portal);
-                    else if(skyView.toggleStorageAt(event.getX(),event.getY())) Toast.makeText(this,"Box terbuka atau tertutup. Penjualan dan penyimpanan barang belum tersedia.",Toast.LENGTH_SHORT).show();
+                    else if(skyView.storageBoxAt(event.getX(),event.getY())) Toast.makeText(this,"Dekati box, lalu ketuk tanda seru.",Toast.LENGTH_SHORT).show();
                     else applyActiveWorld();
                 }
                 return true;
@@ -564,11 +564,12 @@ public class HomeActivity extends Activity {
     private void showSellingPlaceholder(WorldStore.SurfaceObject box) {
         String worldId=worldStore.activeId();int generation=portalWalkGeneration;skyView.setSellingOpen(box,true);
         mainHandler.postDelayed(()->{
-            if(generation!=portalWalkGeneration || !worldId.equals(worldStore.activeId())) {skyView.setSellingOpen(box,false);return;}
+            if(isFinishing() || isDestroyed() || !worldId.equals(worldStore.activeId())) return;
+            if(generation!=portalWalkGeneration) {skyView.setSellingOpen(box,false);return;}
             LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(18),dp(18),dp(18),dp(18));panel.setBackgroundResource(R.drawable.bg_portal_dialog);
-            TextView title=new TextView(this);title.setText("Selling box");title.setTextColor(Color.rgb(52,43,30));title.setTextSize(12);title.setTypeface(getResources().getFont(R.font.press_start_2p));panel.addView(title);
-            TextView content=new TextView(this);content.setText("Tas: inventaris belum tersedia.\n\nBarang dijual: belum ada barang.\n\nPenjualan dan saldo belum tersedia. Tidak ada barang yang dipindahkan.");content.setTextColor(Color.rgb(52,43,30));content.setTextSize(10);content.setLineSpacing(dp(4),1f);content.setTypeface(getResources().getFont(R.font.press_start_2p));content.setPadding(0,dp(12),0,dp(12));panel.addView(content);
-            AlertDialog dialog=new AlertDialog.Builder(this).setView(panel).setPositiveButton("Tutup",(d,which)->d.dismiss()).create();dialog.setOnDismissListener(d->skyView.setSellingOpen(box,false));dialog.show();
+            TextView title=new TextView(this);title.setText(box.type.equals("selling-box")?"Selling box":"Storage box");title.setTextColor(Color.rgb(52,43,30));title.setTextSize(12);title.setTypeface(getResources().getFont(R.font.press_start_2p));panel.addView(title);
+            TextView content=new TextView(this);content.setText(box.type.equals("selling-box")?"Tas: inventaris belum tersedia.\n\nBarang dijual: belum ada barang.\n\nPenjualan dan saldo belum tersedia. Tidak ada barang yang dipindahkan.":"Tas: inventaris belum tersedia.\n\nPenyimpanan: belum ada barang.\n\nPenyimpanan barang belum tersedia. Tidak ada barang yang dipindahkan.");content.setTextColor(Color.rgb(52,43,30));content.setTextSize(10);content.setLineSpacing(dp(4),1f);content.setTypeface(getResources().getFont(R.font.press_start_2p));content.setPadding(0,dp(12),0,dp(12));panel.addView(content);
+            AlertDialog dialog=new AlertDialog.Builder(this).setView(panel).setPositiveButton("Tutup",(d,which)->d.dismiss()).create();dialog.setOnDismissListener(d->{if(worldId.equals(worldStore.activeId()))skyView.setSellingOpen(box,false);});dialog.show();
         },260);
     }
 
