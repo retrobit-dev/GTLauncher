@@ -378,7 +378,7 @@ public final class WeatherSkyView extends View {
         float width,height,bottom;
         switch(o.type) {
             case "tree": width=48;height=60;bottom=y+ISLAND_TILE_HEIGHT*.5f+ISLAND_TILE_HEIGHT*.55f;break;
-            case "bush": width=18.5f;height=14.5f;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
+            case "bush": width=o.material.equals("wild-grass")?10f:18.5f;height=o.material.equals("wild-grass")?8f:14.5f;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
             case "mailbox": width=13;height=30;bottom=y+ISLAND_TILE_HEIGHT*.15f;break;
             default: width=18;height=18;bottom=y+ISLAND_TILE_HEIGHT*.15f;
         }
