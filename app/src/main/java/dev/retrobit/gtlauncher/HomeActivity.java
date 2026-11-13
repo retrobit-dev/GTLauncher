@@ -392,6 +392,7 @@ public class HomeActivity extends Activity {
             WorldStore.World world = worldStore.activeWorld();
             skyView.setWorldIslandTint(world == null ? null : Color.parseColor(world.color));
             skyView.setWorldPortals(world == null ? null : world.portals);
+            skyView.setWorldSurfaces(world == null ? null : world.surfaces);
             skyView.setWorldHouse(world != null && world.showHouse, world == null ? 0 : world.houseColumn,
                     world == null ? 0 : world.houseRow, world == null ? 1.0f : (float) world.houseScale,
                     world == null ? "S" : world.houseFacing);
@@ -402,6 +403,7 @@ public class HomeActivity extends Activity {
         } catch (JSONException | IllegalArgumentException error) {
             skyView.setWorldIslandTint(null);
             skyView.setWorldPortals(null);
+            skyView.setWorldSurfaces(null);
             skyView.setWorldHouse(false, 0, 0, 1.0f, "S");
             skyView.setWorldCharacter(false, 4, 4, 1.0f, "S");
             Toast.makeText(this, "Data world tidak dapat dibaca; data lama tidak ditimpa.",
@@ -500,8 +502,18 @@ public class HomeActivity extends Activity {
     // Portal worlds are admitted only if every object is currently supported by Android.
     private PortalTravel.Terrain portalTerrain(WorldStore.World world) {
         return new PortalTravel.Terrain() {
-            public boolean canStand(int c,int r) { return !world.showHouse || !(c>=world.houseColumn && c<=world.houseColumn+2 && r>=world.houseRow && r<=world.houseRow+2); }
-            public boolean canStep(int a,int b,int c,int d) { return true; }
+            public boolean canStand(int c,int r) {
+                if(world.showHouse && c>=world.houseColumn && c<=world.houseColumn+2 && r>=world.houseRow && r<=world.houseRow+2) return false;
+                for(WorldStore.SurfaceObject o:world.surfaces) if(o.type.equals("road") && "water".equals(o.material) && o.column==c && o.row==r)return false;
+                return true;
+            }
+            public boolean canStep(int a,int b,int c,int d) {
+                for(WorldStore.SurfaceObject o:world.surfaces) if(o.type.equals("fence")) {
+                    int x=o.column+(o.edge.equals("E")?1:o.edge.equals("W")?-1:0),y=o.row+(o.edge.equals("S")?1:o.edge.equals("N")?-1:0);
+                    if((o.column==a && o.row==b && x==c && y==d) || (o.column==c && o.row==d && x==a && y==b)) return false;
+                }
+                return true;
+            }
         };
     }
     private void walkToPortal(String id) {

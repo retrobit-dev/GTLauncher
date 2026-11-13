@@ -263,6 +263,7 @@ public final class WeatherSkyView extends View {
     private Integer worldIslandTint;
     private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, portalImage;
     private java.util.List<PortalTravel.Portal> worldPortals = java.util.Collections.emptyList();
+    private java.util.List<WorldStore.SurfaceObject> worldSurfaces = java.util.Collections.emptyList();
     private boolean showHouse;
     private int houseColumn = 0, houseRow = 0;
     private float houseScale = 1.0f;
@@ -358,6 +359,34 @@ public final class WeatherSkyView extends View {
         houseFacing = facing; invalidate();
     }
 
+    void setWorldSurfaces(java.util.List<WorldStore.SurfaceObject> objects) {
+        worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects); invalidate();
+    }
+    private void drawRoads(Canvas canvas) {
+        for(WorldStore.SurfaceObject o:worldSurfaces) if(o.type.equals("road")) {
+            float x=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f;
+            float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
+            float hw=ISLAND_TILE_WIDTH*.47f,hh=ISLAND_TILE_HEIGHT*.47f;
+            Path path=new Path();path.moveTo(x,y-hh);path.lineTo(x+hw,y);path.lineTo(x,y+hh);path.lineTo(x-hw,y);path.close();
+            paint.setStyle(Paint.Style.FILL);paint.setColor(Color.parseColor("water".equals(o.material)?"#719fa1":"#dba34b"));paint.setAlpha(255);canvas.drawPath(path,paint);
+            paint.setColor(Color.parseColor("water".equals(o.material)?"#c0d8cc":"#efbe62"));canvas.drawRect(x-3,y-1,x+1,y-.5f,paint);
+        }
+    }
+    private void drawFences(Canvas canvas,boolean front) {
+        for(WorldStore.SurfaceObject o:worldSurfaces) if(o.type.equals("fence")) {
+            float depth=o.column+o.row+((o.edge.equals("S")||o.edge.equals("E"))?.5f:-.5f);
+            if(showCharacter && (depth>=characterColumn+characterRow)!=front) continue;
+            if(!showCharacter && front) continue;
+            float x=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f;
+            float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
+            float hw=ISLAND_TILE_WIDTH*.4f,hh=ISLAND_TILE_HEIGHT*.4f,x1,y1,x2,y2;
+            switch(o.edge){case "N":x1=x;y1=y-hh;x2=x+hw;y2=y;break;case "E":x1=x;y1=y+hh;x2=x+hw;y2=y;break;case "S":x1=x-hw;y1=y;x2=x;y2=y+hh;break;default:x1=x-hw;y1=y;x2=x;y2=y-hh;}
+            paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(2f);paint.setColor(Color.rgb(92,60,35));paint.setAlpha(255);
+            canvas.drawLine(x1,y1-8,x2,y2-8,paint);canvas.drawLine(x1,y1-4,x2,y2-4,paint);
+            paint.setStrokeWidth(2.5f);paint.setColor(Color.rgb(128,83,42));canvas.drawLine(x1,y1,x1,y1-11,paint);canvas.drawLine(x2,y2,x2,y2-11,paint);
+            paint.setStyle(Paint.Style.FILL);
+        }
+    }
     void setWorldPortals(java.util.List<PortalTravel.Portal> portals) {
         worldPortals = portals == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(portals); invalidate();
     }
@@ -582,11 +611,14 @@ public final class WeatherSkyView extends View {
                 shadowLight.hourAngleDegrees, cloudCover, code, false);
         drawFloatingIsland(scene, sun.altitudeDegrees, sun.azimuthDegrees,
                 sun.hourAngleDegrees, cloudCover, code, moon, cloudStates);
+        drawRoads(scene);
         drawSurfaceObjectShadows(scene, shadowLight, cloudCover, code);
         drawHouse(scene);
+        drawFences(scene, false);
         drawPortals(scene, false);
         drawMainCharacter(scene, motionSeconds);
         drawPortals(scene, true);
+        drawFences(scene, true);
         // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
         // cloud can hang below the horizon line, and clipping it there hid the cloud while its
         // shadow still showed on the grass. Edge clamping already keeps every sprite in frame.

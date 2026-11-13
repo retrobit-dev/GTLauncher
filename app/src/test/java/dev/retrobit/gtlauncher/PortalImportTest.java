@@ -18,9 +18,19 @@ public class PortalImportTest {
         assertEquals(1,w.portals.size()); assertEquals("farm",w.portals.get(0).destinationWorldId);assertEquals("south",w.portals.get(0).destinationPortalId);assertTrue(w.showCharacter);
     }
     @Test public void rejectUnsupportedObjectAndHalfPair() throws JSONException {
-        try { WorldStore.parseExport(world(portal+",{\"type\":\"road\",\"column\":1,\"row\":1,\"material\":\"dirt\"}"));fail("unsupported road cannot be discarded"); } catch(JSONException expected) { }
+        try { WorldStore.parseExport(world(portal+",{\"type\":\"road\",\"column\":1,\"row\":1,\"material\":\"stone\"}"));fail("unsupported road cannot be discarded"); } catch(JSONException expected) { }
         try { WorldStore.parseExport(world(portal.replace(",\"destinationPortalId\":\"south\"", "")));fail("incomplete pair"); } catch(JSONException expected) { }
         try { WorldStore.parseExport(world(portal+","+portal));fail("duplicate portals"); } catch(JSONException expected) { }
+    }
+    @Test public void preserveFenceAndWaterAcrossStorage() throws JSONException {
+        String fence="{\"type\":\"fence\",\"id\":\"f1\",\"column\":0,\"row\":0,\"edge\":\"W\"}";
+        String road="{\"type\":\"road\",\"column\":2,\"row\":2,\"material\":\"water\"}";
+        WorldStore store=new WorldStore(prefs());
+        WorldStore.World imported=WorldStore.parseExport(world(portal+","+fence+","+road));
+        assertEquals(2,imported.surfaces.size());assertTrue(store.upsertAndSelect(imported));
+        WorldStore.World restored=store.activeWorld();assertEquals(2,restored.surfaces.size());
+        assertEquals("W",restored.surfaces.get(0).edge);assertEquals("water",restored.surfaces.get(1).material);
+        try {store.upsertAndSelect(WorldStore.parseExport(world("").replace("\"version\":28","\"version\":4")));fail("legacy world must not erase objects");} catch(JSONException expected) {}
     }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
