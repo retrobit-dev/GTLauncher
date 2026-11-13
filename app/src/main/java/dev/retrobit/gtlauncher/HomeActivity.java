@@ -221,6 +221,7 @@ public class HomeActivity extends Activity {
         homeScreen.setOnTouchListener((view, event) -> {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
                 portalWalkGeneration++;
+                applyActiveWorld(); // Restore the last saved position if a walk was interrupted.
                 swipeStartX = event.getX();
                 swipeStartY = event.getY();
                 return true;
@@ -482,10 +483,14 @@ public class HomeActivity extends Activity {
                 // Do not imply that a newer, intact world is corrupt or silently strip its objects.
                 final boolean unsupportedVersion = error instanceof JSONException
                         && "Unsupported world version".equals(error.getMessage());
+                final boolean unsupportedObjects = error instanceof JSONException
+                        && ("Unsupported object".equals(error.getMessage()) || "Unsupported objects".equals(error.getMessage())
+                        || (error.getMessage()!=null && error.getMessage().startsWith("Unsupported field:")));
                 mainHandler.post(() -> {
                     if (!isFinishing() && !isDestroyed())
                         Toast.makeText(this, unsupportedVersion
                                 ? "Versi world ini belum didukung Android. Data tidak diubah."
+                                : unsupportedObjects ? "World berisi objek yang belum didukung Android. Data tidak diubah."
                                 : "Berkas world tidak valid atau tidak dapat dibaca.", Toast.LENGTH_LONG).show();
                 });
             }
