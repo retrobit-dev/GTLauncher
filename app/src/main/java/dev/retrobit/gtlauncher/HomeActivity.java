@@ -543,12 +543,7 @@ public class HomeActivity extends Activity {
                 PortalTravel.Tile end=route.get(route.size()-1);
                 if(!worldStore.moveCharacter(source.id,end.column,end.row,facing)) throw new JSONException("Move failed");
                 applyActiveWorld();
-                AlertDialog confirm=new AlertDialog.Builder(this).setMessage("Pergi ke world " + destination.name + "?")
-                    .setPositiveButton("Ya",(dialog,which)->{
-                        try {if(!worldStore.travel(source.id,portal.id)) Toast.makeText(this,"Portal tidak tersedia atau tujuan terhalang.",Toast.LENGTH_LONG).show(); else applyActiveWorld();}
-                        catch(JSONException e){Toast.makeText(this,"Perpindahan gagal; data tidak diubah.",Toast.LENGTH_LONG).show();}
-                    }).setNegativeButton("Tidak",(dialog,which)->{}).create();
-                confirm.setOnShowListener(d->{if(confirm.getWindow()!=null) confirm.getWindow().setGravity(Gravity.BOTTOM);});confirm.show();
+                showPortalConfirmation(source.id,portal.id,destination.name);
             } catch(JSONException e) {applyActiveWorld();Toast.makeText(this,"Karakter tidak dapat dipindahkan.",Toast.LENGTH_SHORT).show();}
             return;
         }
@@ -556,6 +551,39 @@ public class HomeActivity extends Activity {
         String direction=next.column>previous.column ? "E" : next.column<previous.column ? "W" : next.row>previous.row ? "S" : "N";
         skyView.setWorldCharacter(true,next.column,next.row,(float)source.characterScale,direction);
         mainHandler.postDelayed(()->walkPortalStep(source,portal,destination,route,index+1,generation,direction),180);
+    }
+
+    private TextView portalButton(String label) {
+        TextView button=new TextView(this);button.setText(label);button.setTextColor(Color.rgb(66,42,28));
+        button.setTextSize(10);button.setTypeface(getResources().getFont(R.font.press_start_2p));
+        button.setGravity(Gravity.CENTER);button.setPadding(dp(14),dp(10),dp(14),dp(10));
+        button.setBackgroundResource(R.drawable.bg_portal_button);button.setClickable(true);button.setFocusable(true);
+        return button;
+    }
+    private void showPortalConfirmation(String sourceId,String portalId,String destinationName) {
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setGravity(Gravity.CENTER);
+        panel.setPadding(dp(18),dp(18),dp(18),dp(16));panel.setBackgroundResource(R.drawable.bg_portal_dialog);
+        TextView prompt=new TextView(this);prompt.setText("Pergi ke world " + destinationName + "?");prompt.setTextColor(Color.rgb(66,42,28));
+        prompt.setTextSize(11);prompt.setTypeface(getResources().getFont(R.font.press_start_2p));prompt.setGravity(Gravity.CENTER);prompt.setLineSpacing(dp(4),1f);
+        panel.addView(prompt,new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,LinearLayout.LayoutParams.WRAP_CONTENT));
+        LinearLayout buttons=new LinearLayout(this);buttons.setOrientation(LinearLayout.HORIZONTAL);buttons.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams row=new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,LinearLayout.LayoutParams.WRAP_CONTENT);row.topMargin=dp(16);panel.addView(buttons,row);
+        TextView yes=portalButton("Ya"),no=portalButton("Tidak");
+        LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,LinearLayout.LayoutParams.WRAP_CONTENT);left.setMargins(dp(5),0,dp(5),0);
+        LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,LinearLayout.LayoutParams.WRAP_CONTENT);right.setMargins(dp(5),0,dp(5),0);
+        buttons.addView(yes,left);buttons.addView(no,right);
+        AlertDialog dialog=new AlertDialog.Builder(this).setView(panel).create();
+        yes.setOnClickListener(v->{dialog.dismiss();try {
+            if(!worldStore.travel(sourceId,portalId)) Toast.makeText(this,"Portal tidak tersedia atau tujuan terhalang.",Toast.LENGTH_LONG).show(); else applyActiveWorld();
+        } catch(JSONException e){Toast.makeText(this,"Perpindahan gagal; data tidak diubah.",Toast.LENGTH_LONG).show();}});
+        no.setOnClickListener(v->dialog.dismiss());
+        dialog.setOnShowListener(ignored->{if(dialog.getWindow()!=null){
+            dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
+            dialog.getWindow().setGravity(Gravity.CENTER);dialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            dialog.getWindow().setDimAmount(.36f);
+            dialog.getWindow().setLayout(Math.min(dp(340),getResources().getDisplayMetrics().widthPixels-dp(32)),android.view.WindowManager.LayoutParams.WRAP_CONTENT);
+        }});
+        dialog.show();
     }
 
     private void confirmWorldImport(WorldStore.World world) {

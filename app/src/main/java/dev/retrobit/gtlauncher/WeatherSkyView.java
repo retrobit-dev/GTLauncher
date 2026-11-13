@@ -261,7 +261,7 @@ public final class WeatherSkyView extends View {
     private float headingDegrees;
     private boolean animationEnabled = true;
     private Integer worldIslandTint;
-    private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, portalImage;
+    private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, portalImage, portalMarkerImage;
     private Bitmap bushSpiky,bushTiered,treeMango,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
     private final java.util.Set<String> openStorage = new java.util.HashSet<>();
     private String surfaceWorldId="";
@@ -313,6 +313,7 @@ public final class WeatherSkyView extends View {
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_back);
         portalImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_gate);
+        portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation);
         bushSpiky=BitmapFactory.decodeResource(getResources(),R.drawable.bush_spiky);bushTiered=BitmapFactory.decodeResource(getResources(),R.drawable.bush_tiered);
         treeMango=BitmapFactory.decodeResource(getResources(),R.drawable.tree_mango);mailboxBirdhouse=BitmapFactory.decodeResource(getResources(),R.drawable.mailbox_birdhouse);
         storageClosed=BitmapFactory.decodeResource(getResources(),R.drawable.storage_closed);storageOpen=BitmapFactory.decodeResource(getResources(),R.drawable.storage_open);
@@ -465,9 +466,23 @@ public final class WeatherSkyView extends View {
             paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);canvas.drawBitmap(portalImage,0,0,paint);canvas.restoreToCount(save);
         }
     }
+    private RectF portalMarkerBounds(PortalTravel.Portal portal) {
+        RectF bounds=new RectF(0,0,64,64);portalMatrix(portal).mapRect(bounds);
+        float x=Math.max(0,Math.min(SCENE_WIDTH-14,bounds.centerX()-7));
+        float y=Math.max(0,Math.min(SCENE_HEIGHT-14,bounds.top-15));
+        return new RectF(x,y,x+14,y+14);
+    }
+    private void drawPortalMarkers(Canvas canvas) {
+        if(portalMarkerImage==null)return;
+        paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
+        for(PortalTravel.Portal portal:worldPortals) canvas.drawBitmap(portalMarkerImage,null,portalMarkerBounds(portal),paint);
+    }
     String portalAt(float screenX,float screenY) {
         if(getWidth()<=0 || getHeight()<=0) return null;
         float[] xy={screenX*SCENE_WIDTH/getWidth(),screenY*SCENE_HEIGHT/getHeight()};
+        for(int i=worldPortals.size()-1;i>=0;i--){PortalTravel.Portal portal=worldPortals.get(i);
+            if(portalMarkerBounds(portal).contains(xy[0],xy[1]))return portal.id;
+        }
         for(int i=worldPortals.size()-1;i>=0;i--){PortalTravel.Portal portal=worldPortals.get(i);Matrix inverse=new Matrix();
             if(!portalMatrix(portal).invert(inverse)) continue;float[] p=xy.clone();inverse.mapPoints(p);
             if(p[0]>=0 && p[0]<=64 && p[1]>=0 && p[1]<=64) return portal.id;
@@ -672,6 +687,7 @@ public final class WeatherSkyView extends View {
         // shadow still showed on the grass. Edge clamping already keeps every sprite in frame.
         drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, false);
         drawPrecipitation(scene, elapsedSeconds);
+        drawPortalMarkers(scene);
         scene.restoreToCount(save);
 
         renderedSceneBounds.set(0, 0, getWidth(), getHeight());

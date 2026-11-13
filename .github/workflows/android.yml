@@ -31,6 +31,7 @@ jobs:
           python3 tools/test_android_pixel_icons.py
           python3 tools/test_android_character_hud.py
           python3 tools/test_android_portal_compatibility.py
+          python3 tools/test_android_portal_marker.py
           python3 tools/test_date_hud_android.py
           python3 tools/test_battery_hud_android.py
           python3 tools/test_location_permission_android.py
