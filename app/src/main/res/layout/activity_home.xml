@@ -40,11 +40,11 @@
     <!-- The fixed phone and its reserved empty slot remain together on every world. -->
     <LinearLayout
         android:id="@+id/home_phone_slots"
-        android:layout_width="88dp"
+        android:layout_width="112dp"
         android:layout_height="44dp"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="12dp"
-        android:translationX="122dp"
+        android:translationX="134dp"
         android:orientation="horizontal">
         <ImageButton
             android:id="@+id/home_phone_button"
@@ -61,6 +61,14 @@
             android:layout_height="44dp"
             android:background="@drawable/bg_date_hud_panel"
             android:contentDescription="Slot di kanan HP kosong"
+            android:importantForAccessibility="yes" />
+        <View
+            android:id="@+id/home_end_empty_slot"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center_vertical"
+            android:background="@drawable/bg_date_hud_panel"
+            android:contentDescription="Slot paling kanan kosong"
             android:importantForAccessibility="yes" />
     </LinearLayout>
 
