@@ -496,7 +496,7 @@ public final class WeatherSkyView extends View {
     private RectF groundPortalBounds(PortalTravel.Portal portal) {
         float cx=SCENE_WIDTH/2f+(portal.tile.column-portal.tile.row)*ISLAND_TILE_WIDTH/2f;
         float cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(portal.tile.column+portal.tile.row)*ISLAND_TILE_HEIGHT/2f;
-        return new RectF(cx-ISLAND_TILE_WIDTH*.375f,cy-ISLAND_TILE_HEIGHT*.375f,cx+ISLAND_TILE_WIDTH*.375f,cy+ISLAND_TILE_HEIGHT*.375f);
+        return new RectF(cx-ISLAND_TILE_WIDTH*.25f,cy-ISLAND_TILE_HEIGHT*.25f,cx+ISLAND_TILE_WIDTH*.25f,cy+ISLAND_TILE_HEIGHT*.25f);
     }
     private void drawPortals(Canvas canvas, boolean front) {
         if(front || portalImage==null)return;
@@ -504,7 +504,7 @@ public final class WeatherSkyView extends View {
         for(PortalTravel.Portal portal:worldPortals) {
             RectF g=groundPortalBounds(portal); Path clip=new Path();clip.addOval(g,Path.Direction.CW);
             int save=canvas.save();canvas.clipPath(clip);canvas.translate(g.centerX(),g.centerY());canvas.scale(g.width(),g.height());
-            if(animationEnabled)canvas.rotate((float)Math.toDegrees(plantMotionSeconds*.35));
+            if(animationEnabled)canvas.rotate((float)Math.toDegrees(plantMotionSeconds*.10));
             canvas.drawBitmap(portalImage,null,new RectF(-.5f,-.5f,.5f,.5f),paint);canvas.restoreToCount(save);
         }
     }
