@@ -21,3 +21,6 @@ for name in ['bg_portal_dialog.xml','bg_portal_button.xml']:
  ET.parse(root/'app/src/main/res/drawable'/name)
 assert (root/'app/src/main/res/drawable-nodpi/portal_exclamation_red.png').read_bytes().startswith(b'\x89PNG\r\n\x1a\n')
 print('Android portal marker hit target and adventure-style confirmation: static checks OK')
+
+assert 'cx-ISLAND_TILE_WIDTH/2f,cy-ISLAND_TILE_HEIGHT/2f' in view
+assert 'canvas.clipPath(tile)' in view
