@@ -579,18 +579,25 @@ public class HomeActivity extends Activity {
         return button;
     }
     private void showPortalConfirmation(String sourceId,String portalId,String destinationName) {
-        LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setGravity(Gravity.CENTER);
-        panel.setPadding(dp(18),dp(18),dp(18),dp(16));panel.setBackgroundResource(R.drawable.bg_portal_dialog);
+        android.widget.FrameLayout container=new android.widget.FrameLayout(this);
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setGravity(Gravity.TOP);
+        panel.setPadding(dp(18),dp(32),dp(18),dp(12));panel.setBackgroundResource(R.drawable.bg_portal_dialog);
+        android.widget.FrameLayout.LayoutParams panelParams=new android.widget.FrameLayout.LayoutParams(-1,-2);panelParams.topMargin=dp(38);container.addView(panel,panelParams);
+        ImageView portrait=new ImageView(this);portrait.setImageResource(R.drawable.character_hud_portrait);portrait.setBackgroundColor(Color.rgb(216,180,124));portrait.setPadding(dp(3),dp(3),dp(3),dp(3));
+        android.widget.FrameLayout portraitFrame=new android.widget.FrameLayout(this);portraitFrame.setBackgroundColor(Color.rgb(80,45,27));portraitFrame.setPadding(dp(3),dp(3),dp(3),dp(3));portraitFrame.addView(portrait,new android.widget.FrameLayout.LayoutParams(-1,-1));
+        android.widget.FrameLayout.LayoutParams portraitParams=new android.widget.FrameLayout.LayoutParams(dp(62),dp(62),Gravity.TOP|Gravity.LEFT);portraitParams.leftMargin=dp(12);container.addView(portraitFrame,portraitParams);
+        TextView name=new TextView(this);name.setText("Portal");name.setTextColor(Color.rgb(255,249,231));name.setBackgroundColor(Color.rgb(49,95,83));name.setTypeface(getResources().getFont(R.font.press_start_2p));name.setTextSize(9);name.setPadding(dp(6),dp(5),dp(6),dp(5));
+        android.widget.FrameLayout.LayoutParams nameParams=new android.widget.FrameLayout.LayoutParams(-2,-2,Gravity.TOP|Gravity.LEFT);nameParams.leftMargin=dp(79);nameParams.topMargin=dp(18);container.addView(name,nameParams);
         TextView prompt=new TextView(this);prompt.setText("Pergi ke world " + destinationName + "?");prompt.setTextColor(Color.rgb(66,42,28));
-        prompt.setTextSize(11);prompt.setTypeface(getResources().getFont(R.font.press_start_2p));prompt.setGravity(Gravity.CENTER);prompt.setLineSpacing(dp(4),1f);
+        prompt.setTextSize(11);prompt.setTypeface(getResources().getFont(R.font.press_start_2p));prompt.setGravity(Gravity.START);prompt.setLineSpacing(dp(4),1f);
         panel.addView(prompt,new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,LinearLayout.LayoutParams.WRAP_CONTENT));
-        LinearLayout buttons=new LinearLayout(this);buttons.setOrientation(LinearLayout.HORIZONTAL);buttons.setGravity(Gravity.CENTER);
+        LinearLayout buttons=new LinearLayout(this);buttons.setOrientation(LinearLayout.HORIZONTAL);buttons.setGravity(Gravity.END);
         LinearLayout.LayoutParams row=new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,LinearLayout.LayoutParams.WRAP_CONTENT);row.topMargin=dp(16);panel.addView(buttons,row);
         TextView yes=portalButton("Ya"),no=portalButton("Tidak");
         LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,LinearLayout.LayoutParams.WRAP_CONTENT);left.setMargins(dp(5),0,dp(5),0);
         LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,LinearLayout.LayoutParams.WRAP_CONTENT);right.setMargins(dp(5),0,dp(5),0);
         buttons.addView(yes,left);buttons.addView(no,right);
-        AlertDialog dialog=new AlertDialog.Builder(this).setView(panel).create();
+        AlertDialog dialog=new AlertDialog.Builder(this).setView(container).create();
         yes.setOnClickListener(v->{dialog.dismiss();try {
             WorldStore.World current=worldStore.activeWorld();PortalTravel.Portal currentPortal=null;
             if(current!=null)for(PortalTravel.Portal p:current.portals)if(p.id.equals(portalId))currentPortal=p;
@@ -600,9 +607,9 @@ public class HomeActivity extends Activity {
         no.setOnClickListener(v->dialog.dismiss());
         dialog.setOnShowListener(ignored->{if(dialog.getWindow()!=null){
             dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
-            dialog.getWindow().setGravity(Gravity.CENTER);dialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            dialog.getWindow().setDimAmount(.36f);
-            dialog.getWindow().setLayout(Math.min(dp(340),getResources().getDisplayMetrics().widthPixels-dp(32)),android.view.WindowManager.LayoutParams.WRAP_CONTENT);
+            dialog.getWindow().setGravity(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);dialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            dialog.getWindow().setDimAmount(.12f);
+            dialog.getWindow().setLayout(Math.min(dp(520),getResources().getDisplayMetrics().widthPixels-dp(32)),android.view.WindowManager.LayoutParams.WRAP_CONTENT);
         }});
         dialog.show();
     }
