@@ -262,6 +262,9 @@ public final class WeatherSkyView extends View {
     private boolean animationEnabled = true;
     private Integer worldIslandTint;
     private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, portalImage;
+    private Bitmap bushSpiky,bushTiered,treeMango,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
+    private final java.util.Set<String> openStorage = new java.util.HashSet<>();
+    private String surfaceWorldId="";
     private java.util.List<PortalTravel.Portal> worldPortals = java.util.Collections.emptyList();
     private java.util.List<WorldStore.SurfaceObject> worldSurfaces = java.util.Collections.emptyList();
     private boolean showHouse;
@@ -310,6 +313,10 @@ public final class WeatherSkyView extends View {
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_back);
         portalImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_gate);
+        bushSpiky=BitmapFactory.decodeResource(getResources(),R.drawable.bush_spiky);bushTiered=BitmapFactory.decodeResource(getResources(),R.drawable.bush_tiered);
+        treeMango=BitmapFactory.decodeResource(getResources(),R.drawable.tree_mango);mailboxBirdhouse=BitmapFactory.decodeResource(getResources(),R.drawable.mailbox_birdhouse);
+        storageClosed=BitmapFactory.decodeResource(getResources(),R.drawable.storage_closed);storageOpen=BitmapFactory.decodeResource(getResources(),R.drawable.storage_open);
+        storageBackClosed=BitmapFactory.decodeResource(getResources(),R.drawable.storage_back_closed);storageBackOpen=BitmapFactory.decodeResource(getResources(),R.drawable.storage_back_open);
         setContentDescription("Langit pixel art dan pulau terapung yang mengikuti waktu dan cuaca");
     }
 
@@ -359,8 +366,47 @@ public final class WeatherSkyView extends View {
         houseFacing = facing; invalidate();
     }
 
-    void setWorldSurfaces(java.util.List<WorldStore.SurfaceObject> objects) {
+    void setWorldSurfaces(String worldId,java.util.List<WorldStore.SurfaceObject> objects) {
+        String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();surfaceWorldId=id;}
         worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects); invalidate();
+    }
+    private RectF surfaceSpriteBounds(WorldStore.SurfaceObject o) {
+        float x=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f;
+        float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
+        float width,height,bottom;
+        switch(o.type) {
+            case "tree": width=48;height=60;bottom=y+ISLAND_TILE_HEIGHT*.5f+ISLAND_TILE_HEIGHT*.55f;break;
+            case "bush": width=18.5f;height=14.5f;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
+            case "mailbox": width=13;height=30;bottom=y+ISLAND_TILE_HEIGHT*.15f;break;
+            default: width=18;height=18;bottom=y+ISLAND_TILE_HEIGHT*.15f;
+        }
+        return new RectF(x-width/2,bottom-height,x+width/2,bottom);
+    }
+    private void drawSurfaceSprites(Canvas canvas,boolean front) {
+        for(WorldStore.SurfaceObject o:worldSurfaces) {
+            if(o.type.equals("road") || o.type.equals("fence")) continue;
+            float depth=o.column+o.row+(o.type.equals("tree")?1f:0f);
+            if(showCharacter && (depth>=characterColumn+characterRow)!=front) continue;
+            if(!showCharacter && front) continue;
+            Bitmap image; boolean mirror=false;
+            if(o.type.equals("tree")) image=treeMango;
+            else if(o.type.equals("bush")) image=o.material.equals("spiky")?bushSpiky:bushTiered;
+            else if(o.type.equals("mailbox")) image=mailboxBirdhouse;
+            else {boolean back=o.material.equals("N")||o.material.equals("W"),opened=openStorage.contains(o.column+","+o.row);
+                mirror=o.material.equals("N")||o.material.equals("E");
+                image=back?(opened?storageBackOpen:storageBackClosed):(opened?storageOpen:storageClosed);
+            }
+            if(image==null)continue;RectF g=surfaceSpriteBounds(o);
+            paint.setColor(Color.argb(35,12,23,40));paint.setStyle(Paint.Style.FILL);canvas.drawOval(new RectF(g.centerX()-g.width()*.3f,g.bottom-1,g.centerX()+g.width()*.3f,g.bottom+1),paint);
+            paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);int saved=canvas.save();
+            if(mirror)canvas.scale(-1,1,g.centerX(),0);canvas.drawBitmap(image,null,g,paint);canvas.restoreToCount(saved);
+        }
+    }
+    boolean toggleStorageAt(float sx,float sy) {
+        if(getWidth()<=0 || getHeight()<=0)return false;float x=sx*SCENE_WIDTH/getWidth(),y=sy*SCENE_HEIGHT/getHeight();
+        for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if(!o.type.equals("storage-box"))continue;
+            if(surfaceSpriteBounds(o).contains(x,y)){String key=o.column+","+o.row;if(!openStorage.add(key))openStorage.remove(key);invalidate();return true;}}
+        return false;
     }
     private void drawRoads(Canvas canvas) {
         for(WorldStore.SurfaceObject o:worldSurfaces) if(o.type.equals("road")) {
@@ -615,9 +661,11 @@ public final class WeatherSkyView extends View {
         drawSurfaceObjectShadows(scene, shadowLight, cloudCover, code);
         drawHouse(scene);
         drawFences(scene, false);
+        drawSurfaceSprites(scene, false);
         drawPortals(scene, false);
         drawMainCharacter(scene, motionSeconds);
         drawPortals(scene, true);
+        drawSurfaceSprites(scene, true);
         drawFences(scene, true);
         // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
         // cloud can hang below the horizon line, and clipping it there hid the cloud while its

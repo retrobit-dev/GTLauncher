@@ -32,6 +32,18 @@ public class PortalImportTest {
         assertEquals("W",restored.surfaces.get(0).edge);assertEquals("water",restored.surfaces.get(1).material);
         try {store.upsertAndSelect(WorldStore.parseExport(world("").replace("\"version\":28","\"version\":4")));fail("legacy world must not erase objects");} catch(JSONException expected) {}
     }
+    @Test public void preserveObjectsPresentInHome() throws JSONException {
+        String house="{\"type\":\"house\",\"id\":\"legacy-house\",\"column\":2,\"row\":0,\"scale\":1.25,\"facing\":\"S\",\"visible\":true}";
+        String bush="{\"type\":\"bush\",\"column\":5,\"row\":1,\"variant\":\"tiered\"}";
+        String tree="{\"type\":\"tree\",\"column\":0,\"row\":0,\"species\":\"mango\"}";
+        String mailbox="{\"type\":\"mailbox\",\"column\":2,\"row\":3}";
+        String box="{\"type\":\"storage-box\",\"column\":5,\"row\":3,\"facing\":\"N\"}";
+        WorldStore store=new WorldStore(prefs());WorldStore.World imported=WorldStore.parseExport(world(house+","+bush+","+tree+","+mailbox+","+box+","+portal));
+        assertTrue(store.upsertAndSelect(imported));WorldStore.World restored=store.activeWorld();
+        assertEquals("legacy-house",restored.houseId);assertEquals(1.25,restored.houseScale,0.001);assertEquals(4,restored.surfaces.size());assertEquals("N",restored.surfaces.get(3).material);
+        assertEquals("mango",restored.surfaces.get(1).material);assertEquals("farm",restored.portals.get(0).destinationWorldId);
+        try {store.upsertAndSelect(WorldStore.parseExport(world("").replace("\"version\":28","\"version\":26")));fail("legacy import cannot erase orientation");} catch(JSONException expected) {}
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {

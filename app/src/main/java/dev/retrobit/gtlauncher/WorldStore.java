@@ -30,7 +30,7 @@ final class WorldStore {
         final boolean showCharacter, showHouse, hasHouse;
         final int houseColumn, houseRow;
         final double houseScale;
-        final String houseFacing;
+        final String houseFacing, houseId;
         final int formatVersion;
         final int characterColumn, characterRow;
         final double characterScale;
@@ -39,13 +39,13 @@ final class WorldStore {
         final List<SurfaceObject> surfaces;
         World(String id, String name, String description, String color,
                 boolean showCharacter, int column, int row, double scale, String facing,
-                boolean hasHouse, boolean showHouse, int houseColumn, int houseRow, double houseScale, String houseFacing, int formatVersion, List<PortalTravel.Portal> portals, List<SurfaceObject> surfaces) {
+                boolean hasHouse, boolean showHouse, int houseColumn, int houseRow, double houseScale, String houseFacing, String houseId, int formatVersion, List<PortalTravel.Portal> portals, List<SurfaceObject> surfaces) {
             this.id = id; this.name = name; this.description = description; this.color = color;
             this.showCharacter = showCharacter; this.characterColumn = column;
             this.characterRow = row; this.characterScale = scale; this.characterFacing = facing;
             this.hasHouse = hasHouse; this.showHouse = showHouse; this.houseColumn = houseColumn;
             this.houseRow = houseRow; this.houseScale = houseScale; this.houseFacing = houseFacing;
-            this.formatVersion = formatVersion; this.portals = java.util.Collections.unmodifiableList(new ArrayList<>(portals)); this.surfaces = java.util.Collections.unmodifiableList(new ArrayList<>(surfaces));
+            this.houseId = houseId; this.formatVersion = formatVersion; this.portals = java.util.Collections.unmodifiableList(new ArrayList<>(portals)); this.surfaces = java.util.Collections.unmodifiableList(new ArrayList<>(surfaces));
         }
     }
 
@@ -66,7 +66,7 @@ final class WorldStore {
         boolean visible = false, house = false, houseVisible = false;
         int houseColumn = 0, houseRow = 0;
         double houseScale = 1.0;
-        String houseFacing = "S";
+        String houseFacing = "S", houseId=null;
         int column = 4, row = 4;
         double scale = 1.0;
         String facing = "S";
@@ -77,7 +77,7 @@ final class WorldStore {
             Object value = object.get("objects");
             if (!(value instanceof JSONArray)) throw new JSONException("Invalid objects");
             JSONArray objects = (JSONArray) value;
-            if (objects.length() > (formatVersion >= 8 ? 283 : formatVersion >= 7 ? 202 : formatVersion >= 5 ? 2 : 1)) throw new JSONException("Unsupported objects");
+            if (objects.length() > (formatVersion >= 17 ? 606 : formatVersion >= 8 ? 283 : formatVersion >= 7 ? 202 : formatVersion >= 5 ? 2 : 1)) throw new JSONException("Unsupported objects");
             for (int i = 0; i < objects.length(); i++) {
                 JSONObject character = objects.getJSONObject(i);
                 String type = requiredString(character, "type");
@@ -120,10 +120,29 @@ final class WorldStore {
                     for (PortalTravel.Portal previous : portals) if (previous.id.equals(portalId) || (previous.tile.column==col && previous.tile.row==portalRow && previous.edge.equals(edge))) throw new JSONException("Duplicate portal");
                     portals.add(new PortalTravel.Portal(id,portalId,edge,new PortalTravel.Tile(col,portalRow),destWorld,destPortal)); continue;
                 }
+                if ((formatVersion>=11 && "bush".equals(type)) || (formatVersion>=14 && "tree".equals(type)) || (formatVersion>=17 && "mailbox".equals(type)) || (formatVersion>=26 && "storage-box".equals(type))) {
+                    if(type.equals("bush")) requireOnlyKeys(character,"type","column","row","variant");
+                    else if(type.equals("tree")) requireOnlyKeys(character,"type","column","row","species");
+                    else if(type.equals("storage-box") && formatVersion>=27) requireOnlyKeys(character,"type","column","row","facing");
+                    else requireOnlyKeys(character,"type","column","row");
+                    Object co=character.get("column"),ro=character.get("row");
+                    if(!(co instanceof Number) || !(ro instanceof Number) || ((Number)co).doubleValue()!=Math.rint(((Number)co).doubleValue()) || ((Number)ro).doubleValue()!=Math.rint(((Number)ro).doubleValue())) throw new JSONException("Invalid object tile");
+                    int c=((Number)co).intValue(),r=((Number)ro).intValue();
+                    if(c<0||c>8||r<0||r>8||(type.equals("tree") && (c>7||r>7))) throw new JSONException("Invalid object tile");
+                    String variant=type.equals("bush") ? requiredString(character,"variant") : type.equals("tree") ? requiredString(character,"species") : type.equals("storage-box") && character.has("facing") ? requiredString(character,"facing") : "";
+                    if(type.equals("bush") && !variant.equals("spiky") && !variant.equals("tiered")) throw new JSONException("Unsupported object");
+                    if(type.equals("tree") && !variant.equals("mango")) throw new JSONException("Unsupported object");
+                    if(type.equals("storage-box") && !variant.isEmpty() && !java.util.Arrays.asList("N","E","S","W").contains(variant)) throw new JSONException("Invalid direction");
+                    for(SurfaceObject previous:surfaces) if(!previous.type.equals("road") && !previous.type.equals("fence") && previous.column==c && previous.row==r) throw new JSONException("Object collision");
+                    surfaces.add(new SurfaceObject(type,c,r,null,variant,character.toString()));continue;
+                }
                 if ("house".equals(type)) {
                     if (formatVersion < 5 || house) throw new JSONException("Unsupported house");
                     if (formatVersion >= 6) {
-                        requireOnlyKeys(character, "type", "column", "row", "scale", "facing", "visible");
+                        if(formatVersion>=16) {
+                            requireOnlyKeys(character,"type","id","column","row","scale","facing","visible");
+                            if(character.has("id")) {houseId=requiredString(character,"id"); if(!houseId.matches("[A-Za-z0-9_-]{1,128}")) throw new JSONException("Invalid house id");}
+                        } else requireOnlyKeys(character, "type", "column", "row", "scale", "facing", "visible");
                         Object hc = character.get("column"), hr = character.get("row"), hs = character.get("scale"), hv = character.get("visible");
                         if (!(hc instanceof Number) || !(hr instanceof Number) || !(hs instanceof Number) || !(hv instanceof Boolean))
                             throw new JSONException("Invalid house geometry");
@@ -166,7 +185,7 @@ final class WorldStore {
             }
         }
         return new World(id, name, description, color, visible, column, row, scale, facing,
-                house, houseVisible, houseColumn, houseRow, houseScale, houseFacing, formatVersion, portals, surfaces);
+                house, houseVisible, houseColumn, houseRow, houseScale, houseFacing, houseId, formatVersion, portals, surfaces);
     }
 
     private static void requireOnlyKeys(JSONObject object, String... allowed) throws JSONException {
@@ -214,8 +233,8 @@ final class WorldStore {
         int version = 3;
         for (int i = 0; i < objects.length(); i++) {
             JSONObject obj = objects.getJSONObject(i);
-            if ("fence".equals(obj.optString("type")) || "road".equals(obj.optString("type"))) version = Math.max(version, 28);
-            else if ("house".equals(obj.optString("type"))) version = Math.max(version, obj.has("visible") || obj.has("scale") || obj.has("facing") ? 6 : 5);
+            if ("fence".equals(obj.optString("type")) || "road".equals(obj.optString("type")) || "bush".equals(obj.optString("type")) || "tree".equals(obj.optString("type")) || "mailbox".equals(obj.optString("type")) || "storage-box".equals(obj.optString("type"))) version = Math.max(version, 28);
+            else if ("house".equals(obj.optString("type"))) version = Math.max(version, obj.has("id") ? 28 : obj.has("visible") || obj.has("scale") || obj.has("facing") ? 6 : 5);
             else if (obj.has("facing")) version = Math.max(version, 4);
         }
         return version;
@@ -254,6 +273,12 @@ final class WorldStore {
         boolean found = false;
         for (int i = 0; i < existing.size(); i++) {
             if (existing.get(i).id.equals(world.id)) {
+                if (world.formatVersion < 16 && existing.get(i).houseId != null) throw new JSONException("Legacy export cannot replace house identity");
+                if (world.formatVersion < 27 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("storage-box") && !o.material.isEmpty())) throw new JSONException("Legacy export cannot replace storage direction");
+                if (world.formatVersion < 26 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("storage-box"))) throw new JSONException("Legacy export cannot replace storage");
+                if (world.formatVersion < 17 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("mailbox"))) throw new JSONException("Legacy export cannot replace mailbox");
+                if (world.formatVersion < 14 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("tree"))) throw new JSONException("Legacy export cannot replace tree");
+                if (world.formatVersion < 11 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("bush"))) throw new JSONException("Legacy export cannot replace bush");
                 if (world.formatVersion < 8 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("road"))) throw new JSONException("Legacy export cannot replace road data");
                 if (world.formatVersion < 7 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("fence"))) throw new JSONException("Legacy export cannot replace fence data");
                 if (world.formatVersion < 22 && !existing.get(i).portals.isEmpty()) throw new JSONException("Legacy export cannot replace portal data");
@@ -300,7 +325,7 @@ final class WorldStore {
             }
             if (item.hasHouse) {
                 JSONObject house = new JSONObject();
-                house.put("type", "house"); house.put("column", item.houseColumn); house.put("row", item.houseRow);
+                house.put("type", "house"); if(item.houseId!=null) house.put("id",item.houseId); house.put("column", item.houseColumn); house.put("row", item.houseRow);
                 house.put("scale", item.houseScale); house.put("facing", item.houseFacing); house.put("visible", item.showHouse);
                 objects.put(house);
             }
@@ -322,7 +347,7 @@ final class WorldStore {
         if (!worldId.equals(activeId()) || column<0 || column>8 || row<0 || row>8 || !java.util.Arrays.asList("N","E","S","W").contains(facing)) return false;
         List<World> worlds=list();
         for(int i=0;i<worlds.size();i++) { World w=worlds.get(i); if(w.id.equals(worldId) && w.showCharacter) {
-            worlds.set(i, new World(w.id,w.name,w.description,w.color,true,column,row,w.characterScale,facing,w.hasHouse,w.showHouse,w.houseColumn,w.houseRow,w.houseScale,w.houseFacing,w.formatVersion,w.portals,w.surfaces));
+            worlds.set(i, new World(w.id,w.name,w.description,w.color,true,column,row,w.characterScale,facing,w.hasHouse,w.showHouse,w.houseColumn,w.houseRow,w.houseScale,w.houseFacing,w.houseId,w.formatVersion,w.portals,w.surfaces));
             return saveWorlds(worlds,worldId);
         }}
         return false;
@@ -339,12 +364,12 @@ final class WorldStore {
         for(PortalTravel.Portal p:destination.portals) if(p.id.equals(from.destinationPortalId)) to=p;
         final World dest=destination;
         PortalTravel.Terrain terrain=new PortalTravel.Terrain() {
-            public boolean canStand(int c,int r){if(dest.showHouse && c>=dest.houseColumn && c<=dest.houseColumn+2 && r>=dest.houseRow && r<=dest.houseRow+2) return false;for(SurfaceObject o:dest.surfaces) if(o.type.equals("road") && "water".equals(o.material) && o.column==c && o.row==r)return false;return true;}
+            public boolean canStand(int c,int r){if(dest.showHouse && c>=dest.houseColumn && c<=dest.houseColumn+2 && r>=dest.houseRow && r<=dest.houseRow+2) return false;for(SurfaceObject o:dest.surfaces) {if(o.type.equals("tree") && c>=o.column && c<o.column+2 && r>=o.row && r<o.row+2) return false;if((o.type.equals("bush")||o.type.equals("mailbox")||o.type.equals("storage-box")||(o.type.equals("road") && "water".equals(o.material))) && o.column==c && o.row==r)return false;}return true;}
             public boolean canStep(int a,int b,int c,int d){return true;}
         };
         if(!PortalTravel.canTravel(from,to,new PortalTravel.Tile(source.characterColumn,source.characterRow),terrain)) return false;
         for(int i=0;i<worlds.size();i++) if(worlds.get(i).id.equals(destination.id)) {
-            worlds.set(i,new World(dest.id,dest.name,dest.description,dest.color,true,to.tile.column,to.tile.row,source.characterScale,source.characterFacing,dest.hasHouse,dest.showHouse,dest.houseColumn,dest.houseRow,dest.houseScale,dest.houseFacing,dest.formatVersion,dest.portals,dest.surfaces)); break;
+            worlds.set(i,new World(dest.id,dest.name,dest.description,dest.color,true,to.tile.column,to.tile.row,source.characterScale,source.characterFacing,dest.hasHouse,dest.showHouse,dest.houseColumn,dest.houseRow,dest.houseScale,dest.houseFacing,dest.houseId,dest.formatVersion,dest.portals,dest.surfaces)); break;
         }
         return saveWorlds(worlds,dest.id);
     }

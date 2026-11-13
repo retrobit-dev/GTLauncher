@@ -234,6 +234,7 @@ public class HomeActivity extends Activity {
                 } else if (Math.hypot(deltaX,deltaY) < dp(8)) {
                     String portal=skyView.portalAt(event.getX(),event.getY());
                     if(portal!=null) walkToPortal(portal);
+                    else if(skyView.toggleStorageAt(event.getX(),event.getY())) Toast.makeText(this,"Storage box terbuka atau tertutup. Penyimpanan barang belum tersedia.",Toast.LENGTH_SHORT).show();
                     else applyActiveWorld();
                 }
                 return true;
@@ -392,7 +393,7 @@ public class HomeActivity extends Activity {
             WorldStore.World world = worldStore.activeWorld();
             skyView.setWorldIslandTint(world == null ? null : Color.parseColor(world.color));
             skyView.setWorldPortals(world == null ? null : world.portals);
-            skyView.setWorldSurfaces(world == null ? null : world.surfaces);
+            skyView.setWorldSurfaces(world == null ? null : world.id,world == null ? null : world.surfaces);
             skyView.setWorldHouse(world != null && world.showHouse, world == null ? 0 : world.houseColumn,
                     world == null ? 0 : world.houseRow, world == null ? 1.0f : (float) world.houseScale,
                     world == null ? "S" : world.houseFacing);
@@ -403,7 +404,7 @@ public class HomeActivity extends Activity {
         } catch (JSONException | IllegalArgumentException error) {
             skyView.setWorldIslandTint(null);
             skyView.setWorldPortals(null);
-            skyView.setWorldSurfaces(null);
+            skyView.setWorldSurfaces(null,null);
             skyView.setWorldHouse(false, 0, 0, 1.0f, "S");
             skyView.setWorldCharacter(false, 4, 4, 1.0f, "S");
             Toast.makeText(this, "Data world tidak dapat dibaca; data lama tidak ditimpa.",
@@ -504,7 +505,10 @@ public class HomeActivity extends Activity {
         return new PortalTravel.Terrain() {
             public boolean canStand(int c,int r) {
                 if(world.showHouse && c>=world.houseColumn && c<=world.houseColumn+2 && r>=world.houseRow && r<=world.houseRow+2) return false;
-                for(WorldStore.SurfaceObject o:world.surfaces) if(o.type.equals("road") && "water".equals(o.material) && o.column==c && o.row==r)return false;
+                for(WorldStore.SurfaceObject o:world.surfaces) {
+                    if(o.type.equals("tree") && c>=o.column && c<o.column+2 && r>=o.row && r<o.row+2) return false;
+                    if((o.type.equals("bush")||o.type.equals("mailbox")||o.type.equals("storage-box")||(o.type.equals("road") && "water".equals(o.material))) && o.column==c && o.row==r)return false;
+                }
                 return true;
             }
             public boolean canStep(int a,int b,int c,int d) {
