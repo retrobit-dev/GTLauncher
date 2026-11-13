@@ -119,6 +119,7 @@ public class HomeActivity extends Activity {
     private boolean seasonFallback;
     private WeatherSkyView skyView;
     private WorldStore worldStore;
+    private int portalWalkGeneration;
     private SensorManager sensorManager;
     private Sensor rotationSensor;
     private WeatherSnapshot currentWeather;
@@ -219,6 +220,7 @@ public class HomeActivity extends Activity {
 
         homeScreen.setOnTouchListener((view, event) -> {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                portalWalkGeneration++;
                 swipeStartX = event.getX();
                 swipeStartY = event.getY();
                 return true;
@@ -228,6 +230,10 @@ public class HomeActivity extends Activity {
                 float deltaY = event.getY() - swipeStartY;
                 if (deltaY < -dp(72) && Math.abs(deltaY) > Math.abs(deltaX) * 1.15f) {
                     openDrawer();
+                } else if (Math.hypot(deltaX,deltaY) < dp(8)) {
+                    String portal=skyView.portalAt(event.getX(),event.getY());
+                    if(portal!=null) walkToPortal(portal);
+                    else applyActiveWorld();
                 }
                 return true;
             }
@@ -384,6 +390,7 @@ public class HomeActivity extends Activity {
         try {
             WorldStore.World world = worldStore.activeWorld();
             skyView.setWorldIslandTint(world == null ? null : Color.parseColor(world.color));
+            skyView.setWorldPortals(world == null ? null : world.portals);
             skyView.setWorldHouse(world != null && world.showHouse, world == null ? 0 : world.houseColumn,
                     world == null ? 0 : world.houseRow, world == null ? 1.0f : (float) world.houseScale,
                     world == null ? "S" : world.houseFacing);
@@ -393,6 +400,7 @@ public class HomeActivity extends Activity {
                     world == null ? "S" : world.characterFacing);
         } catch (JSONException | IllegalArgumentException error) {
             skyView.setWorldIslandTint(null);
+            skyView.setWorldPortals(null);
             skyView.setWorldHouse(false, 0, 0, 1.0f, "S");
             skyView.setWorldCharacter(false, 4, 4, 1.0f, "S");
             Toast.makeText(this, "Data world tidak dapat dibaca; data lama tidak ditimpa.",
@@ -482,6 +490,51 @@ public class HomeActivity extends Activity {
                 });
             }
         });
+    }
+
+    // Portal worlds are admitted only if every object is currently supported by Android.
+    private PortalTravel.Terrain portalTerrain(WorldStore.World world) {
+        return new PortalTravel.Terrain() {
+            public boolean canStand(int c,int r) { return !world.showHouse || !(c>=world.houseColumn && c<=world.houseColumn+2 && r>=world.houseRow && r<=world.houseRow+2); }
+            public boolean canStep(int a,int b,int c,int d) { return true; }
+        };
+    }
+    private void walkToPortal(String id) {
+        try {
+            WorldStore.World source=worldStore.activeWorld(), target=null; PortalTravel.Portal from=null,to=null;
+            if(source==null || !source.showCharacter) {Toast.makeText(this,"Karakter tidak tersedia di world ini.",Toast.LENGTH_SHORT).show();return;}
+            for(PortalTravel.Portal p:source.portals) if(p.id.equals(id)) from=p;
+            if(from!=null) for(WorldStore.World w:worldStore.list()) if(w.id.equals(from.destinationWorldId)) target=w;
+            if(target!=null) for(PortalTravel.Portal p:target.portals) if(p.id.equals(from.destinationPortalId)) to=p;
+            if(!PortalTravel.arePaired(from,to)) {Toast.makeText(this,"Portal belum memiliki pasangan yang valid.",Toast.LENGTH_SHORT).show();return;}
+            final PortalTravel.Portal chosen=from; final WorldStore.World destination=target;
+            java.util.List<PortalTravel.Tile> route=PortalTravel.pathToPortal(new PortalTravel.Tile(source.characterColumn,source.characterRow),from,portalTerrain(source));
+            if(route==null) {Toast.makeText(this,"Jalan ke depan portal terhalang.",Toast.LENGTH_SHORT).show();return;}
+            final int generation=++portalWalkGeneration;
+            walkPortalStep(source,chosen,destination,route,1,generation,source.characterFacing);
+        } catch(JSONException e) {Toast.makeText(this,"Data portal tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
+    }
+    private void walkPortalStep(WorldStore.World source, PortalTravel.Portal portal, WorldStore.World destination,
+            java.util.List<PortalTravel.Tile> route, int index, int generation, String facing) {
+        if(generation!=portalWalkGeneration || isFinishing() || isDestroyed() || !source.id.equals(worldStore.activeId())) return;
+        if(index>=route.size()) {
+            try {
+                PortalTravel.Tile end=route.get(route.size()-1);
+                if(!worldStore.moveCharacter(source.id,end.column,end.row,facing)) throw new JSONException("Move failed");
+                applyActiveWorld();
+                AlertDialog confirm=new AlertDialog.Builder(this).setMessage("Pergi ke world " + destination.name + "?")
+                    .setPositiveButton("Ya",(dialog,which)->{
+                        try {if(!worldStore.travel(source.id,portal.id)) Toast.makeText(this,"Portal tidak tersedia atau tujuan terhalang.",Toast.LENGTH_LONG).show(); else applyActiveWorld();}
+                        catch(JSONException e){Toast.makeText(this,"Perpindahan gagal; data tidak diubah.",Toast.LENGTH_LONG).show();}
+                    }).setNegativeButton("Tidak",(dialog,which)->{}).create();
+                confirm.setOnShowListener(d->{if(confirm.getWindow()!=null) confirm.getWindow().setGravity(Gravity.BOTTOM);});confirm.show();
+            } catch(JSONException e) {applyActiveWorld();Toast.makeText(this,"Karakter tidak dapat dipindahkan.",Toast.LENGTH_SHORT).show();}
+            return;
+        }
+        PortalTravel.Tile previous=route.get(index-1), next=route.get(index);
+        String direction=next.column>previous.column ? "E" : next.column<previous.column ? "W" : next.row>previous.row ? "S" : "N";
+        skyView.setWorldCharacter(true,next.column,next.row,(float)source.characterScale,direction);
+        mainHandler.postDelayed(()->walkPortalStep(source,portal,destination,route,index+1,generation,direction),180);
     }
 
     private void confirmWorldImport(WorldStore.World world) {

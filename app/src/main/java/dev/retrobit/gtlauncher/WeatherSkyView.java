@@ -261,7 +261,8 @@ public final class WeatherSkyView extends View {
     private float headingDegrees;
     private boolean animationEnabled = true;
     private Integer worldIslandTint;
-    private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage;
+    private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, portalImage;
+    private java.util.List<PortalTravel.Portal> worldPortals = java.util.Collections.emptyList();
     private boolean showHouse;
     private int houseColumn = 0, houseRow = 0;
     private float houseScale = 1.0f;
@@ -307,6 +308,7 @@ public final class WeatherSkyView extends View {
         mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.main_character_back);
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_back);
+        portalImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_gate);
         setContentDescription("Langit pixel art dan pulau terapung yang mengikuti waktu dan cuaca");
     }
 
@@ -354,6 +356,48 @@ public final class WeatherSkyView extends View {
         showHouse = visible; houseColumn = Math.max(0, Math.min(6, column));
         houseRow = Math.max(0, Math.min(6, row)); houseScale = Math.max(0.5f, Math.min(1.5f, scale));
         houseFacing = facing; invalidate();
+    }
+
+    void setWorldPortals(java.util.List<PortalTravel.Portal> portals) {
+        worldPortals = portals == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(portals); invalidate();
+    }
+    private Matrix portalMatrix(PortalTravel.Portal portal) {
+        float cx=SCENE_WIDTH/2f+(portal.tile.column-portal.tile.row)*ISLAND_TILE_WIDTH/2f;
+        float cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(portal.tile.column+portal.tile.row)*ISLAND_TILE_HEIGHT/2f;
+        float hw=ISLAND_TILE_WIDTH*.4f, hh=ISLAND_TILE_HEIGHT*.4f;
+        float x1,y1,x2,y2;
+        switch(portal.edge) {
+            case "N": x1=cx;y1=cy-hh;x2=cx+hw;y2=cy;break;
+            case "E": x1=cx;y1=cy+hh;x2=cx+hw;y2=cy;break;
+            case "S": x1=cx-hw;y1=cy;x2=cx;y2=cy+hh;break;
+            default: x1=cx-hw;y1=cy;x2=cx;y2=cy-hh;
+        }
+        boolean rising=portal.edge.equals("E") || portal.edge.equals("W");
+        float leftX=rising?20:18,rightX=rising?46:44,leftY=rising?56:44,rightY=rising?44:56;
+        float a=(x2-x1)/(rightX-leftX),d=.9f,b=(y2-y1-d*(rightY-leftY))/(rightX-leftX);
+        float e=x1-a*leftX,f=y1-b*leftX-d*leftY;
+        Matrix result=new Matrix(); result.setValues(new float[]{a,0,e,b,d,f,0,0,1});return result;
+    }
+    private void drawPortals(Canvas canvas, boolean front) {
+        if(portalImage==null) return;
+        for(PortalTravel.Portal portal:worldPortals) {
+            float depth=portal.tile.column+portal.tile.row + ((portal.edge.equals("S") || portal.edge.equals("E")) ? .5f : -.5f);
+            float playerDepth=characterColumn+characterRow;
+            if(showCharacter && (depth>=playerDepth)!=front) continue;
+            if(!showCharacter && front) continue;
+            int save=canvas.save(); canvas.concat(portalMatrix(portal));
+            if(portal.edge.equals("E") || portal.edge.equals("W")) { canvas.translate(64,0);canvas.scale(-1,1); }
+            paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);canvas.drawBitmap(portalImage,0,0,paint);canvas.restoreToCount(save);
+        }
+    }
+    String portalAt(float screenX,float screenY) {
+        if(getWidth()<=0 || getHeight()<=0) return null;
+        float[] xy={screenX*SCENE_WIDTH/getWidth(),screenY*SCENE_HEIGHT/getHeight()};
+        for(int i=worldPortals.size()-1;i>=0;i--){PortalTravel.Portal portal=worldPortals.get(i);Matrix inverse=new Matrix();
+            if(!portalMatrix(portal).invert(inverse)) continue;float[] p=xy.clone();inverse.mapPoints(p);
+            if(p[0]>=0 && p[0]<=64 && p[1]>=0 && p[1]<=64) return portal.id;
+        }
+        return null;
     }
 
     // Shared projection for surface objects; future types provide their footprint and height.
@@ -540,7 +584,9 @@ public final class WeatherSkyView extends View {
                 sun.hourAngleDegrees, cloudCover, code, moon, cloudStates);
         drawSurfaceObjectShadows(scene, shadowLight, cloudCover, code);
         drawHouse(scene);
+        drawPortals(scene, false);
         drawMainCharacter(scene, motionSeconds);
+        drawPortals(scene, true);
         // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
         // cloud can hang below the horizon line, and clipping it there hid the cloud while its
         // shadow still showed on the grass. Edge clamping already keeps every sprite in frame.
