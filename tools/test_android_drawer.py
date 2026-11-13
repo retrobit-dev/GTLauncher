@@ -12,7 +12,9 @@ window=next(n for n in overlay.iter() if id_of(n)=='@+id/app_drawer_window')
 header=next(n for n in window if n.tag=='LinearLayout')
 assert phone.tag=='ImageButton' and phone.attrib[a+'src']=='@drawable/dock_phone'
 phone_slots=next(n for n in layout.iter() if id_of(n)=='@+id/home_phone_slots')
-assert [id_of(n) for n in phone_slots]==['@+id/home_phone_button','@+id/home_phone_empty_slot','@+id/home_end_empty_slot']
+assert [id_of(n) for n in phone_slots]==['@+id/home_phone_button','@+id/home_bag_button','@+id/home_end_empty_slot']
+bag=next(n for n in layout.iter() if id_of(n)=='@+id/home_bag_button')
+assert bag.tag=='ImageButton' and bag.attrib[a+'src']=='@drawable/dock_bag'
 assert overlay.tag=='FrameLayout' and window.attrib[a+'layout_gravity']=='center'
 assert id_of(list(header)[-1])=='@+id/drawer_back' and list(header)[-1].attrib[a+'text']=='×'
 java=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
