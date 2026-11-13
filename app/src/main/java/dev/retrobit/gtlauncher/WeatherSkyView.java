@@ -496,14 +496,16 @@ public final class WeatherSkyView extends View {
     private RectF groundPortalBounds(PortalTravel.Portal portal) {
         float cx=SCENE_WIDTH/2f+(portal.tile.column-portal.tile.row)*ISLAND_TILE_WIDTH/2f;
         float cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(portal.tile.column+portal.tile.row)*ISLAND_TILE_HEIGHT/2f;
-        return new RectF(cx-ISLAND_TILE_WIDTH/2f,cy-ISLAND_TILE_HEIGHT/2f,cx+ISLAND_TILE_WIDTH/2f,cy+ISLAND_TILE_HEIGHT/2f);
+        return new RectF(cx-ISLAND_TILE_WIDTH*.375f,cy-ISLAND_TILE_HEIGHT*.375f,cx+ISLAND_TILE_WIDTH*.375f,cy+ISLAND_TILE_HEIGHT*.375f);
     }
     private void drawPortals(Canvas canvas, boolean front) {
         if(front || portalImage==null)return;
         paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
         for(PortalTravel.Portal portal:worldPortals) {
-            RectF g=groundPortalBounds(portal); Path tile=new Path();tile.moveTo(g.centerX(),g.top);tile.lineTo(g.right,g.centerY());tile.lineTo(g.centerX(),g.bottom);tile.lineTo(g.left,g.centerY());tile.close();
-            int save=canvas.save();canvas.clipPath(tile);canvas.drawBitmap(portalImage,null,g,paint);canvas.restoreToCount(save);
+            RectF g=groundPortalBounds(portal); Path clip=new Path();clip.addOval(g,Path.Direction.CW);
+            int save=canvas.save();canvas.clipPath(clip);canvas.translate(g.centerX(),g.centerY());canvas.scale(g.width(),g.height());
+            if(animationEnabled)canvas.rotate((float)Math.toDegrees(plantMotionSeconds*.35));
+            canvas.drawBitmap(portalImage,null,new RectF(-.5f,-.5f,.5f,.5f),paint);canvas.restoreToCount(save);
         }
     }
     private RectF portalMarkerBounds(PortalTravel.Portal portal) {
@@ -539,7 +541,7 @@ public final class WeatherSkyView extends View {
         if(getWidth()<=0 || getHeight()<=0) return null;
         float x=screenX*SCENE_WIDTH/getWidth(),y=screenY*SCENE_HEIGHT/getHeight();
         for(int i=worldPortals.size()-1;i>=0;i--){PortalTravel.Portal portal=worldPortals.get(i);
-            RectF g=groundPortalBounds(portal);if(Math.abs(x-g.centerX())/(g.width()/2)+Math.abs(y-g.centerY())/(g.height()/2)<=1f)return portal.id;
+            RectF g=groundPortalBounds(portal);float dx=(x-g.centerX())/(g.width()/2),dy=(y-g.centerY())/(g.height()/2);if(dx*dx+dy*dy<=.81f)return portal.id;
         }
         return null;
     }
