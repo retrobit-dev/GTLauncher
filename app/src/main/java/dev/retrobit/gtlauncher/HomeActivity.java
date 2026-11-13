@@ -248,6 +248,7 @@ public class HomeActivity extends Activity {
         });
         findViewById(R.id.drawer_back).setOnClickListener(view -> closeDrawer());
         findViewById(R.id.home_phone_button).setOnClickListener(view -> openDrawer());
+        findViewById(R.id.home_settings_button).setOnClickListener(view -> Toast.makeText(this,"Pengaturan belum tersedia.",Toast.LENGTH_SHORT).show());
         findViewById(R.id.home_bag_button).setOnClickListener(view -> Toast.makeText(this,"Tas belum tersedia. Inventaris belum diimplementasikan.",Toast.LENGTH_SHORT).show());
         defaultHomeButton.setOnClickListener(view -> requestDefaultLauncher());
         findViewById(R.id.location_permission_button).setOnClickListener(view -> showLocationPermissionExplanation());
