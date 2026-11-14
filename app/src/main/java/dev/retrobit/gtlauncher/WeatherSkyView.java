@@ -262,7 +262,7 @@ public final class WeatherSkyView extends View {
     private boolean animationEnabled = true;
     private double plantMotionSeconds;
     private Integer worldIslandTint;
-    private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, portalImage, portalMarkerImage;
+    private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, houseWideImage, houseWideBackImage, portalImage, portalMarkerImage;
     private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron;
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
     private Bitmap bushSpiky,bushTiered,bushRound,bushFlower,bushBerry,wildGrass,treeApple,treeOrange,treePear,treeGuava,treeStarfruit,treeMango,treeBanana,treeCoconut,sunflowerFront,sunflowerBack,sellingBoxClosed,sellingBoxOpen,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
@@ -276,6 +276,7 @@ public final class WeatherSkyView extends View {
     private int houseColumn = 0, houseRow = 0;
     private float houseScale = 1.0f;
     private int houseOpacity = 0;
+    private boolean houseWide = false;
     private String houseFacing = "S";
     private String characterFacing = "S";
     private boolean showCharacter;
@@ -318,6 +319,7 @@ public final class WeatherSkyView extends View {
         mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.main_character_back);
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_back);
+        houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_wide);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_wide_back);
         portalImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_ground);
         portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation_red);
         fenceFarm=BitmapFactory.decodeResource(getResources(),R.drawable.fence_farm);fenceSlat=BitmapFactory.decodeResource(getResources(),R.drawable.fence_slat);fenceStone=BitmapFactory.decodeResource(getResources(),R.drawable.fence_stone);fenceIron=BitmapFactory.decodeResource(getResources(),R.drawable.fence_iron);
@@ -381,7 +383,8 @@ public final class WeatherSkyView extends View {
         invalidate();
     }
 
-    public void setWorldHouse(boolean visible, int column, int row, float scale, String facing, int opacity) {
+    public void setWorldHouse(boolean visible, int column, int row, float scale, String facing, int opacity, String design) {
+        houseWide="wide".equals(design);
         houseOpacity=Math.max(0,Math.min(90,opacity));
         showHouse = visible; houseColumn = Math.max(0, Math.min(6, column));
         houseRow = Math.max(0, Math.min(6, row)); houseScale = Math.max(0.5f, Math.min(1.5f, scale));
@@ -683,12 +686,13 @@ public final class WeatherSkyView extends View {
         paint.setColor(Color.argb((int) (255 * Math.max(0.12,
                 cloudShadowOpacity(Math.max(light.altitudeDegrees, 0), cloudCover, code))), 12, 23, 40));
         float[] lightPoint = sunPlanePosition(light.hourAngleDegrees);
-        Bitmap houseSprite = ("N".equals(houseFacing) || "W".equals(houseFacing)) ? houseBackImage : houseImage;
+        boolean houseBack="N".equals(houseFacing) || "W".equals(houseFacing);
+        Bitmap houseSprite = houseWide ? (houseBack?houseWideBackImage:houseWideImage) : (houseBack?houseBackImage:houseImage);
         if (showHouse && houseSprite != null) {
             int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-houseOpacity)/100f));
-            float x = SCENE_WIDTH / 2.0f + (houseColumn - houseRow) * ISLAND_TILE_WIDTH / 2.0f;
+            float x = SCENE_WIDTH / 2.0f + (houseColumn - houseRow) * ISLAND_TILE_WIDTH / 2.0f + (houseWide ? 35*houseScale/6 : 0);
             float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (houseColumn + houseRow + 2) * ISLAND_TILE_HEIGHT / 2.0f;
-            drawObjectSilhouette(canvas, houseSprite, x, y, 70 * houseScale, 67 * houseScale, lightPoint,
+            drawObjectSilhouette(canvas, houseSprite, x, y, 70 * houseScale*(houseWide?7f/6:1), (houseWide?100:67)*houseScale, lightPoint,
                     "N".equals(houseFacing) || "E".equals(houseFacing));
             paint.setAlpha(originalAlpha);
         }
@@ -703,9 +707,9 @@ public final class WeatherSkyView extends View {
         paint.setColor(Color.argb((int) (255 * 0.09), 12, 23, 40));
         if (showHouse && houseSprite != null) {
             int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-houseOpacity)/100f));
-            float x = SCENE_WIDTH / 2.0f + (houseColumn - houseRow) * ISLAND_TILE_WIDTH / 2.0f;
+            float x = SCENE_WIDTH / 2.0f + (houseColumn - houseRow) * ISLAND_TILE_WIDTH / 2.0f + (houseWide ? 35*houseScale/6 : 0);
             float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (houseColumn + houseRow + 2) * ISLAND_TILE_HEIGHT / 2.0f;
-            drawObjectContact(canvas, x, y, 70 * houseScale, ISLAND_TILE_HEIGHT * 2.5f * houseScale);
+            drawObjectContact(canvas, x, y, 70 * houseScale*(houseWide?7f/6:1), ISLAND_TILE_HEIGHT * 2.5f * houseScale);
             paint.setAlpha(originalAlpha);
         }
         if (showCharacter && sprite != null) {
@@ -726,15 +730,16 @@ public final class WeatherSkyView extends View {
     private void drawHouse(Canvas canvas) {
         boolean back = "N".equals(houseFacing) || "W".equals(houseFacing);
         boolean mirror = "N".equals(houseFacing) || "E".equals(houseFacing);
-        Bitmap sprite = back ? houseBackImage : houseImage;
+        Bitmap sprite = houseWide ? (back ? houseWideBackImage : houseWideImage) : (back ? houseBackImage : houseImage);
         if (!showHouse || sprite == null) return;
-        float x = SCENE_WIDTH / 2.0f + (houseColumn - houseRow) * ISLAND_TILE_WIDTH / 2.0f;
+        float x = SCENE_WIDTH / 2.0f + (houseColumn - houseRow) * ISLAND_TILE_WIDTH / 2.0f + (houseWide ? 35*houseScale/6 : 0);
         float bottom = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (houseColumn + houseRow + 2) * ISLAND_TILE_HEIGHT / 2.0f
                 + 1.25f * ISLAND_TILE_HEIGHT * houseScale;
         paint.setColor(Color.WHITE); paint.setAlpha(Math.round(255*(100-houseOpacity)/100f)); paint.setFilterBitmap(false);
         int save = canvas.save();
         if (mirror) canvas.scale(-1, 1, x, 0);
-        canvas.drawBitmap(sprite, null, new RectF(x - 35 * houseScale, bottom - 67 * houseScale, x + 35 * houseScale, bottom), paint);
+        float width=70*houseScale*(houseWide?7f/6:1),height=(houseWide?100:67)*houseScale;
+        canvas.drawBitmap(sprite, null, new RectF(x-width/2, bottom-height, x+width/2, bottom), paint);
         canvas.restoreToCount(save);
     }
 

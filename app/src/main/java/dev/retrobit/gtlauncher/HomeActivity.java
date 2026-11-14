@@ -412,7 +412,7 @@ public class HomeActivity extends Activity {
             skyView.setWorldSurfaces(world == null ? null : world.id,world == null ? null : world.surfaces);
             skyView.setWorldHouse(world != null && world.showHouse, world == null ? 0 : world.houseColumn,
                     world == null ? 0 : world.houseRow, world == null ? 1.0f : (float) world.houseScale,
-                    world == null ? "S" : world.houseFacing, world == null ? 0 : Math.max(0,world.houseOpacity));
+                    world == null ? "S" : world.houseFacing, world == null ? 0 : Math.max(0,world.houseOpacity), world == null ? null : world.houseDesign);
             skyView.setWorldCharacter(world != null && world.showCharacter,
                     world == null ? 4 : world.characterColumn, world == null ? 4 : world.characterRow,
                     world == null ? 1.0f : (float) world.characterScale,
@@ -421,7 +421,7 @@ public class HomeActivity extends Activity {
             skyView.setWorldIslandTint(null);
             skyView.setWorldPortals(null);
             skyView.setWorldSurfaces(null,null);
-            skyView.setWorldHouse(false, 0, 0, 1.0f, "S", 0);
+            skyView.setWorldHouse(false, 0, 0, 1.0f, "S", 0, null);
             skyView.setWorldCharacter(false, 4, 4, 1.0f, "S");
             Toast.makeText(this, "Data world tidak dapat dibaca; data lama tidak ditimpa.",
                     Toast.LENGTH_LONG).show();
@@ -581,7 +581,7 @@ public class HomeActivity extends Activity {
     private PortalTravel.Terrain portalTerrain(WorldStore.World world) {
         return new PortalTravel.Terrain() {
             public boolean canStand(int c,int r) {
-                if(world.showHouse && c>=world.houseColumn && c<=world.houseColumn+2 && r>=world.houseRow && r<=world.houseRow+2) return false;
+                if(world.showHouse && c>=world.houseColumn && c<=world.houseColumn+("wide".equals(world.houseDesign)?3:2) && r>=world.houseRow && r<=world.houseRow+2) return false;
                 for(WorldStore.SurfaceObject o:world.surfaces) {
                     if(o.type.equals("tree") && c>=o.column && c<o.column+((o.material.equals("banana") || o.material.equals("palm"))?1:2) && r>=o.row && r<o.row+((o.material.equals("banana") || o.material.equals("palm"))?1:2)) return false;
                     if((o.type.equals("bush")||o.type.equals("sunflower")||o.type.equals("mailbox")||o.type.equals("storage-box")||o.type.equals("selling-box")||(o.type.equals("road") && "water".equals(o.material))) && o.column==c && o.row==r)return false;

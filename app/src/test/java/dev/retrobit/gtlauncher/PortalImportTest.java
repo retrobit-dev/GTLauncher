@@ -142,6 +142,16 @@ public class PortalImportTest {
             try {WorldStore.parseExport(file.replace("\"version\":19","\"version\":8"));fail("old version cannot have facing");}catch(JSONException expected){}
         }
     }
+    @Test public void wideHousePersistsAndValidatesFootprint() throws JSONException {
+        String wide="{\"type\":\"house\",\"column\":1,\"row\":1,\"scale\":1,\"facing\":\"N\",\"visible\":true,\"design\":\"wide\"}";
+        String file=world(wide).replace("\"version\":28","\"version\":15");WorldStore store=new WorldStore(prefs());
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(file)));assertEquals("wide",store.activeWorld().houseDesign);assertEquals("N",store.activeWorld().houseFacing);
+        try {store.upsertAndSelect(WorldStore.parseExport(world("").replace("\"version\":28","\"version\":14")));fail("legacy erases design");}catch(JSONException expected){}
+        try {WorldStore.parseExport(file.replace("\"column\":1","\"column\":6"));fail("wide house out of bounds");}catch(JSONException expected){}
+        String tree="{\"type\":\"tree\",\"column\":4,\"row\":1,\"species\":\"mango\"}";
+        try {WorldStore.parseExport(world(wide+","+tree).replace("\"version\":28","\"version\":15"));fail("tree overlaps wide wing");}catch(JSONException expected){}
+        try {WorldStore.parseExport(file.replace("\"version\":15","\"version\":14"));fail("old version cannot contain wide design");}catch(JSONException expected){}
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {
