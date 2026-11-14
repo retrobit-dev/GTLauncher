@@ -262,7 +262,7 @@ public final class WeatherSkyView extends View {
     private boolean animationEnabled = true;
     private double plantMotionSeconds;
     private Integer worldIslandTint;
-    private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, houseWideImage, houseWideBackImage, portalImage, portalMarkerImage;
+    private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, houseWideImage, houseWideBackImage, portalMarkerImage;
     private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron;
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
     private Bitmap treeDormant,treeBananaFruitless,treeCoconutFruitless;
@@ -318,7 +318,6 @@ public final class WeatherSkyView extends View {
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_back);
         houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_wide);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_wide_back);
-        portalImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_ground);
         portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation_red);
         fenceFarm=BitmapFactory.decodeResource(getResources(),R.drawable.fence_farm);fenceSlat=BitmapFactory.decodeResource(getResources(),R.drawable.fence_slat);fenceStone=BitmapFactory.decodeResource(getResources(),R.drawable.fence_stone);fenceIron=BitmapFactory.decodeResource(getResources(),R.drawable.fence_iron);
         flowerSprites.put("rose",BitmapFactory.decodeResource(getResources(),R.drawable.petals_rose));
@@ -589,19 +588,18 @@ public final class WeatherSkyView extends View {
     private RectF groundPortalBounds(PortalTravel.Portal portal) {
         float cx=SCENE_WIDTH/2f+(portal.tile.column-portal.tile.row)*ISLAND_TILE_WIDTH/2f;
         float cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(portal.tile.column+portal.tile.row)*ISLAND_TILE_HEIGHT/2f;
-        return new RectF(cx-ISLAND_TILE_WIDTH*.25f,cy-ISLAND_TILE_HEIGHT*.25f,cx+ISLAND_TILE_WIDTH*.25f,cy+ISLAND_TILE_HEIGHT*.25f);
+        return new RectF(cx-ISLAND_TILE_WIDTH*.5f,cy-ISLAND_TILE_HEIGHT*.5f,cx+ISLAND_TILE_WIDTH*.5f,cy+ISLAND_TILE_HEIGHT*.5f);
     }
     private void drawPortals(Canvas canvas, boolean front) {
-        if(front || portalImage==null)return;
-        paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
+        if(front)return;
+        paint.setColor(Color.rgb(85,197,172));paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(1f);paint.setStrokeJoin(Paint.Join.MITER);
         for(PortalTravel.Portal portal:worldPortals) {
             paint.setAlpha(Math.round(255*(100-Math.max(0,portal.opacity))/100f));
-            RectF g=groundPortalBounds(portal); Path clip=new Path();clip.addOval(g,Path.Direction.CW);
-            int save=canvas.save();canvas.clipPath(clip);canvas.translate(g.centerX(),g.centerY());canvas.scale(g.width(),g.height());
-            if(animationEnabled)canvas.rotate((float)Math.toDegrees(plantMotionSeconds*.10));
-            canvas.drawBitmap(portalImage,null,new RectF(-.5f,-.5f,.5f,.5f),paint);canvas.restoreToCount(save);
+            RectF g=groundPortalBounds(portal);Path outline=new Path();
+            outline.moveTo(g.centerX(),g.top);outline.lineTo(g.right,g.centerY());outline.lineTo(g.centerX(),g.bottom);outline.lineTo(g.left,g.centerY());outline.close();
+            canvas.drawPath(outline,paint);
         }
-        paint.setAlpha(255);
+        paint.setAlpha(255);paint.setStyle(Paint.Style.FILL);
     }
     private RectF portalMarkerBounds(PortalTravel.Portal portal) {
         RectF g=groundPortalBounds(portal);float width=11f,height=13f;
@@ -636,7 +634,7 @@ public final class WeatherSkyView extends View {
         if(getWidth()<=0 || getHeight()<=0) return null;
         float x=screenX*SCENE_WIDTH/getWidth(),y=screenY*SCENE_HEIGHT/getHeight();
         for(int i=worldPortals.size()-1;i>=0;i--){PortalTravel.Portal portal=worldPortals.get(i);
-            RectF g=groundPortalBounds(portal);float dx=(x-g.centerX())/(g.width()/2),dy=(y-g.centerY())/(g.height()/2);if(dx*dx+dy*dy<=.81f)return portal.id;
+            RectF g=groundPortalBounds(portal);float dx=(x-g.centerX())/(g.width()/2),dy=(y-g.centerY())/(g.height()/2);if(Math.abs(dx)+Math.abs(dy)<=1f)return portal.id;
         }
         return null;
     }
