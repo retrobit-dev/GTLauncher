@@ -23,8 +23,8 @@ final class InventoryStore {
             if(name.isEmpty() || !name.equals(name.trim()) || name.length()>40 || !Double.isFinite(value) || value<1 || value>999999 || value!=Math.floor(value) || !names.add(name.toLowerCase(Locale.ROOT)))throw new JSONException("Invalid item");
         }
     }
-    private JSONObject readState() throws JSONException {
-        String raw=prefs.getString(KEY,null);
+    private JSONObject readState() throws JSONException {return parseSnapshot(prefs.getString(KEY,null));}
+    static JSONObject parseSnapshot(String raw) throws JSONException {
         if(raw==null)raw="[]";
         org.json.JSONTokener tokener=new org.json.JSONTokener(raw);Object value=tokener.nextValue();if(tokener.nextClean()!=0)throw new JSONException("Trailing inventory data");JSONObject state;
         if(value instanceof JSONArray)state=new JSONObject().put("version",2).put("bag",value).put("boxes",new JSONObject());
