@@ -41,6 +41,19 @@ public class PortalTravelTest {
         assertNotNull(path);assertFalse(path.contains(new PortalTravel.Tile(2,1)));assertEquals(new PortalTravel.Tile(3,1),path.get(path.size()-1));
         assertNull(PortalTravel.path(new PortalTravel.Tile(1,1),new PortalTravel.Tile(2,1),blocked));assertNull(PortalTravel.path(new PortalTravel.Tile(1,1),new PortalTravel.Tile(-1,1),blocked));
     }
+    @Test public void pathBesideChoosesReachableClosestFootprintEdge() {
+        PortalTravel.Terrain terrain=new PortalTravel.Terrain(){
+            public boolean canStand(int c,int r){return !(c==4 && r==4) && !(c==3 && r==4);}
+            public boolean canStep(int c,int r,int x,int y){return !(c==2 && r==3 && x==3 && y==3);}
+        };
+        List<PortalTravel.Tile> route=PortalTravel.pathBeside(new PortalTravel.Tile(1,4),4,4,1,1,terrain);
+        assertNotNull(route);PortalTravel.Tile end=route.get(route.size()-1);assertEquals(1,Math.abs(end.column-4)+Math.abs(end.row-4));assertNotEquals(new PortalTravel.Tile(3,4),end);
+        for(int i=1;i<route.size();i++){PortalTravel.Tile a=route.get(i-1),b=route.get(i);assertTrue(terrain.canStand(b.column,b.row));assertTrue(terrain.canStep(a.column,a.row,b.column,b.row));}
+        PortalTravel.Terrain trapped=new PortalTravel.Terrain(){public boolean canStand(int c,int r){return c==0 && r==0;}public boolean canStep(int c,int r,int x,int y){return false;}};
+        assertNull(PortalTravel.pathBeside(new PortalTravel.Tile(0,0),4,4,1,1,trapped));
+        assertNull(PortalTravel.pathBeside(new PortalTravel.Tile(0,0),8,8,2,1,clear));
+        assertEquals(1,PortalTravel.pathBeside(new PortalTravel.Tile(0,1),1,1,2,2,clear).size());
+    }
     @Test public void confirmChecksFrontPairAndDestinationOccupancy() {
         assertTrue(PortalTravel.canTravel(home,farm,north,clear));
         assertFalse(PortalTravel.canTravel(home,farm,new PortalTravel.Tile(6,1),clear));

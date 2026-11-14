@@ -82,6 +82,18 @@ final class PortalTravel {
         }
         return null;
     }
+    /** Shortest reachable tile sharing an edge with a rectangular object footprint. */
+    static List<Tile> pathBeside(Tile start,int column,int row,int width,int height,Terrain terrain) {
+        if(!validTile(start) || terrain==null || width<1 || height<1 || column<0 || row<0 || column+width>SIZE || row+height>SIZE)return null;
+        List<Tile> best=null;
+        for(int r=Math.max(0,row-1);r<=Math.min(SIZE-1,row+height);r++)for(int c=Math.max(0,column-1);c<=Math.min(SIZE-1,column+width);c++) {
+            int dx=Math.max(Math.max(column-c,0),c-(column+width-1)),dy=Math.max(Math.max(row-r,0),r-(row+height-1));
+            if(dx+dy!=1)continue;
+            List<Tile> candidate=path(start,new Tile(c,r),terrain);
+            if(candidate!=null && (best==null || candidate.size()<best.size()))best=candidate;
+        }
+        return best;
+    }
     /** Confirmation is required by the caller; this checks conditions again at confirmation time. */
     static boolean canTravel(Portal source, Portal target, Tile character, Terrain destination) {
         return arePaired(source,target) && source.tile.equals(character) && destination != null

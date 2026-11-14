@@ -482,9 +482,9 @@ public final class WeatherSkyView extends View {
         for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);RectF hit=sellingMarkerBounds(o);hit.inset(-3,-3);if(sellingMarkerVisible(o) && hit.contains(x,y))return o;}return null;
     }
     void setSellingOpen(WorldStore.SurfaceObject o,boolean opened) {if(o==null)return;String key=o.column+","+o.row;if(opened){openStorage.add(key);sellingOpenedAt.put(key,android.os.SystemClock.uptimeMillis());}else{openStorage.remove(key);sellingOpenedAt.remove(key);}invalidate();}
-    boolean storageBoxAt(float sx,float sy) {
-        if(getWidth()<=0 || getHeight()<=0)return false;float x=sx*SCENE_WIDTH/getWidth(),y=sy*SCENE_HEIGHT/getHeight();
-        for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if((o.type.equals("storage-box")||o.type.equals("selling-box")) && surfaceSpriteBounds(o).contains(x,y))return true;}return false;
+    WorldStore.SurfaceObject storageBoxAt(float sx,float sy) {
+        if(getWidth()<=0 || getHeight()<=0)return null;float x=sx*SCENE_WIDTH/getWidth(),y=sy*SCENE_HEIGHT/getHeight();
+        for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if((o.type.equals("storage-box")||o.type.equals("selling-box")) && surfaceSpriteBounds(o).contains(x,y))return o;}return null;
     }
     WorldStore.SurfaceObject treeAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;float x=sx*SCENE_WIDTH/getWidth(),y=sy*SCENE_HEIGHT/getHeight();

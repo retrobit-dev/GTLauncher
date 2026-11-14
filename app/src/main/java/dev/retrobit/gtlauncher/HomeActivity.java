@@ -251,12 +251,12 @@ public class HomeActivity extends Activity {
                     if(selling!=null) showSellingPlaceholder(selling);
                     else if(marker!=null) confirmPortalMarker(marker);
                     else if(portal!=null) walkToPortal(portal);
-                    else if(skyView.storageBoxAt(event.getX(),event.getY())) Toast.makeText(this,"Dekati box, lalu ketuk tanda seru.",Toast.LENGTH_SHORT).show();
                     else {
-                        WorldStore.SurfaceObject tree=skyView.treeAt(event.getX(),event.getY());
-                        if(tree!=null) {
-                            interactTree(tree);
-                        } else applyActiveWorld();
+                        WorldStore.SurfaceObject box=skyView.storageBoxAt(event.getX(),event.getY());
+                        WorldStore.SurfaceObject tree=box==null?skyView.treeAt(event.getX(),event.getY()):null;
+                        if(box!=null) approachBox(box);
+                        else if(tree!=null) interactTree(tree);
+                        else applyActiveWorld();
                     }
                 }
                 return true;
@@ -612,31 +612,34 @@ public class HomeActivity extends Activity {
             int size=(tree.material.equals("banana") || tree.material.equals("palm"))?1:2;
             int dx=Math.max(Math.max(tree.column-world.characterColumn,0),world.characterColumn-(tree.column+size-1));
             int dy=Math.max(Math.max(tree.row-world.characterRow,0),world.characterRow-(tree.row+size-1));
-            if(dx+dy!=1){walkNearTree(world,tree,size);return;}
+            if(dx+dy!=1){walkNearObject(world,tree,size,size,"Ketuk pohon lagi untuk panen.");return;}
             if(!inventoryStore().harvest(key,cycle,name))throw new JSONException("Save failed");
             refreshHarvestDisplay(world);Toast.makeText(this,"Panen berhasil: 1 "+name+" masuk ke tas.",Toast.LENGTH_LONG).show();
         } catch(JSONException | ClassCastException e) {Toast.makeText(this,"Panen gagal. Periksa tas dan penyimpanan.",Toast.LENGTH_LONG).show();}
     }
-    private void walkNearTree(WorldStore.World world,WorldStore.SurfaceObject tree,int size) {
-        PortalTravel.Terrain terrain=portalTerrain(world);PortalTravel.Tile start=new PortalTravel.Tile(world.characterColumn,world.characterRow);
-        java.util.List<PortalTravel.Tile> best=null;
-        for(int row=Math.max(0,tree.row-1);row<=Math.min(8,tree.row+size);row++)for(int column=Math.max(0,tree.column-1);column<=Math.min(8,tree.column+size);column++) {
-            int dx=Math.max(Math.max(tree.column-column,0),column-(tree.column+size-1)),dy=Math.max(Math.max(tree.row-row,0),row-(tree.row+size-1));if(dx+dy!=1)continue;
-            java.util.List<PortalTravel.Tile> route=PortalTravel.path(start,new PortalTravel.Tile(column,row),terrain);
-            if(route!=null && (best==null || route.size()<best.size()))best=route;
-        }
-        if(best==null){Toast.makeText(this,"Jalan menuju pohon terhalang.",Toast.LENGTH_SHORT).show();return;}
-        int generation=++portalWalkGeneration;skyView.setPortalWalkActive(true);walkToTreeStep(world,best,1,generation,world.characterFacing);
+    private void approachBox(WorldStore.SurfaceObject box) {
+        try {
+            WorldStore.World world=worldStore.activeWorld();
+            if(world==null || !world.showCharacter){Toast.makeText(this,"Karakter tidak tersedia.",Toast.LENGTH_SHORT).show();return;}
+            if(Math.abs(world.characterColumn-box.column)+Math.abs(world.characterRow-box.row)==1){Toast.makeText(this,"Ketuk tanda seru untuk membuka box.",Toast.LENGTH_SHORT).show();return;}
+            walkNearObject(world,box,1,1,"Ketuk tanda seru untuk membuka box.");
+        } catch(JSONException e){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }
-    private void walkToTreeStep(WorldStore.World world,java.util.List<PortalTravel.Tile> route,int index,int generation,String facing) {
+    private void walkNearObject(WorldStore.World world,WorldStore.SurfaceObject object,int width,int height,String prompt) {
+        PortalTravel.Terrain terrain=portalTerrain(world);PortalTravel.Tile start=new PortalTravel.Tile(world.characterColumn,world.characterRow);
+        java.util.List<PortalTravel.Tile> route=PortalTravel.pathBeside(start,object.column,object.row,width,height,terrain);
+        if(route==null){Toast.makeText(this,"Jalan menuju objek terhalang.",Toast.LENGTH_SHORT).show();return;}
+        int generation=++portalWalkGeneration;skyView.setPortalWalkActive(true);walkNearObjectStep(world,route,1,generation,world.characterFacing,prompt);
+    }
+    private void walkNearObjectStep(WorldStore.World world,java.util.List<PortalTravel.Tile> route,int index,int generation,String facing,String prompt) {
         if(generation!=portalWalkGeneration || isFinishing() || isDestroyed() || !world.id.equals(worldStore.activeId()))return;
         if(index>=route.size()) {
-            try{PortalTravel.Tile end=route.get(route.size()-1);if(!worldStore.moveCharacter(world.id,end.column,end.row,facing))throw new JSONException("Move failed");skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Ketuk pohon lagi untuk panen.",Toast.LENGTH_SHORT).show();}
+            try{PortalTravel.Tile end=route.get(route.size()-1);if(!worldStore.moveCharacter(world.id,end.column,end.row,facing))throw new JSONException("Move failed");skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,prompt,Toast.LENGTH_SHORT).show();}
             catch(JSONException e){skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Karakter tidak dapat dipindahkan.",Toast.LENGTH_SHORT).show();}return;
         }
         PortalTravel.Tile previous=route.get(index-1),next=route.get(index);String direction=next.column>previous.column?"E":next.column<previous.column?"W":next.row>previous.row?"S":"N";
         skyView.setWorldCharacter(true,next.column,next.row,(float)world.characterScale,direction);
-        mainHandler.postDelayed(()->walkToTreeStep(world,route,index+1,generation,direction),180);
+        mainHandler.postDelayed(()->walkNearObjectStep(world,route,index+1,generation,direction,prompt),180);
     }
 
     private void walkToPortal(String id) {
