@@ -86,6 +86,24 @@ public class PortalImportTest {
         assertEquals(50,portalStore.activeWorld().portals.get(0).opacity);
         try {portalStore.upsertAndSelect(WorldStore.parseExport(world(portal)));fail("old file cannot erase portal opacity");}catch(JSONException expected){}
     }
+    @Test public void orchardTreesAndBushVariantsPersist() throws JSONException {
+        for(String species:new String[]{"apple","orange","mango","pear","guava","starfruit"}) {
+            String tree="{\"type\":\"tree\",\"column\":1,\"row\":1,\"species\":\""+species+"\"}";
+            String file=world(tree).replace("\"version\":28","\"version\":14");
+            WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(file)));
+            assertEquals(species,store.activeWorld().surfaces.get(0).material);
+            try {WorldStore.parseExport(file.replace("\"column\":1","\"column\":8"));fail("orchard tree needs 2x2 tiles");}catch(JSONException expected){}
+        }
+        for(String variant:new String[]{"round","flower","berry","spiky","tiered","wild-grass"}) {
+            String bush="{\"type\":\"bush\",\"column\":1,\"row\":1,\"variant\":\""+variant+"\"}";
+            String file=world(bush).replace("\"version\":28","\"version\":29");
+            WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(file)));
+            assertEquals(variant,store.activeWorld().surfaces.get(0).material);
+        }
+        String legacy="{\"type\":\"bush\",\"column\":1,\"row\":1}";
+        assertEquals("round",WorldStore.parseExport(world(legacy).replace("\"version\":28","\"version\":9")).surfaces.get(0).material);
+        try {WorldStore.parseExport(world(legacy.replace("\"row\":1","\"row\":1,\"variant\":\"flower\"")).replace("\"version\":28","\"version\":9"));fail("v9 cannot contain variant");}catch(JSONException expected){}
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {
