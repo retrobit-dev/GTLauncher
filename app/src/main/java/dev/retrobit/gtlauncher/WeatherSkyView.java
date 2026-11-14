@@ -381,7 +381,7 @@ public final class WeatherSkyView extends View {
         switch(o.type) {
             case "tree": boolean small=!o.material.equals("mango");width=small?24:48;height=small?30:60;bottom=y+ISLAND_TILE_HEIGHT*(small?.275f:1.05f);break;
             case "sunflower": width=15;height=23;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
-            case "bush": width=o.material.equals("wild-grass")?10f:18.5f;height=o.material.equals("wild-grass")?8f:14.5f;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
+            case "bush": width=o.material.equals("wild-grass")?28f:18.5f;height=o.material.equals("wild-grass")?14f:14.5f;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
             case "mailbox": width=13;height=30;bottom=y+ISLAND_TILE_HEIGHT*.15f;break;
             default: width=18;height=18;bottom=y+ISLAND_TILE_HEIGHT*.15f;
         }

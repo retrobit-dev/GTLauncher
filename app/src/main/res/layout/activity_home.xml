@@ -63,7 +63,7 @@
             android:padding="5dp"
             android:src="@drawable/dock_bag"
             android:scaleType="fitCenter"
-            android:contentDescription="Tas — inventaris belum tersedia" />
+            android:contentDescription="Buka tas" />
         <ImageButton
             android:id="@+id/home_settings_button"
             android:layout_width="24dp"

@@ -36,6 +36,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.content.SharedPreferences;
+import android.text.InputType;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.TypedValue;
@@ -45,6 +46,8 @@ import android.view.Surface;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
+import android.widget.ScrollView;
 import android.widget.EditText;
 import android.widget.GridLayout;
 import android.widget.ImageView;
@@ -56,6 +59,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import org.json.JSONException;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.text.Collator;
 import java.util.ArrayList;
@@ -69,6 +74,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /** A non-scrollable, weather-driven home screen with a separate app drawer. */
 public class HomeActivity extends Activity {
+    private static final String INVENTORY_PREFS = "shared_inventory";
+    private static final String INVENTORY_KEY = "items_v1";
     private static final int COLOR_TEXT = Color.rgb(244, 246, 244);
     private static final int LOCATION_PERMISSION_REQUEST = 721;
     private static final int IMPORT_WORLD_REQUEST = 722;
@@ -249,7 +256,7 @@ public class HomeActivity extends Activity {
         findViewById(R.id.drawer_back).setOnClickListener(view -> closeDrawer());
         findViewById(R.id.home_phone_button).setOnClickListener(view -> openDrawer());
         findViewById(R.id.home_settings_button).setOnClickListener(view -> Toast.makeText(this,"Pengaturan belum tersedia.",Toast.LENGTH_SHORT).show());
-        findViewById(R.id.home_bag_button).setOnClickListener(view -> Toast.makeText(this,"Tas belum tersedia. Inventaris belum diimplementasikan.",Toast.LENGTH_SHORT).show());
+        findViewById(R.id.home_bag_button).setOnClickListener(view -> showBag());
         defaultHomeButton.setOnClickListener(view -> requestDefaultLauncher());
         findViewById(R.id.location_permission_button).setOnClickListener(view -> showLocationPermissionExplanation());
         findViewById(R.id.world_button).setOnClickListener(view -> showWorldDialog());
@@ -421,6 +428,67 @@ public class HomeActivity extends Activity {
         }
     }
 
+    // The bag belongs to the player, not a particular world. Invalid data is
+    // never replaced with an empty inventory.
+    private JSONArray readBag() throws JSONException {
+        String raw=getSharedPreferences(INVENTORY_PREFS,MODE_PRIVATE).getString(INVENTORY_KEY,null);
+        if(raw==null)return new JSONArray();
+        JSONArray items=new JSONArray(raw);if(items.length()>100)throw new JSONException("too many items");
+        Set<String> names=new HashSet<>();
+        for(int i=0;i<items.length();i++) {
+            JSONObject item=items.getJSONObject(i);
+            Object nameValue=item.get("name"), quantityValue=item.get("quantity");
+            if(item.length()!=2 || !(nameValue instanceof String) || !(quantityValue instanceof Number))throw new JSONException("invalid item");
+            String name=(String)nameValue;double amount=((Number)quantityValue).doubleValue();
+            if(name.isEmpty() || !name.equals(name.trim()) || name.length()>40 || !Double.isFinite(amount) || amount<1 || amount>999999 || amount!=Math.floor(amount) || !names.add(name.toLowerCase(Locale.ROOT)))throw new JSONException("invalid item");
+        }
+        return items;
+    }
+    private boolean changeBag(String name,int delta) {
+        try {
+            JSONArray old=readBag(), next=new JSONArray();boolean found=false;
+            for(int i=0;i<old.length();i++) {
+                JSONObject item=old.getJSONObject(i);String current=item.getString("name");int count=item.getInt("quantity");
+                if(current.equalsIgnoreCase(name)) {found=true;long result=(long)count+delta;if(result<0 || result>999999)throw new JSONException("Jumlah melebihi batas");if(result>0)next.put(new JSONObject().put("name",current).put("quantity",result));}
+                else next.put(item);
+            }
+            if(!found) {if(delta<=0 || old.length()>=100)throw new JSONException("Barang tidak ditemukan atau tas penuh");next.put(new JSONObject().put("name",name).put("quantity",delta));}
+            if(!getSharedPreferences(INVENTORY_PREFS,MODE_PRIVATE).edit().putString(INVENTORY_KEY,next.toString()).commit())throw new JSONException("Tidak dapat menyimpan");
+            return true;
+        } catch (JSONException | ClassCastException error) {Toast.makeText(this,"Tas tidak dapat dibaca atau disimpan. Data lama tidak ditimpa.",Toast.LENGTH_LONG).show();return false;}
+    }
+    private void renderBag(LinearLayout items,TextView notice) {
+        items.removeAllViews();
+        try {
+            JSONArray data=readBag();notice.setText(data.length()==0?"Tas masih kosong.":"");
+            for(int i=0;i<data.length();i++) {
+                JSONObject item=data.getJSONObject(i);String name=item.getString("name");int count=item.getInt("quantity");
+                LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
+                TextView text=new TextView(this);text.setText(name+" × "+count);text.setTextColor(Color.rgb(52,43,30));
+                row.addView(text,new LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,1));
+                Button minus=new Button(this),plus=new Button(this);minus.setText("−");plus.setText("+");
+                minus.setContentDescription("Kurangi satu "+name);plus.setContentDescription("Tambah satu "+name);
+                minus.setOnClickListener(v->{if(changeBag(name,-1))renderBag(items,notice);});plus.setOnClickListener(v->{if(changeBag(name,1))renderBag(items,notice);});
+                row.addView(minus);row.addView(plus);items.addView(row);
+            }
+        } catch (JSONException | ClassCastException error) {notice.setText("Data tas tidak dapat dibaca. Data lama tidak ditimpa.");}
+    }
+    private void showBag() {
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(16),dp(12),dp(16),dp(12));panel.setBackgroundResource(R.drawable.bg_portal_dialog);
+        TextView hint=new TextView(this);hint.setText("Satu tas untuk semua world. Tambah atau kurangi barang secara manual.");hint.setTextColor(Color.rgb(52,43,30));panel.addView(hint);
+        TextView notice=new TextView(this);notice.setTextColor(Color.rgb(52,43,30));panel.addView(notice);
+        ScrollView scroll=new ScrollView(this);LinearLayout items=new LinearLayout(this);items.setOrientation(LinearLayout.VERTICAL);scroll.addView(items);panel.addView(scroll,new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,dp(180)));
+        EditText name=new EditText(this);name.setSingleLine(true);name.setHint("Nama barang (maks. 40 karakter)");panel.addView(name);
+        EditText quantity=new EditText(this);quantity.setSingleLine(true);quantity.setInputType(InputType.TYPE_CLASS_NUMBER);quantity.setText("1");quantity.setHint("Jumlah");panel.addView(quantity);
+        Button add=new Button(this);add.setText("Tambah");panel.addView(add);
+        add.setOnClickListener(v->{String n=name.getText().toString().trim(), q=quantity.getText().toString();
+            try {int amount=Integer.parseInt(q);if(n.isEmpty() || n.length()>40 || amount<1 || amount>999999)throw new NumberFormatException();
+                if(changeBag(n,amount)){name.setText("");quantity.setText("1");renderBag(items,notice);}}
+            catch(NumberFormatException error){notice.setText("Isi nama dan jumlah bulat antara 1 dan 999999.");}
+        });
+        renderBag(items,notice);new AlertDialog.Builder(this).setTitle("Tas · Inventaris").setView(panel).setPositiveButton("Tutup",(dialog,which)->dialog.dismiss()).show();
+    }
+
     private void showWorldDialog() {
         final List<WorldStore.World> worlds;
         try {
@@ -570,7 +638,7 @@ public class HomeActivity extends Activity {
             if(generation!=portalWalkGeneration) {skyView.setSellingOpen(box,false);return;}
             LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(18),dp(18),dp(18),dp(18));panel.setBackgroundResource(R.drawable.bg_portal_dialog);
             TextView title=new TextView(this);title.setText(box.type.equals("selling-box")?"Selling box":"Storage box");title.setTextColor(Color.rgb(52,43,30));title.setTextSize(12);title.setTypeface(getResources().getFont(R.font.press_start_2p));panel.addView(title);
-            TextView content=new TextView(this);content.setText(box.type.equals("selling-box")?"Tas: inventaris belum tersedia.\n\nBarang dijual: belum ada barang.\n\nPenjualan dan saldo belum tersedia. Tidak ada barang yang dipindahkan.":"Tas: inventaris belum tersedia.\n\nPenyimpanan: belum ada barang.\n\nPenyimpanan barang belum tersedia. Tidak ada barang yang dipindahkan.");content.setTextColor(Color.rgb(52,43,30));content.setTextSize(10);content.setLineSpacing(dp(4),1f);content.setTypeface(getResources().getFont(R.font.press_start_2p));content.setPadding(0,dp(12),0,dp(12));panel.addView(content);
+            TextView content=new TextView(this);content.setText(box.type.equals("selling-box")?"Tas: buka melalui ikon tas. Transfer belum tersedia.\n\nBarang dijual: belum ada barang.\n\nPenjualan dan saldo belum tersedia. Tidak ada barang yang dipindahkan.":"Tas: buka melalui ikon tas. Transfer belum tersedia.\n\nPenyimpanan: belum ada barang.\n\nPenyimpanan barang belum tersedia. Tidak ada barang yang dipindahkan.");content.setTextColor(Color.rgb(52,43,30));content.setTextSize(10);content.setLineSpacing(dp(4),1f);content.setTypeface(getResources().getFont(R.font.press_start_2p));content.setPadding(0,dp(12),0,dp(12));panel.addView(content);
             AlertDialog dialog=new AlertDialog.Builder(this).setView(panel).setPositiveButton("Tutup",(d,which)->d.dismiss()).create();dialog.setOnDismissListener(d->{if(worldId.equals(worldStore.activeId()))skyView.setSellingOpen(box,false);});dialog.show();
         },260);
     }
