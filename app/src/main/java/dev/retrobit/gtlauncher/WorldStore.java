@@ -194,6 +194,19 @@ final class WorldStore {
                 column = (int) colValue; row = (int) rowValue; visible = true;
             }
         }
+        // Validate the complete tree footprint, not only its anchor tile.
+        for(SurfaceObject tree:surfaces) if(tree.type.equals("tree")) {
+            int size=(tree.material.equals("banana") || tree.material.equals("palm"))?1:2;
+            for(int dc=0;dc<size;dc++)for(int dr=0;dr<size;dr++) {
+                int c=tree.column+dc,r=tree.row+dr;
+                if(visible && c==column && r==row || house && houseVisible && c>=houseColumn && c<=houseColumn+2 && r>=houseRow && r<=houseRow+2)throw new JSONException("Object collision");
+                for(SurfaceObject other:surfaces) {
+                    if(other==tree || other.type.equals("fence") || other.type.equals("road") && !"water".equals(other.material))continue;
+                    int otherSize=other.type.equals("tree") && !(other.material.equals("banana")||other.material.equals("palm"))?2:1;
+                    if(c>=other.column && c<other.column+otherSize && r>=other.row && r<other.row+otherSize)throw new JSONException("Object collision");
+                }
+            }
+        }
         // New one-tile plants must never hide under an existing blocker, even if the
         // objects arrive in the opposite order in the file.
         for (SurfaceObject plant : surfaces) {

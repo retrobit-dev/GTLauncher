@@ -100,6 +100,8 @@ public class PortalImportTest {
             WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(file)));
             assertEquals(variant,store.activeWorld().surfaces.get(0).material);
         }
+        String overlap="{\"type\":\"tree\",\"column\":1,\"row\":1,\"species\":\"apple\"},{\"type\":\"bush\",\"column\":2,\"row\":2,\"variant\":\"berry\"}";
+        try {WorldStore.parseExport(world(overlap).replace("\"version\":28","\"version\":14"));fail("tree footprint overlaps bush");}catch(JSONException expected){}
         String legacy="{\"type\":\"bush\",\"column\":1,\"row\":1}";
         assertEquals("round",WorldStore.parseExport(world(legacy).replace("\"version\":28","\"version\":9")).surfaces.get(0).material);
         try {WorldStore.parseExport(world(legacy.replace("\"row\":1","\"row\":1,\"variant\":\"flower\"")).replace("\"version\":28","\"version\":9"));fail("v9 cannot contain variant");}catch(JSONException expected){}
