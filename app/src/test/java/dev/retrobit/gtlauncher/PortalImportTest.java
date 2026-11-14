@@ -152,6 +152,20 @@ public class PortalImportTest {
         try {WorldStore.parseExport(world(wide+","+tree).replace("\"version\":28","\"version\":15"));fail("tree overlaps wide wing");}catch(JSONException expected){}
         try {WorldStore.parseExport(file.replace("\"version\":15","\"version\":14"));fail("old version cannot contain wide design");}catch(JSONException expected){}
     }
+    @Test public void multipleHousesSurviveMovementAndRejectCollisions() throws JSONException {
+        String first="{\"type\":\"house\",\"id\":\"first\",\"column\":0,\"row\":0,\"scale\":1,\"facing\":\"S\",\"visible\":true,\"opacity\":50}";
+        String second="{\"type\":\"house\",\"id\":\"second\",\"column\":5,\"row\":0,\"scale\":1,\"facing\":\"N\",\"visible\":true,\"design\":\"wide\"}";
+        String character="{\"type\":\"character\",\"column\":4,\"row\":4,\"scale\":1,\"facing\":\"S\"}";
+        String file=world(first+","+second+","+character).replace("\"version\":28","\"version\":31");WorldStore store=new WorldStore(prefs());
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(file)));assertEquals(2,store.activeWorld().houses.size());
+        assertEquals("first",store.activeWorld().houses.get(0).id);assertEquals(50,store.activeWorld().houses.get(0).opacity);assertEquals("wide",store.activeWorld().houses.get(1).design);
+        assertTrue(store.moveCharacter("home",4,5,"S"));assertEquals(2,store.activeWorld().houses.size());
+        try {store.upsertAndSelect(WorldStore.parseExport(world("").replace("\"version\":28","\"version\":15")));fail("legacy erases houses");}catch(JSONException expected){}
+        try {WorldStore.parseExport(file.replace("\"id\":\"second\"","\"id\":\"first\""));fail("duplicate IDs");}catch(JSONException expected){}
+        try {WorldStore.parseExport(file.replace("\"column\":5","\"column\":2"));fail("overlapping houses");}catch(JSONException expected){}
+        String tree="{\"type\":\"tree\",\"column\":7,\"row\":1,\"species\":\"banana\"}";
+        try {WorldStore.parseExport(world(first+","+second+","+tree).replace("\"version\":28","\"version\":31"));fail("second house collision");}catch(JSONException expected){}
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {
