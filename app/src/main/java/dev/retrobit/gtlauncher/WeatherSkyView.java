@@ -505,11 +505,13 @@ public final class WeatherSkyView extends View {
         if(front || portalImage==null)return;
         paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
         for(PortalTravel.Portal portal:worldPortals) {
+            paint.setAlpha(Math.round(255*(100-Math.max(0,portal.opacity))/100f));
             RectF g=groundPortalBounds(portal); Path clip=new Path();clip.addOval(g,Path.Direction.CW);
             int save=canvas.save();canvas.clipPath(clip);canvas.translate(g.centerX(),g.centerY());canvas.scale(g.width(),g.height());
             if(animationEnabled)canvas.rotate((float)Math.toDegrees(plantMotionSeconds*.10));
             canvas.drawBitmap(portalImage,null,new RectF(-.5f,-.5f,.5f,.5f),paint);canvas.restoreToCount(save);
         }
+        paint.setAlpha(255);
     }
     private RectF portalMarkerBounds(PortalTravel.Portal portal) {
         RectF g=groundPortalBounds(portal);float width=11f,height=13f;

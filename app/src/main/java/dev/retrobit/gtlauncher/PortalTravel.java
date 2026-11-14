@@ -19,9 +19,13 @@ final class PortalTravel {
     static final class Portal {
         final String worldId, id, edge, destinationWorldId, destinationPortalId;
         final Tile tile;
+        final int opacity;
         Portal(String worldId, String id, String edge, Tile tile, String destinationWorldId, String destinationPortalId) {
+            this(worldId,id,edge,tile,destinationWorldId,destinationPortalId,-1);
+        }
+        Portal(String worldId, String id, String edge, Tile tile, String destinationWorldId, String destinationPortalId, int opacity) {
             this.worldId=worldId; this.id=id; this.edge=edge; this.tile=tile;
-            this.destinationWorldId=destinationWorldId; this.destinationPortalId=destinationPortalId;
+            this.destinationWorldId=destinationWorldId; this.destinationPortalId=destinationPortalId; this.opacity=opacity;
         }
     }
     interface Terrain {

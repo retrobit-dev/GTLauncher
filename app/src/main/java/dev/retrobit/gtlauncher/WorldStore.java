@@ -113,7 +113,6 @@ final class WorldStore {
                         if(character.has("destinationWorldId") || character.has("destinationPortalId")) throw new JSONException("Invalid fence pair");
                         surfaces.add(new SurfaceObject(type,col,portalRow,edge,null,character.toString(),opacity));continue;
                     }
-                    if(opacity >= 0) throw new JSONException("Unsupported portal opacity");
                     if (!((edge.equals("N") && portalRow==0) || (edge.equals("S") && portalRow==8) || (edge.equals("W") && col==0) || (edge.equals("E") && col==8))) throw new JSONException("Invalid portal edge");
                     if (character.has("destinationWorldId") != character.has("destinationPortalId")) throw new JSONException("Incomplete portal pair");
                     String destWorld=null,destPortal=null;
@@ -123,7 +122,7 @@ final class WorldStore {
                         if (!destWorld.matches("[A-Za-z0-9_-]{1,128}") || !destPortal.matches("[A-Za-z0-9_-]{1,128}")) throw new JSONException("Invalid portal pair");
                     }
                     for (PortalTravel.Portal previous : portals) if (previous.id.equals(portalId) || (previous.tile.column==col && previous.tile.row==portalRow && previous.edge.equals(edge))) throw new JSONException("Duplicate portal");
-                    portals.add(new PortalTravel.Portal(id,portalId,edge,new PortalTravel.Tile(col,portalRow),destWorld,destPortal)); continue;
+                    portals.add(new PortalTravel.Portal(id,portalId,edge,new PortalTravel.Tile(col,portalRow),destWorld,destPortal,opacity)); continue;
                 }
                 if ((formatVersion>=11 && "bush".equals(type)) || (formatVersion>=14 && "tree".equals(type)) || (formatVersion>=18 && "sunflower".equals(type)) || (formatVersion>=17 && "mailbox".equals(type)) || (formatVersion>=26 && "storage-box".equals(type)) || (formatVersion>=30 && "selling-box".equals(type))) {
                     if(type.equals("bush")) requireOpacityKeys(character,formatVersion,"type","column","row","variant");
@@ -315,7 +314,7 @@ final class WorldStore {
         boolean found = false;
         for (int i = 0; i < existing.size(); i++) {
             if (existing.get(i).id.equals(world.id)) {
-                if(world.formatVersion<31 && (existing.get(i).houseOpacity>=0 || existing.get(i).surfaces.stream().anyMatch(o->o.opacity>=0)))throw new JSONException("Legacy export cannot replace opacity");
+                if(world.formatVersion<31 && (existing.get(i).houseOpacity>=0 || existing.get(i).surfaces.stream().anyMatch(o->o.opacity>=0) || existing.get(i).portals.stream().anyMatch(p->p.opacity>=0)))throw new JSONException("Legacy export cannot replace opacity");
                 if (world.formatVersion < 30 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("selling-box"))) throw new JSONException("Legacy export cannot replace selling box");
                 if (world.formatVersion < 25 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("tree") && (o.material.equals("banana") || o.material.equals("palm")))) throw new JSONException("Legacy export cannot replace tropical trees");
                 if (world.formatVersion < 18 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("sunflower")) || world.formatVersion < 19 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("sunflower") && !o.material.equals("S"))) throw new JSONException("Legacy export cannot replace sunflower");
@@ -382,6 +381,7 @@ final class WorldStore {
                 JSONObject p=new JSONObject();p.put("type","fence");p.put("variant","portal");p.put("id",portal.id);
                 p.put("column",portal.tile.column);p.put("row",portal.tile.row);p.put("edge",portal.edge);
                 if(portal.destinationWorldId!=null){p.put("destinationWorldId",portal.destinationWorldId);p.put("destinationPortalId",portal.destinationPortalId);}
+                if(portal.opacity>=0)p.put("opacity",portal.opacity);
                 objects.put(p);
             }
             object.put("objects", objects);

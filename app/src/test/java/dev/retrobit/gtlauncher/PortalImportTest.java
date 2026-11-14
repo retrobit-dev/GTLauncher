@@ -81,7 +81,10 @@ public class PortalImportTest {
         assertEquals(40,store.activeWorld().houseOpacity);
         try {WorldStore.parseExport(file.replace("\"opacity\":75","\"opacity\":73"));fail("invalid opacity");}catch(JSONException expected){}
         try {WorldStore.parseExport(file.replace("\"version\":31","\"version\":30"));fail("opacity requires v31");}catch(JSONException expected){}
-        try {WorldStore.parseExport(world(portal.replace("\"variant\":\"portal\"","\"opacity\":50,\"variant\":\"portal\"")).replace("\"version\":28","\"version\":31"));fail("portal opacity unsupported");}catch(JSONException expected){}
+        String faded=world(portal.replace("\"variant\":\"portal\"","\"opacity\":50,\"variant\":\"portal\"")).replace("\"version\":28","\"version\":31");
+        WorldStore portalStore=new WorldStore(prefs());assertTrue(portalStore.upsertAndSelect(WorldStore.parseExport(faded)));
+        assertEquals(50,portalStore.activeWorld().portals.get(0).opacity);
+        try {portalStore.upsertAndSelect(WorldStore.parseExport(world(portal)));fail("old file cannot erase portal opacity");}catch(JSONException expected){}
     }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
