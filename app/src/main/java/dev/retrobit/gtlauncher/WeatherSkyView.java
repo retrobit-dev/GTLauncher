@@ -273,6 +273,7 @@ public final class WeatherSkyView extends View {
     private boolean showHouse;
     private int houseColumn = 0, houseRow = 0;
     private float houseScale = 1.0f;
+    private int houseOpacity = 0;
     private String houseFacing = "S";
     private String characterFacing = "S";
     private boolean showCharacter;
@@ -364,7 +365,8 @@ public final class WeatherSkyView extends View {
         invalidate();
     }
 
-    public void setWorldHouse(boolean visible, int column, int row, float scale, String facing) {
+    public void setWorldHouse(boolean visible, int column, int row, float scale, String facing, int opacity) {
+        houseOpacity=Math.max(0,Math.min(90,opacity));
         showHouse = visible; houseColumn = Math.max(0, Math.min(6, column));
         houseRow = Math.max(0, Math.min(6, row)); houseScale = Math.max(0.5f, Math.min(1.5f, scale));
         houseFacing = facing; invalidate();
@@ -403,8 +405,9 @@ public final class WeatherSkyView extends View {
                 image=o.type.equals("selling-box")?(opened?sellingBoxOpen:sellingBoxClosed):back?(opened?storageBackOpen:storageBackClosed):(opened?storageOpen:storageClosed);
             }
             if(image==null)continue;RectF g=surfaceSpriteBounds(o);
-            paint.setColor(Color.argb(35,12,23,40));paint.setStyle(Paint.Style.FILL);canvas.drawOval(new RectF(g.centerX()-g.width()*.3f,g.bottom-1,g.centerX()+g.width()*.3f,g.bottom+1),paint);
-            paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);int saved=canvas.save();
+            int alpha=Math.round(255*(100-Math.max(0,o.opacity))/100f);
+            paint.setColor(Color.argb(Math.round(35*alpha/255f),12,23,40));paint.setStyle(Paint.Style.FILL);canvas.drawOval(new RectF(g.centerX()-g.width()*.3f,g.bottom-1,g.centerX()+g.width()*.3f,g.bottom+1),paint);
+            paint.setColor(Color.WHITE);paint.setAlpha(alpha);paint.setFilterBitmap(false);int saved=canvas.save();
             if(animationEnabled && weather!=null && weather.windSpeedKmh>=1 && (o.type.equals("sunflower") || o.type.equals("tree") && !o.material.equals("mango"))) {
                 double bearing=Math.toRadians(weather.windDirectionDegrees+180-headingDegrees);
                 double direction=Math.sin(bearing)+.25*Math.cos(bearing),strength=Math.min(1,.25+weather.windSpeedKmh/35);
@@ -418,8 +421,8 @@ public final class WeatherSkyView extends View {
                 boolean back=o.material.equals("N") || o.material.equals("W"); Bitmap closed=o.type.equals("selling-box")?sellingBoxClosed:(back?storageBackClosed:storageClosed);
                 if(closed==null)closed=image;
                 float t=Math.max(0,Math.min(1,(android.os.SystemClock.uptimeMillis()-started)/260f));
-                paint.setAlpha((int)(255*(1-t)));canvas.drawBitmap(closed,null,g,paint);
-                paint.setAlpha((int)(255*t));canvas.drawBitmap(image,null,g,paint);paint.setAlpha(255);
+                paint.setAlpha((int)(alpha*(1-t)));canvas.drawBitmap(closed,null,g,paint);
+                paint.setAlpha((int)(alpha*t));canvas.drawBitmap(image,null,g,paint);paint.setAlpha(255);
                 if(t>=1)sellingOpenedAt.remove(o.column+","+o.row);
             } else canvas.drawBitmap(image,null,g,paint);
             canvas.restoreToCount(saved);
@@ -467,9 +470,9 @@ public final class WeatherSkyView extends View {
             float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
             float hw=ISLAND_TILE_WIDTH*.4f,hh=ISLAND_TILE_HEIGHT*.4f,x1,y1,x2,y2;
             switch(o.edge){case "N":x1=x;y1=y-hh;x2=x+hw;y2=y;break;case "E":x1=x;y1=y+hh;x2=x+hw;y2=y;break;case "S":x1=x-hw;y1=y;x2=x;y2=y+hh;break;default:x1=x-hw;y1=y;x2=x;y2=y-hh;}
-            paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(2f);paint.setColor(Color.rgb(92,60,35));paint.setAlpha(255);
+            paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(2f);paint.setColor(Color.rgb(92,60,35));paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f));
             canvas.drawLine(x1,y1-8,x2,y2-8,paint);canvas.drawLine(x1,y1-4,x2,y2-4,paint);
-            paint.setStrokeWidth(2.5f);paint.setColor(Color.rgb(128,83,42));canvas.drawLine(x1,y1,x1,y1-11,paint);canvas.drawLine(x2,y2,x2,y2-11,paint);
+            paint.setStrokeWidth(2.5f);paint.setColor(Color.rgb(128,83,42));paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f));canvas.drawLine(x1,y1,x1,y1-11,paint);canvas.drawLine(x2,y2,x2,y2-11,paint);
             paint.setStyle(Paint.Style.FILL);
         }
     }
@@ -613,10 +616,12 @@ public final class WeatherSkyView extends View {
         float[] lightPoint = sunPlanePosition(light.hourAngleDegrees);
         Bitmap houseSprite = ("N".equals(houseFacing) || "W".equals(houseFacing)) ? houseBackImage : houseImage;
         if (showHouse && houseSprite != null) {
+            int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-houseOpacity)/100f));
             float x = SCENE_WIDTH / 2.0f + (houseColumn - houseRow) * ISLAND_TILE_WIDTH / 2.0f;
             float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (houseColumn + houseRow + 2) * ISLAND_TILE_HEIGHT / 2.0f;
             drawObjectSilhouette(canvas, houseSprite, x, y, 70 * houseScale, 67 * houseScale, lightPoint,
                     "N".equals(houseFacing) || "E".equals(houseFacing));
+            paint.setAlpha(originalAlpha);
         }
         Bitmap sprite = ("N".equals(characterFacing) || "W".equals(characterFacing)) ? mainCharacterBack : mainCharacter;
         if (showCharacter && sprite != null) {
@@ -628,9 +633,11 @@ public final class WeatherSkyView extends View {
         // Faint contact diamonds stay attached to the ground anchors as objects move or scale.
         paint.setColor(Color.argb((int) (255 * 0.09), 12, 23, 40));
         if (showHouse && houseSprite != null) {
+            int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-houseOpacity)/100f));
             float x = SCENE_WIDTH / 2.0f + (houseColumn - houseRow) * ISLAND_TILE_WIDTH / 2.0f;
             float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (houseColumn + houseRow + 2) * ISLAND_TILE_HEIGHT / 2.0f;
             drawObjectContact(canvas, x, y, 70 * houseScale, ISLAND_TILE_HEIGHT * 2.5f * houseScale);
+            paint.setAlpha(originalAlpha);
         }
         if (showCharacter && sprite != null) {
             float x = SCENE_WIDTH / 2.0f + (characterColumn - characterRow) * ISLAND_TILE_WIDTH / 2.0f;
@@ -655,7 +662,7 @@ public final class WeatherSkyView extends View {
         float x = SCENE_WIDTH / 2.0f + (houseColumn - houseRow) * ISLAND_TILE_WIDTH / 2.0f;
         float bottom = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (houseColumn + houseRow + 2) * ISLAND_TILE_HEIGHT / 2.0f
                 + 1.25f * ISLAND_TILE_HEIGHT * houseScale;
-        paint.setColor(Color.WHITE); paint.setAlpha(255); paint.setFilterBitmap(false);
+        paint.setColor(Color.WHITE); paint.setAlpha(Math.round(255*(100-houseOpacity)/100f)); paint.setFilterBitmap(false);
         int save = canvas.save();
         if (mirror) canvas.scale(-1, 1, x, 0);
         canvas.drawBitmap(sprite, null, new RectF(x - 35 * houseScale, bottom - 67 * houseScale, x + 35 * houseScale, bottom), paint);

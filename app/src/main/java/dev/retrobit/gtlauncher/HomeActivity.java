@@ -412,7 +412,7 @@ public class HomeActivity extends Activity {
             skyView.setWorldSurfaces(world == null ? null : world.id,world == null ? null : world.surfaces);
             skyView.setWorldHouse(world != null && world.showHouse, world == null ? 0 : world.houseColumn,
                     world == null ? 0 : world.houseRow, world == null ? 1.0f : (float) world.houseScale,
-                    world == null ? "S" : world.houseFacing);
+                    world == null ? "S" : world.houseFacing, world == null ? 0 : Math.max(0,world.houseOpacity));
             skyView.setWorldCharacter(world != null && world.showCharacter,
                     world == null ? 4 : world.characterColumn, world == null ? 4 : world.characterRow,
                     world == null ? 1.0f : (float) world.characterScale,
@@ -421,7 +421,7 @@ public class HomeActivity extends Activity {
             skyView.setWorldIslandTint(null);
             skyView.setWorldPortals(null);
             skyView.setWorldSurfaces(null,null);
-            skyView.setWorldHouse(false, 0, 0, 1.0f, "S");
+            skyView.setWorldHouse(false, 0, 0, 1.0f, "S", 0);
             skyView.setWorldCharacter(false, 4, 4, 1.0f, "S");
             Toast.makeText(this, "Data world tidak dapat dibaca; data lama tidak ditimpa.",
                     Toast.LENGTH_LONG).show();

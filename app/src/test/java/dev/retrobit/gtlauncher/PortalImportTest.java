@@ -71,6 +71,18 @@ public class PortalImportTest {
         try {WorldStore.parseExport(world(box));fail("selling box requires v30");}catch(JSONException expected){}
         try {store.upsertAndSelect(WorldStore.parseExport(world("")));fail("legacy must not erase selling box");}catch(JSONException expected){}
     }
+    @Test public void opacityPersistsAndOldImportCannotErase() throws JSONException {
+        String house="{\"type\":\"house\",\"id\":\"h1\",\"column\":0,\"row\":0,\"scale\":1,\"facing\":\"S\",\"visible\":true,\"opacity\":40}";
+        String box="{\"type\":\"storage-box\",\"column\":5,\"row\":4,\"facing\":\"N\",\"opacity\":75}";
+        String file=world(house+","+box).replace("\"version\":28","\"version\":31");
+        WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(file)));
+        assertEquals(40,store.activeWorld().houseOpacity);assertEquals(75,store.activeWorld().surfaces.get(0).opacity);
+        try {store.upsertAndSelect(WorldStore.parseExport(world("")));fail("legacy import erases opacity");} catch(JSONException expected) {}
+        assertEquals(40,store.activeWorld().houseOpacity);
+        try {WorldStore.parseExport(file.replace("\"opacity\":75","\"opacity\":73"));fail("invalid opacity");}catch(JSONException expected){}
+        try {WorldStore.parseExport(file.replace("\"version\":31","\"version\":30"));fail("opacity requires v31");}catch(JSONException expected){}
+        try {WorldStore.parseExport(world(portal.replace("\"variant\":\"portal\"","\"opacity\":50,\"variant\":\"portal\"")).replace("\"version\":28","\"version\":31"));fail("portal opacity unsupported");}catch(JSONException expected){}
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {
