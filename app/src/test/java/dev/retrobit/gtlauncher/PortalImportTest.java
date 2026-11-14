@@ -123,6 +123,15 @@ public class PortalImportTest {
         String water="{\"type\":\"road\",\"column\":1,\"row\":1,\"material\":\"water\"}";
         try {WorldStore.parseExport(world(jasmine+","+water).replace("\"version\":28","\"version\":21"));fail("flower on water");}catch(JSONException expected){}
     }
+    @Test public void fenceVariantsPersistAndOldImportsAreBlocked() throws JSONException {
+        for(String variant:new String[]{"slat","stone","iron"}) {
+            String fence="{\"type\":\"fence\",\"id\":\"a\",\"column\":1,\"row\":1,\"edge\":\"N\",\"variant\":\""+variant+"\",\"opacity\":50}";
+            String file=world(fence).replace("\"version\":28","\"version\":31");WorldStore store=new WorldStore(prefs());
+            assertTrue(store.upsertAndSelect(WorldStore.parseExport(file)));assertEquals(variant,store.activeWorld().surfaces.get(0).material);assertEquals(50,store.activeWorld().surfaces.get(0).opacity);
+            try {store.upsertAndSelect(WorldStore.parseExport(world("").replace("\"version\":28","\"version\":7")));fail("older import erases variant");}catch(JSONException expected){}
+            try {WorldStore.parseExport(file.replace(variant,"unknown"));fail("unknown variant");}catch(JSONException expected){}
+        }
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {

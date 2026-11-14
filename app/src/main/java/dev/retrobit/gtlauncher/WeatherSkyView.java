@@ -263,6 +263,7 @@ public final class WeatherSkyView extends View {
     private double plantMotionSeconds;
     private Integer worldIslandTint;
     private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, portalImage, portalMarkerImage;
+    private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron;
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
     private Bitmap bushSpiky,bushTiered,bushRound,bushFlower,bushBerry,wildGrass,treeApple,treeOrange,treePear,treeGuava,treeStarfruit,treeMango,treeBanana,treeCoconut,sunflowerFront,sunflowerBack,sellingBoxClosed,sellingBoxOpen,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
     private final java.util.Set<String> openStorage = new java.util.HashSet<>();
@@ -319,6 +320,7 @@ public final class WeatherSkyView extends View {
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_back);
         portalImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_ground);
         portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation_red);
+        fenceFarm=BitmapFactory.decodeResource(getResources(),R.drawable.fence_farm);fenceSlat=BitmapFactory.decodeResource(getResources(),R.drawable.fence_slat);fenceStone=BitmapFactory.decodeResource(getResources(),R.drawable.fence_stone);fenceIron=BitmapFactory.decodeResource(getResources(),R.drawable.fence_iron);
         flowerSprites.put("rose",BitmapFactory.decodeResource(getResources(),R.drawable.petals_rose));
         flowerSprites.put("tulip",BitmapFactory.decodeResource(getResources(),R.drawable.petals_tulip));
         flowerSprites.put("lavender",BitmapFactory.decodeResource(getResources(),R.drawable.petals_lavender));
@@ -489,19 +491,23 @@ public final class WeatherSkyView extends View {
         }
     }
     private void drawFences(Canvas canvas,boolean front) {
+        java.util.List<FenceGeometry.Edge> edges=new java.util.ArrayList<>();
+        for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("fence"))edges.add(new FenceGeometry.Edge(o.column,o.row,o.edge));
+        for(PortalTravel.Portal portal:worldPortals)edges.add(new FenceGeometry.Edge(portal.tile.column,portal.tile.row,portal.edge));
         for(WorldStore.SurfaceObject o:worldSurfaces) if(o.type.equals("fence")) {
             float depth=o.column+o.row+((o.edge.equals("S")||o.edge.equals("E"))?.5f:-.5f);
             if(showCharacter && (depth>=characterColumn+characterRow)!=front) continue;
             if(!showCharacter && front) continue;
             float x=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f;
             float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
-            float hw=ISLAND_TILE_WIDTH*.4f,hh=ISLAND_TILE_HEIGHT*.4f,x1,y1,x2,y2;
-            switch(o.edge){case "N":x1=x;y1=y-hh;x2=x+hw;y2=y;break;case "E":x1=x;y1=y+hh;x2=x+hw;y2=y;break;case "S":x1=x-hw;y1=y;x2=x;y2=y+hh;break;default:x1=x-hw;y1=y;x2=x;y2=y-hh;}
-            paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(2f);paint.setColor(Color.rgb(92,60,35));paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f));
-            canvas.drawLine(x1,y1-8,x2,y2-8,paint);canvas.drawLine(x1,y1-4,x2,y2-4,paint);
-            paint.setStrokeWidth(2.5f);paint.setColor(Color.rgb(128,83,42));paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f));canvas.drawLine(x1,y1,x1,y1-11,paint);canvas.drawLine(x2,y2,x2,y2-11,paint);
-            paint.setStyle(Paint.Style.FILL);
+            FenceGeometry.Bounds g=FenceGeometry.bounds(new FenceGeometry.Edge(o.column,o.row,o.edge),edges,x,y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT);
+            Bitmap image="slat".equals(o.material)?fenceSlat:"stone".equals(o.material)?fenceStone:"iron".equals(o.material)?fenceIron:fenceFarm;
+            if(image==null)continue;
+            paint.setStyle(Paint.Style.FILL);paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f));paint.setFilterBitmap(false);
+            int save=canvas.save();if(!g.rising)canvas.scale(-1,1,g.x+g.width/2,0);
+            canvas.drawBitmap(image,null,new RectF(g.x,g.y,g.x+g.width,g.y+g.height),paint);canvas.restoreToCount(save);
         }
+        paint.setAlpha(255);
     }
     void setWorldPortals(java.util.List<PortalTravel.Portal> portals) {
         worldPortals = portals == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(portals); invalidate();

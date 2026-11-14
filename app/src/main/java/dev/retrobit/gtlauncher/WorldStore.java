@@ -97,7 +97,8 @@ final class WorldStore {
                     requireOpacityKeys(character,formatVersion,"type","id","column","row","edge","variant","destinationWorldId","destinationPortalId");
                     int opacity=readOpacity(character,formatVersion);
                     String variant=character.has("variant") ? requiredString(character,"variant") : "";
-                    if (!variant.isEmpty() && !variant.equals("portal")) throw new JSONException("Unsupported object");
+                    if (!variant.isEmpty() && !java.util.Arrays.asList("portal","slat","stone","iron").contains(variant)) throw new JSONException("Unsupported object");
+                    if (character.has("variant") && (variant.isEmpty() || formatVersion<10)) throw new JSONException("Unsupported fence variant");
                     if (variant.equals("portal") && formatVersion<22) throw new JSONException("Unsupported object");
                     String portalId=requiredString(character,"id"), edge=requiredString(character,"edge");
                     Object c=character.get("column"), r=character.get("row");
@@ -111,7 +112,7 @@ final class WorldStore {
                     if(!fenceIds.add(portalId) || !fenceEdges.add(edgeKey)) throw new JSONException("Duplicate fence");
                     if (!variant.equals("portal")) {
                         if(character.has("destinationWorldId") || character.has("destinationPortalId")) throw new JSONException("Invalid fence pair");
-                        surfaces.add(new SurfaceObject(type,col,portalRow,edge,null,character.toString(),opacity));continue;
+                        surfaces.add(new SurfaceObject(type,col,portalRow,edge,variant,character.toString(),opacity));continue;
                     }
                     if (!((edge.equals("N") && portalRow==0) || (edge.equals("S") && portalRow==8) || (edge.equals("W") && col==0) || (edge.equals("E") && col==8))) throw new JSONException("Invalid portal edge");
                     if (character.has("destinationWorldId") != character.has("destinationPortalId")) throw new JSONException("Incomplete portal pair");
@@ -363,6 +364,7 @@ final class WorldStore {
                 if(world.formatVersion<10 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("bush") && (o.material.equals("flower") || o.material.equals("berry"))))throw new JSONException("Legacy export cannot replace bush variant");
                 if (world.formatVersion < 9 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("bush"))) throw new JSONException("Legacy export cannot replace bush");
                 if (world.formatVersion < 8 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("road"))) throw new JSONException("Legacy export cannot replace road data");
+                if(world.formatVersion<10 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("fence") && o.material!=null && !o.material.isEmpty()))throw new JSONException("Legacy export cannot replace fence variant");
                 if (world.formatVersion < 7 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("fence"))) throw new JSONException("Legacy export cannot replace fence data");
                 if (world.formatVersion < 22 && !existing.get(i).portals.isEmpty()) throw new JSONException("Legacy export cannot replace portal data");
                 if (world.formatVersion < 11 && existing.get(i).surfaces.stream().anyMatch(o -> "water".equals(o.material))) throw new JSONException("Legacy export cannot replace water data");
