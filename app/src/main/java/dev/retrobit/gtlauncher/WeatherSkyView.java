@@ -263,6 +263,7 @@ public final class WeatherSkyView extends View {
     private double plantMotionSeconds;
     private Integer worldIslandTint;
     private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, portalImage, portalMarkerImage;
+    private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
     private Bitmap bushSpiky,bushTiered,bushRound,bushFlower,bushBerry,wildGrass,treeApple,treeOrange,treePear,treeGuava,treeStarfruit,treeMango,treeBanana,treeCoconut,sunflowerFront,sunflowerBack,sellingBoxClosed,sellingBoxOpen,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
     private final java.util.Set<String> openStorage = new java.util.HashSet<>();
     private final java.util.Map<String,Long> sellingOpenedAt = new java.util.HashMap<>();
@@ -318,6 +319,17 @@ public final class WeatherSkyView extends View {
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_back);
         portalImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_ground);
         portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation_red);
+        flowerSprites.put("rose",BitmapFactory.decodeResource(getResources(),R.drawable.petals_rose));
+        flowerSprites.put("tulip",BitmapFactory.decodeResource(getResources(),R.drawable.petals_tulip));
+        flowerSprites.put("lavender",BitmapFactory.decodeResource(getResources(),R.drawable.petals_lavender));
+        flowerSprites.put("daisy",BitmapFactory.decodeResource(getResources(),R.drawable.petals_daisy));
+        flowerSprites.put("marigold",BitmapFactory.decodeResource(getResources(),R.drawable.petals_marigold));
+        flowerSprites.put("bluebell",BitmapFactory.decodeResource(getResources(),R.drawable.petals_bluebell));
+        flowerSprites.put("jasmine",BitmapFactory.decodeResource(getResources(),R.drawable.petals_jasmine));
+        flowerSprites.put("ylang",BitmapFactory.decodeResource(getResources(),R.drawable.petals_ylang));
+        flowerSprites.put("frangipani",BitmapFactory.decodeResource(getResources(),R.drawable.petals_frangipani));
+        flowerSprites.put("hibiscus",BitmapFactory.decodeResource(getResources(),R.drawable.petals_hibiscus));
+        flowerSprites.put("periwinkle",BitmapFactory.decodeResource(getResources(),R.drawable.petals_periwinkle));
         bushRound=BitmapFactory.decodeResource(getResources(),R.drawable.bush_round);bushFlower=BitmapFactory.decodeResource(getResources(),R.drawable.bush_flower);bushBerry=BitmapFactory.decodeResource(getResources(),R.drawable.bush_berry);
         treeApple=BitmapFactory.decodeResource(getResources(),R.drawable.tree_apple);treeOrange=BitmapFactory.decodeResource(getResources(),R.drawable.tree_orange);treePear=BitmapFactory.decodeResource(getResources(),R.drawable.tree_pear);treeGuava=BitmapFactory.decodeResource(getResources(),R.drawable.tree_guava);treeStarfruit=BitmapFactory.decodeResource(getResources(),R.drawable.tree_starfruit);
         wildGrass=BitmapFactory.decodeResource(getResources(),R.drawable.wild_grass);bushSpiky=BitmapFactory.decodeResource(getResources(),R.drawable.bush_spiky);bushTiered=BitmapFactory.decodeResource(getResources(),R.drawable.bush_tiered);
@@ -393,7 +405,7 @@ public final class WeatherSkyView extends View {
     }
     private void drawSurfaceSprites(Canvas canvas,boolean front) {
         for(WorldStore.SurfaceObject o:worldSurfaces) {
-            if(o.type.equals("road") || o.type.equals("fence")) continue;
+            if(o.type.equals("road") || o.type.equals("fence") || o.type.equals("flower")) continue;
             float depth=o.column+o.row+(o.type.equals("tree") && !(o.material.equals("banana") || o.material.equals("palm"))?1f:0f);
             if(showCharacter && (depth>=characterColumn+characterRow)!=front) continue;
             if(!showCharacter && front) continue;
@@ -452,6 +464,19 @@ public final class WeatherSkyView extends View {
     boolean storageBoxAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return false;float x=sx*SCENE_WIDTH/getWidth(),y=sy*SCENE_HEIGHT/getHeight();
         for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if((o.type.equals("storage-box")||o.type.equals("selling-box")) && surfaceSpriteBounds(o).contains(x,y))return true;}return false;
+    }
+    private void drawDecorativeFlowers(Canvas canvas) {
+        paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
+        final float[] offsets={.2f,.5f,.8f};
+        for(WorldStore.SurfaceObject flower:worldSurfaces) if(flower.type.equals("flower")) {
+            Bitmap image=flowerSprites.get(flower.material);if(image==null)continue;
+            float cx=SCENE_WIDTH/2f+(flower.column-flower.row)*ISLAND_TILE_WIDTH/2f;
+            float cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(flower.column+flower.row)*ISLAND_TILE_HEIGHT/2f;
+            for(float u:offsets)for(float v:offsets) {
+                float x=cx+(u-v)*ISLAND_TILE_WIDTH/2f,y=cy+(u+v-1)*ISLAND_TILE_HEIGHT/2f;
+                canvas.drawBitmap(image,null,new RectF(x-2.1f,y-2.8f,x+2.1f,y+.7f),paint);
+            }
+        }
     }
     private void drawRoads(Canvas canvas) {
         for(WorldStore.SurfaceObject o:worldSurfaces) if(o.type.equals("road")) {
@@ -740,6 +765,7 @@ public final class WeatherSkyView extends View {
                 shadowLight.hourAngleDegrees, cloudCover, code, false);
         drawFloatingIsland(scene, sun.altitudeDegrees, sun.azimuthDegrees,
                 sun.hourAngleDegrees, cloudCover, code, moon, cloudStates);
+        drawDecorativeFlowers(scene);
         drawRoads(scene);
         drawSurfaceObjectShadows(scene, shadowLight, cloudCover, code);
         drawHouse(scene);

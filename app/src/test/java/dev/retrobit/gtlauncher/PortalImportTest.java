@@ -106,6 +106,23 @@ public class PortalImportTest {
         assertEquals("round",WorldStore.parseExport(world(legacy).replace("\"version\":28","\"version\":9")).surfaces.get(0).material);
         try {WorldStore.parseExport(world(legacy.replace("\"row\":1","\"row\":1,\"variant\":\"flower\"")).replace("\"version\":28","\"version\":9"));fail("v9 cannot contain variant");}catch(JSONException expected){}
     }
+    @Test public void decorativeFlowersPersistAndShareTiles() throws JSONException {
+        String[] names={"rose","tulip","lavender","daisy","marigold","bluebell","jasmine","ylang","frangipani","hibiscus","periwinkle"};
+        for(String species:names) {
+            String flower="{\"type\":\"flower\",\"column\":1,\"row\":1,\"species\":\""+species+"\"}";
+            String bush="{\"type\":\"bush\",\"column\":1,\"row\":1,\"variant\":\"round\"}";
+            String character="{\"type\":\"character\",\"column\":4,\"row\":4,\"scale\":1,\"facing\":\"S\"}";
+            String file=world(flower+","+bush+","+character).replace("\"version\":28","\"version\":21");
+            WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(file)));
+            assertEquals(species,store.activeWorld().surfaces.get(0).material);
+            try {store.upsertAndSelect(WorldStore.parseExport(world("").replace("\"version\":28","\"version\":20")));fail("older import loses flowers");}catch(JSONException expected){}
+        }
+        String jasmine="{\"type\":\"flower\",\"column\":1,\"row\":1,\"species\":\"jasmine\"}";
+        try {WorldStore.parseExport(world(jasmine).replace("\"version\":28","\"version\":20"));fail("v20 lacks jasmine");}catch(JSONException expected){}
+        try {WorldStore.parseExport(world(jasmine+","+jasmine).replace("\"version\":28","\"version\":21"));fail("duplicate flower");}catch(JSONException expected){}
+        String water="{\"type\":\"road\",\"column\":1,\"row\":1,\"material\":\"water\"}";
+        try {WorldStore.parseExport(world(jasmine+","+water).replace("\"version\":28","\"version\":21"));fail("flower on water");}catch(JSONException expected){}
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {

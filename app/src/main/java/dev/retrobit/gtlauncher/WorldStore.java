@@ -124,6 +124,16 @@ final class WorldStore {
                     for (PortalTravel.Portal previous : portals) if (previous.id.equals(portalId) || (previous.tile.column==col && previous.tile.row==portalRow && previous.edge.equals(edge))) throw new JSONException("Duplicate portal");
                     portals.add(new PortalTravel.Portal(id,portalId,edge,new PortalTravel.Tile(col,portalRow),destWorld,destPortal,opacity)); continue;
                 }
+                if(formatVersion>=20 && "flower".equals(type)) {
+                    requireOnlyKeys(character,"type","column","row","species");
+                    Object col=character.get("column"),rowObject=character.get("row");
+                    if(!(col instanceof Number)||!(rowObject instanceof Number)||((Number)col).doubleValue()!=Math.rint(((Number)col).doubleValue())||((Number)rowObject).doubleValue()!=Math.rint(((Number)rowObject).doubleValue()))throw new JSONException("Invalid flower tile");
+                    int c=((Number)col).intValue(),r=((Number)rowObject).intValue();String species=requiredString(character,"species");
+                    if(c<0||c>8||r<0||r>8||!java.util.Arrays.asList("rose","tulip","lavender","daisy","marigold","bluebell","jasmine","ylang","frangipani","hibiscus","periwinkle").contains(species))throw new JSONException("Invalid flower");
+                    if(formatVersion<21 && !java.util.Arrays.asList("rose","tulip","lavender","daisy","marigold","bluebell").contains(species))throw new JSONException("Unsupported flower");
+                    for(SurfaceObject prior:surfaces)if(prior.type.equals("flower")&&prior.column==c&&prior.row==r)throw new JSONException("Duplicate flower");
+                    surfaces.add(new SurfaceObject(type,c,r,null,species,character.toString()));continue;
+                }
                 if ((formatVersion>=9 && "bush".equals(type)) || (formatVersion>=14 && "tree".equals(type)) || (formatVersion>=18 && "sunflower".equals(type)) || (formatVersion>=17 && "mailbox".equals(type)) || (formatVersion>=26 && "storage-box".equals(type)) || (formatVersion>=30 && "selling-box".equals(type))) {
                     if(type.equals("bush")) requireOpacityKeys(character,formatVersion,"type","column","row","variant");
                     else if(type.equals("tree")) requireOpacityKeys(character,formatVersion,"type","column","row","species");
@@ -142,7 +152,7 @@ final class WorldStore {
                     if(type.equals("tree") && !(variant.equals("banana") || variant.equals("palm")) && (c>7||r>7)) throw new JSONException("Invalid tree tile");
                     if(type.equals("sunflower") && !java.util.Arrays.asList("N","E","S","W").contains(variant)) throw new JSONException("Invalid direction");
                     if((type.equals("storage-box") || type.equals("selling-box")) && !variant.isEmpty() && !java.util.Arrays.asList("N","E","S","W").contains(variant)) throw new JSONException("Invalid direction");
-                    for(SurfaceObject previous:surfaces) if(!previous.type.equals("road") && !previous.type.equals("fence") && previous.column==c && previous.row==r) throw new JSONException("Object collision");
+                    for(SurfaceObject previous:surfaces) if(!previous.type.equals("road") && !previous.type.equals("fence") && !previous.type.equals("flower") && previous.column==c && previous.row==r) throw new JSONException("Object collision");
                     surfaces.add(new SurfaceObject(type,c,r,null,variant,character.toString(),opacity));continue;
                 }
                 if ("house".equals(type)) {
@@ -194,6 +204,8 @@ final class WorldStore {
                 column = (int) colValue; row = (int) rowValue; visible = true;
             }
         }
+        for(SurfaceObject flower:surfaces) if(flower.type.equals("flower"))
+            for(SurfaceObject water:surfaces) if(water.type.equals("road") && "water".equals(water.material) && water.column==flower.column && water.row==flower.row)throw new JSONException("Flower on water");
         // Validate the complete tree footprint, not only its anchor tile.
         for(SurfaceObject tree:surfaces) if(tree.type.equals("tree")) {
             int size=(tree.material.equals("banana") || tree.material.equals("palm"))?1:2;
@@ -201,7 +213,7 @@ final class WorldStore {
                 int c=tree.column+dc,r=tree.row+dr;
                 if(visible && c==column && r==row || house && houseVisible && c>=houseColumn && c<=houseColumn+2 && r>=houseRow && r<=houseRow+2)throw new JSONException("Object collision");
                 for(SurfaceObject other:surfaces) {
-                    if(other==tree || other.type.equals("fence") || other.type.equals("road") && !"water".equals(other.material))continue;
+                    if(other==tree || other.type.equals("fence") || other.type.equals("flower") || other.type.equals("road") && !"water".equals(other.material))continue;
                     int otherSize=other.type.equals("tree") && !(other.material.equals("banana")||other.material.equals("palm"))?2:1;
                     if(c>=other.column && c<other.column+otherSize && r>=other.row && r<other.row+otherSize)throw new JSONException("Object collision");
                 }
@@ -215,7 +227,7 @@ final class WorldStore {
             int c=plant.column,r=plant.row;
             if (visible && c==column && r==row || house && houseVisible && c>=houseColumn && c<=houseColumn+2 && r>=houseRow && r<=houseRow+2) throw new JSONException("Object collision");
             for (SurfaceObject other:surfaces) {
-                if (other==plant || other.type.equals("fence")) continue;
+                if (other==plant || other.type.equals("fence") || other.type.equals("flower")) continue;
                 if (other.type.equals("road") && !"water".equals(other.material)) continue;
                 int size=other.type.equals("tree") && !(other.material.equals("banana") || other.material.equals("palm"))?2:1;
                 if(c>=other.column && c<other.column+size && r>=other.row && r<other.row+size) throw new JSONException("Object collision");
@@ -225,6 +237,11 @@ final class WorldStore {
                 house, houseVisible, houseColumn, houseRow, houseScale, houseFacing, houseId, houseOpacity, formatVersion, portals, surfaces);
     }
 
+    private static boolean hasOverlappingFlowers(List<SurfaceObject> surfaces) {
+        for(SurfaceObject f:surfaces)if(f.type.equals("flower"))for(SurfaceObject b:surfaces)
+            if((b.type.equals("bush")||b.type.equals("sunflower"))&&f.column==b.column&&f.row==b.row)return true;
+        return false;
+    }
     private static int readOpacity(JSONObject object,int version) throws JSONException {
         if(!object.has("opacity"))return -1;
         if(version<31)throw new JSONException("Unsupported opacity");
@@ -265,7 +282,7 @@ final class WorldStore {
             requireOnlyKeys(object, "name", "description", "color");
             return parseWorld(object, UUID.randomUUID().toString(), 1);
         }
-        if (version != 2.0 && version != 3.0 && version != 4.0 && version != 5.0 && version != 6.0 && version != 7.0 && version != 8.0 && version != 9.0 && version != 10.0 && version != 11.0 && version != 14.0 && version != 16.0 && version != 17.0 && version != 18.0 && version != 19.0 && version != 22.0 && version != 25.0 && version != 26.0 && version != 27.0 && version != 28.0 && version != 29.0 && version != 30.0 && version != 31.0) throw new JSONException("Unsupported world version");
+        if (version != 2.0 && version != 3.0 && version != 4.0 && version != 5.0 && version != 6.0 && version != 7.0 && version != 8.0 && version != 9.0 && version != 10.0 && version != 11.0 && version != 14.0 && version != 16.0 && version != 17.0 && version != 18.0 && version != 19.0 && version != 20.0 && version != 21.0 && version != 22.0 && version != 25.0 && version != 26.0 && version != 27.0 && version != 28.0 && version != 29.0 && version != 30.0 && version != 31.0) throw new JSONException("Unsupported world version");
         requireOnlyKeys(root, "format", "version", "world");
         requireOnlyKeys(object, "id", "name", "description", "color", "objects");
         String id = requiredString(object, "id");
@@ -286,6 +303,7 @@ final class WorldStore {
         for (int i = 0; i < objects.length(); i++) {
             JSONObject obj = objects.getJSONObject(i);
             if(obj.has("opacity"))version=Math.max(version,31);
+            if("flower".equals(obj.optString("type")))version=Math.max(version,21);
             if ("selling-box".equals(obj.optString("type"))) version = Math.max(version, 30);
             else if ("sunflower".equals(obj.optString("type")) || "tree".equals(obj.optString("type")) && ("banana".equals(obj.optString("species")) || "palm".equals(obj.optString("species"))) || "bush".equals(obj.optString("type")) && "wild-grass".equals(obj.optString("variant"))) version = Math.max(version, 29);
             else if ("fence".equals(obj.optString("type")) || "road".equals(obj.optString("type")) || "bush".equals(obj.optString("type")) || "tree".equals(obj.optString("type")) || "mailbox".equals(obj.optString("type")) || "storage-box".equals(obj.optString("type"))) version = Math.max(version, 28);
@@ -328,6 +346,9 @@ final class WorldStore {
         boolean found = false;
         for (int i = 0; i < existing.size(); i++) {
             if (existing.get(i).id.equals(world.id)) {
+                if(world.formatVersion<21 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("flower") && !java.util.Arrays.asList("rose","tulip","lavender","daisy","marigold","bluebell").contains(o.material)))throw new JSONException("Legacy export cannot replace flower variant");
+                if(world.formatVersion<21 && hasOverlappingFlowers(existing.get(i).surfaces))throw new JSONException("Legacy export cannot replace overlapping flowers");
+                if(world.formatVersion<20 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("flower")))throw new JSONException("Legacy export cannot replace flowers");
                 if(world.formatVersion<31 && (existing.get(i).houseOpacity>=0 || existing.get(i).surfaces.stream().anyMatch(o->o.opacity>=0) || existing.get(i).portals.stream().anyMatch(p->p.opacity>=0)))throw new JSONException("Legacy export cannot replace opacity");
                 if (world.formatVersion < 30 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("selling-box"))) throw new JSONException("Legacy export cannot replace selling box");
                 if (world.formatVersion < 25 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("tree") && (o.material.equals("banana") || o.material.equals("palm")))) throw new JSONException("Legacy export cannot replace tropical trees");
