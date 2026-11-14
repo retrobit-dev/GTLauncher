@@ -18,7 +18,7 @@ public class PortalImportTest {
         assertEquals(1,w.portals.size()); assertEquals("farm",w.portals.get(0).destinationWorldId);assertEquals("south",w.portals.get(0).destinationPortalId);assertTrue(w.showCharacter);
     }
     @Test public void rejectUnsupportedObjectAndHalfPair() throws JSONException {
-        try { WorldStore.parseExport(world(portal+",{\"type\":\"road\",\"column\":1,\"row\":1,\"material\":\"stone\"}"));fail("unsupported road cannot be discarded"); } catch(JSONException expected) { }
+        try { WorldStore.parseExport(world(portal+",{\"type\":\"road\",\"column\":1,\"row\":1,\"material\":\"marble\"}"));fail("unsupported road cannot be discarded"); } catch(JSONException expected) { }
         try { WorldStore.parseExport(world(portal.replace(",\"destinationPortalId\":\"south\"", "")));fail("incomplete pair"); } catch(JSONException expected) { }
         try { WorldStore.parseExport(world(portal+","+portal));fail("duplicate portals"); } catch(JSONException expected) { }
     }
@@ -130,6 +130,16 @@ public class PortalImportTest {
             assertTrue(store.upsertAndSelect(WorldStore.parseExport(file)));assertEquals(variant,store.activeWorld().surfaces.get(0).material);assertEquals(50,store.activeWorld().surfaces.get(0).opacity);
             try {store.upsertAndSelect(WorldStore.parseExport(world("").replace("\"version\":28","\"version\":7")));fail("older import erases variant");}catch(JSONException expected){}
             try {WorldStore.parseExport(file.replace(variant,"unknown"));fail("unknown variant");}catch(JSONException expected){}
+        }
+    }
+    @Test public void roadMaterialsDirectionsAndLegacyProtection() throws JSONException {
+        for(String material:new String[]{"dirt","stone","gravel","paving","asphalt"})for(String facing:new String[]{"N","E","S","W"}) {
+            String road="{\"type\":\"road\",\"column\":1,\"row\":1,\"material\":\""+material+"\",\"facing\":\""+facing+"\"}";
+            String file=world(road).replace("\"version\":28","\"version\":19");
+            WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(file)));
+            assertEquals(material,store.activeWorld().surfaces.get(0).material);assertEquals(facing,store.activeWorld().surfaces.get(0).edge);
+            try {store.upsertAndSelect(WorldStore.parseExport(world("").replace("\"version\":28","\"version\":8")));fail("legacy export cannot erase road direction");}catch(JSONException expected){}
+            try {WorldStore.parseExport(file.replace("\"version\":19","\"version\":8"));fail("old version cannot have facing");}catch(JSONException expected){}
         }
     }
     private SharedPreferences prefs() {

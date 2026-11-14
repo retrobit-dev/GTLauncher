@@ -85,13 +85,16 @@ final class WorldStore {
                 JSONObject character = objects.getJSONObject(i);
                 String type = requiredString(character, "type");
                 if (formatVersion >= 8 && "road".equals(type)) {
-                    requireOnlyKeys(character,"type","column","row","material");
+                    requireOnlyKeys(character,"type","column","row","material","facing");
+                    if(formatVersion<19 && character.has("facing"))throw new JSONException("Unsupported road direction");
                     Object col=character.get("column"),rowObject=character.get("row");
                     if (!(col instanceof Number) || !(rowObject instanceof Number) || ((Number)col).doubleValue()!=Math.rint(((Number)col).doubleValue()) || ((Number)rowObject).doubleValue()!=Math.rint(((Number)rowObject).doubleValue())) throw new JSONException("Invalid road");
                     int c=((Number)col).intValue(),r=((Number)rowObject).intValue();String material=requiredString(character,"material");
                     if(c<0||c>8||r<0||r>8||!roadTiles.add(c+","+r)) throw new JSONException("Invalid road");
-                    if(!material.equals("dirt") && !(formatVersion>=11 && material.equals("water"))) throw new JSONException("Unsupported object");
-                    surfaces.add(new SurfaceObject(type,c,r,null,material,character.toString()));continue;
+                    if(!java.util.Arrays.asList("dirt","stone","gravel").contains(material) && !(formatVersion>=11 && material.equals("water")) && !(formatVersion>=12 && java.util.Arrays.asList("paving","asphalt").contains(material))) throw new JSONException("Unsupported object");
+                    String roadFacing=character.has("facing")?requiredString(character,"facing"):null;
+                    if(roadFacing!=null && !java.util.Arrays.asList("N","E","S","W").contains(roadFacing))throw new JSONException("Invalid road direction");
+                    surfaces.add(new SurfaceObject(type,c,r,roadFacing,material,character.toString()));continue;
                 }
                 if (formatVersion >= 7 && "fence".equals(type)) {
                     requireOpacityKeys(character,formatVersion,"type","id","column","row","edge","variant","destinationWorldId","destinationPortalId");
@@ -283,7 +286,7 @@ final class WorldStore {
             requireOnlyKeys(object, "name", "description", "color");
             return parseWorld(object, UUID.randomUUID().toString(), 1);
         }
-        if (version != 2.0 && version != 3.0 && version != 4.0 && version != 5.0 && version != 6.0 && version != 7.0 && version != 8.0 && version != 9.0 && version != 10.0 && version != 11.0 && version != 14.0 && version != 16.0 && version != 17.0 && version != 18.0 && version != 19.0 && version != 20.0 && version != 21.0 && version != 22.0 && version != 25.0 && version != 26.0 && version != 27.0 && version != 28.0 && version != 29.0 && version != 30.0 && version != 31.0) throw new JSONException("Unsupported world version");
+        if (version != 2.0 && version != 3.0 && version != 4.0 && version != 5.0 && version != 6.0 && version != 7.0 && version != 8.0 && version != 9.0 && version != 10.0 && version != 11.0 && version != 12.0 && version != 14.0 && version != 16.0 && version != 17.0 && version != 18.0 && version != 19.0 && version != 20.0 && version != 21.0 && version != 22.0 && version != 25.0 && version != 26.0 && version != 27.0 && version != 28.0 && version != 29.0 && version != 30.0 && version != 31.0) throw new JSONException("Unsupported world version");
         requireOnlyKeys(root, "format", "version", "world");
         requireOnlyKeys(object, "id", "name", "description", "color", "objects");
         String id = requiredString(object, "id");
@@ -363,6 +366,8 @@ final class WorldStore {
                 if(world.formatVersion<11 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("bush") && (o.material.equals("spiky") || o.material.equals("tiered"))))throw new JSONException("Legacy export cannot replace bush variant");
                 if(world.formatVersion<10 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("bush") && (o.material.equals("flower") || o.material.equals("berry"))))throw new JSONException("Legacy export cannot replace bush variant");
                 if (world.formatVersion < 9 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("bush"))) throw new JSONException("Legacy export cannot replace bush");
+                if(world.formatVersion<19 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("road") && o.edge!=null))throw new JSONException("Legacy export cannot replace road direction");
+                if(world.formatVersion<12 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("road") && ("paving".equals(o.material)||"asphalt".equals(o.material))))throw new JSONException("Legacy export cannot replace road material");
                 if (world.formatVersion < 8 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("road"))) throw new JSONException("Legacy export cannot replace road data");
                 if(world.formatVersion<10 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("fence") && o.material!=null && !o.material.isEmpty()))throw new JSONException("Legacy export cannot replace fence variant");
                 if (world.formatVersion < 7 && existing.get(i).surfaces.stream().anyMatch(o -> o.type.equals("fence"))) throw new JSONException("Legacy export cannot replace fence data");
