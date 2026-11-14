@@ -27,6 +27,22 @@ final class TreePhenology {
         if(value==null || !value.matches("\\d{4}-\\d{2}-\\d{2}"))throw new Exception("Invalid date");
         try {LocalDate d=LocalDate.parse(value);if(!d.toString().equals(value))throw new Exception("Invalid date");return d;}catch(java.time.DateTimeException e){throw new Exception("Invalid date",e);}
     }
+    /** Requests the same UTC archive interval used by preview. */
+    static Result fetch(double latitude,double longitude) throws Exception {
+        if(!Double.isFinite(latitude) || !Double.isFinite(longitude) || Math.abs(latitude)>90 || Math.abs(longitude)>180)throw new Exception("Invalid location");
+        LocalDate today=LocalDate.now(java.time.ZoneOffset.UTC);
+        String url=String.format(java.util.Locale.US,"https://archive-api.open-meteo.com/v1/archive?latitude=%.5f&longitude=%.5f&start_date=%s&end_date=%s&hourly=temperature_2m&daily=temperature_2m_mean,precipitation_sum&timezone=UTC",latitude,longitude,today.minusDays(740),today.minusDays(7));
+        java.net.HttpURLConnection connection=(java.net.HttpURLConnection)new java.net.URL(url).openConnection();
+        connection.setConnectTimeout(9000);connection.setReadTimeout(15000);
+        try {
+            if(connection.getResponseCode()!=200)throw new Exception("Weather archive unavailable");
+            StringBuilder json=new StringBuilder();
+            try(java.io.BufferedReader reader=new java.io.BufferedReader(new java.io.InputStreamReader(connection.getInputStream(),java.nio.charset.StandardCharsets.UTF_8))) {
+                char[] buffer=new char[8192];int count;while((count=reader.read(buffer))!=-1){json.append(buffer,0,count);if(json.length()>4000000)throw new Exception("Weather archive too large");}
+            }
+            return calculate(new JSONObject(json.toString()),today,latitude);
+        } finally {connection.disconnect();}
+    }
     static Result calculate(JSONObject input,LocalDate today,double latitude) throws Exception {
         if(today==null || !Double.isFinite(latitude))throw new Exception("Invalid location or date");
         JSONObject daily=input.getJSONObject("daily"),hourly=input.getJSONObject("hourly");

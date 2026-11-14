@@ -265,6 +265,8 @@ public final class WeatherSkyView extends View {
     private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, houseWideImage, houseWideBackImage, portalImage, portalMarkerImage;
     private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron;
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
+    private Bitmap treeDormant,treeBananaFruitless,treeCoconutFruitless;
+    private TreePhenology.Result treePhenology;
     private Bitmap bushSpiky,bushTiered,bushRound,bushFlower,bushBerry,wildGrass,treeApple,treeOrange,treePear,treeGuava,treeStarfruit,treeMango,treeBanana,treeCoconut,sunflowerFront,sunflowerBack,sellingBoxClosed,sellingBoxOpen,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
     private final java.util.Set<String> openStorage = new java.util.HashSet<>();
     private final java.util.Map<String,Long> sellingOpenedAt = new java.util.HashMap<>();
@@ -330,6 +332,7 @@ public final class WeatherSkyView extends View {
         flowerSprites.put("hibiscus",BitmapFactory.decodeResource(getResources(),R.drawable.petals_hibiscus));
         flowerSprites.put("periwinkle",BitmapFactory.decodeResource(getResources(),R.drawable.petals_periwinkle));
         bushRound=BitmapFactory.decodeResource(getResources(),R.drawable.bush_round);bushFlower=BitmapFactory.decodeResource(getResources(),R.drawable.bush_flower);bushBerry=BitmapFactory.decodeResource(getResources(),R.drawable.bush_berry);
+        treeDormant=BitmapFactory.decodeResource(getResources(),R.drawable.tree_dormant);treeBananaFruitless=BitmapFactory.decodeResource(getResources(),R.drawable.tree_banana_fruitless);treeCoconutFruitless=BitmapFactory.decodeResource(getResources(),R.drawable.tree_coconut_fruitless);
         treeApple=BitmapFactory.decodeResource(getResources(),R.drawable.tree_apple);treeOrange=BitmapFactory.decodeResource(getResources(),R.drawable.tree_orange);treePear=BitmapFactory.decodeResource(getResources(),R.drawable.tree_pear);treeGuava=BitmapFactory.decodeResource(getResources(),R.drawable.tree_guava);treeStarfruit=BitmapFactory.decodeResource(getResources(),R.drawable.tree_starfruit);
         wildGrass=BitmapFactory.decodeResource(getResources(),R.drawable.wild_grass);bushSpiky=BitmapFactory.decodeResource(getResources(),R.drawable.bush_spiky);bushTiered=BitmapFactory.decodeResource(getResources(),R.drawable.bush_tiered);
         treeBanana=BitmapFactory.decodeResource(getResources(),R.drawable.tree_banana_simple);treeCoconut=BitmapFactory.decodeResource(getResources(),R.drawable.tree_coconut_small);sunflowerFront=BitmapFactory.decodeResource(getResources(),R.drawable.sunflower_front);sunflowerBack=BitmapFactory.decodeResource(getResources(),R.drawable.sunflower_back);treeMango=BitmapFactory.decodeResource(getResources(),R.drawable.tree_mango);mailboxBirdhouse=BitmapFactory.decodeResource(getResources(),R.drawable.mailbox_birdhouse);
@@ -383,6 +386,16 @@ public final class WeatherSkyView extends View {
         worldHouses.sort((a,b)->Integer.compare(a.column+a.row,b.column+b.row));invalidate();
     }
 
+    void setTreePhenology(TreePhenology.Result result) {
+        treePhenology=result;
+        setContentDescription("Langit pixel art dan pulau terapung. " + (result==null?"Tahap buah pohon belum diketahui.":"Tahap buah diperkirakan dari riwayat cuaca hingga "+result.lastDate+" UTC."));
+        invalidate();
+    }
+    String treeStage(String species) {return treePhenology==null?"unknown":treePhenology.stages.getOrDefault(species,"unknown");}
+    private Bitmap treeImage(WorldStore.SurfaceObject o) {
+        if(!"ripe".equals(treeStage(o.material)))return o.material.equals("banana")?treeBananaFruitless:o.material.equals("palm")?treeCoconutFruitless:treeDormant;
+        return o.material.equals("banana")?treeBanana:o.material.equals("palm")?treeCoconut:o.material.equals("apple")?treeApple:o.material.equals("orange")?treeOrange:o.material.equals("pear")?treePear:o.material.equals("guava")?treeGuava:o.material.equals("starfruit")?treeStarfruit:treeMango;
+    }
     void setWorldSurfaces(String worldId,java.util.List<WorldStore.SurfaceObject> objects) {
         String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;}
         worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects); invalidate();
@@ -407,7 +420,7 @@ public final class WeatherSkyView extends View {
             if(showCharacter && (depth>=characterColumn+characterRow)!=front) continue;
             if(!showCharacter && front) continue;
             Bitmap image; boolean mirror=false;
-            if(o.type.equals("tree")) image=o.material.equals("banana")?treeBanana:o.material.equals("palm")?treeCoconut:o.material.equals("apple")?treeApple:o.material.equals("orange")?treeOrange:o.material.equals("pear")?treePear:o.material.equals("guava")?treeGuava:o.material.equals("starfruit")?treeStarfruit:treeMango;
+            if(o.type.equals("tree")) image=treeImage(o);
             else if(o.type.equals("sunflower")) { image=(o.material.equals("N")||o.material.equals("W"))?sunflowerBack:sunflowerFront;mirror=o.material.equals("N")||o.material.equals("E"); }
             else if(o.type.equals("bush")) image=o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:o.material.equals("tiered")?bushTiered:o.material.equals("flower")?bushFlower:o.material.equals("berry")?bushBerry:bushRound;
             else if(o.type.equals("mailbox")) image=mailboxBirdhouse;
@@ -436,6 +449,14 @@ public final class WeatherSkyView extends View {
                 paint.setAlpha((int)(alpha*t));canvas.drawBitmap(image,null,g,paint);paint.setAlpha(255);
                 if(t>=1)sellingOpenedAt.remove(o.column+","+o.row);
             } else canvas.drawBitmap(image,null,g,paint);
+            if(o.type.equals("tree")) {
+                String stage=treeStage(o.material);
+                if(stage.equals("flower") || stage.equals("fruit")) {
+                    paint.setColor(stage.equals("flower")?Color.rgb(230,215,196):Color.rgb(160,183,125));paint.setAlpha(alpha);
+                    float[][] positions=(o.material.equals("banana")?new float[][]{{.68f,.68f},{.74f,.72f},{.79f,.68f}}:o.material.equals("palm")?new float[][]{{.51f,.43f},{.57f,.45f},{.62f,.44f}}:new float[][]{{.29f,.28f},{.61f,.21f},{.78f,.38f},{.38f,.52f},{.67f,.57f}});
+                    for(float[] p:positions){float x=g.left+g.width()*p[0],y=g.top+g.height()*p[1];canvas.drawRect(x-.7f,y-.7f,x+.7f,y+.7f,paint);}
+                }
+            }
             canvas.restoreToCount(saved);
         }
     }
@@ -461,6 +482,10 @@ public final class WeatherSkyView extends View {
     boolean storageBoxAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return false;float x=sx*SCENE_WIDTH/getWidth(),y=sy*SCENE_HEIGHT/getHeight();
         for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if((o.type.equals("storage-box")||o.type.equals("selling-box")) && surfaceSpriteBounds(o).contains(x,y))return true;}return false;
+    }
+    WorldStore.SurfaceObject treeAt(float sx,float sy) {
+        if(getWidth()<=0 || getHeight()<=0)return null;float x=sx*SCENE_WIDTH/getWidth(),y=sy*SCENE_HEIGHT/getHeight();
+        for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if(o.type.equals("tree") && surfaceSpriteBounds(o).contains(x,y))return o;}return null;
     }
     private void drawDecorativeFlowers(Canvas canvas) {
         paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);

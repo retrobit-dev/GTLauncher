@@ -27,7 +27,7 @@
     <string name="season_device_suffix"> · lokasi perangkat</string>
     <string name="location_permission_button">IZIN LOKASI</string>
     <string name="location_permission_title">Izin lokasi</string>
-    <string name="location_permission_explanation">GTLauncher menggunakan lokasi akurat untuk menyesuaikan cuaca dan perkiraan musim. Koordinat dikirim ke Open-Meteo untuk mendapatkan data cuaca. Jika izin tidak diberikan atau GPS tidak tersedia, lokasi cadangan Rembang digunakan.</string>
+    <string name="location_permission_explanation">GTLauncher menggunakan lokasi akurat untuk menyesuaikan cuaca, perkiraan musim, dan tahap buah pohon. Koordinat dikirim ke Open-Meteo untuk mendapatkan data cuaca. Jika izin tidak diberikan atau GPS tidak tersedia, lokasi cadangan Rembang digunakan.</string>
     <string name="location_permission_continue">Lanjut</string>
     <string name="location_permission_later">Nanti</string>
     <string name="location_permission_settings_unavailable">Pengaturan izin aplikasi tidak tersedia pada perangkat ini.</string>

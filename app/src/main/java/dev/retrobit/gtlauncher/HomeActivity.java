@@ -90,6 +90,7 @@ public class HomeActivity extends Activity {
     private final ExecutorService appLoader = Executors.newSingleThreadExecutor();
     private final ExecutorService weatherLoader = Executors.newSingleThreadExecutor();
     private final ExecutorService worldLoader = Executors.newSingleThreadExecutor();
+    private final ExecutorService treeLoader = Executors.newSingleThreadExecutor();
     private final List<AppEntry> apps = new ArrayList<>();
     private final float[] rotationMatrix = new float[9];
     private final float[] remappedRotationMatrix = new float[9];
@@ -123,6 +124,10 @@ public class HomeActivity extends Activity {
     private long seasonLastAttempt;
     private double seasonLatitude = Double.NaN, seasonLongitude = Double.NaN;
     private boolean seasonFallback;
+    private int treeRequestGeneration;
+    private long treeLastAttempt;
+    private double treeLatitude=Double.NaN,treeLongitude=Double.NaN;
+    private boolean treeFallback;
     private WeatherSkyView skyView;
     private WorldStore worldStore;
     private int portalWalkGeneration;
@@ -246,7 +251,13 @@ public class HomeActivity extends Activity {
                     else if(marker!=null) confirmPortalMarker(marker);
                     else if(portal!=null) walkToPortal(portal);
                     else if(skyView.storageBoxAt(event.getX(),event.getY())) Toast.makeText(this,"Dekati box, lalu ketuk tanda seru.",Toast.LENGTH_SHORT).show();
-                    else applyActiveWorld();
+                    else {
+                        WorldStore.SurfaceObject tree=skyView.treeAt(event.getX(),event.getY());
+                        if(tree!=null) {
+                            String stage=skyView.treeStage(tree.material),label=stage.equals("flower")?"berbunga":stage.equals("fruit")?"buah muda":stage.equals("ripe")?"buah matang":stage.equals("vegetative")?"belum berbuah":"belum diketahui (riwayat cuaca tidak tersedia)";
+                            Toast.makeText(this,"Tahap pohon: "+label+". Panen Android belum tersedia.",Toast.LENGTH_LONG).show();
+                        } else applyActiveWorld();
+                    }
                 }
                 return true;
             }
@@ -327,6 +338,8 @@ public class HomeActivity extends Activity {
         weatherRequestGeneration++;
         locationRequestGeneration++;
         seasonRequestGeneration++;
+        treeRequestGeneration++;
+        treeLoader.shutdownNow();
         mainHandler.removeCallbacksAndMessages(null);
         appLoader.shutdownNow();
         weatherLoader.shutdownNow();
@@ -1004,7 +1017,25 @@ public class HomeActivity extends Activity {
         }
     }
 
+    private void updateTreeSeasons(double latitude,double longitude,boolean fallback) {
+        boolean changed=!Double.isFinite(treeLatitude) || treeFallback!=fallback || Math.abs(latitude-treeLatitude)>.0005 || Math.abs(longitude-treeLongitude)>.0005;
+        if(!changed && System.currentTimeMillis()-treeLastAttempt<6L*60*60*1000)return;
+        int request=++treeRequestGeneration;treeLatitude=latitude;treeLongitude=longitude;treeFallback=fallback;treeLastAttempt=System.currentTimeMillis();
+        skyView.setTreePhenology(null);
+        treeLoader.execute(()->{
+            TreePhenology.Result result;try{result=TreePhenology.fetch(latitude,longitude);}catch(Exception e){result=null;}
+            final TreePhenology.Result value=result;
+            runOnUiThread(()->{
+                if(request!=treeRequestGeneration || isFinishing() || isDestroyed() || (!fallback && !hasPreciseLocationPermission()))return;
+                // On failure retry at the next regular weather refresh, not in a tight loop.
+                if(value==null)treeLastAttempt=System.currentTimeMillis()-6L*60*60*1000+WEATHER_REFRESH_INTERVAL_MS;
+                skyView.setTreePhenology(value);
+            });
+        });
+    }
+
     private void updateSeason(double latitude, double longitude, boolean fallback) {
+        updateTreeSeasons(latitude,longitude,fallback);
         boolean changed = !Double.isFinite(seasonLatitude) || seasonFallback != fallback || Math.abs(latitude-seasonLatitude)>0.02 || Math.abs(longitude-seasonLongitude)>0.02;
         if (!changed && System.currentTimeMillis()-seasonLastAttempt < 6L*60*60*1000) return;
         clearSeason(); seasonLatitude=latitude; seasonLongitude=longitude; seasonFallback=fallback; seasonLastAttempt=System.currentTimeMillis();
