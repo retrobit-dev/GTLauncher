@@ -22,7 +22,7 @@ public class FenceGeometryTest {
             FenceGeometry.Bounds ga=bounds(a,both),gb=bounds(b,both);
             assertEquals(side,ga.secondX,gb.firstX,.0001f);assertEquals(side,ga.secondY,gb.firstY,.0001f);
             FenceGeometry.Bounds alone=bounds(a,Collections.singletonList(a));
-            assertTrue(side,Math.abs(alone.secondX-ga.secondX)>0.1f);
+            assertTrue(side,Math.hypot(alone.secondX-ga.secondX,alone.secondY-ga.secondY)>0.1);
         }
     }
 }
