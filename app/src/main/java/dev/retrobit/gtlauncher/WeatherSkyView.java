@@ -588,18 +588,31 @@ public final class WeatherSkyView extends View {
     private RectF groundPortalBounds(PortalTravel.Portal portal) {
         float cx=SCENE_WIDTH/2f+(portal.tile.column-portal.tile.row)*ISLAND_TILE_WIDTH/2f;
         float cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(portal.tile.column+portal.tile.row)*ISLAND_TILE_HEIGHT/2f;
-        return new RectF(cx-ISLAND_TILE_WIDTH*.5f,cy-ISLAND_TILE_HEIGHT*.5f,cx+ISLAND_TILE_WIDTH*.5f,cy+ISLAND_TILE_HEIGHT*.5f);
+        return new RectF(cx-ISLAND_TILE_WIDTH/3f,cy-ISLAND_TILE_HEIGHT/3f,cx+ISLAND_TILE_WIDTH/3f,cy+ISLAND_TILE_HEIGHT/3f);
+    }
+    private static void portalDiamond(Path path,RectF g,float scale) {
+        float cx=g.centerX(),cy=g.centerY(),hw=g.width()*scale/2f,hh=g.height()*scale/2f;
+        path.moveTo(cx,cy-hh);path.lineTo(cx+hw,cy);path.lineTo(cx,cy+hh);path.lineTo(cx-hw,cy);path.close();
+    }
+    private static PointF portalOutlinePoint(RectF g,float time) {
+        float t=((time%4)+4)%4;int index=(int)t;float f=t-index,cx=g.centerX(),cy=g.centerY(),hw=g.width()*.42f,hh=g.height()*.42f;
+        float[] xs={cx,cx+hw,cx,cx-hw,cx},ys={cy-hh,cy,cy+hh,cy,cy-hh};
+        return new PointF(xs[index]*(1-f)+xs[index+1]*f,ys[index]*(1-f)+ys[index+1]*f);
     }
     private void drawPortals(Canvas canvas, boolean front) {
         if(front)return;
-        paint.setColor(Color.rgb(85,197,172));paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(1f);paint.setStrokeJoin(Paint.Join.MITER);
         for(PortalTravel.Portal portal:worldPortals) {
-            paint.setAlpha(Math.round(255*(100-Math.max(0,portal.opacity))/100f));
-            RectF g=groundPortalBounds(portal);Path outline=new Path();
-            outline.moveTo(g.centerX(),g.top);outline.lineTo(g.right,g.centerY());outline.lineTo(g.centerX(),g.bottom);outline.lineTo(g.left,g.centerY());outline.close();
-            canvas.drawPath(outline,paint);
+            int alpha=Math.round(255*(100-Math.max(0,portal.opacity))/100f);RectF g=groundPortalBounds(portal);
+            Path outline=new Path();outline.setFillType(Path.FillType.EVEN_ODD);portalDiamond(outline,g,1f);portalDiamond(outline,g,.68f);
+            paint.setStyle(Paint.Style.FILL);paint.setColor(Color.rgb(54,159,146));paint.setAlpha(alpha);canvas.drawPath(outline,paint);
+            int save=canvas.save();canvas.clipPath(outline);
+            float start=animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled()?(float)((plantMotionSeconds*.4)%4):0f,end=start+.55f;
+            PointF point=portalOutlinePoint(g,start);Path highlight=new Path();highlight.moveTo(point.x,point.y);
+            for(int t=(int)Math.floor(start)+1;t<end;t++){point=portalOutlinePoint(g,t);highlight.lineTo(point.x,point.y);}
+            point=portalOutlinePoint(g,end);highlight.lineTo(point.x,point.y);
+            paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(2.5f);paint.setStrokeCap(Paint.Cap.ROUND);paint.setColor(Color.rgb(180,255,226));paint.setAlpha(alpha);canvas.drawPath(highlight,paint);canvas.restoreToCount(save);
         }
-        paint.setAlpha(255);paint.setStyle(Paint.Style.FILL);
+        paint.setAlpha(255);paint.setStyle(Paint.Style.FILL);paint.setStrokeCap(Paint.Cap.BUTT);
     }
     private RectF portalMarkerBounds(PortalTravel.Portal portal) {
         RectF g=groundPortalBounds(portal);float width=11f,height=13f;

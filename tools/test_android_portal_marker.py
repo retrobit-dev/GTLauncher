@@ -22,9 +22,11 @@ for name in ['bg_portal_dialog.xml','bg_portal_button.xml']:
 assert (root/'app/src/main/res/drawable-nodpi/portal_exclamation_red.png').read_bytes().startswith(b'\x89PNG\r\n\x1a\n')
 print('Android portal marker hit target and adventure-style confirmation: static checks OK')
 
-assert 'cx-ISLAND_TILE_WIDTH*.5f,cy-ISLAND_TILE_HEIGHT*.5f' in view
+assert 'cx-ISLAND_TILE_WIDTH/3f,cy-ISLAND_TILE_HEIGHT/3f' in view
 portal_draw=view.split('private void drawPortals(',1)[1].split('private RectF portalMarkerBounds(',1)[0]
 assert 'Paint.Style.STROKE' in portal_draw and 'canvas.drawPath(outline,paint)' in portal_draw
-assert 'outline.lineTo(g.right,g.centerY())' in portal_draw and 'outline.lineTo(g.left,g.centerY())' in portal_draw
+assert 'portalDiamond(outline,g,1f)' in portal_draw and 'portalDiamond(outline,g,.68f)' in portal_draw
+assert 'canvas.clipPath(outline)' in portal_draw and 'plantMotionSeconds*.4' in portal_draw
+assert 'ValueAnimator.areAnimatorsEnabled()' in portal_draw and 'Path.FillType.EVEN_ODD' in portal_draw
 assert 'drawBitmap' not in portal_draw and 'canvas.rotate' not in portal_draw
 assert 'Math.abs(dx)+Math.abs(dy)<=1f' in view
