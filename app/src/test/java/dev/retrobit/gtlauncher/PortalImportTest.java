@@ -166,6 +166,17 @@ public class PortalImportTest {
         String tree="{\"type\":\"tree\",\"column\":7,\"row\":1,\"species\":\"banana\"}";
         try {WorldStore.parseExport(world(first+","+second+","+tree).replace("\"version\":28","\"version\":31"));fail("second house collision");}catch(JSONException expected){}
     }
+    @Test public void inventoryTransfersAndProtectsBoxImport() throws JSONException {
+        SharedPreferences inventoryPrefs=prefs();inventoryPrefs.edit().putString("items_v1","[{\"name\":\"Apel\",\"quantity\":3}]").commit();
+        InventoryStore inventory=new InventoryStore(inventoryPrefs);String key=InventoryStore.boxKey("home",1,1);
+        assertTrue(inventory.transfer(key,"apel",2,true));assertEquals(1,inventory.bag().getJSONObject(0).getInt("quantity"));assertEquals(2,inventory.box(key).getJSONObject(0).getInt("quantity"));
+        String before=inventoryPrefs.getString("items_v1",null);try{inventory.transfer(key,"Apel",3,false);fail("cannot overdraw");}catch(JSONException expected){}assertEquals(before,inventoryPrefs.getString("items_v1",null));
+        WorldStore worlds=new WorldStore(prefs(),inventory);String box="{\"type\":\"storage-box\",\"column\":1,\"row\":1}";
+        assertTrue(worlds.upsertAndSelect(WorldStore.parseExport(world(box))));
+        try{worlds.upsertAndSelect(WorldStore.parseExport(world("")));fail("cannot remove filled box");}catch(JSONException expected){}
+        assertEquals(1,worlds.activeWorld().surfaces.size());assertTrue(inventory.transfer(key,"APEL",2,false));assertEquals(3,inventory.bag().getJSONObject(0).getInt("quantity"));assertTrue(worlds.upsertAndSelect(WorldStore.parseExport(world(""))));
+        inventoryPrefs.edit().putString("items_v1","{broken").commit();try{inventory.changeBag("Pir",1);fail("corrupt data");}catch(JSONException expected){}assertEquals("{broken",inventoryPrefs.getString("items_v1",null));
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {

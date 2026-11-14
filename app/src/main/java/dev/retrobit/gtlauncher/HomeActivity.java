@@ -75,7 +75,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /** A non-scrollable, weather-driven home screen with a separate app drawer. */
 public class HomeActivity extends Activity {
     private static final String INVENTORY_PREFS = "shared_inventory";
-    private static final String INVENTORY_KEY = "items_v1";
     private static final int COLOR_TEXT = Color.rgb(244, 246, 244);
     private static final int LOCATION_PERMISSION_REQUEST = 721;
     private static final int IMPORT_WORLD_REQUEST = 722;
@@ -213,7 +212,7 @@ public class HomeActivity extends Activity {
         resizeHudReadouts();
         skyView = (WeatherSkyView) homeScreen;
         skyView.setLocation(FALLBACK_LATITUDE, FALLBACK_LONGITUDE);
-        worldStore = new WorldStore(getSharedPreferences("worlds", MODE_PRIVATE));
+        worldStore = new WorldStore(getSharedPreferences("worlds", MODE_PRIVATE),new InventoryStore(getSharedPreferences(INVENTORY_PREFS,MODE_PRIVATE)));
         applyActiveWorld();
         drawerScreen = findViewById(R.id.app_drawer_screen);
         appCountView = findViewById(R.id.app_count);
@@ -428,32 +427,11 @@ public class HomeActivity extends Activity {
 
     // The bag belongs to the player, not a particular world. Invalid data is
     // never replaced with an empty inventory.
-    private JSONArray readBag() throws JSONException {
-        String raw=getSharedPreferences(INVENTORY_PREFS,MODE_PRIVATE).getString(INVENTORY_KEY,null);
-        if(raw==null)return new JSONArray();
-        JSONArray items=new JSONArray(raw);if(items.length()>100)throw new JSONException("too many items");
-        Set<String> names=new HashSet<>();
-        for(int i=0;i<items.length();i++) {
-            JSONObject item=items.getJSONObject(i);
-            Object nameValue=item.get("name"), quantityValue=item.get("quantity");
-            if(item.length()!=2 || !(nameValue instanceof String) || !(quantityValue instanceof Number))throw new JSONException("invalid item");
-            String name=(String)nameValue;double amount=((Number)quantityValue).doubleValue();
-            if(name.isEmpty() || !name.equals(name.trim()) || name.length()>40 || !Double.isFinite(amount) || amount<1 || amount>999999 || amount!=Math.floor(amount) || !names.add(name.toLowerCase(Locale.ROOT)))throw new JSONException("invalid item");
-        }
-        return items;
-    }
+    private InventoryStore inventoryStore() {return new InventoryStore(getSharedPreferences(INVENTORY_PREFS,MODE_PRIVATE));}
+    private JSONArray readBag() throws JSONException {return inventoryStore().bag();}
     private boolean changeBag(String name,int delta) {
-        try {
-            JSONArray old=readBag(), next=new JSONArray();boolean found=false;
-            for(int i=0;i<old.length();i++) {
-                JSONObject item=old.getJSONObject(i);String current=item.getString("name");int count=item.getInt("quantity");
-                if(current.equalsIgnoreCase(name)) {found=true;long result=(long)count+delta;if(result<0 || result>999999)throw new JSONException("Jumlah melebihi batas");if(result>0)next.put(new JSONObject().put("name",current).put("quantity",result));}
-                else next.put(item);
-            }
-            if(!found) {if(delta<=0 || old.length()>=100)throw new JSONException("Barang tidak ditemukan atau tas penuh");next.put(new JSONObject().put("name",name).put("quantity",delta));}
-            if(!getSharedPreferences(INVENTORY_PREFS,MODE_PRIVATE).edit().putString(INVENTORY_KEY,next.toString()).commit())throw new JSONException("Tidak dapat menyimpan");
-            return true;
-        } catch (JSONException | ClassCastException error) {Toast.makeText(this,"Tas tidak dapat dibaca atau disimpan. Data lama tidak ditimpa.",Toast.LENGTH_LONG).show();return false;}
+        try {if(!inventoryStore().changeBag(name,delta))throw new JSONException("Tidak dapat menyimpan");return true;}
+        catch (JSONException | ClassCastException error) {Toast.makeText(this,"Tas tidak dapat dibaca atau disimpan. Periksa data dan ruang penyimpanan.",Toast.LENGTH_LONG).show();return false;}
     }
     private void renderBag(LinearLayout items,TextView notice) {
         items.removeAllViews();
@@ -636,9 +614,35 @@ public class HomeActivity extends Activity {
             if(generation!=portalWalkGeneration) {skyView.setSellingOpen(box,false);return;}
             LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(18),dp(18),dp(18),dp(18));panel.setBackgroundResource(R.drawable.bg_portal_dialog);
             TextView title=new TextView(this);title.setText(box.type.equals("selling-box")?"Selling box":"Storage box");title.setTextColor(Color.rgb(52,43,30));title.setTextSize(12);title.setTypeface(getResources().getFont(R.font.press_start_2p));panel.addView(title);
-            TextView content=new TextView(this);content.setText(box.type.equals("selling-box")?"Tas: buka melalui ikon tas. Transfer belum tersedia.\n\nBarang dijual: belum ada barang.\n\nPenjualan dan saldo belum tersedia. Tidak ada barang yang dipindahkan.":"Tas: buka melalui ikon tas. Transfer belum tersedia.\n\nPenyimpanan: belum ada barang.\n\nPenyimpanan barang belum tersedia. Tidak ada barang yang dipindahkan.");content.setTextColor(Color.rgb(52,43,30));content.setTextSize(10);content.setLineSpacing(dp(4),1f);content.setTypeface(getResources().getFont(R.font.press_start_2p));content.setPadding(0,dp(12),0,dp(12));panel.addView(content);
+            if(box.type.equals("selling-box")) {
+                TextView content=new TextView(this);content.setText("Penjualan dan saldo belum tersedia. Tidak ada barang yang dipindahkan.");content.setTextColor(Color.rgb(52,43,30));content.setPadding(0,dp(12),0,dp(12));panel.addView(content);
+            } else {
+                TextView notice=new TextView(this);notice.setTextColor(Color.rgb(52,43,30));panel.addView(notice);
+                TextView hint=new TextView(this);hint.setText("Pindahkan satu barang. Kosongkan box sebelum mengganti world. Isi tersimpan hanya di perangkat ini.");panel.addView(hint);
+                ScrollView scroll=new ScrollView(this);LinearLayout lists=new LinearLayout(this);lists.setOrientation(LinearLayout.VERTICAL);scroll.addView(lists);panel.addView(scroll,new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,dp(280)));
+                renderStorageLists(lists,notice,InventoryStore.boxKey(worldId,box.column,box.row));
+            }
             AlertDialog dialog=new AlertDialog.Builder(this).setView(panel).setPositiveButton("Tutup",(d,which)->d.dismiss()).create();dialog.setOnDismissListener(d->{if(worldId.equals(worldStore.activeId()))skyView.setSellingOpen(box,false);});dialog.show();
         },260);
+    }
+
+    private void renderStorageLists(LinearLayout lists,TextView notice,String key) {
+        lists.removeAllViews();
+        try {
+            InventoryStore inventory=inventoryStore();JSONArray bag=inventory.bag(),box=inventory.box(key);
+            for(int side=0;side<2;side++) {
+                final boolean toBox=side==0;JSONArray items=toBox?bag:box;
+                TextView title=new TextView(this);title.setText(toBox?"Tas":"Penyimpanan");title.setTextColor(Color.rgb(52,43,30));title.setTextSize(18);lists.addView(title);
+                if(items.length()==0){TextView empty=new TextView(this);empty.setText("Kosong");lists.addView(empty);}
+                for(int i=0;i<items.length();i++) {
+                    JSONObject item=items.getJSONObject(i);String name=item.getString("name");int count=item.getInt("quantity");
+                    LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);TextView label=new TextView(this);label.setText(name+" × "+count);label.setTextColor(Color.rgb(52,43,30));row.addView(label,new LinearLayout.LayoutParams(0,LinearLayout.LayoutParams.WRAP_CONTENT,1));
+                    Button action=new Button(this);action.setText(toBox?"Simpan 1":"Ambil 1");action.setContentDescription((toBox?"Simpan satu ":"Ambil satu ")+name);
+                    action.setOnClickListener(v->{try {if(!inventory.transfer(key,name,1,toBox))throw new JSONException("Gagal menyimpan");renderStorageLists(lists,notice,key);notice.setText("Barang dipindahkan.");}catch(JSONException | ClassCastException e){notice.setText("Transfer gagal. Periksa jumlah, batas, dan penyimpanan.");}});
+                    row.addView(action);lists.addView(row);
+                }
+            }
+        } catch(JSONException | ClassCastException e) {notice.setText("Data tas atau box tidak dapat dibaca. Data lama tidak ditimpa.");}
     }
 
     private void confirmPortalMarker(String id) {

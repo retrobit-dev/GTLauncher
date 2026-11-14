@@ -17,6 +17,7 @@ final class WorldStore {
     private static final String ACTIVE_KEY = "active_world_v1";
     static final String BASE_ID = "base";
     private final SharedPreferences prefs;
+    private final InventoryStore inventory;
 
     static final class SurfaceObject {
         final String type, edge, material, raw;
@@ -64,7 +65,8 @@ final class WorldStore {
         }
     }
 
-    WorldStore(SharedPreferences prefs) { this.prefs = prefs; }
+    WorldStore(SharedPreferences prefs) { this(prefs,null); }
+    WorldStore(SharedPreferences prefs,InventoryStore inventory) {this.prefs=prefs;this.inventory=inventory;}
 
     private static String requiredString(JSONObject object, String key) throws JSONException {
         Object value = object.get(key);
@@ -368,6 +370,11 @@ final class WorldStore {
 
     boolean upsertAndSelect(World world) throws JSONException {
         List<World> existing = list(); // Never overwrite unreadable stored data.
+        if(inventory!=null)for(World old:existing)if(old.id.equals(world.id))for(SurfaceObject box:old.surfaces)if(box.type.equals("storage-box")) {
+            boolean retained=false;for(SurfaceObject replacement:world.surfaces)if(replacement.type.equals("storage-box") && replacement.column==box.column && replacement.row==box.row)retained=true;
+            if(!retained && inventory.box(InventoryStore.boxKey(old.id,box.column,box.row)).length()>0)throw new JSONException("Kosongkan storage box sebelum mengganti world");
+        }
+
         boolean found = false;
         for (int i = 0; i < existing.size(); i++) {
             if (existing.get(i).id.equals(world.id)) {
