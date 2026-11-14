@@ -267,6 +267,7 @@ public final class WeatherSkyView extends View {
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
     private Bitmap treeDormant,treeBananaFruitless,treeCoconutFruitless;
     private TreePhenology.Result treePhenology;
+    private java.util.Set<String> harvestedTrees=java.util.Collections.emptySet();
     private Bitmap bushSpiky,bushTiered,bushRound,bushFlower,bushBerry,wildGrass,treeApple,treeOrange,treePear,treeGuava,treeStarfruit,treeMango,treeBanana,treeCoconut,sunflowerFront,sunflowerBack,sellingBoxClosed,sellingBoxOpen,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
     private final java.util.Set<String> openStorage = new java.util.HashSet<>();
     private final java.util.Map<String,Long> sellingOpenedAt = new java.util.HashMap<>();
@@ -392,8 +393,10 @@ public final class WeatherSkyView extends View {
         invalidate();
     }
     String treeStage(String species) {return treePhenology==null?"unknown":treePhenology.stages.getOrDefault(species,"unknown");}
+    void setHarvestedTrees(java.util.Set<String> trees) {harvestedTrees=new java.util.HashSet<>(trees);invalidate();}
+    private boolean isHarvested(WorldStore.SurfaceObject tree) {return harvestedTrees.contains(InventoryStore.treeKey(surfaceWorldId,tree.column,tree.row,tree.material));}
     private Bitmap treeImage(WorldStore.SurfaceObject o) {
-        if(!"ripe".equals(treeStage(o.material)))return o.material.equals("banana")?treeBananaFruitless:o.material.equals("palm")?treeCoconutFruitless:treeDormant;
+        if(!"ripe".equals(treeStage(o.material)) || isHarvested(o))return o.material.equals("banana")?treeBananaFruitless:o.material.equals("palm")?treeCoconutFruitless:treeDormant;
         return o.material.equals("banana")?treeBanana:o.material.equals("palm")?treeCoconut:o.material.equals("apple")?treeApple:o.material.equals("orange")?treeOrange:o.material.equals("pear")?treePear:o.material.equals("guava")?treeGuava:o.material.equals("starfruit")?treeStarfruit:treeMango;
     }
     void setWorldSurfaces(String worldId,java.util.List<WorldStore.SurfaceObject> objects) {

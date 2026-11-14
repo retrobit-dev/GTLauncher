@@ -177,6 +177,19 @@ public class PortalImportTest {
         assertEquals(1,worlds.activeWorld().surfaces.size());assertTrue(inventory.transfer(key,"APEL",2,false));assertEquals(3,inventory.bag().getJSONObject(0).getInt("quantity"));assertTrue(worlds.upsertAndSelect(WorldStore.parseExport(world(""))));
         inventoryPrefs.edit().putString("items_v1","{broken").commit();try{inventory.changeBag("Pir",1);fail("corrupt data");}catch(JSONException expected){}assertEquals("{broken",inventoryPrefs.getString("items_v1",null));
     }
+    @Test public void harvestPersistsAtomicallyWithBoxAndBlocksRepeatedCycles() throws JSONException {
+        SharedPreferences prefs=prefs();prefs.edit().putString("items_v1","[{\"name\":\"Apel\",\"quantity\":2}]").commit();InventoryStore inventory=new InventoryStore(prefs);
+        String box=InventoryStore.boxKey("home",1,1),tree=InventoryStore.treeKey("home",2,2,"apple");
+        assertTrue(inventory.transfer(box,"Apel",1,true));assertTrue(inventory.harvest(tree,"2026-01-01","Apel"));assertEquals(2,inventory.bag().getJSONObject(0).getInt("quantity"));assertEquals(1,inventory.box(box).getJSONObject(0).getInt("quantity"));
+        String before=prefs.getString("items_v1",null);assertTrue(new InventoryStore(prefs).wasHarvested(tree,"2026-01-01"));
+        try{inventory.harvest(tree,"2026-01-01","Apel");fail("duplicate");}catch(JSONException expected){}assertEquals(before,prefs.getString("items_v1",null));
+        try{inventory.harvest(tree,"2025-12-31","Apel");fail("older cycle");}catch(JSONException expected){}
+        try{inventory.harvest(tree,"2026-02-30","Apel");fail("invalid date");}catch(JSONException expected){}
+        assertTrue(inventory.harvest(tree,"2026-03-01","Apel"));assertEquals(3,inventory.bag().getJSONObject(0).getInt("quantity"));assertEquals(1,inventory.box(box).length());
+        assertTrue(inventory.transfer(box,"Apel",1,false));assertTrue(inventory.wasHarvested(tree,"2026-03-01"));
+        SharedPreferences full=prefs();full.edit().putString("items_v1","[{\"name\":\"Apel\",\"quantity\":999999}]").commit();InventoryStore fullInventory=new InventoryStore(full);before=full.getString("items_v1",null);
+        try{fullInventory.harvest(tree,"2026-01-01","Apel");fail("full stack");}catch(JSONException expected){}assertEquals(before,full.getString("items_v1",null));assertFalse(fullInventory.wasHarvested(tree,"2026-01-01"));
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {

@@ -128,6 +128,7 @@ public class HomeActivity extends Activity {
     private long treeLastAttempt;
     private double treeLatitude=Double.NaN,treeLongitude=Double.NaN;
     private boolean treeFallback;
+    private TreePhenology.Result treePhenology;
     private WeatherSkyView skyView;
     private WorldStore worldStore;
     private int portalWalkGeneration;
@@ -254,8 +255,7 @@ public class HomeActivity extends Activity {
                     else {
                         WorldStore.SurfaceObject tree=skyView.treeAt(event.getX(),event.getY());
                         if(tree!=null) {
-                            String stage=skyView.treeStage(tree.material),label=stage.equals("flower")?"berbunga":stage.equals("fruit")?"buah muda":stage.equals("ripe")?"buah matang":stage.equals("vegetative")?"belum berbuah":"belum diketahui (riwayat cuaca tidak tersedia)";
-                            Toast.makeText(this,"Tahap pohon: "+label+". Panen Android belum tersedia.",Toast.LENGTH_LONG).show();
+                            interactTree(tree);
                         } else applyActiveWorld();
                     }
                 }
@@ -422,6 +422,7 @@ public class HomeActivity extends Activity {
             skyView.setWorldIslandTint(world == null ? null : Color.parseColor(world.color));
             skyView.setWorldPortals(world == null ? null : world.portals);
             skyView.setWorldSurfaces(world == null ? null : world.id,world == null ? null : world.surfaces);
+            refreshHarvestDisplay(world);
             skyView.setWorldHouses(world == null ? null : world.houses);
             skyView.setWorldCharacter(world != null && world.showCharacter,
                     world == null ? 4 : world.characterColumn, world == null ? 4 : world.characterRow,
@@ -586,6 +587,58 @@ public class HomeActivity extends Activity {
             }
         };
     }
+    private void refreshHarvestDisplay() {
+        try {refreshHarvestDisplay(worldStore.activeWorld());}
+        catch(JSONException | ClassCastException e){skyView.setHarvestedTrees(java.util.Collections.emptySet());}
+    }
+    private void refreshHarvestDisplay(WorldStore.World world) {
+        java.util.Set<String> harvested=new java.util.HashSet<>();
+        if(world!=null && treePhenology!=null)for(WorldStore.SurfaceObject tree:world.surfaces)if(tree.type.equals("tree")) {
+            String cycle=treePhenology.fruitCycles.get(tree.material),key=InventoryStore.treeKey(world.id,tree.column,tree.row,tree.material);
+            if(cycle!=null)try {if(inventoryStore().wasHarvested(key,cycle))harvested.add(key);}catch(JSONException | ClassCastException e){harvested.add(key);}
+        }
+        skyView.setHarvestedTrees(harvested);
+    }
+    private String fruitName(String species) {
+        switch(species){case "apple":return "Apel";case "pear":return "Pir";case "orange":return "Jeruk";case "mango":return "Mangga";case "guava":return "Jambu biji";case "starfruit":return "Belimbing";case "banana":return "Pisang";case "palm":return "Kelapa";default:return null;}
+    }
+    private void interactTree(WorldStore.SurfaceObject tree) {
+        try {
+            WorldStore.World world=worldStore.activeWorld();if(world==null || !world.showCharacter){Toast.makeText(this,"Karakter tidak tersedia.",Toast.LENGTH_SHORT).show();return;}
+            String stage=skyView.treeStage(tree.material),cycle=treePhenology==null?null:treePhenology.fruitCycles.get(tree.material),name=fruitName(tree.material);
+            if(!stage.equals("ripe") || cycle==null || name==null){String label=stage.equals("flower")?"berbunga":stage.equals("fruit")?"buah muda":stage.equals("vegetative")?"belum berbuah":"belum diketahui (riwayat cuaca tidak tersedia)";Toast.makeText(this,"Tahap pohon: "+label+".",Toast.LENGTH_LONG).show();return;}
+            String key=InventoryStore.treeKey(world.id,tree.column,tree.row,tree.material);
+            if(inventoryStore().wasHarvested(key,cycle)){Toast.makeText(this,"Buah siklus ini sudah dipanen.",Toast.LENGTH_SHORT).show();return;}
+            int size=(tree.material.equals("banana") || tree.material.equals("palm"))?1:2;
+            int dx=Math.max(Math.max(tree.column-world.characterColumn,0),world.characterColumn-(tree.column+size-1));
+            int dy=Math.max(Math.max(tree.row-world.characterRow,0),world.characterRow-(tree.row+size-1));
+            if(dx+dy!=1){walkNearTree(world,tree,size);return;}
+            if(!inventoryStore().harvest(key,cycle,name))throw new JSONException("Save failed");
+            refreshHarvestDisplay(world);Toast.makeText(this,"Panen berhasil: 1 "+name+" masuk ke tas.",Toast.LENGTH_LONG).show();
+        } catch(JSONException | ClassCastException e) {Toast.makeText(this,"Panen gagal. Periksa tas dan penyimpanan.",Toast.LENGTH_LONG).show();}
+    }
+    private void walkNearTree(WorldStore.World world,WorldStore.SurfaceObject tree,int size) {
+        PortalTravel.Terrain terrain=portalTerrain(world);PortalTravel.Tile start=new PortalTravel.Tile(world.characterColumn,world.characterRow);
+        java.util.List<PortalTravel.Tile> best=null;
+        for(int row=Math.max(0,tree.row-1);row<=Math.min(8,tree.row+size);row++)for(int column=Math.max(0,tree.column-1);column<=Math.min(8,tree.column+size);column++) {
+            int dx=Math.max(Math.max(tree.column-column,0),column-(tree.column+size-1)),dy=Math.max(Math.max(tree.row-row,0),row-(tree.row+size-1));if(dx+dy!=1)continue;
+            java.util.List<PortalTravel.Tile> route=PortalTravel.path(start,new PortalTravel.Tile(column,row),terrain);
+            if(route!=null && (best==null || route.size()<best.size()))best=route;
+        }
+        if(best==null){Toast.makeText(this,"Jalan menuju pohon terhalang.",Toast.LENGTH_SHORT).show();return;}
+        int generation=++portalWalkGeneration;skyView.setPortalWalkActive(true);walkToTreeStep(world,best,1,generation,world.characterFacing);
+    }
+    private void walkToTreeStep(WorldStore.World world,java.util.List<PortalTravel.Tile> route,int index,int generation,String facing) {
+        if(generation!=portalWalkGeneration || isFinishing() || isDestroyed() || !world.id.equals(worldStore.activeId()))return;
+        if(index>=route.size()) {
+            try{PortalTravel.Tile end=route.get(route.size()-1);if(!worldStore.moveCharacter(world.id,end.column,end.row,facing))throw new JSONException("Move failed");skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Ketuk pohon lagi untuk panen.",Toast.LENGTH_SHORT).show();}
+            catch(JSONException e){skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Karakter tidak dapat dipindahkan.",Toast.LENGTH_SHORT).show();}return;
+        }
+        PortalTravel.Tile previous=route.get(index-1),next=route.get(index);String direction=next.column>previous.column?"E":next.column<previous.column?"W":next.row>previous.row?"S":"N";
+        skyView.setWorldCharacter(true,next.column,next.row,(float)world.characterScale,direction);
+        mainHandler.postDelayed(()->walkToTreeStep(world,route,index+1,generation,direction),180);
+    }
+
     private void walkToPortal(String id) {
         try {
             WorldStore.World source=worldStore.activeWorld(), target=null; PortalTravel.Portal from=null,to=null;
@@ -1021,7 +1074,7 @@ public class HomeActivity extends Activity {
         boolean changed=!Double.isFinite(treeLatitude) || treeFallback!=fallback || Math.abs(latitude-treeLatitude)>.0005 || Math.abs(longitude-treeLongitude)>.0005;
         if(!changed && System.currentTimeMillis()-treeLastAttempt<6L*60*60*1000)return;
         int request=++treeRequestGeneration;treeLatitude=latitude;treeLongitude=longitude;treeFallback=fallback;treeLastAttempt=System.currentTimeMillis();
-        skyView.setTreePhenology(null);
+        treePhenology=null;skyView.setTreePhenology(null);refreshHarvestDisplay();
         treeLoader.execute(()->{
             TreePhenology.Result result;try{result=TreePhenology.fetch(latitude,longitude);}catch(Exception e){result=null;}
             final TreePhenology.Result value=result;
@@ -1029,7 +1082,7 @@ public class HomeActivity extends Activity {
                 if(request!=treeRequestGeneration || isFinishing() || isDestroyed() || (!fallback && !hasPreciseLocationPermission()))return;
                 // On failure retry at the next regular weather refresh, not in a tight loop.
                 if(value==null)treeLastAttempt=System.currentTimeMillis()-6L*60*60*1000+WEATHER_REFRESH_INTERVAL_MS;
-                skyView.setTreePhenology(value);
+                treePhenology=value;skyView.setTreePhenology(value);refreshHarvestDisplay();
             });
         });
     }

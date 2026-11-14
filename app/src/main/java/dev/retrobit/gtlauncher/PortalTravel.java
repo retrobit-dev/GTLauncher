@@ -58,12 +58,17 @@ final class PortalTravel {
     static List<Tile> pathToPortal(Tile start, Portal source, Terrain terrain) {
         if (!validTile(start) || !isPortalOnEdge(source) || terrain == null
                 || !terrain.canStand(start.column, start.row) || !terrain.canStand(source.tile.column, source.tile.row)) return null;
+        return path(start,source.tile,terrain);
+    }
+    /** Path to an exact tile, respecting every obstacle and boundary. */
+    static List<Tile> path(Tile start,Tile destination,Terrain terrain) {
+        if(!validTile(start) || !validTile(destination) || terrain==null || !terrain.canStand(start.column,start.row) || !terrain.canStand(destination.column,destination.row))return null;
         Tile[][] previous = new Tile[SIZE][SIZE]; boolean[][] visited = new boolean[SIZE][SIZE];
         ArrayDeque<Tile> queue = new ArrayDeque<>(); queue.add(start); visited[start.row][start.column] = true;
         final int[][] steps = {{0,-1},{1,0},{0,1},{-1,0}};
         while (!queue.isEmpty()) {
             Tile current = queue.remove();
-            if (current.equals(source.tile)) {
+            if (current.equals(destination)) {
                 ArrayList<Tile> route = new ArrayList<>();
                 for (Tile p=current; p!=null; p=previous[p.row][p.column]) route.add(p);
                 Collections.reverse(route); return route;

@@ -30,15 +30,33 @@ final class InventoryStore {
         if(value instanceof JSONArray)state=new JSONObject().put("version",2).put("bag",value).put("boxes",new JSONObject());
         else if(value instanceof JSONObject)state=(JSONObject)value;
         else throw new JSONException("Invalid inventory");
-        if(state.length()!=3 || !(state.opt("version") instanceof Number) || ((Number)state.opt("version")).doubleValue()!=2)throw new JSONException("Invalid inventory version");
+        Object versionValue=state.opt("version");if(!(versionValue instanceof Number))throw new JSONException("Invalid inventory version");
+        double version=((Number)versionValue).doubleValue();if(!((version==2 && state.length()==3) || (version==3 && state.length()==4)))throw new JSONException("Invalid inventory version");
         JSONArray bag=state.getJSONArray("bag");JSONObject boxes=state.getJSONObject("boxes");validateItems(bag);
         java.util.Iterator<String> keys=boxes.keys();while(keys.hasNext()){String key=keys.next();validateBoxKey(key);validateItems(boxes.getJSONArray(key));}
+        if(version==3){JSONObject harvests=state.getJSONObject("harvests");java.util.Iterator<String> ids=harvests.keys();while(ids.hasNext()){String id=ids.next();validateBoxKey(id);Object cycle=harvests.get(id);if(!(cycle instanceof String) || !validCycle((String)cycle))throw new JSONException("Invalid harvest history");}}
         return state;
     }
     private static void validateBoxKey(String key) throws JSONException {if(key==null || key.isEmpty() || key.length()>200)throw new JSONException("Invalid box");}
     static String boxKey(String worldId,int column,int row){return worldId+":"+column+","+row;}
     JSONArray bag() throws JSONException {return readState().getJSONArray("bag");}
     JSONArray box(String key) throws JSONException {validateBoxKey(key);JSONObject boxes=readState().getJSONObject("boxes");return boxes.has(key)?boxes.getJSONArray(key):new JSONArray();}
+    static String treeKey(String worldId,int column,int row,String species){return boxKey(worldId,column,row)+":"+species;}
+    private static boolean validCycle(String cycle) {
+        if(cycle==null || !cycle.matches("\\d{4}-\\d{2}-\\d{2}"))return false;
+        try{return java.time.LocalDate.parse(cycle).toString().equals(cycle);}catch(java.time.DateTimeException e){return false;}
+    }
+    boolean wasHarvested(String key,String cycle) throws JSONException {
+        validateBoxKey(key);if(!validCycle(cycle))throw new JSONException("Invalid cycle");JSONObject state=readState();
+        if(state.getInt("version")<3)return false;JSONObject history=state.getJSONObject("harvests");return history.has(key) && history.getString(key).compareTo(cycle)>=0;
+    }
+    boolean harvest(String key,String cycle,String itemName) throws JSONException {
+        validateBoxKey(key);if(!validCycle(cycle))throw new JSONException("Invalid cycle");JSONObject state=readState();
+        JSONObject history=state.getInt("version")==3?state.getJSONObject("harvests"):new JSONObject();
+        if(history.has(key) && history.getString(key).compareTo(cycle)>=0)throw new JSONException("Already harvested");
+        JSONArray updated=adjust(state.getJSONArray("bag"),itemName,1);
+        history.put(key,cycle);state.put("bag",updated);state.put("harvests",history);state.put("version",3);return save(state);
+    }
     private static JSONArray adjust(JSONArray items,String name,int delta) throws JSONException {
         if(name==null || name.isEmpty() || !name.equals(name.trim()) || name.length()>40 || delta==0)throw new JSONException("Invalid change");
         JSONArray next=new JSONArray();boolean found=false;

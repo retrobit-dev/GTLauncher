@@ -32,6 +32,15 @@ public class PortalTravelTest {
         assertNull(PortalTravel.pathToPortal(new PortalTravel.Tile(6,2),home,closed));
         assertEquals(1,PortalTravel.pathToPortal(north,home,closed).size());
     }
+    @Test public void pathToOrdinaryTileRespectsEdgesAndOccupancy() {
+        PortalTravel.Terrain blocked=new PortalTravel.Terrain(){
+            public boolean canStand(int c,int r){return !(c==2 && r==1);}
+            public boolean canStep(int c,int r,int x,int y){return !(c==1 && r==1 && x==1 && y==2);}
+        };
+        List<PortalTravel.Tile> path=PortalTravel.path(new PortalTravel.Tile(1,1),new PortalTravel.Tile(3,1),blocked);
+        assertNotNull(path);assertFalse(path.contains(new PortalTravel.Tile(2,1)));assertEquals(new PortalTravel.Tile(3,1),path.get(path.size()-1));
+        assertNull(PortalTravel.path(new PortalTravel.Tile(1,1),new PortalTravel.Tile(2,1),blocked));assertNull(PortalTravel.path(new PortalTravel.Tile(1,1),new PortalTravel.Tile(-1,1),blocked));
+    }
     @Test public void confirmChecksFrontPairAndDestinationOccupancy() {
         assertTrue(PortalTravel.canTravel(home,farm,north,clear));
         assertFalse(PortalTravel.canTravel(home,farm,new PortalTravel.Tile(6,1),clear));
