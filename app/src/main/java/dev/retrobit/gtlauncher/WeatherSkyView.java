@@ -560,9 +560,9 @@ public final class WeatherSkyView extends View {
         for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("road")) {
             float cx=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
             boolean water="water".equals(o.material);float[][] outline=RoadGeometry.outline(o.column,o.row,water,this::hasRoad);
-            int base=Color.parseColor(o.material.equals("dirt")?"#dba34b":o.material.equals("stone")?"#727b74":o.material.equals("gravel")?"#b4a993":o.material.equals("paving")?"#746d5e":o.material.equals("asphalt")?"#59625e":"#719fa1");
-            int light=Color.parseColor(o.material.equals("dirt")?"#efbe62":o.material.equals("stone")?"#a6ada3":o.material.equals("gravel")?"#d2c8b3":o.material.equals("paving")?"#aaa18f":o.material.equals("asphalt")?"#747e75":"#a8c7bc");
-            int dark=Color.parseColor(o.material.equals("dirt")?"#b67e38":o.material.equals("stone")?"#899187":o.material.equals("gravel")?"#8e8575":o.material.equals("paving")?"#968d7d":o.material.equals("asphalt")?"#454d4a":"#588487");
+            int base=Color.parseColor(o.material.equals("dirt")?"#cdbb99":o.material.equals("stone")?"#727b74":o.material.equals("gravel")?"#b4a993":o.material.equals("paving")?"#746d5e":o.material.equals("asphalt")?"#59625e":"#719fa1");
+            int light=Color.parseColor(o.material.equals("dirt")?"#ded0b2":o.material.equals("stone")?"#a6ada3":o.material.equals("gravel")?"#d2c8b3":o.material.equals("paving")?"#aaa18f":o.material.equals("asphalt")?"#747e75":"#a8c7bc");
+            int dark=Color.parseColor(o.material.equals("dirt")?"#a99476":o.material.equals("stone")?"#899187":o.material.equals("gravel")?"#8e8575":o.material.equals("paving")?"#968d7d":o.material.equals("asphalt")?"#454d4a":"#588487");
             paint.setStyle(Paint.Style.FILL);paint.setAlpha(255);
             // At the island front, continue the path down the visible grass rim.
             for(int side=0;side<2;side++)if((side==0 && o.row==8)||(side==1 && o.column==8)) {
@@ -1311,7 +1311,7 @@ public final class WeatherSkyView extends View {
         if (code >= 95) weatherShade = Math.max(weatherShade, 0.34);
         SkyAtmosphere atmosphere = skyAtmosphere(sunAltitude, cloudCover, code);
 
-        int grass = blend(Color.rgb(63, 79, 40), Color.rgb(124, 157, 44), daylight);
+        int grass = blend(Color.rgb(56, 76, 67), Color.rgb(145, 173, 145), daylight);
         grass = blend(grass, Color.rgb(195, 157, 96), twilight * 0.25);
         grass = blend(grass, Color.rgb(120, 131, 111), weatherShade);
         boolean wet = (code >= 51 && code <= 67) || (code >= 80 && code <= 82);
@@ -1320,17 +1320,17 @@ public final class WeatherSkyView extends View {
 
         int grassDark = blend(grass, Color.rgb(45, 73, 56), 0.24);
         double grassTileMix = (0.18 + daylight * 0.77) * (1.0 - weatherShade * 0.30);
-        int grassTileSoftFern = blend(grass, Color.rgb(164, 207, 54), grassTileMix);
-        int grassTileFernSage = blend(grass, Color.rgb(148, 189, 43), grassTileMix);
+        int grassTileSoftFern = blend(grass, Color.rgb(150, 179, 151), grassTileMix);
+        int grassTileFernSage = blend(grass, Color.rgb(139, 167, 140), grassTileMix);
         int grassSeam = blend(grass, Color.rgb(49, 77, 55), 0.08);
-        int grassWall = blend(grass, Color.rgb(35, 72, 44), 0.28);
+        int grassWall = blend(grass, Color.rgb(88, 119, 97), 0.28);
 
-        int soil = blend(Color.rgb(50, 37, 28), Color.rgb(154, 74, 15), daylight);
+        int soil = blend(Color.rgb(74, 64, 54), Color.rgb(182, 161, 131), daylight);
         soil = blend(soil, Color.rgb(190, 116, 45), twilight * 0.24);
         soil = blend(soil, Color.rgb(91, 72, 55), weatherShade * 0.45);
         soil = blend(soil, atmosphere.tint, atmosphere.islandMix * 0.22);
-        int soilLight = blend(soil, Color.rgb(190, 106, 26), 0.20);
-        int soilDark = blend(soil, Color.rgb(58, 27, 7), 0.50);
+        int soilLight = blend(soil, Color.rgb(205, 187, 153), 0.20);
+        int soilDark = blend(soil, Color.rgb(96, 78, 64), 0.50);
         if (worldIslandTint != null && worldIslandTint != Color.rgb(168, 199, 149)
                 && worldIslandTint != Color.rgb(164, 207, 54)) {
             int tint = worldIslandTint;
@@ -1391,7 +1391,9 @@ public final class WeatherSkyView extends View {
             grassDetailSource.set(variant * 320, 0, variant * 320 + 320, 160);
             grassDetailDestination.set(centerX - ISLAND_TILE_WIDTH / 2f, centerY - ISLAND_TILE_HEIGHT / 2f,
                     centerX + ISLAND_TILE_WIDTH / 2f, centerY + ISLAND_TILE_HEIGHT / 2f);
+            grassDetailPaint.setAlpha((int)Math.round(255 * (0.45 + 0.55 * clamp(sunlight.strength * 2, 0, 1))));
             canvas.drawBitmap(grassDetail, grassDetailSource, grassDetailDestination, grassDetailPaint);
+            grassDetailPaint.setAlpha(255);
         }
     }
 
@@ -1570,7 +1572,7 @@ public final class WeatherSkyView extends View {
                                          float halfWidth, float halfHeight, float cornerRadius,
                                          int baseColor, IslandSunlight sunlight) {
         int tileColor = sunlight.strength > 0.015
-                ? blend(baseColor, Color.rgb(209, 228, 108), 0.10 * sunlight.strength)
+                ? blend(baseColor, Color.rgb(204, 222, 193), 0.10 * sunlight.strength)
                 : baseColor;
         drawSmoothIslandDiamond(canvas, centerX, centerY, halfWidth, halfHeight,
                 cornerRadius, tileColor, tileColor, 0, 0.0f);

@@ -8,10 +8,10 @@ const patterns=[[],[[55,36],[101,43]],[[76,28],[100,44],[55,46]],[[63,31],[88,47
 function tuft(x,y,variation){
  // A tiny V-shaped plant: paired leaves in soft spring greens, with a short darker stem.
  const flip=variation%2===0?1:-1;
- ctx.save();ctx.translate(x,y);ctx.scale(flip,1);
- ctx.fillStyle='rgba(76,120,55,0.62)';ctx.fillRect(-.5,0,1,3);ctx.fillRect(-1,2,2,1);
- ctx.fillStyle='rgba(113,163,67,0.78)';ctx.fillRect(-3,-1,2,2);ctx.fillRect(1,-2,2,2);ctx.fillRect(-2,1,2,1);ctx.fillRect(0,0,2,1);
- ctx.fillStyle='rgba(181,208,107,0.8)';ctx.fillRect(-3,-2,1,1);ctx.fillRect(2,-3,1,1);ctx.fillRect(-2,-1,1,1);ctx.fillRect(1,-2,1,1);
+ ctx.save();ctx.translate(x,y);ctx.scale(flip*2,2);
+ ctx.fillStyle='rgba(91,124,96,0.62)';ctx.fillRect(-.5,0,1,3);ctx.fillRect(-1,2,2,1);
+ ctx.fillStyle='rgba(111,146,120,0.78)';ctx.fillRect(-3,-1,2,2);ctx.fillRect(1,-2,2,2);ctx.fillRect(-2,1,2,1);ctx.fillRect(0,0,2,1);
+ ctx.fillStyle='rgba(196,216,183,0.8)';ctx.fillRect(-3,-2,1,1);ctx.fillRect(2,-3,1,1);ctx.fillRect(-2,-1,1,1);ctx.fillRect(1,-2,1,1);
  ctx.restore();
 }
 for(let frame=0;frame<4;frame++){
