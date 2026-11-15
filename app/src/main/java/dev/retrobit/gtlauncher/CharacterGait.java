@@ -11,6 +11,12 @@ final class CharacterGait {
     static float progress(long elapsed, int duration) {
         return Math.max(0f, Math.min(1f, (float)elapsed / duration));
     }
+    static float runBlend(int step, int totalSteps, float progress) {
+        if (!running(step,totalSteps)) return 0f;
+        float in = step == 2 ? progress * 4 : 1f;
+        float out = step == totalSteps - 1 ? (1f-progress) * 4 : 1f;
+        return Math.max(0f,Math.min(1f,Math.min(in,out)));
+    }
     static double phase(int step, float progress) {
         return (step - 1 + progress) * Math.PI * 2;
     }

@@ -857,7 +857,10 @@ public final class WeatherSkyView extends View {
             int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-Math.max(0,house.opacity))/100f));
             drawObjectContact(canvas,x,y,70*scale*(wide?7f/6:1),ISLAND_TILE_HEIGHT*2.5f*scale);paint.setAlpha(originalAlpha);
         }
-        if (showCharacter && sprite != null) {
+        float runFlight = characterStepping
+                ? CharacterGait.runBlend(stepIndex,stepCount,stepProgress())
+                    * (1f-(float)Math.abs(Math.sin(CharacterGait.phase(stepIndex,stepProgress())))) : 0f;
+        if (showCharacter && sprite != null && runFlight <= .25f) {
             float x = SCENE_WIDTH / 2.0f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2.0f;
             float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2.0f;
             drawObjectContact(canvas, x, y, 13.5f * characterScale, 5 * characterScale);
@@ -900,8 +903,9 @@ public final class WeatherSkyView extends View {
                 + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2.0f;
         float width = 13.5f * characterScale;
         float phase = characterStepping ? (float)Math.sin(CharacterGait.phase(stepIndex,stepProgress())) : 0f;
-        boolean running = characterStepping && CharacterGait.running(stepIndex,stepCount);
-        float idle = characterStepping ? Math.abs(phase)*(running ? .55f : .25f)*characterScale
+        float runBlend = characterStepping ? CharacterGait.runBlend(stepIndex,stepCount,stepProgress()) : 0f;
+        float flight = runBlend*(1-Math.abs(phase))*1.1f*characterScale;
+        float idle = characterStepping ? Math.abs(phase)*(.25f+.3f*runBlend)*characterScale
                 : (Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5f : 0.0f);
         float height = 25.0f * characterScale + idle;
         paint.setColor(Color.WHITE);
@@ -913,21 +917,36 @@ public final class WeatherSkyView extends View {
             canvas.drawBitmap(sprite, null, new RectF(x - width / 2, y - height, x + width / 2, y), paint);
         } else {
             int sw=sprite.getWidth(),sh=sprite.getHeight(),cut=(int)(sh*.78f),top=(int)(sh*.49f),arm=(int)(sw*.27f),split=sw/2;
-            float left=x-width/2, base=y-height, topH=height*top/sh, bodyH=height*cut/sh;
+            float left=x-width/2, base=y-height-flight, topH=height*top/sh, bodyH=height*cut/sh;
             float armW=width*arm/sw, armH=height*(cut-top)/sh, halfW=width*split/sw;
-            float swing=phase*(running?.65f:.4f)*characterScale;
             float screenX=("N".equals(characterFacing)||"E".equals(characterFacing))?1:-1;
             float screenY=("E".equals(characterFacing)||"S".equals(characterFacing))?1:-1;
-            float dx=phase*1.1f*characterScale*screenX*(mirror?-1:1),dy=phase*.55f*characterScale*screenY;
-            float lift=Math.abs(phase)*.45f*characterScale;
-            canvas.drawBitmap(sprite,new Rect(0,0,sw,top),new RectF(left,base,left+width,base+topH),paint);
-            canvas.drawBitmap(sprite,new Rect(arm,top,sw-arm,cut),new RectF(left+armW,base+topH,left+width-armW,base+topH+armH),paint);
-            canvas.drawBitmap(sprite,new Rect(0,top,arm,cut),new RectF(left-swing,base+topH-swing*.35f,left+armW-swing,base+topH+armH-swing*.35f),paint);
-            canvas.drawBitmap(sprite,new Rect(sw-arm,top,sw,cut),new RectF(left+width-armW+swing,base+topH+swing*.35f,left+width+swing,base+topH+armH+swing*.35f),paint);
+            float forward=screenX*(mirror?-1:1);
+            float dx=phase*(1.1f+1.3f*runBlend)*characterScale*forward;
+            float dy=phase*(.55f+.35f*runBlend)*characterScale*screenY;
+            float lift=Math.abs(phase)*(.45f+1.25f*runBlend)*characterScale;
+            float angle=(float)Math.toDegrees(phase*(.14f+.26f*runBlend)*forward);
+            int upper=canvas.save();
+            float lean=.10f*runBlend*forward;
+            canvas.translate(left+width/2+lean*bodyH,base);
+            canvas.skew(-lean,0);
+            canvas.drawBitmap(sprite,new Rect(0,0,sw,top),new RectF(-width/2,0,width/2,topH),paint);
+            int bodyRight=back?sw:sw-arm;
+            canvas.drawBitmap(sprite,new Rect(arm,top,bodyRight,cut),new RectF(-width/2+armW,topH,-width/2+width*bodyRight/sw,topH+armH),paint);
+            drawPivotedSleeve(canvas,sprite,0,top,arm,cut,-width/2+armW/2,topH,armW,armH,angle);
+            if(!back) drawPivotedSleeve(canvas,sprite,sw-arm,top,sw,cut,width/2-armW/2,topH,armW,armH,-angle);
+            canvas.restoreToCount(upper);
             float y1=base+bodyH+dy-(phase>0?lift:0),y2=base+bodyH-dy-(phase<0?lift:0),bh=height-bodyH;
             canvas.drawBitmap(sprite,new Rect(0,cut,split,sh),new RectF(left+dx,y1,left+halfW+dx,y1+bh),paint);
             canvas.drawBitmap(sprite,new Rect(split,cut,sw,sh),new RectF(left+halfW-dx,y2,left+width-dx,y2+bh),paint);
         }
+        canvas.restoreToCount(save);
+    }
+
+    private void drawPivotedSleeve(Canvas canvas,Bitmap sprite,int left,int top,int right,int bottom,
+            float x,float y,float width,float height,float angle) {
+        int save=canvas.save(); canvas.translate(x,y); canvas.rotate(angle);
+        canvas.drawBitmap(sprite,new Rect(left,top,right,bottom),new RectF(-width/2,0,width/2,height),paint);
         canvas.restoreToCount(save);
     }
 
