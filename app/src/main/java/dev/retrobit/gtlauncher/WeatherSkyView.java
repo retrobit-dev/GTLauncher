@@ -30,6 +30,7 @@ public final class WeatherSkyView extends View {
     private static final float RENDER_CELL = 1.0f / RENDER_SCALE;
     private static final int RENDER_WIDTH = SCENE_WIDTH * RENDER_SCALE;
     private static final int RENDER_HEIGHT = SCENE_HEIGHT * RENDER_SCALE;
+    private static final float ISLAND_BASE_ZOOM = IslandProjection.BASE_ZOOM;
     private static final int ISLAND_GRID_SIZE = 9;
     private static final int ISLAND_TILE_WIDTH = 28;
     private static final String ISLAND_COLUMN_LABELS = "ABCDEFGHI";
@@ -41,7 +42,7 @@ public final class WeatherSkyView extends View {
     // A row of tiles is a parallel of latitude; a column of tiles is a meridian of longitude.
     // Because the frame is shifted 45°, the camera now faces northwest instead of north.
     private static final float COMPASS_FRAME_OFFSET_DEGREES = 45.0f;
-    private static final float ISLAND_CAMERA_ELEVATION_DEGREES = 25.0f;
+    private static final float ISLAND_CAMERA_ELEVATION_DEGREES = 30.0f;
     // Keep a fixed 45° azimuth and project ground depth from the chosen camera elevation.
     private static final float ISLAND_TILE_HEIGHT = ISLAND_TILE_WIDTH
             * (float) Math.sin(Math.toRadians(ISLAND_CAMERA_ELEVATION_DEGREES));
@@ -477,17 +478,23 @@ public final class WeatherSkyView extends View {
             paint.setColor(Color.WHITE);canvas.drawBitmap(portalMarkerImage,null,new RectF(g.left+2.5f,g.top+1,g.right-2.5f,g.bottom-3),paint);
         }
     }
+    // Reverse the shared island transform for all object and marker hit tests.
+    private float islandX(float screenX) {return IslandProjection.toScene(screenX,getWidth(),SCENE_WIDTH,SCENE_WIDTH/2f);}
+    private float islandY(float screenY) {return IslandProjection.toScene(screenY,getHeight(),SCENE_HEIGHT,SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN);}
+    private static float islandScreenX(float x) {return SCENE_WIDTH/2f+(x-SCENE_WIDTH/2f)*ISLAND_BASE_ZOOM;}
+    private static float islandScreenY(float y) {float anchor=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN;return anchor+(y-anchor)*ISLAND_BASE_ZOOM;}
+    private void applyIslandScale(Canvas canvas) {canvas.scale(ISLAND_BASE_ZOOM,ISLAND_BASE_ZOOM,SCENE_WIDTH/2f,SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN);}
     WorldStore.SurfaceObject sellingMarkerAt(float sx,float sy) {
-        if(getWidth()<=0 || getHeight()<=0)return null;float x=sx*SCENE_WIDTH/getWidth(),y=sy*SCENE_HEIGHT/getHeight();
+        if(getWidth()<=0 || getHeight()<=0)return null;float x=islandX(sx),y=islandY(sy);
         for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);RectF hit=sellingMarkerBounds(o);hit.inset(-3,-3);if(sellingMarkerVisible(o) && hit.contains(x,y))return o;}return null;
     }
     void setSellingOpen(WorldStore.SurfaceObject o,boolean opened) {if(o==null)return;String key=o.column+","+o.row;if(opened){openStorage.add(key);sellingOpenedAt.put(key,android.os.SystemClock.uptimeMillis());}else{openStorage.remove(key);sellingOpenedAt.remove(key);}invalidate();}
     WorldStore.SurfaceObject storageBoxAt(float sx,float sy) {
-        if(getWidth()<=0 || getHeight()<=0)return null;float x=sx*SCENE_WIDTH/getWidth(),y=sy*SCENE_HEIGHT/getHeight();
+        if(getWidth()<=0 || getHeight()<=0)return null;float x=islandX(sx),y=islandY(sy);
         for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if((o.type.equals("storage-box")||o.type.equals("selling-box")) && surfaceSpriteBounds(o).contains(x,y))return o;}return null;
     }
     WorldStore.SurfaceObject treeAt(float sx,float sy) {
-        if(getWidth()<=0 || getHeight()<=0)return null;float x=sx*SCENE_WIDTH/getWidth(),y=sy*SCENE_HEIGHT/getHeight();
+        if(getWidth()<=0 || getHeight()<=0)return null;float x=islandX(sx),y=islandY(sy);
         for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if(o.type.equals("tree") && surfaceSpriteBounds(o).contains(x,y))return o;}return null;
     }
     private void drawDecorativeFlowers(Canvas canvas) {
@@ -693,7 +700,7 @@ public final class WeatherSkyView extends View {
     }
     String portalMarkerAt(float screenX,float screenY) {
         if(getWidth()<=0 || getHeight()<=0) return null;
-        float x=screenX*SCENE_WIDTH/getWidth(),y=screenY*SCENE_HEIGHT/getHeight();
+        float x=islandX(screenX),y=islandY(screenY);
         for(int i=worldPortals.size()-1;i>=0;i--){PortalTravel.Portal portal=worldPortals.get(i);
             RectF hit=portalMarkerBounds(portal);hit.inset(-3,-3);
             if(portalMarkerVisible(portal) && hit.contains(x,y)) return portal.id;
@@ -702,7 +709,7 @@ public final class WeatherSkyView extends View {
     }
     String portalAt(float screenX,float screenY) {
         if(getWidth()<=0 || getHeight()<=0) return null;
-        float x=screenX*SCENE_WIDTH/getWidth(),y=screenY*SCENE_HEIGHT/getHeight();
+        float x=islandX(screenX),y=islandY(screenY);
         for(int i=worldPortals.size()-1;i>=0;i--){PortalTravel.Portal portal=worldPortals.get(i);
             RectF g=groundPortalBounds(portal);float dx=(x-g.centerX())/(g.width()/2),dy=(y-g.centerY())/(g.height()/2);if(Math.abs(dx)+Math.abs(dy)<=1f)return portal.id;
         }
@@ -886,7 +893,7 @@ public final class WeatherSkyView extends View {
         scene.clipRect(0, -SCENE_HEIGHT, SCENE_WIDTH, SCENE_HEIGHT * 2);
         // A virtual Moon continues to cast shadows while it is below the horizon.
         SkyMath.Position shadowLight = sun.altitudeDegrees <= MOON_VISIBLE_BELOW_SUN ? moon : sun;
-        float sunY = sunPlanePosition(shadowLight.hourAngleDegrees)[1];
+        float sunY = islandScreenY(sunPlanePosition(shadowLight.hourAngleDegrees)[1]);
         drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, true);
         drawSun(scene, sun, cloudCover, motionSeconds);
         drawMoon(scene, moon, motionSeconds, sun.altitudeDegrees);
@@ -895,6 +902,7 @@ public final class WeatherSkyView extends View {
         scene.restoreToCount(skySave);
         // Ground shadows go down before the island so the plate covers them, and before the clouds
         // so no sprite is ever painted over by a shadow it did not come from.
+        int islandSave=scene.save();applyIslandScale(scene);
         drawProjectedCloudShadows(scene, cloudStates, shadowLight.altitudeDegrees,
                 shadowLight.hourAngleDegrees, cloudCover, code, false);
         drawFloatingIsland(scene, sun.altitudeDegrees, sun.azimuthDegrees,
@@ -911,13 +919,16 @@ public final class WeatherSkyView extends View {
         drawPortals(scene, true);
         drawSurfaceSprites(scene, true);
         drawFences(scene, true);
+        scene.restoreToCount(islandSave);
         // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
         // cloud can hang below the horizon line, and clipping it there hid the cloud while its
         // shadow still showed on the grass. Edge clamping already keeps every sprite in frame.
         drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, false);
         drawPrecipitation(scene, elapsedSeconds);
+        int markerSave=scene.save();applyIslandScale(scene);
         drawPortalMarkers(scene);
         drawSellingMarkers(scene);
+        scene.restoreToCount(markerSave);
         scene.restoreToCount(save);
 
         renderedSceneBounds.set(0, 0, getWidth(), getHeight());
@@ -1072,9 +1083,8 @@ public final class WeatherSkyView extends View {
         if (clipToIsland) setClipIslandSurface(canvas);
         paint.setColor(Color.argb((int) (255.0 * opacity), 12, 23, 40));
         for (CloudState cloud : clouds) {
-            float cloudY = cloud.screenBottomY - cloud.shape.length * cloud.cell / 2;
-            float x = sun[0] + ratio * (cloud.screenCenterX - sun[0]);
-            float y = sun[1] + ratio * (cloudY - sun[1]);
+            float x = sun[0] + ratio * (cloud.planeX - sun[0]);
+            float y = sun[1] + ratio * (cloud.planeY - sun[1]);
             drawGroundSilhouette(canvas, cloud.shape, x, y,
                     cloud.shape[0].length() * cloud.cell * CLOUD_SHADOW_SCALE,
                     cloud.shape.length * cloud.cell * CLOUD_SHADOW_SCALE);
@@ -1841,8 +1851,8 @@ public final class WeatherSkyView extends View {
         if (sun.altitudeDegrees <= -1.0) return;
         int[] palette = sunPalette(sun.altitudeDegrees, cloudCover);
         float[] position = sunPlanePosition(sun.hourAngleDegrees);
-        float centerX = Math.round(position[0] / RENDER_CELL) * RENDER_CELL;
-        float centerY = Math.round(position[1] / RENDER_CELL) * RENDER_CELL;
+        float centerX = Math.round(islandScreenX(position[0]) / RENDER_CELL) * RENDER_CELL;
+        float centerY = Math.round(islandScreenY(position[1]) / RENDER_CELL) * RENDER_CELL;
         int save = canvas.save();
         paint.setAlpha((int) Math.round(255.0
                 * clamp((sun.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0)));
@@ -1870,8 +1880,8 @@ public final class WeatherSkyView extends View {
         if (nightFall <= 0.0) return;
         int[] palette = moonPalette();
         float[] position = sunPlanePosition(moon.hourAngleDegrees);
-        float centerX = Math.round(position[0] / RENDER_CELL) * RENDER_CELL;
-        float centerY = Math.round(position[1] / RENDER_CELL) * RENDER_CELL;
+        float centerX = Math.round(islandScreenX(position[0]) / RENDER_CELL) * RENDER_CELL;
+        float centerY = Math.round(islandScreenY(position[1]) / RENDER_CELL) * RENDER_CELL;
         float visibility = (float) (clamp((moon.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0)
                 * nightFall);
         int save = canvas.save();
@@ -2045,7 +2055,7 @@ public final class WeatherSkyView extends View {
             float y = (float) (ISLAND_CENTER_Y - LANGIT_AWAN_LIFT
                     - LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_HEIGHT / len
                     + (east - north) * ISLAND_TILE_HEIGHT / 2.0);
-            clouds[index] = new CloudState(shape, CLOUD_CELL, x, y + shape.length * CLOUD_CELL / 2);
+            clouds[index] = new CloudState(shape, CLOUD_CELL, x, y);
         }
         return clouds;
     }
@@ -2169,18 +2179,11 @@ public final class WeatherSkyView extends View {
     private static final class CloudState {
         final String[] shape;
         final float cell;
-        final float screenCenterX;
-        final float screenBottomY;
-
-        CloudState(String[] shape, float cell, float screenCenterX, float screenBottomY) {
-            this.shape = shape;
-            this.cell = cell;
-            this.screenCenterX = screenCenterX;
-            this.screenBottomY = screenBottomY;
-        }
-
-        CloudState withCentreX(float newCentreX) {
-            return new CloudState(shape, cell, newCentreX, screenBottomY);
+        final float planeX, planeY, screenCenterX, screenBottomY;
+        CloudState(String[] shape, float cell, float planeX, float planeY) {
+            this.shape=shape;this.cell=cell;this.planeX=planeX;this.planeY=planeY;
+            this.screenCenterX=islandScreenX(planeX);
+            this.screenBottomY=islandScreenY(planeY)+shape.length*cell/2;
         }
     }
 
