@@ -2079,8 +2079,8 @@ public final class WeatherSkyView extends View {
         };
     }
 
-    // The cloud base is 150 scene units above the ground; shadow projection remains separate.
-    private float cloudDisplayLift() { return 150f; }
+    // The cloud base is 75 scene units above the ground; shadow projection remains separate.
+    private float cloudDisplayLift() { return 75f; }
 
     private CloudState[] createCloudStates(double elapsedSeconds, double cloudCover,
             double windSpeed, double windDirection, double sunAltitude, double sunHourAngle) {
@@ -2105,11 +2105,14 @@ public final class WeatherSkyView extends View {
         CloudState[] clouds = new CloudState[count];
         double len = Math.hypot(ISLAND_TILE_WIDTH, ISLAND_TILE_HEIGHT);
         float lift=cloudDisplayLift(), sx=islandScaleX()*mapZoom(), sy=islandScaleY()*mapZoom();
+        int cols=(int)Math.ceil(Math.sqrt(count)),rows=(int)Math.ceil(count/(double)cols);
         for (int index = 0; index < count; index++) {
             int variant = (int) (cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length);
             String[] shape = CLOUD_SHAPE_VARIANTS[variant];
-            double east = ((cloudHash(seed, index, 2) * ISLAND_GRID_SIZE + cloudEastTravel) % ISLAND_GRID_SIZE + ISLAND_GRID_SIZE) % ISLAND_GRID_SIZE - ISLAND_GRID_SIZE / 2.0;
-            double north = ((cloudHash(seed, index, 3) * ISLAND_GRID_SIZE + cloudNorthTravel) % ISLAND_GRID_SIZE + ISLAND_GRID_SIZE) % ISLAND_GRID_SIZE - ISLAND_GRID_SIZE / 2.0;
+            double eastSeed=((index%cols)+.2+.6*cloudHash(seed,index,2))/cols*ISLAND_GRID_SIZE;
+            double northSeed=(Math.floor(index/(double)cols)+.2+.6*cloudHash(seed,index,3))/rows*ISLAND_GRID_SIZE;
+            double east = ((eastSeed + cloudEastTravel) % ISLAND_GRID_SIZE + ISLAND_GRID_SIZE) % ISLAND_GRID_SIZE - ISLAND_GRID_SIZE / 2.0;
+            double north = ((northSeed + cloudNorthTravel) % ISLAND_GRID_SIZE + ISLAND_GRID_SIZE) % ISLAND_GRID_SIZE - ISLAND_GRID_SIZE / 2.0;
             float x = (float) (SCENE_WIDTH / 2.0 - LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_WIDTH / len
                     + (east + north) * ISLAND_TILE_WIDTH / 2.0);
             float y = (float) (ISLAND_CENTER_Y - LANGIT_AWAN_LIFT
