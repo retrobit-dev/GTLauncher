@@ -1384,10 +1384,10 @@ public final class WeatherSkyView extends View {
         // Each top stays solid; direct sunlight adds only a uniform, subtle color lift.
         drawSunlitIslandDiamond(canvas, centerX, centerY, halfWidth, halfHeight,
                 cornerRadius, fill, sunlight);
-        // Match the preview's stable, transparent 160×80 detail variants.
+        // Match the preview's stable, transparent 320×160 detail variants.
         if (grassDetail != null) {
             int variant = (column * 17 + row * 29) % 4;
-            grassDetailSource.set(variant * 160, 0, variant * 160 + 160, 80);
+            grassDetailSource.set(variant * 320, 0, variant * 320 + 320, 160);
             grassDetailDestination.set(centerX - ISLAND_TILE_WIDTH / 2f, centerY - ISLAND_TILE_HEIGHT / 2f,
                     centerX + ISLAND_TILE_WIDTH / 2f, centerY + ISLAND_TILE_HEIGHT / 2f);
             canvas.drawBitmap(grassDetail, grassDetailSource, grassDetailDestination, grassDetailPaint);
