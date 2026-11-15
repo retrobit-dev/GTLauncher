@@ -14,6 +14,9 @@ final class CloudLayout {
         if (tileWidth <= 0 || tileHeight <= 0 || columns <= 0 || rows <= 0) throw new IllegalArgumentException("Invalid cloud dimensions");
         return 4f * Math.min(tileWidth/columns,tileHeight/rows);
     }
+    static float shadowBlur(double cover, int code) {
+        return cover >= 65 || code == 3 || code == 45 || code == 48 || code >= 51 ? 3f : 1.5f;
+    }
     // Fade together so intersecting masks keep a single, uniform shadow opacity.
     static double shadowFade(double seconds, boolean animationEnabled) {
         return animationEnabled ? .6 + .4 * (1 + Math.cos(2 * Math.PI * seconds / 24.0)) / 2 : 1;

@@ -3,6 +3,7 @@ package dev.retrobit.gtlauncher;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.BlurMaskFilter;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
 import android.graphics.Matrix;
@@ -1131,17 +1132,21 @@ public final class WeatherSkyView extends View {
         if (clipToIsland) setClipIslandSurface(canvas);
         paint.setColor(Color.argb((int) (255.0 * opacity), 12, 23, 40));
         Path mask = new Path();
+        float blur = CloudLayout.shadowBlur(cloudCover, code);
+        float blurMargin = blur * 3f;
         for (CloudState cloud : clouds) {
             float x = cloud.planeX, y = cloud.planeY + LANGIT_AWAN_LIFT;
             float[] position=CloudShadowPlacement.onIsland(x,y,SCENE_WIDTH/2f,ISLAND_CENTER_Y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,ISLAND_GRID_SIZE);
             float width=cloud.shape[0].length()*cloud.cell, height=cloud.shape.length*cloud.cell;
             float scale=Math.min(1f, Math.min(4f*ISLAND_TILE_WIDTH/width, 4f*ISLAND_TILE_HEIGHT/height));
-            if (canvas.quickReject(position[0]-width*scale/2, position[1]-height*scale/2,
-                    position[0]+width*scale/2, position[1]+height*scale/2, Canvas.EdgeType.AA)) continue;
+            if (canvas.quickReject(position[0]-width*scale/2-blurMargin, position[1]-height*scale/2-blurMargin,
+                    position[0]+width*scale/2+blurMargin, position[1]+height*scale/2+blurMargin, Canvas.EdgeType.AA)) continue;
             addGroundSilhouette(mask, cloud.shape, position[0], position[1], width*scale, height*scale);
         }
         paint.setStyle(Paint.Style.FILL);
-        canvas.drawPath(mask, paint); // Apply the shadow alpha once to the union of all clouds.
+        paint.setMaskFilter(new BlurMaskFilter(blur, BlurMaskFilter.Blur.NORMAL));
+        canvas.drawPath(mask, paint); // Blur the union once, without darkening overlaps.
+        paint.setMaskFilter(null);
         canvas.restoreToCount(save);
     }
 

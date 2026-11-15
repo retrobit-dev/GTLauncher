@@ -20,6 +20,12 @@ public class CloudLayoutTest {
             org.junit.Assert.assertTrue(cell*rows<=56.0001f);
         }
     }
+    @Test public void shadowsAreSofterInOvercastWeather() {
+        assertEquals(1.5f,CloudLayout.shadowBlur(5,0),0);
+        assertEquals(3f,CloudLayout.shadowBlur(96,3),0);
+        assertEquals(3f,CloudLayout.shadowBlur(95,63),0);
+        assertEquals(3f,CloudLayout.shadowBlur(100,95),0);
+    }
     @Test public void fadeInOutAndReducedMotion() {
         assertEquals(1, CloudLayout.shadowFade(0,true),1e-9);
         assertEquals(.8, CloudLayout.shadowFade(6,true),1e-9);
