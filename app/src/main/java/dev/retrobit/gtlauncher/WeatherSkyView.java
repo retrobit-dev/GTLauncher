@@ -546,6 +546,56 @@ public final class WeatherSkyView extends View {
             canvas.restoreToCount(save);paint.setStyle(Paint.Style.FILL);paint.setAlpha(255);
         }
     }
+    private static FenceOcclusion.Bounds occlusionBounds(RectF r) {return new FenceOcclusion.Bounds(r.left,r.top,r.right,r.bottom);}
+    private final java.util.IdentityHashMap<Bitmap,int[]> occlusionPixels=new java.util.IdentityHashMap<>();
+    private boolean opaqueAt(Bitmap bitmap,RectF bounds,float x,float y,boolean mirror) {
+        if(bitmap==null || bounds.width()<=0 || bounds.height()<=0)return false;
+        float u=(x-bounds.left)/bounds.width(),v=(y-bounds.top)/bounds.height();if(u<0 || u>=1 || v<0 || v>=1)return false;
+        if(mirror)u=1f-u-0.000001f;
+        int px=Math.max(0,Math.min(bitmap.getWidth()-1,(int)(u*bitmap.getWidth()))),py=Math.max(0,Math.min(bitmap.getHeight()-1,(int)(v*bitmap.getHeight())));
+        int[] pixels=occlusionPixels.get(bitmap);if(pixels==null){pixels=new int[bitmap.getWidth()*bitmap.getHeight()];bitmap.getPixels(pixels,0,bitmap.getWidth(),0,0,bitmap.getWidth(),bitmap.getHeight());occlusionPixels.put(bitmap,pixels);}
+        return Color.alpha(pixels[py*bitmap.getWidth()+px])>=32;
+    }
+    private boolean fenceOverlaps(Bitmap fence,RectF fenceBounds,boolean mirror,Bitmap target,RectF targetBounds,boolean targetMirror) {
+        return target!=null && FenceOcclusion.overlaps(occlusionBounds(fenceBounds),(x,y)->opaqueAt(fence,fenceBounds,x,y,mirror),occlusionBounds(targetBounds),(x,y)->opaqueAt(target,targetBounds,x,y,targetMirror));
+    }
+    private Bitmap surfaceImage(WorldStore.SurfaceObject o) {
+        if(o.type.equals("tree"))return treeImage(o);
+        if(o.type.equals("sunflower"))return o.material.equals("N")||o.material.equals("W")?sunflowerBack:sunflowerFront;
+        if(o.type.equals("bush"))return o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:o.material.equals("tiered")?bushTiered:o.material.equals("flower")?bushFlower:o.material.equals("berry")?bushBerry:bushRound;
+        if(o.type.equals("mailbox"))return mailboxBirdhouse;
+        if(o.type.equals("storage-box") || o.type.equals("selling-box")) {
+            boolean back=o.material.equals("N")||o.material.equals("W"),opened=openStorage.contains(o.column+","+o.row);
+            return o.type.equals("selling-box")?(opened?sellingBoxOpen:sellingBoxClosed):back?(opened?storageBackOpen:storageBackClosed):(opened?storageOpen:storageClosed);
+        }
+        return null;
+    }
+    private boolean fenceCoversEarlierObject(Bitmap image,RectF f,boolean mirror,boolean front) {
+        for(WorldStore.House house:worldHouses) if(house.visible && (front || !showCharacter || house.column+house.row+2<characterColumn+characterRow)) {
+            boolean back=house.facing.equals("N")||house.facing.equals("W"),wide="wide".equals(house.design);
+            Bitmap sprite=wide?(back?houseWideBackImage:houseWideImage):(back?houseBackImage:houseImage);float scale=(float)house.scale;
+            float x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0),bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f+1.25f*ISLAND_TILE_HEIGHT*scale;
+            float width=70*scale*(wide?7f/6:1),height=(wide?100:67)*scale;
+            if(fenceOverlaps(image,f,mirror,sprite,new RectF(x-width/2,bottom-height,x+width/2,bottom),house.facing.equals("N")||house.facing.equals("E")))return true;
+        }
+        if(front && showCharacter) {
+            float x=SCENE_WIDTH/2f+(characterColumn-characterRow)*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(characterColumn+characterRow)*ISLAND_TILE_HEIGHT/2f,width=13.5f*characterScale,height=25*characterScale;
+            boolean back=characterFacing.equals("N")||characterFacing.equals("W");
+            if(fenceOverlaps(image,f,mirror,back?mainCharacterBack:mainCharacter,new RectF(x-width/2,y-height,x+width/2,y),characterFacing.equals("N")||characterFacing.equals("E")))return true;
+        }
+        for(WorldStore.SurfaceObject o:worldSurfaces) {
+            if(o.type.equals("flower")) {
+                Bitmap sprite=flowerSprites.get(o.material);if(sprite==null)continue;
+                float cx=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
+                for(float u:new float[]{.2f,.5f,.8f})for(float v:new float[]{.2f,.5f,.8f}){float x=cx+(u-v)*ISLAND_TILE_WIDTH/2,y=cy+(u+v-1)*ISLAND_TILE_HEIGHT/2;if(fenceOverlaps(image,f,mirror,sprite,new RectF(x-2.1f,y-2.8f,x+2.1f,y+.7f),false))return true;}
+            } else if(front) {
+                Bitmap sprite=surfaceImage(o);if(sprite==null)continue;
+                boolean flipped=(o.type.equals("sunflower") || o.type.equals("storage-box")) && (o.material.equals("N")||o.material.equals("E"));
+                if(fenceOverlaps(image,f,mirror,sprite,surfaceSpriteBounds(o),flipped))return true;
+            }
+        }
+        return false;
+    }
     private void drawFences(Canvas canvas,boolean front) {
         java.util.List<FenceGeometry.Edge> edges=new java.util.ArrayList<>();
         for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("fence"))edges.add(new FenceGeometry.Edge(o.column,o.row,o.edge));
@@ -559,7 +609,8 @@ public final class WeatherSkyView extends View {
             FenceGeometry.Bounds g=FenceGeometry.bounds(new FenceGeometry.Edge(o.column,o.row,o.edge),edges,x,y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT);
             Bitmap image="slat".equals(o.material)?fenceSlat:"stone".equals(o.material)?fenceStone:"iron".equals(o.material)?fenceIron:fenceFarm;
             if(image==null)continue;
-            paint.setStyle(Paint.Style.FILL);paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f));paint.setFilterBitmap(false);
+            RectF fenceBounds=new RectF(g.x,g.y,g.x+g.width,g.y+g.height);boolean fades=fenceCoversEarlierObject(image,fenceBounds,!g.rising,front);
+            paint.setStyle(Paint.Style.FILL);paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f*(fades?.5f:1f)));paint.setFilterBitmap(false);
             int save=canvas.save();if(!g.rising)canvas.scale(-1,1,g.x+g.width/2,0);
             canvas.drawBitmap(image,null,new RectF(g.x,g.y,g.x+g.width,g.y+g.height),paint);canvas.restoreToCount(save);
         }
