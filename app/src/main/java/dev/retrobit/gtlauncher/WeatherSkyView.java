@@ -52,8 +52,8 @@ public final class WeatherSkyView extends View {
     private static final float ISLAND_GRASS_OVERHANG = 4.0f;
     private static final int ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
     private static final int ISLAND_BASE_BOTTOM_MARGIN = 8;
-    private static final int ISLAND_VERTICAL_LIFT = 10;
-    private static final int ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
+    private static final float ISLAND_VERTICAL_LIFT = 7.5f;
+    private static final float ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
     private static final float ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH
             - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
     // Keep celestial centers in the upper third with enough margin for the Sun's glow.
