@@ -927,17 +927,10 @@ public final class WeatherSkyView extends View {
         scene.clipRect(0, -SCENE_HEIGHT, SCENE_WIDTH, SCENE_HEIGHT * 2);
         // A virtual Moon continues to cast shadows while it is below the horizon.
         SkyMath.Position shadowLight = sun.altitudeDegrees <= MOON_VISIBLE_BELOW_SUN ? moon : sun;
-        float sunY = celestialScreenPosition(shadowLight)[1];
-        drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, true);
-        drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, false);
         drawFog(scene, code);
         drawStormFlash(scene, elapsedSeconds, code);
         scene.restoreToCount(skySave);
-        // Ground shadows go down before the island so the plate covers them, and before the clouds
-        // so no sprite is ever painted over by a shadow it did not come from.
         int islandSave=scene.save();applyIslandScale(scene);
-        drawProjectedCloudShadows(scene, cloudStates, shadowLight.altitudeDegrees,
-                shadowLight.hourAngleDegrees, cloudCover, code, false);
         drawFloatingIsland(scene, sun.altitudeDegrees, sun.azimuthDegrees,
                 sun.hourAngleDegrees, cloudCover, code, moon, cloudStates);
         drawDecorativeFlowers(scene);
@@ -952,7 +945,12 @@ public final class WeatherSkyView extends View {
         drawPortals(scene, true);
         drawSurfaceSprites(scene, true);
         drawFences(scene, true);
+        // Shadow union is above the island and its objects but clipped to the surface.
+        drawProjectedCloudShadows(scene, cloudStates, shadowLight.altitudeDegrees,
+                shadowLight.hourAngleDegrees, cloudCover, code, true);
         scene.restoreToCount(islandSave);
+        // Cloud sprites are also in front of the island, behind celestial sprites.
+        drawClouds(scene, cloudStates, sun.altitudeDegrees, code);
         // Celestial sprites remain visible in front of the island and its objects.
         drawStars(scene, sun.altitudeDegrees, cloudCover);
         drawSun(scene, sun, cloudCover, motionSeconds);
@@ -1230,11 +1228,6 @@ public final class WeatherSkyView extends View {
                         column, row, palette, sunlight);
             }
         }
-        SkyMath.Position shadowLight = sunAltitude <= MOON_VISIBLE_BELOW_SUN ? moon : null;
-        drawProjectedCloudShadows(canvas, cloudStates,
-                shadowLight != null ? shadowLight.altitudeDegrees : sunAltitude,
-                shadowLight != null ? shadowLight.hourAngleDegrees : sunHourAngle,
-                cloudCover, code, true);
         // Draw the upper frame last where the two projections overlap.
         if (LANGIT_AWAN_ENABLED) {
             float axisLength = (float) Math.hypot(ISLAND_TILE_WIDTH, ISLAND_TILE_HEIGHT);
@@ -2184,13 +2177,11 @@ public final class WeatherSkyView extends View {
                 + Math.abs(dy) / (halfHeight + height * 0.5f) <= 1.0f;
     }
 
-    private void drawClouds(Canvas canvas, CloudState[] clouds, double sunAltitude, int code,
-            float sunY, boolean behind) {
+    private void drawClouds(Canvas canvas, CloudState[] clouds, double sunAltitude, int code) {
         if (clouds.length == 0) return;
         int[] palette = cloudPalette(sunAltitude, code);
         int save=canvas.save(); applyIslandScale(canvas);
         for (CloudState cloud : clouds) {
-            if ((cloud.screenBottomY - cloud.screenHeight / 2 < sunY) != behind) continue;
             float halfWidth=cloud.shape[0].length()*cloud.cell/2f;
             if (canvas.quickReject(cloud.planeX-halfWidth, cloud.displayY-cloud.shape.length*cloud.cell/2f,
                     cloud.planeX+halfWidth, cloud.displayY+cloud.shape.length*cloud.cell/2f, Canvas.EdgeType.AA)) continue;

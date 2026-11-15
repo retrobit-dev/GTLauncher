@@ -4,7 +4,7 @@ import static org.junit.Assert.assertEquals;
 public class CloudLayoutTest {
     @Test public void scalesDensityWithIslandAreaAndCover() {
         double[] covers={0,32,58,82};
-        int[] base={21,41,61,81},large={100,200,300,400};
+        int[] base={6,11,16,21},large={25,50,75,100};
         for(int i=0;i<covers.length;i++) {
             assertEquals(base[i],CloudLayout.count(covers[i],9));
             assertEquals(large[i],CloudLayout.count(covers[i],20));
