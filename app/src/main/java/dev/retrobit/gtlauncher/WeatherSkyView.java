@@ -1016,7 +1016,9 @@ public final class WeatherSkyView extends View {
         paint.setColor(Color.rgb(244,245,220)); paint.setAlpha((int)Math.round(255*opacity));
         for(int i=0;i<stars.length;i++) {
             float side=RENDER_CELL*celestialScale()*(i%4==0?2:1);
-            float[] p=celestialViewPoint(stars[i][0]*SCENE_WIDTH,stars[i][1]*SCENE_HEIGHT); float x=p[0], y=p[1];
+            double angle=Math.PI*(i+.5)/stars.length;
+            float x=mapDestinationX()+(SCENE_WIDTH/2f+(float)(500*Math.cos(angle))-mapSourceX())*islandScaleX()*mapZoom();
+            float y=mapDestinationY()+(ISLAND_CENTER_Y-(float)(500*Math.sin(angle))-mapSourceY())*islandScaleY()*mapZoom();
             canvas.drawRect(x-side/2,y-side/2,x+side/2,y+side/2,paint);
         }
         paint.setAlpha(255);
@@ -1268,12 +1270,13 @@ public final class WeatherSkyView extends View {
                 / Math.max(floorLuminance - SHADOW_LUMINANCE, 1.0), 0.06, 0.45);
         // The island shadow stays centred beneath the island, independent of celestial motion.
         float shadowCenterX = centerX;
-        float shadowCenterY = lowerY - ISLAND_DEPTH - ISLAND_BODY_SHADOW_RISE;
+        float bottomTileY = lowerY - ISLAND_DEPTH - ISLAND_TILE_HEIGHT / 2f;
         // One size, never a function of the light or the weather.
         float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4.0f
                 * (float) ISLAND_BODY_SHADOW_SCALE;
         float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 4.0f
                 * (float) ISLAND_BODY_SHADOW_SCALE;
+        float shadowCenterY = bottomTileY + 50f - halfHeight;
         int shadowColor = Color.argb((int) (255.0 * opacity), 12, 23, 40);
         drawIslandPolygon(canvas,
                 shadowCenterX, shadowCenterY - halfHeight,
@@ -2059,7 +2062,7 @@ public final class WeatherSkyView extends View {
     }
 
     private float[] celestialScreenPosition(SkyMath.Position body) {
-        float[] offset=CelestialArc.islandOffset(body.hourAngleDegrees,body.declinationDegrees,latitude,100f);
+        float[] offset=CelestialArc.islandOffset(body.hourAngleDegrees,body.declinationDegrees,latitude,500f);
         float x=SCENE_WIDTH/2f+offset[0], y=ISLAND_CENTER_Y+offset[1];
         return new float[]{mapDestinationX()+(x-mapSourceX())*islandScaleX()*mapZoom(),
                 mapDestinationY()+(y-mapSourceY())*islandScaleY()*mapZoom()};
