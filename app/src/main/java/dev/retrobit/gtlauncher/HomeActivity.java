@@ -112,6 +112,19 @@ public class HomeActivity extends Activity {
     private View homeScreen;
     private View homeDateHud;
     private ImageView seasonIcon;
+    private ImageView dayNightIcon;
+    private final Runnable dayNightRefresh = new Runnable() {
+        @Override public void run() {
+            updateDayNightIcon();
+            mainHandler.postDelayed(this, 30_000L);
+        }
+    };
+    private void updateDayNightIcon() {
+        if (dayNightIcon == null) return;
+        boolean night = DayNight.isNight(System.currentTimeMillis(), currentLatitude, currentLongitude);
+        dayNightIcon.setImageResource(night ? R.drawable.hud_night : R.drawable.hud_day);
+        dayNightIcon.setContentDescription(getString(night ? R.string.hud_night : R.string.hud_day));
+    }
     private TextView batteryHud;
     private ImageView batteryIcon;
     private boolean batteryReceiverRegistered;
@@ -213,6 +226,7 @@ public class HomeActivity extends Activity {
             view.setPivotY(0f);
         });
         seasonIcon = findViewById(R.id.hud_season_icon);
+        dayNightIcon = findViewById(R.id.hud_day_night_icon);
         batteryHud = findViewById(R.id.hud_battery);
         batteryIcon = findViewById(R.id.hud_battery_icon);
         resizeHudReadouts();
@@ -311,6 +325,8 @@ public class HomeActivity extends Activity {
     protected void onResume() {
         super.onResume();
         startBatteryUpdates();
+        mainHandler.removeCallbacks(dayNightRefresh);
+        dayNightRefresh.run();
         updateDefaultLauncherButton();
         refreshApps();
         if (skyView != null) skyView.setAnimationEnabled(true);
@@ -331,6 +347,7 @@ public class HomeActivity extends Activity {
     @Override
     protected void onPause() {
         stopBatteryUpdates();
+        mainHandler.removeCallbacks(dayNightRefresh);
         mainHandler.removeCallbacks(periodicWeatherRefresh);
         if (sensorManager != null) sensorManager.unregisterListener(orientationListener);
         if (skyView != null) skyView.setAnimationEnabled(false);
@@ -1101,6 +1118,7 @@ public class HomeActivity extends Activity {
             currentWeather = null;
             currentLatitude = location.getLatitude();
             currentLongitude = location.getLongitude();
+            updateDayNightIcon();
             updateSeason(currentLatitude, currentLongitude, false);
             if (skyView != null) skyView.setLocation(currentLatitude, currentLongitude);
             fetchWeather(currentLatitude, currentLongitude, false);
@@ -1180,6 +1198,7 @@ public class HomeActivity extends Activity {
                 currentWeather = received;
                 currentLatitude = received.latitude;
                 currentLongitude = received.longitude;
+                updateDayNightIcon();
                 if (skyView != null) skyView.setWeatherSnapshot(received);
                 cacheWeatherSnapshot(received);
             });
@@ -1190,6 +1209,7 @@ public class HomeActivity extends Activity {
         if (currentWeather != null && currentWeather.fallbackLocation) {
             currentLatitude = currentWeather.latitude;
             currentLongitude = currentWeather.longitude;
+            updateDayNightIcon();
             if (skyView != null) skyView.setWeatherSnapshot(currentWeather);
             return;
         }
@@ -1224,6 +1244,7 @@ public class HomeActivity extends Activity {
         currentWeather = null;
         currentLatitude = latitude;
         currentLongitude = longitude;
+        updateDayNightIcon();
         getSharedPreferences("weather_cache", MODE_PRIVATE).edit().clear().apply();
         if (skyView != null) skyView.setLocation(latitude, longitude);
     }
@@ -1256,6 +1277,7 @@ public class HomeActivity extends Activity {
         currentWeather = cached;
         currentLatitude = cached.latitude;
         currentLongitude = cached.longitude;
+        updateDayNightIcon();
         if (skyView != null) skyView.setWeatherSnapshot(cached);
     }
 
