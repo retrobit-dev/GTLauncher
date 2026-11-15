@@ -947,10 +947,10 @@ public final class WeatherSkyView extends View {
         drawFences(scene, true);
         // Shadow union is above the island and its objects but clipped to the surface.
         drawProjectedCloudShadows(scene, cloudStates, shadowLight.altitudeDegrees,
-                shadowLight.hourAngleDegrees, cloudCover, code, true);
+                shadowLight.hourAngleDegrees, cloudCover, code, true,
+                CloudLayout.shadowFade(motionSeconds, animationEnabled));
         scene.restoreToCount(islandSave);
-        // Cloud sprites are also in front of the island, behind celestial sprites.
-        drawClouds(scene, cloudStates, sun.altitudeDegrees, code);
+        // Cloud sprites are intentionally hidden; only their surface shadows remain.
         // Celestial sprites remain visible in front of the island and its objects.
         drawStars(scene, sun.altitudeDegrees, cloudCover);
         drawSun(scene, sun, cloudCover, motionSeconds);
@@ -1123,9 +1123,9 @@ public final class WeatherSkyView extends View {
      * same material as the one under the island rather than as a second effect.
      */
     private void drawProjectedCloudShadows(Canvas canvas, CloudState[] clouds, double sunAltitude,
-            double sunHourAngle, double cloudCover, int code, boolean clipToIsland) {
+            double sunHourAngle, double cloudCover, int code, boolean clipToIsland, double fade) {
         if (clouds.length == 0) return;
-        double opacity = cloudShadowOpacity(Math.max(sunAltitude, 0.0), cloudCover, code);
+        double opacity = cloudShadowOpacity(Math.max(sunAltitude, 0.0), cloudCover, code) * fade;
         int save = canvas.save();
         if (clipToIsland) setClipIslandSurface(canvas);
         paint.setColor(Color.argb((int) (255.0 * opacity), 12, 23, 40));
