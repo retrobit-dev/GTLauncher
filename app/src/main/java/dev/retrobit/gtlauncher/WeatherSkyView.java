@@ -482,7 +482,7 @@ public final class WeatherSkyView extends View {
             : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
     private float mapDestinationX() { return SCENE_WIDTH/2f; }
     private float mapDestinationY() { return gameplayMode && showCharacter ? SCENE_HEIGHT*.56f : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
-    private float mapZoom() { return gameplayMode ? 2f : 1f; }
+    private float mapZoom() { return 2f; }
     // Object and marker hit tests use the exact inverse of the current map camera.
     private float islandX(float screenX) {return IslandProjection.inverse(screenX,getWidth(),SCENE_WIDTH,mapSourceX(),mapDestinationX(),mapZoom());}
     private float islandY(float screenY) {return IslandProjection.inverse(screenY,getHeight(),SCENE_HEIGHT,mapSourceY(),mapDestinationY(),mapZoom());}
@@ -514,11 +514,11 @@ public final class WeatherSkyView extends View {
     void setSellingOpen(WorldStore.SurfaceObject o,boolean opened) {if(o==null)return;String key=o.column+","+o.row;if(opened){openStorage.add(key);sellingOpenedAt.put(key,android.os.SystemClock.uptimeMillis());}else{openStorage.remove(key);sellingOpenedAt.remove(key);}invalidate();}
     WorldStore.SurfaceObject storageBoxAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;float x=islandX(sx),y=islandY(sy);
-        for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if((o.type.equals("storage-box")||o.type.equals("selling-box")) && surfaceSpriteBounds(o).contains(x,y))return o;}return null;
+        for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if((o.type.equals("storage-box")||o.type.equals("selling-box")) && opaqueAt(surfaceImage(o),surfaceSpriteBounds(o),x,y,o.material.equals("N")||o.material.equals("E")))return o;}return null;
     }
     WorldStore.SurfaceObject treeAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;float x=islandX(sx),y=islandY(sy);
-        for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if(o.type.equals("tree") && surfaceSpriteBounds(o).contains(x,y))return o;}return null;
+        for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if(o.type.equals("tree") && opaqueAt(surfaceImage(o),surfaceSpriteBounds(o),x,y,false))return o;}return null;
     }
     private void drawDecorativeFlowers(Canvas canvas) {
         paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(true);
