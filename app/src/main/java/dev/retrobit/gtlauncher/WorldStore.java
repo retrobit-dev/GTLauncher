@@ -34,7 +34,7 @@ final class WorldStore {
         House(int column,int row,double scale,String facing,boolean visible,String id,String design,int opacity) {
             this.column=column;this.row=row;this.scale=scale;this.facing=facing;this.visible=visible;this.id=id;this.design=design;this.opacity=opacity;
         }
-        boolean covers(int c,int r){return visible && c>=column && c<=column+("wide".equals(design)?3:2) && r>=row && r<=row+2;}
+        boolean covers(int c,int r){return visible && HouseFootprint.of(design).contains(column,row,c,r);}
     }
     private static boolean houseCovers(List<House> houses,int column,int row) {
         for(House house:houses)if(house.covers(column,row))return true;return false;
@@ -190,7 +190,7 @@ final class WorldStore {
                         double c = ((Number) hc).doubleValue(), r = ((Number) hr).doubleValue();
                         houseScale = ((Number) hs).doubleValue();
                         houseFacing = requiredString(character, "facing");
-                        if (c != Math.rint(c) || r != Math.rint(r) || c < 0 || c > ("wide".equals(houseDesign)?5:6) || r < 0 || r > 6
+                        if (c != Math.rint(c) || r != Math.rint(r) || !HouseFootprint.of(houseDesign).fits((int)c,(int)r)
                                 || !Double.isFinite(houseScale) || houseScale < 0.5 || houseScale > 1.5
                                 || !(houseFacing.equals("N") || houseFacing.equals("E") || houseFacing.equals("S") || houseFacing.equals("W")))
                             throw new JSONException("Invalid house geometry");
@@ -206,7 +206,7 @@ final class WorldStore {
                     House h=new House(houseColumn,houseRow,houseScale,houseFacing,houseVisible,houseId,houseDesign,houseOpacity);
                     for(House prior:houses) {
                         if(h.id==null || prior.id==null || h.id.equals(prior.id))throw new JSONException("Duplicate or missing house id");
-                        if(h.visible && prior.visible && h.column<=prior.column+("wide".equals(prior.design)?3:2) && prior.column<=h.column+("wide".equals(h.design)?3:2) && h.row<=prior.row+2 && prior.row<=h.row+2)throw new JSONException("Overlapping houses");
+                        if(h.visible && prior.visible && HouseFootprint.of(h.design).overlaps(h.column,h.row,HouseFootprint.of(prior.design),prior.column,prior.row))throw new JSONException("Overlapping houses");
                     }
                     houses.add(h);house = true; continue;
                 }
