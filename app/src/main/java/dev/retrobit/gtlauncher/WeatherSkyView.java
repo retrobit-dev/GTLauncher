@@ -330,8 +330,8 @@ public final class WeatherSkyView extends View {
         renderBitmapPaint.setFilterBitmap(true);
         renderBitmapPaint.setDither(false);
         grassDetail = BitmapFactory.decodeResource(getResources(), R.drawable.island_grass_detail);
-        mainCharacter = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_hd_front);
-        mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_hd_back);
+        mainCharacter = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_uhd_front);
+        mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_uhd_back);
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_redesign);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_redesign_back);
         houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_back);
