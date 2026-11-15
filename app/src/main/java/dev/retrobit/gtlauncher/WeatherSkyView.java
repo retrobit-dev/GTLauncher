@@ -59,8 +59,8 @@ public final class WeatherSkyView extends View {
     // Keep celestial centers in the upper third with enough margin for the Sun's glow.
     // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
     // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
-    private static final float SUN_BODY_RADIUS = 10.5f;
-    private float celestialScale() { return ISLAND_GRID_SIZE / 9f; }
+    private static final float SUN_BODY_RADIUS = 4f;
+    private float celestialScale() { return mapZoom() / 2f; }
     private float celestialRadius() { return SUN_BODY_RADIUS * celestialScale(); }
     // East and west ends of the celestial arc, inset so the disc never clips the frame.
     // East sits on the right of the screen and west on the left, so the sun rises on the right
@@ -85,7 +85,7 @@ public final class WeatherSkyView extends View {
     private static final int GLOW_STEPS = 14;
     // The halo used to reach 15 units past a 10.5-unit disc, which washed out the sky around it and
     // read brighter than the disc itself. Pulled in and faded down.
-    private static final float GLOW_REACH = 9.5f;
+    private static final float GLOW_REACH = 3.5f;
     private static final double GLOW_ALPHA = 0.024;
     private static final double GLOW_PULSE_SPEED = 1.15;
 
@@ -1014,7 +1014,8 @@ public final class WeatherSkyView extends View {
         float[][] stars={{.08f,.12f},{.18f,.22f},{.30f,.08f},{.39f,.19f},{.51f,.06f},{.62f,.16f},{.73f,.08f},{.85f,.20f},{.94f,.09f},{.11f,.35f},{.25f,.30f},{.44f,.34f},{.57f,.28f},{.68f,.36f},{.80f,.31f},{.93f,.38f}};
         paint.setColor(Color.rgb(244,245,220)); paint.setAlpha((int)Math.round(255*opacity));
         for(int i=0;i<stars.length;i++) {
-            float side=RENDER_CELL*celestialScale()*(i%4==0?2:1), x=stars[i][0]*SCENE_WIDTH, y=stars[i][1]*SCENE_HEIGHT;
+            float side=RENDER_CELL*celestialScale()*(i%4==0?2:1);
+            float[] p=celestialViewPoint(stars[i][0]*SCENE_WIDTH,stars[i][1]*SCENE_HEIGHT); float x=p[0], y=p[1];
             canvas.drawRect(x-side/2,y-side/2,x+side/2,y+side/2,paint);
         }
         paint.setAlpha(255);
@@ -2050,12 +2051,21 @@ public final class WeatherSkyView extends View {
         return Integer.toUnsignedLong(value) / 4294967296.0;
     }
 
+    private float[] celestialViewPoint(float x,float y) {
+        float anchor=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN;
+        float referenceY=ISLAND_GRID_SIZE==20 ? SCENE_HEIGHT*.56f : anchor+(ISLAND_CENTER_Y-anchor)*islandScaleY()*2;
+        float islandX=mapDestinationX()+(SCENE_WIDTH/2f-mapSourceX())*islandScaleX()*mapZoom();
+        float islandY=mapDestinationY()+(ISLAND_CENTER_Y-mapSourceY())*islandScaleY()*mapZoom();
+        return new float[]{islandX+(x-SCENE_WIDTH/2f)*celestialScale(),islandY+(y-referenceY)*celestialScale()};
+    }
+
     private float[] celestialScreenPosition(SkyMath.Position body) {
         float anchor=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN;
-        float horizon=(float)clamp(ISLAND_GRID_SIZE==20 ? mapDestinationY() : anchor+(ISLAND_CENTER_Y-anchor)*islandScaleY()*2,
-                celestialRadius()+6,SCENE_HEIGHT-celestialRadius()-2);
-        return CelestialArc.position(body.hourAngleDegrees,body.declinationDegrees,latitude,
-                SCENE_WIDTH,horizon,celestialRadius()+2);
+        float horizon=(float)clamp(ISLAND_GRID_SIZE==20 ? SCENE_HEIGHT*.56f : anchor+(ISLAND_CENTER_Y-anchor)*islandScaleY()*2,
+                SUN_BODY_RADIUS+6,SCENE_HEIGHT-SUN_BODY_RADIUS-2);
+        float[] p=CelestialArc.position(body.hourAngleDegrees,body.declinationDegrees,latitude,
+                SCENE_WIDTH,horizon,SUN_BODY_RADIUS+2);
+        return celestialViewPoint(p[0],p[1]);
     }
 
     // The Sun stays on Langit Matahari. The same continuous orbit is used as a virtual
