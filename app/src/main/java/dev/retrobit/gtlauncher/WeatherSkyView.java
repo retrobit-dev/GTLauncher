@@ -931,7 +931,7 @@ public final class WeatherSkyView extends View {
             float lean=.10f*runBlend*forward;
             canvas.translate(left+width/2+lean*bodyH,base);
             canvas.skew(-lean,0);
-            canvas.drawBitmap(sprite,new Rect(0,0,sw,top),new RectF(-width/2,0,width/2,topH),paint);
+            drawMovingHair(canvas,sprite,sw,sh,top,width,height,phase,runBlend);
             // The far side includes the backpack even in the front sprite.
             // Keep it attached to the torso rather than pivoting it as an arm.
             int bodyRight=sw;
@@ -943,6 +943,23 @@ public final class WeatherSkyView extends View {
             canvas.drawBitmap(sprite,new Rect(split,cut,sw,sh),new RectF(left+halfW-dx,y2,left+width-dx,y2+bh),paint);
         }
         canvas.restoreToCount(save);
+    }
+
+    private void drawMovingHair(Canvas canvas, Bitmap sprite, int sw, int sh, int top,
+            float width, float height, float gait, float runBlend) {
+        int hairEnd=(int)(sh*CharacterHairMotion.HAIR_END), bands=8;
+        Rect src=new Rect(); RectF dst=new RectF();
+        boolean enabled=animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled();
+        for(int i=0;i<bands;i++) {
+            int y0=i*hairEnd/bands,y1=(i+1)*hairEnd/bands;
+            float dx=CharacterHairMotion.offset((y0+y1)/(2f*sh),gait,runBlend,characterScale,enabled);
+            src.set(0,y0,sw,y1);
+            dst.set(-width/2+dx,height*y0/sh,width/2+dx,height*y1/sh);
+            canvas.drawBitmap(sprite,src,dst,paint);
+        }
+        src.set(0,hairEnd,sw,top);
+        dst.set(-width/2,height*hairEnd/sh,width/2,height*top/sh);
+        canvas.drawBitmap(sprite,src,dst,paint);
     }
 
     private void drawPivotedSleeve(Canvas canvas,Bitmap sprite,int left,int top,int right,int bottom,
