@@ -488,7 +488,7 @@ public final class WeatherSkyView extends View {
             : ISLAND_GRID_SIZE == 20 ? ISLAND_CENTER_Y : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
     private float mapDestinationX() { return SCENE_WIDTH/2f; }
     private float mapDestinationY() { return (gameplayMode && showCharacter) || ISLAND_GRID_SIZE == 20 ? SCENE_HEIGHT*.56f : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
-    private float mapZoom() { return 2f; }
+    private float mapZoom() { return IslandProjection.modeZoom(gameplayMode); }
     // Object and marker hit tests use the exact inverse of the current map camera.
     private float islandX(float screenX) {return IslandProjection.inverse(screenX,getWidth(),SCENE_WIDTH,mapSourceX(),mapDestinationX(),mapZoom());}
     private float islandY(float screenY) {return IslandProjection.inverse(screenY,getHeight(),SCENE_HEIGHT,mapSourceY(),mapDestinationY(),mapZoom());}
