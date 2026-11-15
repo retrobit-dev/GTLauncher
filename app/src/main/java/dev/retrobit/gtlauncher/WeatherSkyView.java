@@ -302,14 +302,14 @@ public final class WeatherSkyView extends View {
 
     private void initialize() {
         paint.setAntiAlias(false);
-        paint.setFilterBitmap(false);
+        paint.setFilterBitmap(true);
         paint.setStyle(Paint.Style.FILL);
         islandPolyPaint.setAntiAlias(true);
         islandPolyPaint.setDither(true);
         islandPolyPaint.setStrokeJoin(Paint.Join.ROUND);
         islandPolyPaint.setStrokeCap(Paint.Cap.ROUND);
         renderBitmapPaint.setAntiAlias(false);
-        renderBitmapPaint.setFilterBitmap(false);
+        renderBitmapPaint.setFilterBitmap(true);
         renderBitmapPaint.setDither(false);
         sceneBitmap = Bitmap.createBitmap(RENDER_WIDTH, RENDER_HEIGHT, Bitmap.Config.ARGB_8888);
         sceneCanvas = new Canvas(sceneBitmap);
@@ -433,7 +433,7 @@ public final class WeatherSkyView extends View {
             if(image==null)continue;RectF g=surfaceSpriteBounds(o);
             int alpha=Math.round(255*(100-Math.max(0,o.opacity))/100f);
             paint.setColor(Color.argb(Math.round(35*alpha/255f),12,23,40));paint.setStyle(Paint.Style.FILL);canvas.drawOval(new RectF(g.centerX()-g.width()*.3f,g.bottom-1,g.centerX()+g.width()*.3f,g.bottom+1),paint);
-            paint.setColor(Color.WHITE);paint.setAlpha(alpha);paint.setFilterBitmap(false);int saved=canvas.save();
+            paint.setColor(Color.WHITE);paint.setAlpha(alpha);paint.setFilterBitmap(true);int saved=canvas.save();
             if(animationEnabled && weather!=null && weather.windSpeedKmh>=1 && (o.type.equals("sunflower") || o.type.equals("tree") && (o.material.equals("banana") || o.material.equals("palm")))) {
                 double bearing=Math.toRadians(weather.windDirectionDegrees+180-headingDegrees);
                 double direction=Math.sin(bearing)+.25*Math.cos(bearing),strength=Math.min(1,.25+weather.windSpeedKmh/35);
@@ -469,7 +469,7 @@ public final class WeatherSkyView extends View {
         return (o.type.equals("selling-box") || o.type.equals("storage-box")) && !portalWalkActive && showCharacter && Math.abs(characterColumn-o.column)+Math.abs(characterRow-o.row)==1 && !openStorage.contains(o.column+","+o.row);
     }
     private void drawSellingMarkers(Canvas canvas) {
-        if(portalMarkerImage==null)return;paint.setAlpha(255);paint.setFilterBitmap(false);
+        if(portalMarkerImage==null)return;paint.setAlpha(255);paint.setFilterBitmap(true);
         for(WorldStore.SurfaceObject o:worldSurfaces)if(sellingMarkerVisible(o)) {
             RectF g=sellingMarkerBounds(o);paint.setColor(Color.rgb(110,67,43));canvas.drawRect(g.left,g.top,g.right,g.bottom-2,paint);canvas.drawRect(g.left+2,g.bottom-2,g.left+6,g.bottom,paint);
             paint.setColor(Color.rgb(255,241,206));canvas.drawRect(g.left+1,g.top+1,g.right-1,g.bottom-3,paint);canvas.drawRect(g.left+3,g.bottom-3,g.left+5,g.bottom-1,paint);
@@ -490,7 +490,7 @@ public final class WeatherSkyView extends View {
         for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if(o.type.equals("tree") && surfaceSpriteBounds(o).contains(x,y))return o;}return null;
     }
     private void drawDecorativeFlowers(Canvas canvas) {
-        paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
+        paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(true);
         final float[] offsets={.2f,.5f,.8f};
         for(WorldStore.SurfaceObject flower:worldSurfaces) if(flower.type.equals("flower")) {
             Bitmap image=flowerSprites.get(flower.material);if(image==null)continue;
@@ -610,7 +610,7 @@ public final class WeatherSkyView extends View {
             Bitmap image="slat".equals(o.material)?fenceSlat:"stone".equals(o.material)?fenceStone:"iron".equals(o.material)?fenceIron:fenceFarm;
             if(image==null)continue;
             RectF fenceBounds=new RectF(g.x,g.y,g.x+g.width,g.y+g.height);boolean fades=fenceCoversEarlierObject(image,fenceBounds,!g.rising,front);
-            paint.setStyle(Paint.Style.FILL);paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f*(fades?.5f:1f)));paint.setFilterBitmap(false);
+            paint.setStyle(Paint.Style.FILL);paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f*(fades?.5f:1f)));paint.setFilterBitmap(true);
             int save=canvas.save();if(!g.rising)canvas.scale(-1,1,g.x+g.width/2,0);
             canvas.drawBitmap(image,null,new RectF(g.x,g.y,g.x+g.width,g.y+g.height),paint);canvas.restoreToCount(save);
         }
@@ -677,7 +677,7 @@ public final class WeatherSkyView extends View {
     }
     private void drawPortalMarkers(Canvas canvas) {
         if(portalMarkerImage==null)return;
-        paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
+        paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(true);
         for(PortalTravel.Portal portal:worldPortals) if(portalMarkerVisible(portal)) {
             RectF g=portalMarkerBounds(portal);
             paint.setColor(Color.rgb(110,67,43));canvas.drawRect(g.left,g.top,g.right,g.bottom-2,paint);canvas.drawRect(g.left+2,g.bottom-2,g.left+6,g.bottom,paint);
@@ -755,7 +755,7 @@ public final class WeatherSkyView extends View {
         canvas.concat(transform);
         if (mirror) { canvas.translate(width, 0); canvas.scale(-1, 1); }
         paint.setColorFilter(OBJECT_SHADOW_FILTER);
-        paint.setFilterBitmap(false);
+        paint.setFilterBitmap(true);
         canvas.drawBitmap(sprite, null, new RectF(0, 0, width, height), paint);
         paint.setColorFilter(null);
         canvas.restoreToCount(saved);
@@ -819,7 +819,7 @@ public final class WeatherSkyView extends View {
             float scale=(float)house.scale,x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
             float bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f+1.25f*ISLAND_TILE_HEIGHT*scale;
             float width=70*scale*(wide?7f/6:1),height=(wide?100:67)*scale;
-            paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,house.opacity))/100f));paint.setFilterBitmap(false);
+            paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,house.opacity))/100f));paint.setFilterBitmap(true);
             int save=canvas.save();if(mirror)canvas.scale(-1,1,x,0);
             canvas.drawBitmap(sprite,null,new RectF(x-width/2,bottom-height,x+width/2,bottom),paint);canvas.restoreToCount(save);
         }
@@ -839,7 +839,7 @@ public final class WeatherSkyView extends View {
         float height = 25.0f * characterScale + idle;
         paint.setColor(Color.WHITE);
         paint.setAlpha(255);
-        paint.setFilterBitmap(false);
+        paint.setFilterBitmap(true);
         int save = canvas.save();
         if (mirror) canvas.scale(-1, 1, x, 0);
         canvas.drawBitmap(sprite, null, new RectF(x - width / 2, y - height,
