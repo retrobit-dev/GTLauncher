@@ -59,9 +59,9 @@ public final class WeatherSkyView extends View {
     // Keep celestial centers in the upper third with enough margin for the Sun's glow.
     // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
     // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
-    private static final float SUN_BODY_RADIUS = 4f;
+    private float celestialReferenceRadius() { return ISLAND_TILE_WIDTH * islandScaleX() * 2f; }
     private float celestialScale() { return mapZoom() / 2f; }
-    private float celestialRadius() { return SUN_BODY_RADIUS * celestialScale(); }
+    private float celestialRadius() { return celestialReferenceRadius() * celestialScale(); }
     // East and west ends of the celestial arc, inset so the disc never clips the frame.
     // East sits on the right of the screen and west on the left, so the sun rises on the right
     // and sets on the left, which is the reading most people expect from a sky panel.
@@ -1896,17 +1896,17 @@ public final class WeatherSkyView extends View {
      */
     private void drawSun(Canvas canvas, SkyMath.Position sun, double cloudCover,
                          double elapsedSeconds) {
-        if (sun.altitudeDegrees <= -1.0) return;
+        if (sun.altitudeDegrees <= 0.0) return;
         int[] palette = sunPalette(sun.altitudeDegrees, cloudCover);
         float[] position = celestialScreenPosition(sun);
         float centerX = Math.round(position[0] / RENDER_CELL) * RENDER_CELL;
         float centerY = Math.round(position[1] / RENDER_CELL) * RENDER_CELL;
         int save = canvas.save();
         paint.setAlpha((int) Math.round(255.0
-                * clamp((sun.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0)));
+                * clamp(sun.altitudeDegrees / 2.0, 0.0, 1.0)));
         drawCelestialGlow(canvas, centerX, centerY, sun.altitudeDegrees, elapsedSeconds,
                 blend(palette[0], Color.rgb(255, 217, 138), 0.55),
-                (float) clamp((sun.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0), 1.0f);
+                (float) clamp(sun.altitudeDegrees / 2.0, 0.0, 1.0), 1.0f);
         drawSunBody(canvas, centerX, centerY, palette);
         canvas.restoreToCount(save);
         paint.setAlpha(255);
@@ -1920,14 +1920,12 @@ public final class WeatherSkyView extends View {
 
     private void drawMoon(Canvas canvas, SkyMath.Position moon, double elapsedSeconds,
                           double sunAltitude) {
-        if (moon.altitudeDegrees <= -1.0) return;
-        double nightFall = 1.0; // The astronomical Moon can be visible in daylight.
+        if (sunAltitude >= 0.0 || moon.altitudeDegrees <= 0.0) return;
         int[] palette = moonPalette();
         float[] position = celestialScreenPosition(moon);
         float centerX = Math.round(position[0] / RENDER_CELL) * RENDER_CELL;
         float centerY = Math.round(position[1] / RENDER_CELL) * RENDER_CELL;
-        float visibility = (float) (clamp((moon.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0)
-                * nightFall);
+        float visibility = (float) (clamp(moon.altitudeDegrees / 2.0, 0.0, 1.0));
         int save = canvas.save();
         paint.setAlpha((int) Math.round(255.0 * visibility));
         drawCelestialGlow(canvas, centerX, centerY, moon.altitudeDegrees, elapsedSeconds,
@@ -2061,10 +2059,11 @@ public final class WeatherSkyView extends View {
 
     private float[] celestialScreenPosition(SkyMath.Position body) {
         float anchor=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN;
+        float radius=celestialReferenceRadius();
         float horizon=(float)clamp(ISLAND_GRID_SIZE==20 ? SCENE_HEIGHT*.56f : anchor+(ISLAND_CENTER_Y-anchor)*islandScaleY()*2,
-                SUN_BODY_RADIUS+6,SCENE_HEIGHT-SUN_BODY_RADIUS-2);
+                radius+6,SCENE_HEIGHT-radius-2);
         float[] p=CelestialArc.position(body.hourAngleDegrees,body.declinationDegrees,latitude,
-                SCENE_WIDTH,horizon,SUN_BODY_RADIUS+2);
+                SCENE_WIDTH,horizon,radius+2);
         return celestialViewPoint(p[0],p[1]);
     }
 
