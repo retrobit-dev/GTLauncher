@@ -95,7 +95,7 @@ public final class SkyMath {
         Position horizon = equatorialToHorizon(
                 rightAscension, declination, julianDay, latitude, longitude);
         return new Position(horizon.azimuthDegrees, horizon.altitudeDegrees,
-                illumination, horizon.hourAngleDegrees, phase < 0.5);
+                illumination, horizon.hourAngleDegrees, phase < 0.5, declination);
     }
 
     /** Star catalogue coordinates are J2000; apply Meeus' IAU 1976 precession before projection. */
@@ -162,7 +162,7 @@ public final class SkyMath {
         double azimuth = Math.atan2(-Math.sin(hourAngle),
                 Math.tan(dec) * Math.cos(lat) - Math.sin(lat) * Math.cos(hourAngle));
         return new Position(normalizeDegrees(azimuth * RAD_TO_DEG), altitude * RAD_TO_DEG,
-                0.0, hourAngleDegrees);
+                0.0, hourAngleDegrees, false, declination);
     }
 
     private static double julianDay(long timeMillis) {
@@ -182,14 +182,20 @@ public final class SkyMath {
         public final double hourAngleDegrees;
         /** True while the moon is filling toward full, so the lit limb faces the sun. */
         public final boolean waxing;
+        public final double declinationDegrees;
 
         Position(double azimuthDegrees, double altitudeDegrees, double illumination,
                  double hourAngleDegrees) {
-            this(azimuthDegrees, altitudeDegrees, illumination, hourAngleDegrees, false);
+            this(azimuthDegrees, altitudeDegrees, illumination, hourAngleDegrees, false, 0.0);
         }
 
         Position(double azimuthDegrees, double altitudeDegrees, double illumination,
                  double hourAngleDegrees, boolean waxing) {
+            this(azimuthDegrees, altitudeDegrees, illumination, hourAngleDegrees, waxing, 0.0);
+        }
+        Position(double azimuthDegrees, double altitudeDegrees, double illumination,
+                 double hourAngleDegrees, boolean waxing, double declinationDegrees) {
+            this.declinationDegrees = declinationDegrees;
             this.azimuthDegrees = azimuthDegrees;
             this.altitudeDegrees = altitudeDegrees;
             this.illumination = illumination;

@@ -920,7 +920,7 @@ public final class WeatherSkyView extends View {
         scene.clipRect(0, -SCENE_HEIGHT, SCENE_WIDTH, SCENE_HEIGHT * 2);
         // A virtual Moon continues to cast shadows while it is below the horizon.
         SkyMath.Position shadowLight = sun.altitudeDegrees <= MOON_VISIBLE_BELOW_SUN ? moon : sun;
-        float sunY = islandScreenY(sunPlanePosition(shadowLight.hourAngleDegrees)[1]);
+        float sunY = celestialScreenPosition(shadowLight)[1];
         drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, true);
         drawSun(scene, sun, cloudCover, motionSeconds);
         drawMoon(scene, moon, motionSeconds, sun.altitudeDegrees);
@@ -1874,9 +1874,9 @@ public final class WeatherSkyView extends View {
                          double elapsedSeconds) {
         if (sun.altitudeDegrees <= -1.0) return;
         int[] palette = sunPalette(sun.altitudeDegrees, cloudCover);
-        float[] position = sunPlanePosition(sun.hourAngleDegrees);
-        float centerX = Math.round(islandScreenX(position[0]) / RENDER_CELL) * RENDER_CELL;
-        float centerY = Math.round(islandScreenY(position[1]) / RENDER_CELL) * RENDER_CELL;
+        float[] position = celestialScreenPosition(sun);
+        float centerX = Math.round(position[0] / RENDER_CELL) * RENDER_CELL;
+        float centerY = Math.round(position[1] / RENDER_CELL) * RENDER_CELL;
         int save = canvas.save();
         paint.setAlpha((int) Math.round(255.0
                 * clamp((sun.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0)));
@@ -1897,15 +1897,11 @@ public final class WeatherSkyView extends View {
     private void drawMoon(Canvas canvas, SkyMath.Position moon, double elapsedSeconds,
                           double sunAltitude) {
         if (moon.altitudeDegrees <= -1.0) return;
-        // The moon is only shown once the sun is gone, so it reads as a night object rather than
-        // a pale sliver that competes with the sun in the daytime sky. It also fades in over the
-        // last few degrees of sunset instead of popping in.
-        double nightFall = clamp((MOON_VISIBLE_BELOW_SUN - sunAltitude) / 4.0, 0.0, 1.0);
-        if (nightFall <= 0.0) return;
+        double nightFall = 1.0; // The astronomical Moon can be visible in daylight.
         int[] palette = moonPalette();
-        float[] position = sunPlanePosition(moon.hourAngleDegrees);
-        float centerX = Math.round(islandScreenX(position[0]) / RENDER_CELL) * RENDER_CELL;
-        float centerY = Math.round(islandScreenY(position[1]) / RENDER_CELL) * RENDER_CELL;
+        float[] position = celestialScreenPosition(moon);
+        float centerX = Math.round(position[0] / RENDER_CELL) * RENDER_CELL;
+        float centerY = Math.round(position[1] / RENDER_CELL) * RENDER_CELL;
         float visibility = (float) (clamp((moon.altitudeDegrees + 1.0) / 3.0, 0.0, 1.0)
                 * nightFall);
         int save = canvas.save();
@@ -2029,6 +2025,14 @@ public final class WeatherSkyView extends View {
         value = (value ^ (value >>> 15)) * 0x846ca68b;
         value ^= value >>> 16;
         return Integer.toUnsignedLong(value) / 4294967296.0;
+    }
+
+    private float[] celestialScreenPosition(SkyMath.Position body) {
+        float anchor=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN;
+        float horizon=(float)clamp(anchor+(ISLAND_CENTER_Y-anchor)*islandScaleY()*2,
+                SUN_BODY_RADIUS+6,SCENE_HEIGHT-SUN_BODY_RADIUS-2);
+        return CelestialArc.position(body.hourAngleDegrees,body.declinationDegrees,latitude,
+                SCENE_WIDTH,horizon,SUN_BODY_RADIUS+2);
     }
 
     // The Sun stays on Langit Matahari. The same continuous orbit is used as a virtual
