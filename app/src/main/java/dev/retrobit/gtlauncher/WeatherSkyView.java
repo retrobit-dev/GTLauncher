@@ -315,9 +315,9 @@ public final class WeatherSkyView extends View {
         sceneCanvas = new Canvas(sceneBitmap);
         mainCharacter = BitmapFactory.decodeResource(getResources(), R.drawable.main_character);
         mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.main_character_back);
-        houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house);
-        houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_back);
-        houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_wide);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_wide_back);
+        houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_25d);
+        houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_25d_back);
+        houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_wide_25d);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_wide_25d_back);
         portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation_red);
         fenceFarm=BitmapFactory.decodeResource(getResources(),R.drawable.fence_farm);fenceSlat=BitmapFactory.decodeResource(getResources(),R.drawable.fence_slat);fenceStone=BitmapFactory.decodeResource(getResources(),R.drawable.fence_stone);fenceIron=BitmapFactory.decodeResource(getResources(),R.drawable.fence_iron);
         flowerSprites.put("rose",BitmapFactory.decodeResource(getResources(),R.drawable.petals_rose));
