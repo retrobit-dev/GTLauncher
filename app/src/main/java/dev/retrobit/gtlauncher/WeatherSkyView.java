@@ -125,9 +125,8 @@ public final class WeatherSkyView extends View {
     // The frame maps the whole compass - 360 degrees of sky - onto 320 units, so one unit is 1.125
     // degrees. That makes drift speed a function of cloud altitude: a layer at 1200 m needs 0.0118
     // units per second per km/h. Taking that literally would look frozen on a panel this small, so
-    // this gain is about four times faster, which puts the implied cloud layer at 283 m. The trade
-    // is deliberate and the honest figure is the 0.0118 above.
-    private static final double CLOUD_DRIFT_WIND_GAIN = 0.05;
+    // the gain is deliberately faster so gentle wind remains perceptible.
+    private static final double CLOUD_DRIFT_WIND_GAIN = 0.12;
     private static final double CLOUD_DRIFT_MAX = 4.2;
     private static final float CLOUD_EDGE_INSET = 4.0f;
     // The shadow is a shrunk copy of the cloud, not a same-size one: at full size it covered
@@ -925,6 +924,7 @@ public final class WeatherSkyView extends View {
         drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, true);
         drawSun(scene, sun, cloudCover, motionSeconds);
         drawMoon(scene, moon, motionSeconds, sun.altitudeDegrees);
+        drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, false);
         drawFog(scene, code);
         drawStormFlash(scene, elapsedSeconds, code);
         scene.restoreToCount(skySave);
@@ -948,10 +948,6 @@ public final class WeatherSkyView extends View {
         drawSurfaceSprites(scene, true);
         drawFences(scene, true);
         scene.restoreToCount(islandSave);
-        // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
-        // cloud can hang below the horizon line, and clipping it there hid the cloud while its
-        // shadow still showed on the grass. Edge clamping already keeps every sprite in frame.
-        drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, false);
         drawPrecipitation(scene, elapsedSeconds);
         int markerSave=scene.save();applyIslandScale(scene);
         drawPortalMarkers(scene);
@@ -2051,10 +2047,24 @@ public final class WeatherSkyView extends View {
         };
     }
 
+    // Sprite altitude follows the tallest island object; the established shadow
+    // projection is intentionally independent so it remains visible on the island.
+    private float cloudDisplayLift() {
+        float tallest=showCharacter?25f*characterScale:0f;
+        for(WorldStore.House house:worldHouses) if(house.visible)
+            tallest=Math.max(tallest, ("wide".equals(house.design)?100f:74f)*(float)house.scale);
+        for(WorldStore.SurfaceObject o:worldSurfaces) {
+            if(o.type.equals("tree") || o.type.equals("sunflower") || o.type.equals("bush") || o.type.equals("mailbox") || o.type.equals("storage-box") || o.type.equals("selling-box"))
+                tallest=Math.max(tallest,surfaceSpriteBounds(o).height());
+            else if(o.type.equals("fence")) tallest=Math.max(tallest,25f);
+        }
+        return Math.max(LANGIT_AWAN_LIFT,tallest+8f);
+    }
+
     private CloudState[] createCloudStates(double elapsedSeconds, double cloudCover,
             double windSpeed, double windDirection, double sunAltitude, double sunHourAngle) {
         double bearing = normalizeDegrees(windDirection + 180.0);
-        if (windSpeed >= 3.0) {
+        if (windSpeed > 0.0) {
             double difference = Double.isNaN(cloudWindCardinal) ? 180.0
                     : Math.abs((bearing - cloudWindCardinal + 540.0) % 360.0 - 180.0);
             if (difference > 50.0) {
@@ -2073,6 +2083,7 @@ public final class WeatherSkyView extends View {
         int seed = (int) (latitude * 37 + longitude * 17) ^ (count * 0x2545f491);
         CloudState[] clouds = new CloudState[count];
         double len = Math.hypot(ISLAND_TILE_WIDTH, ISLAND_TILE_HEIGHT);
+        float lift=cloudDisplayLift(), sx=islandScaleX()*mapZoom(), sy=islandScaleY()*mapZoom();
         for (int index = 0; index < count; index++) {
             int variant = (int) (cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length);
             String[] shape = CLOUD_SHAPE_VARIANTS[variant];
@@ -2083,7 +2094,10 @@ public final class WeatherSkyView extends View {
             float y = (float) (ISLAND_CENTER_Y - LANGIT_AWAN_LIFT
                     - LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_HEIGHT / len
                     + (east - north) * ISLAND_TILE_HEIGHT / 2.0);
-            clouds[index] = new CloudState(shape, CLOUD_CELL, x, y, islandScreenX(x), islandScreenY(y));
+            float displayY=y-(lift-LANGIT_AWAN_LIFT)-shape.length*CLOUD_CELL/2f;
+            float screenX=mapDestinationX()+(x-mapSourceX())*sx;
+            float screenY=mapDestinationY()+(displayY-mapSourceY())*sy;
+            clouds[index] = new CloudState(shape, CLOUD_CELL, x, y, displayY, screenX, screenY, sy);
         }
         return clouds;
     }
@@ -2103,8 +2117,8 @@ public final class WeatherSkyView extends View {
     private void drawCloudRows(Canvas canvas, CloudState cloud, int[] palette, int layerAlpha) {
         String[] shape = cloud.shape;
         float cell = cloud.cell;
-        float left = cloud.screenCenterX - shape[0].length() * cell * 0.5f;
-        float top = cloud.screenBottomY - shape.length * cell;
+        float left = cloud.planeX - shape[0].length() * cell * 0.5f;
+        float top = cloud.displayY - shape.length * cell * .5f;
         for (int row = 0; row < shape.length; row += 1) {
             String line = shape[row];
             float rowTop = snapToArtGrid(top + row * cell);
@@ -2142,8 +2156,9 @@ public final class WeatherSkyView extends View {
             float sunY, boolean behind) {
         if (clouds.length == 0) return;
         int[] palette = cloudPalette(sunAltitude, code);
+        int save=canvas.save(); applyIslandScale(canvas);
         for (CloudState cloud : clouds) {
-            if ((cloud.screenBottomY - cloud.shape.length * cloud.cell / 2 < sunY) != behind) continue;
+            if ((cloud.screenBottomY - cloud.screenHeight / 2 < sunY) != behind) continue;
             // A cloud crossing the island drops to partial opacity, so whatever sits on the tiles
             // is not hidden behind it.
             int previousAlpha = paint.getAlpha();
@@ -2154,6 +2169,7 @@ public final class WeatherSkyView extends View {
             drawCloudRows(canvas, cloud, palette, layerAlpha);
             paint.setAlpha(previousAlpha);
         }
+        canvas.restoreToCount(save);
     }
 
     private float snapToArtGrid(float value) {
@@ -2207,11 +2223,11 @@ public final class WeatherSkyView extends View {
     private static final class CloudState {
         final String[] shape;
         final float cell;
-        final float planeX, planeY, screenCenterX, screenBottomY;
-        CloudState(String[] shape, float cell, float planeX, float planeY, float screenX, float screenY) {
-            this.shape=shape;this.cell=cell;this.planeX=planeX;this.planeY=planeY;
-            this.screenCenterX=screenX;
-            this.screenBottomY=screenY+shape.length*cell/2;
+        final float planeX, planeY, displayY, screenCenterX, screenBottomY, screenHeight;
+        CloudState(String[] shape, float cell, float planeX, float planeY, float displayY, float screenX, float screenY, float scaleY) {
+            this.shape=shape;this.cell=cell;this.planeX=planeX;this.planeY=planeY;this.displayY=displayY;
+            this.screenCenterX=screenX;this.screenHeight=shape.length*cell*scaleY;
+            this.screenBottomY=screenY+screenHeight/2;
         }
     }
 
