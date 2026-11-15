@@ -14,6 +14,7 @@ import android.graphics.Paint;
 import android.graphics.PointF;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.graphics.Rect;
 import android.graphics.Shader;
 import android.util.AttributeSet;
 import android.view.View;
@@ -246,6 +247,10 @@ public final class WeatherSkyView extends View {
     private final Paint paint = new Paint();
     private final Paint islandPolyPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint renderBitmapPaint = new Paint();
+    private final Paint grassDetailPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
+    private Bitmap grassDetail;
+    private final Rect grassDetailSource = new Rect();
+    private final RectF grassDetailDestination = new RectF();
     private final Path shapePath = new Path();
     private final Path islandPolyPath = new Path();
     private final Path islandBodyPath = new Path();
@@ -310,6 +315,7 @@ public final class WeatherSkyView extends View {
         renderBitmapPaint.setAntiAlias(false);
         renderBitmapPaint.setFilterBitmap(true);
         renderBitmapPaint.setDither(false);
+        grassDetail = BitmapFactory.decodeResource(getResources(), R.drawable.island_grass_detail);
         mainCharacter = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_hd_front);
         mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_hd_back);
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_redesign);
@@ -1231,8 +1237,10 @@ public final class WeatherSkyView extends View {
                 float tileX = centerX + (column - row) * ISLAND_TILE_WIDTH / 2.0f;
                 float tileY = topY + ISLAND_TILE_HEIGHT / 2.0f
                         + (column + row) * ISLAND_TILE_HEIGHT / 2.0f;
-                drawGrassTile(canvas, tileX, tileY, lightTile,
-                        column, row, palette, sunlight);
+                if (!canvas.quickReject(tileX-ISLAND_TILE_WIDTH/2f, tileY-ISLAND_TILE_HEIGHT/2f,
+                        tileX+ISLAND_TILE_WIDTH/2f, tileY+ISLAND_TILE_HEIGHT/2f+ISLAND_GRASS_BAND_DEPTH,
+                        Canvas.EdgeType.AA))
+                    drawGrassTile(canvas, tileX, tileY, lightTile, column, row, palette, sunlight);
             }
         }
         // Draw the upper frame last where the two projections overlap.
@@ -1376,17 +1384,13 @@ public final class WeatherSkyView extends View {
         // Each top stays solid; direct sunlight adds only a uniform, subtle color lift.
         drawSunlitIslandDiamond(canvas, centerX, centerY, halfWidth, halfHeight,
                 cornerRadius, fill, sunlight);
-        int seed = column * 17 + row * 29;
-        if (seed % 5 == 0) {
-            float x = centerX + (seed % 7 - 3), y = centerY + (seed % 3 - 1) * 0.5f;
-            paint.setStyle(Paint.Style.FILL);
-            paint.setColor(blend(fill, Color.rgb(60, 89, 17), 0.55));
-            canvas.drawRect(x, y, x + 0.5f, y + 1.5f, paint);
-            canvas.drawRect(x - 1.0f, y - 0.5f, x - 0.5f, y + 0.5f, paint);
-            canvas.drawRect(x + 1.0f, y - 0.5f, x + 1.5f, y + 0.5f, paint);
-            canvas.drawRect(x - 0.5f, y + 1.0f, x + 1.0f, y + 1.5f, paint);
-            paint.setColor(blend(fill, Color.rgb(209, 228, 108), 0.35));
-            canvas.drawRect(x - 0.5f, y, x, y + 0.5f, paint);
+        // Match the preview's stable, transparent 160×80 detail variants.
+        if (grassDetail != null) {
+            int variant = (column * 17 + row * 29) % 4;
+            grassDetailSource.set(variant * 160, 0, variant * 160 + 160, 80);
+            grassDetailDestination.set(centerX - ISLAND_TILE_WIDTH / 2f, centerY - ISLAND_TILE_HEIGHT / 2f,
+                    centerX + ISLAND_TILE_WIDTH / 2f, centerY + ISLAND_TILE_HEIGHT / 2f);
+            canvas.drawBitmap(grassDetail, grassDetailSource, grassDetailDestination, grassDetailPaint);
         }
     }
 
