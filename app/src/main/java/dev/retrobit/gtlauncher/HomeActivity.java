@@ -347,6 +347,8 @@ public class HomeActivity extends Activity {
     @Override
     protected void onPause() {
         stopBatteryUpdates();
+        portalWalkGeneration++;
+        if (skyView != null) { skyView.setPortalWalkActive(false); applyActiveWorld(); }
         mainHandler.removeCallbacks(dayNightRefresh);
         mainHandler.removeCallbacks(periodicWeatherRefresh);
         if (sensorManager != null) sensorManager.unregisterListener(orientationListener);
@@ -473,8 +475,10 @@ public class HomeActivity extends Activity {
         }
         PortalTravel.Tile previous=route.get(index-1),next=route.get(index);
         String direction=next.column>previous.column?"E":next.column<previous.column?"W":next.row>previous.row?"S":"N";
-        skyView.setWorldCharacter(true,next.column,next.row,(float)world.characterScale,direction);
-        mainHandler.postDelayed(()->walkGroundStep(world,route,index+1,generation,direction),180);
+        int duration=android.animation.ValueAnimator.areAnimatorsEnabled()
+                ? CharacterGait.durationMillis(index,route.size()-1) : 1;
+        skyView.animateCharacterStep(previous.column,previous.row,next.column,next.row,(float)world.characterScale,direction,index,route.size()-1,duration);
+        mainHandler.postDelayed(()->walkGroundStep(world,route,index+1,generation,direction),duration);
     }
 
     private void applyActiveWorld() {
@@ -701,8 +705,10 @@ public class HomeActivity extends Activity {
             catch(JSONException e){skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Karakter tidak dapat dipindahkan.",Toast.LENGTH_SHORT).show();}return;
         }
         PortalTravel.Tile previous=route.get(index-1),next=route.get(index);String direction=next.column>previous.column?"E":next.column<previous.column?"W":next.row>previous.row?"S":"N";
-        skyView.setWorldCharacter(true,next.column,next.row,(float)world.characterScale,direction);
-        mainHandler.postDelayed(()->walkNearObjectStep(world,route,index+1,generation,direction,prompt),180);
+        int duration=android.animation.ValueAnimator.areAnimatorsEnabled()
+                ? CharacterGait.durationMillis(index,route.size()-1) : 1;
+        skyView.animateCharacterStep(previous.column,previous.row,next.column,next.row,(float)world.characterScale,direction,index,route.size()-1,duration);
+        mainHandler.postDelayed(()->walkNearObjectStep(world,route,index+1,generation,direction,prompt),duration);
     }
 
     private void walkToPortal(String id) {
@@ -735,8 +741,10 @@ public class HomeActivity extends Activity {
         }
         PortalTravel.Tile previous=route.get(index-1), next=route.get(index);
         String direction=next.column>previous.column ? "E" : next.column<previous.column ? "W" : next.row>previous.row ? "S" : "N";
-        skyView.setWorldCharacter(true,next.column,next.row,(float)source.characterScale,direction);
-        mainHandler.postDelayed(()->walkPortalStep(source,portal,destination,route,index+1,generation,direction),180);
+        int duration=android.animation.ValueAnimator.areAnimatorsEnabled()
+                ? CharacterGait.durationMillis(index,route.size()-1) : 1;
+        skyView.animateCharacterStep(previous.column,previous.row,next.column,next.row,(float)source.characterScale,direction,index,route.size()-1,duration);
+        mainHandler.postDelayed(()->walkPortalStep(source,portal,destination,route,index+1,generation,direction),duration);
     }
 
     private void showSellingPlaceholder(WorldStore.SurfaceObject box) {

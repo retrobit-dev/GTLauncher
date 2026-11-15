@@ -17,6 +17,7 @@ import android.graphics.RectF;
 import android.graphics.Rect;
 import android.graphics.Shader;
 import android.util.AttributeSet;
+import android.os.SystemClock;
 import android.view.View;
 
 import java.util.Random;
@@ -283,6 +284,19 @@ public final class WeatherSkyView extends View {
     private String characterFacing = "S";
     private boolean showCharacter;
     private int characterColumn = 4, characterRow = 4;
+    private int stepFromColumn, stepFromRow, stepIndex, stepCount, stepDuration;
+    private long stepStarted;
+    private boolean characterStepping;
+    private float stepProgress() { return characterStepping ? CharacterGait.progress(SystemClock.uptimeMillis()-stepStarted,stepDuration) : 1f; }
+    private float visualColumn() { return characterStepping ? stepFromColumn+(characterColumn-stepFromColumn)*stepProgress() : characterColumn; }
+    private float visualRow() { return characterStepping ? stepFromRow+(characterRow-stepFromRow)*stepProgress() : characterRow; }
+    void animateCharacterStep(int fromColumn,int fromRow,int toColumn,int toRow,float scale,String facing,int index,int total,int duration) {
+        setWorldCharacter(true,toColumn,toRow,scale,facing);
+        stepFromColumn=fromColumn; stepFromRow=fromRow; stepIndex=index; stepCount=total;
+        stepDuration=duration; stepStarted=SystemClock.uptimeMillis();
+        characterStepping=android.animation.ValueAnimator.areAnimatorsEnabled();
+        postInvalidateOnAnimation();
+    }
     private float characterScale = 1.0f;
     private double cloudEastTravel, cloudNorthTravel;
     private double cloudLastElapsed = Double.NaN;
@@ -377,6 +391,7 @@ public final class WeatherSkyView extends View {
 
     /** Set the character's world-specific tile and scale from the imported world. */
     public void setWorldCharacter(boolean visible, int column, int row, float scale, String facing) {
+        characterStepping = false;
         showCharacter = visible;
         characterFacing = facing;
         characterColumn = Math.max(0, Math.min(8, column));
@@ -431,7 +446,7 @@ public final class WeatherSkyView extends View {
         for(WorldStore.SurfaceObject o:worldSurfaces) {
             if(o.type.equals("road") || o.type.equals("fence") || o.type.equals("flower")) continue;
             float depth=o.column+o.row+(o.type.equals("tree") && !(o.material.equals("banana") || o.material.equals("palm"))?1f:0f);
-            if(showCharacter && (depth>=characterColumn+characterRow)!=front) continue;
+            if(showCharacter && (depth>=visualColumn()+visualRow())!=front) continue;
             if(!showCharacter && front) continue;
             Bitmap image; boolean mirror=false;
             if(o.type.equals("tree")) image=treeImage(o);
@@ -488,9 +503,9 @@ public final class WeatherSkyView extends View {
     private boolean gameplayMode = false;
     void setGameplayMode(boolean value) { gameplayMode=value; invalidate(); }
     private float mapSourceX() { return gameplayMode && showCharacter
-            ? SCENE_WIDTH/2f+(characterColumn-characterRow)*ISLAND_TILE_WIDTH/2f : SCENE_WIDTH/2f; }
+            ? SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f : SCENE_WIDTH/2f; }
     private float mapSourceY() { return gameplayMode && showCharacter
-            ? ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(characterColumn+characterRow)*ISLAND_TILE_HEIGHT/2f
+            ? ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f
             : ISLAND_GRID_SIZE == 20 ? ISLAND_CENTER_Y : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
     private float mapDestinationX() { return SCENE_WIDTH/2f; }
     private float mapDestinationY() { return (gameplayMode && showCharacter) || ISLAND_GRID_SIZE == 20 ? SCENE_HEIGHT*.56f : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
@@ -620,7 +635,7 @@ public final class WeatherSkyView extends View {
         return back?(mirror?houseWideBackMirrorImage:houseWideBackImage):(mirror?houseWideMirrorImage:houseWideImage);
     }
     private boolean fenceCoversEarlierObject(Bitmap image,RectF f,boolean mirror,boolean front) {
-        for(WorldStore.House house:worldHouses) if(house.visible && (front || !showCharacter || house.column+house.row+2<characterColumn+characterRow)) {
+        for(WorldStore.House house:worldHouses) if(house.visible && (front || !showCharacter || house.column+house.row+2<visualColumn()+visualRow())) {
             boolean back=house.facing.equals("N")||house.facing.equals("W"),wide="wide".equals(house.design);
             Bitmap sprite=houseArtwork(house);float scale=(float)house.scale;
             float x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0),bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f+1.25f*ISLAND_TILE_HEIGHT*scale;
@@ -628,7 +643,7 @@ public final class WeatherSkyView extends View {
             if(fenceOverlaps(image,f,mirror,sprite,new RectF(x-width/2,bottom-height,x+width/2,bottom),house.facing.equals("N")||house.facing.equals("E")))return true;
         }
         if(front && showCharacter) {
-            float x=SCENE_WIDTH/2f+(characterColumn-characterRow)*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(characterColumn+characterRow)*ISLAND_TILE_HEIGHT/2f,width=13.5f*characterScale,height=25*characterScale;
+            float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f,width=13.5f*characterScale,height=25*characterScale;
             boolean back=characterFacing.equals("N")||characterFacing.equals("W");
             if(fenceOverlaps(image,f,mirror,back?mainCharacterBack:mainCharacter,new RectF(x-width/2,y-height,x+width/2,y),characterFacing.equals("N")||characterFacing.equals("E")))return true;
         }
@@ -651,7 +666,7 @@ public final class WeatherSkyView extends View {
         for(PortalTravel.Portal portal:worldPortals)edges.add(new FenceGeometry.Edge(portal.tile.column,portal.tile.row,portal.edge));
         for(WorldStore.SurfaceObject o:worldSurfaces) if(o.type.equals("fence")) {
             float depth=o.column+o.row+((o.edge.equals("S")||o.edge.equals("E"))?.5f:-.5f);
-            if(showCharacter && (depth>=characterColumn+characterRow)!=front) continue;
+            if(showCharacter && (depth>=visualColumn()+visualRow())!=front) continue;
             if(!showCharacter && front) continue;
             float x=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f;
             float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
@@ -720,7 +735,7 @@ public final class WeatherSkyView extends View {
         float y=Math.max(0,Math.min(SCENE_HEIGHT-height,g.top-height+2));
         return new RectF(x,y,x+width,y+height);
     }
-    void setPortalWalkActive(boolean walking) { portalWalkActive=walking;invalidate(); }
+    void setPortalWalkActive(boolean walking) { portalWalkActive=walking; if (!walking) characterStepping=false; invalidate(); }
     boolean portalMarkerVisible(PortalTravel.Portal portal) {
         return !portalWalkActive && showCharacter && characterColumn==portal.tile.column && characterRow==portal.tile.row && portal.edge.equals(characterFacing);
     }
@@ -828,8 +843,8 @@ public final class WeatherSkyView extends View {
         }
         Bitmap sprite = ("N".equals(characterFacing) || "W".equals(characterFacing)) ? mainCharacterBack : mainCharacter;
         if (showCharacter && sprite != null) {
-            float x = SCENE_WIDTH / 2.0f + (characterColumn - characterRow) * ISLAND_TILE_WIDTH / 2.0f;
-            float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (characterColumn + characterRow) * ISLAND_TILE_HEIGHT / 2.0f;
+            float x = SCENE_WIDTH / 2.0f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2.0f;
+            float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2.0f;
             drawObjectSilhouette(canvas, sprite, x, y, 13.5f * characterScale, 25 * characterScale, lightPoint,
                     "N".equals(characterFacing) || "E".equals(characterFacing));
         }
@@ -843,8 +858,8 @@ public final class WeatherSkyView extends View {
             drawObjectContact(canvas,x,y,70*scale*(wide?7f/6:1),ISLAND_TILE_HEIGHT*2.5f*scale);paint.setAlpha(originalAlpha);
         }
         if (showCharacter && sprite != null) {
-            float x = SCENE_WIDTH / 2.0f + (characterColumn - characterRow) * ISLAND_TILE_WIDTH / 2.0f;
-            float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (characterColumn + characterRow) * ISLAND_TILE_HEIGHT / 2.0f;
+            float x = SCENE_WIDTH / 2.0f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2.0f;
+            float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2.0f;
             drawObjectContact(canvas, x, y, 13.5f * characterScale, 5 * characterScale);
         }
         canvas.restoreToCount(save);
@@ -861,7 +876,7 @@ public final class WeatherSkyView extends View {
         for(WorldStore.House house:worldHouses) {
             if(!house.visible)continue;
             float depth=house.column+house.row+2;
-            if(showCharacter && (depth>=characterColumn+characterRow)!=front)continue;
+            if(showCharacter && (depth>=visualColumn()+visualRow())!=front)continue;
             if(!showCharacter && front)continue;
             boolean back="N".equals(house.facing)||"W".equals(house.facing),mirror="N".equals(house.facing)||"E".equals(house.facing),wide="wide".equals(house.design);
             Bitmap sprite=houseArtwork(house);if(sprite==null)continue;
@@ -880,19 +895,39 @@ public final class WeatherSkyView extends View {
         boolean mirror = "N".equals(characterFacing) || "E".equals(characterFacing);
         Bitmap sprite = back ? mainCharacterBack : mainCharacter;
         if (!showCharacter || sprite == null) return;
-        float x = SCENE_WIDTH / 2.0f + (characterColumn - characterRow) * ISLAND_TILE_WIDTH / 2.0f;
+        float x = SCENE_WIDTH / 2.0f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2.0f;
         float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f
-                + (characterColumn + characterRow) * ISLAND_TILE_HEIGHT / 2.0f;
+                + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2.0f;
         float width = 13.5f * characterScale;
-        float idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5f : 0.0f;
+        float phase = characterStepping ? (float)Math.sin(CharacterGait.phase(stepIndex,stepProgress())) : 0f;
+        boolean running = characterStepping && CharacterGait.running(stepIndex,stepCount);
+        float idle = characterStepping ? Math.abs(phase)*(running ? .55f : .25f)*characterScale
+                : (Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5f : 0.0f);
         float height = 25.0f * characterScale + idle;
         paint.setColor(Color.WHITE);
         paint.setAlpha(255);
         paint.setFilterBitmap(true);
         int save = canvas.save();
         if (mirror) canvas.scale(-1, 1, x, 0);
-        canvas.drawBitmap(sprite, null, new RectF(x - width / 2, y - height,
-                x + width / 2, y), paint);
+        if (!characterStepping) {
+            canvas.drawBitmap(sprite, null, new RectF(x - width / 2, y - height, x + width / 2, y), paint);
+        } else {
+            int sw=sprite.getWidth(),sh=sprite.getHeight(),cut=(int)(sh*.78f),top=(int)(sh*.49f),arm=(int)(sw*.27f),split=sw/2;
+            float left=x-width/2, base=y-height, topH=height*top/sh, bodyH=height*cut/sh;
+            float armW=width*arm/sw, armH=height*(cut-top)/sh, halfW=width*split/sw;
+            float swing=phase*(running?.65f:.4f)*characterScale;
+            float screenX=("N".equals(characterFacing)||"E".equals(characterFacing))?1:-1;
+            float screenY=("E".equals(characterFacing)||"S".equals(characterFacing))?1:-1;
+            float dx=phase*1.1f*characterScale*screenX*(mirror?-1:1),dy=phase*.55f*characterScale*screenY;
+            float lift=Math.abs(phase)*.45f*characterScale;
+            canvas.drawBitmap(sprite,new Rect(0,0,sw,top),new RectF(left,base,left+width,base+topH),paint);
+            canvas.drawBitmap(sprite,new Rect(arm,top,sw-arm,cut),new RectF(left+armW,base+topH,left+width-armW,base+topH+armH),paint);
+            canvas.drawBitmap(sprite,new Rect(0,top,arm,cut),new RectF(left-swing,base+topH-swing*.35f,left+armW-swing,base+topH+armH-swing*.35f),paint);
+            canvas.drawBitmap(sprite,new Rect(sw-arm,top,sw,cut),new RectF(left+width-armW+swing,base+topH+swing*.35f,left+width+swing,base+topH+armH+swing*.35f),paint);
+            float y1=base+bodyH+dy-(phase>0?lift:0),y2=base+bodyH-dy-(phase<0?lift:0),bh=height-bodyH;
+            canvas.drawBitmap(sprite,new Rect(0,cut,split,sh),new RectF(left+dx,y1,left+halfW+dx,y1+bh),paint);
+            canvas.drawBitmap(sprite,new Rect(split,cut,sw,sh),new RectF(left+halfW-dx,y2,left+width-dx,y2+bh),paint);
+        }
         canvas.restoreToCount(save);
     }
 
