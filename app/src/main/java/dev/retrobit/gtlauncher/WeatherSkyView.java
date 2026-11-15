@@ -28,9 +28,9 @@ public final class WeatherSkyView extends View {
     private static final int RENDER_SCALE = 2;
     /** One pixel-art cell in scene units, matching the preview renderer. */
     private static final float RENDER_CELL = 1.0f / RENDER_SCALE;
-    private static final int ISLAND_GRID_SIZE = 9;
+    private int ISLAND_GRID_SIZE = 20;
     private static final int ISLAND_TILE_WIDTH = 28;
-    private static final String ISLAND_COLUMN_LABELS = "ABCDEFGHI";
+    private static final String ISLAND_COLUMN_LABELS = "ABCDEFGHIJKLMNOPQRST";
     // Logical grid IDs are A1–I9: columns A–I left to right, rows 1–9 top to bottom.
     // Diamond compass frame is rotated 45° clockwise from the screen diagonal so the grid
     // axes are cardinal: moving along a column runs east–west and moving along a row runs
@@ -54,7 +54,7 @@ public final class WeatherSkyView extends View {
     private static final int ISLAND_BASE_BOTTOM_MARGIN = 8;
     private static final float ISLAND_VERTICAL_LIFT = 7.5f;
     private static final float ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
-    private static final float ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH
+    private float ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH
             - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
     // Keep celestial centers in the upper third with enough margin for the Sun's glow.
     // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
@@ -98,7 +98,7 @@ public final class WeatherSkyView extends View {
     // island lighting; only the drawn celestial bodies are gone while the replacement is designed.
     // This stylized 9 x 9 tile surface represents a 2.25 km square ground patch.
     private static final double ISLAND_TILE_METERS = 250.0;
-    private static final float ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f
+    private float ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f
             + (ISLAND_GRID_SIZE - 1) * ISLAND_TILE_HEIGHT / 2.0f;
     // Clouds are raster sprites traced from reference art, downsampled to a 30-column grid and
     // quantised into three flat bands. One cell value drives both axes, so each silhouette keeps
@@ -395,6 +395,9 @@ public final class WeatherSkyView extends View {
         return o.material.equals("banana")?treeBanana:o.material.equals("palm")?treeCoconut:o.material.equals("apple")?treeApple:o.material.equals("orange")?treeOrange:o.material.equals("pear")?treePear:o.material.equals("guava")?treeGuava:o.material.equals("starfruit")?treeStarfruit:treeMango;
     }
     void setWorldSurfaces(String worldId,java.util.List<WorldStore.SurfaceObject> objects) {
+        ISLAND_GRID_SIZE = worldId == null || "base".equals(worldId) ? 20 : 9;
+        ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
+        ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2f;
         String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;}
         worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects); invalidate();
     }
@@ -480,9 +483,9 @@ public final class WeatherSkyView extends View {
             ? SCENE_WIDTH/2f+(characterColumn-characterRow)*ISLAND_TILE_WIDTH/2f : SCENE_WIDTH/2f; }
     private float mapSourceY() { return gameplayMode && showCharacter
             ? ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(characterColumn+characterRow)*ISLAND_TILE_HEIGHT/2f
-            : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
+            : ISLAND_GRID_SIZE == 20 ? ISLAND_CENTER_Y : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
     private float mapDestinationX() { return SCENE_WIDTH/2f; }
-    private float mapDestinationY() { return gameplayMode && showCharacter ? SCENE_HEIGHT*.56f : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
+    private float mapDestinationY() { return (gameplayMode && showCharacter) || ISLAND_GRID_SIZE == 20 ? SCENE_HEIGHT*.56f : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
     private float mapZoom() { return 2f; }
     // Object and marker hit tests use the exact inverse of the current map camera.
     private float islandX(float screenX) {return IslandProjection.inverse(screenX,getWidth(),SCENE_WIDTH,mapSourceX(),mapDestinationX(),mapZoom());}
@@ -1069,7 +1072,7 @@ public final class WeatherSkyView extends View {
      * negative direction. This is the opposite sign to the island body's own shadow, whose drift
      * describes which side the light is on rather than which way the shadow is thrown.
      */
-    private static double cloudShadowLean(double lightHourAngle) {
+    private double cloudShadowLean(double lightHourAngle) {
         return -(0.5 - celestialProgress(lightHourAngle))
                 * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.55;
     }
@@ -2033,7 +2036,7 @@ public final class WeatherSkyView extends View {
 
     private float[] celestialScreenPosition(SkyMath.Position body) {
         float anchor=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN;
-        float horizon=(float)clamp(anchor+(ISLAND_CENTER_Y-anchor)*islandScaleY()*2,
+        float horizon=(float)clamp(ISLAND_GRID_SIZE==20 ? mapDestinationY() : anchor+(ISLAND_CENTER_Y-anchor)*islandScaleY()*2,
                 SUN_BODY_RADIUS+6,SCENE_HEIGHT-SUN_BODY_RADIUS-2);
         return CelestialArc.position(body.hourAngleDegrees,body.declinationDegrees,latitude,
                 SCENE_WIDTH,horizon,SUN_BODY_RADIUS+2);
