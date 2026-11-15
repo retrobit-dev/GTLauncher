@@ -590,7 +590,7 @@ public final class WeatherSkyView extends View {
                 for(float u:new float[]{.2f,.5f,.8f})for(float v:new float[]{.2f,.5f,.8f}){float x=cx+(u-v)*ISLAND_TILE_WIDTH/2,y=cy+(u+v-1)*ISLAND_TILE_HEIGHT/2;if(fenceOverlaps(image,f,mirror,sprite,new RectF(x-2.1f,y-2.8f,x+2.1f,y+.7f),false))return true;}
             } else if(front) {
                 Bitmap sprite=surfaceImage(o);if(sprite==null)continue;
-                boolean flipped=(o.type.equals("sunflower") || o.type.equals("storage-box")) && (o.material.equals("N")||o.material.equals("E"));
+                boolean flipped=(o.type.equals("sunflower") || o.type.equals("storage-box") || o.type.equals("selling-box")) && (o.material.equals("N")||o.material.equals("E"));
                 if(fenceOverlaps(image,f,mirror,sprite,surfaceSpriteBounds(o),flipped))return true;
             }
         }
