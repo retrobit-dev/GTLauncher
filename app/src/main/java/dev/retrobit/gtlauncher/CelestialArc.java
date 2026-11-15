@@ -26,5 +26,6 @@ final class CelestialArc {
         double distance = Math.hypot(offset[0], offset[1]);
         return distance / (distance - depth);
     }
+    static float moonRadius(float sunRadius) { return sunRadius * 0.5f; }
     private CelestialArc() {}
 }

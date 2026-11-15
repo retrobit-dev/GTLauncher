@@ -18,6 +18,9 @@ public class CelestialArcTest {
   float[] rise=CelestialArc.islandOffset(-90,0,0,300,175);
   assertEquals(300,rise[0],.001);assertEquals(0,rise[1],.001);
  }
+ @Test public void moonDiameterIsHalfSunAtAllZooms() {
+  for(float radius:new float[]{2,8,16,40}) assertEquals(radius/2,CelestialArc.moonRadius(radius),.00001f);
+ }
  @Test public void closerLightEnlargesIslandShadow() {
   assertEquals(175.0/151.0,CelestialArc.islandShadowScale(0,0,0,24),.000001);
   assertEquals(300.0/276.0,CelestialArc.islandShadowScale(90,0,0,24),.000001);

@@ -1863,17 +1863,17 @@ public final class WeatherSkyView extends View {
      */
     private void drawCelestialGlow(Canvas canvas, float centerX, float centerY, double altitude,
                                    double elapsedSeconds, int tint, float visibility,
-                                   float strength) {
+                                   float strength, float size) {
         if (visibility <= 0.0f || strength <= 0.0f) return;
         double high = clamp(clamp(altitude, 0.0, 90.0) / 45.0, 0.0, 1.0);
         float squash = (float) (0.52 + high * 0.48);
         double breathe = 0.5 + 0.5 * Math.sin(elapsedSeconds * GLOW_PULSE_SPEED);
-        float reach = (float) (GLOW_REACH * celestialScale() * (1.15 - high * 0.45) * (0.82 + breathe * 0.36));
+        float reach = (float) (GLOW_REACH * celestialScale() * size * (1.15 - high * 0.45) * (0.82 + breathe * 0.36));
         double alpha = GLOW_ALPHA * (0.72 + breathe * 0.42) * visibility * strength;
         int color = (tint & 0x00FFFFFF) | ((int) Math.round(255.0 * alpha) << 24);
         for (int step = 0; step < GLOW_STEPS; step++) {
             float progress = step / (float) (GLOW_STEPS - 1);
-            glowDisc(canvas, centerX, centerY, celestialRadius() + celestialScale() + progress * reach,
+            glowDisc(canvas, centerX, centerY, celestialRadius() * size + celestialScale() * size + progress * reach,
                     squash, color);
         }
     }
@@ -1912,7 +1912,7 @@ public final class WeatherSkyView extends View {
                 * clamp(sun.altitudeDegrees / 2.0, 0.0, 1.0)));
         drawCelestialGlow(canvas, centerX, centerY, sun.altitudeDegrees, elapsedSeconds,
                 blend(palette[0], Color.rgb(255, 217, 138), 0.55),
-                (float) clamp(sun.altitudeDegrees / 2.0, 0.0, 1.0), 1.0f);
+                (float) clamp(sun.altitudeDegrees / 2.0, 0.0, 1.0), 1.0f, 1.0f);
         drawSunBody(canvas, centerX, centerY, palette);
         canvas.restoreToCount(save);
         paint.setAlpha(255);
@@ -1936,7 +1936,7 @@ public final class WeatherSkyView extends View {
         paint.setAlpha((int) Math.round(255.0 * visibility));
         drawCelestialGlow(canvas, centerX, centerY, moon.altitudeDegrees, elapsedSeconds,
                 blend(palette[0], Color.rgb(207, 224, 255), 0.45), visibility,
-                (float) (0.35 + clamp(moon.illumination, 0.0, 1.0) * 0.55));
+                (float) (0.35 + clamp(moon.illumination, 0.0, 1.0) * 0.55), 0.5f);
         drawMoonBody(canvas, centerX, centerY, palette, moon);
         canvas.restoreToCount(save);
         paint.setAlpha(255);
@@ -1950,7 +1950,7 @@ public final class WeatherSkyView extends View {
      */
     private void drawMoonBody(Canvas canvas, float centerX, float centerY, int[] palette,
                               SkyMath.Position moon) {
-        float radius = celestialRadius();
+        float radius = CelestialArc.moonRadius(celestialRadius());
         double illumination = clamp(moon.illumination, 0.0, 1.0);
         float terminator = (float) (1.0 - illumination * 2.0);
         // In the southern hemisphere the lit limb faces the opposite side from the north.
