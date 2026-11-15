@@ -16,7 +16,7 @@ final class CloudLayout {
     }
     // Fade together so intersecting masks keep a single, uniform shadow opacity.
     static double shadowFade(double seconds, boolean animationEnabled) {
-        return animationEnabled ? (1 + Math.cos(2 * Math.PI * seconds / 24.0)) / 2 : 1;
+        return animationEnabled ? .6 + .4 * (1 + Math.cos(2 * Math.PI * seconds / 24.0)) / 2 : 1;
     }
     private CloudLayout() {}
 }

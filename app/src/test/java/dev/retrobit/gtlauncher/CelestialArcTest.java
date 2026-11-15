@@ -12,11 +12,16 @@ public class CelestialArcTest {
   assertEquals(0,peak[0],.001);assertEquals(-300,peak[1],.001);
   assertEquals(-300,set[0],.001);assertEquals(0,set[1],.001);
  }
- @Test public void arcHeightIs300() {
-  float[] peak=CelestialArc.islandOffset(0,0,0,300,300);
-  assertEquals(0,peak[0],.001);assertEquals(-300,peak[1],.001);
-  float[] rise=CelestialArc.islandOffset(-90,0,0,300,300);
+ @Test public void arcHeightIs175() {
+  float[] peak=CelestialArc.islandOffset(0,0,0,300,175);
+  assertEquals(0,peak[0],.001);assertEquals(-175,peak[1],.001);
+  float[] rise=CelestialArc.islandOffset(-90,0,0,300,175);
   assertEquals(300,rise[0],.001);assertEquals(0,rise[1],.001);
+ }
+ @Test public void closerLightEnlargesIslandShadow() {
+  assertEquals(175.0/151.0,CelestialArc.islandShadowScale(0,0,0,24),.000001);
+  assertEquals(300.0/276.0,CelestialArc.islandShadowScale(90,0,0,24),.000001);
+  assertTrue(CelestialArc.islandShadowScale(0,0,0,24)>CelestialArc.islandShadowScale(90,0,0,24));
  }
  @Test public void risePeakSetAndLatitude() {
   double lat=-7,dec=20,angle=Math.toDegrees(Math.acos(-Math.tan(Math.toRadians(lat))*Math.tan(Math.toRadians(dec))));

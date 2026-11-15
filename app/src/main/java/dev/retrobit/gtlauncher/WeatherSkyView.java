@@ -932,7 +932,7 @@ public final class WeatherSkyView extends View {
         scene.restoreToCount(skySave);
         int islandSave=scene.save();applyIslandScale(scene);
         drawFloatingIsland(scene, sun.altitudeDegrees, sun.azimuthDegrees,
-                sun.hourAngleDegrees, cloudCover, code, moon, cloudStates);
+                sun.hourAngleDegrees, cloudCover, code, moon, cloudStates, sun);
         drawDecorativeFlowers(scene);
         drawRoads(scene);
         drawSurfaceObjectShadows(scene, shadowLight, cloudCover, code);
@@ -1125,7 +1125,8 @@ public final class WeatherSkyView extends View {
     private void drawProjectedCloudShadows(Canvas canvas, CloudState[] clouds, double sunAltitude,
             double sunHourAngle, double cloudCover, int code, boolean clipToIsland, double fade) {
         if (clouds.length == 0) return;
-        double opacity = cloudShadowOpacity(Math.max(sunAltitude, 0.0), cloudCover, code) * fade;
+        boolean wet = cloudCover >= 65 || code == 3 || code == 45 || code == 48 || code >= 51;
+        double opacity = Math.max(cloudShadowOpacity(Math.max(sunAltitude, 0.0), cloudCover, code), wet ? 0.16 : 0.0) * fade;
         int save = canvas.save();
         if (clipToIsland) setClipIslandSurface(canvas);
         paint.setColor(Color.argb((int) (255.0 * opacity), 12, 23, 40));
@@ -1146,7 +1147,7 @@ public final class WeatherSkyView extends View {
 
     private void drawFloatingIsland(Canvas canvas, double sunAltitude, double sunAzimuth,
             double sunHourAngle, double cloudCover, int code,
-            SkyMath.Position moon, CloudState[] cloudStates) {
+            SkyMath.Position moon, CloudState[] cloudStates, SkyMath.Position sunBody) {
         IslandPalette palette = islandPalette(sunAltitude, cloudCover, code);
         IslandSunlight sunlight = islandSunlight(sunAltitude, cloudCover, code);
         float centerX = SCENE_WIDTH / 2.0f;
@@ -1166,14 +1167,15 @@ public final class WeatherSkyView extends View {
         // shadow follows whichever body is actually in the sky.
         double lightAltitude = sunAltitude;
         double lightHourAngle = sunHourAngle;
+        double lightDeclination = sunBody.declinationDegrees;
         if (sunAltitude <= 2.0 && moon != null && moon.altitudeDegrees > 2.0) {
             lightAltitude = clamp(moon.altitudeDegrees
                     * (0.35 + moon.illumination * 0.65), 0.0, 90.0);
             lightHourAngle = moon.hourAngleDegrees;
+            lightDeclination = moon.declinationDegrees;
         }
-        // Keep the island's original, independent shadow model; cloud ray projection does not
-        // position or resize the island shadow. The island remains close to its own shadow.
-        drawIslandShadow(canvas, centerX, lowerY, lightAltitude, lightHourAngle, cloudCover, code);
+        // Cloud shadows are separate; the island shadow scales with its selected light's distance.
+        drawIslandShadow(canvas, centerX, lowerY, lightAltitude, lightHourAngle, cloudCover, code, lightDeclination);
 
         // One rounded, uninterrupted soil slab sits inside the wider grass cap.
         drawIslandSoilBody(canvas, soilLeftX, centerX, soilRightX,
@@ -1254,11 +1256,11 @@ public final class WeatherSkyView extends View {
      */
     private void drawIslandShadow(Canvas canvas, float centerX, float lowerY,
                                   double lightAltitude, double lightHourAngle,
-                                  double cloudCover, int code) {
+                                  double cloudCover, int code, double lightDeclination) {
         // A fixed alpha is not enough on its own, and that is why the shadow vanished after dark:
         // alpha blends toward the shade colour, so it removes a fixed FRACTION of the backdrop. The
         // same 0.14 takes 25 levels off bright daytime ground but only 9 at night, where there is
-        // barely any light left to take away. The silhouette keeps one colour and one size, and the
+        // barely any light left to take away. The silhouette keeps one colour, and the
         // alpha is solved for a target amount of contrast instead of being fixed, so the shade lands
         // with the same visible weight in every weather and at every hour.
         double floorLuminance = floorLuminance(cloudCover, code);
@@ -1267,11 +1269,10 @@ public final class WeatherSkyView extends View {
         // The island shadow stays centred beneath the island, independent of celestial motion.
         float shadowCenterX = centerX;
         float bottomTileY = lowerY - ISLAND_DEPTH - ISLAND_TILE_HEIGHT / 2f;
-        // One size, never a function of the light or the weather.
-        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4.0f
-                * (float) ISLAND_BODY_SHADOW_SCALE;
-        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 4.0f
-                * (float) ISLAND_BODY_SHADOW_SCALE;
+        float scale = ISLAND_BODY_SHADOW_SCALE * (float) CelestialArc.islandShadowScale(
+                lightHourAngle, lightDeclination, latitude, ISLAND_DEPTH);
+        float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4.0f * scale;
+        float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 4.0f * scale;
         float shadowCenterY = bottomTileY + 50f - halfHeight;
         int shadowColor = Color.argb((int) (255.0 * opacity), 12, 23, 40);
         drawIslandPolygon(canvas,
@@ -2053,7 +2054,7 @@ public final class WeatherSkyView extends View {
     }
 
     private float[] celestialScreenPosition(SkyMath.Position body) {
-        float[] offset=CelestialArc.islandOffset(body.hourAngleDegrees,body.declinationDegrees,latitude,300f,300f);
+        float[] offset=CelestialArc.islandOffset(body.hourAngleDegrees,body.declinationDegrees,latitude,300f,175f);
         float x=SCENE_WIDTH/2f+offset[0], y=ISLAND_CENTER_Y+offset[1];
         return new float[]{mapDestinationX()+(x-mapSourceX())*islandScaleX()*mapZoom(),
                 mapDestinationY()+(y-mapSourceY())*islandScaleY()*mapZoom()};

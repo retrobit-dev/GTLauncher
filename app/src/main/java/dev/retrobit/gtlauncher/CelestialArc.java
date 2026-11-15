@@ -21,5 +21,10 @@ final class CelestialArc {
         double angle=progress*Math.PI;
         return new float[]{(float)(radiusX*Math.cos(angle)),(float)(-radiusY*Math.sin(angle))};
     }
+    static double islandShadowScale(double hourAngle, double declination, double latitude, double depth) {
+        float[] offset = islandOffset(hourAngle, declination, latitude, 300, 175);
+        double distance = Math.hypot(offset[0], offset[1]);
+        return distance / (distance - depth);
+    }
     private CelestialArc() {}
 }

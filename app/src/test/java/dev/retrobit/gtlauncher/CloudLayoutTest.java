@@ -22,9 +22,9 @@ public class CloudLayoutTest {
     }
     @Test public void fadeInOutAndReducedMotion() {
         assertEquals(1, CloudLayout.shadowFade(0,true),1e-9);
-        assertEquals(.5, CloudLayout.shadowFade(6,true),1e-9);
-        assertEquals(0, CloudLayout.shadowFade(12,true),1e-9);
-        assertEquals(.5, CloudLayout.shadowFade(18,true),1e-9);
+        assertEquals(.8, CloudLayout.shadowFade(6,true),1e-9);
+        assertEquals(.6, CloudLayout.shadowFade(12,true),1e-9);
+        assertEquals(.8, CloudLayout.shadowFade(18,true),1e-9);
         assertEquals(1, CloudLayout.shadowFade(12,false),1e-9);
     }
 }
