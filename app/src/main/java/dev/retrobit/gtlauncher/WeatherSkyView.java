@@ -957,23 +957,23 @@ public final class WeatherSkyView extends View {
         if (sunAltitude < -12.0) daylight = 0.0;
         else if (sunAltitude > 2.0) daylight = 1.0;
 
-        int bandHeight = 2;
-        for (int y = 0; y < SCENE_HEIGHT; y += bandHeight) {
-            float amount = y / (float) SCENE_HEIGHT;
-            int upper = paletteColor(palette, amount);
-            int overcast = Color.rgb(
-                    interpolate(55, 130, amount),
-                    interpolate(68, 140, amount),
-                    interpolate(84, 151, amount));
-            double coverMix = clamp(cloudCover / 100.0 * 0.58, 0.0, 0.58);
-            if (code >= 95) coverMix = Math.max(coverMix, 0.38);
-            int skyColor = blend(upper, overcast, coverMix);
+        // A single gradient avoids rasterization seams between adjacent scaled bands.
+        int[] colors = new int[palette.length];
+        double coverMix = clamp(cloudCover / 100.0 * 0.58, 0.0, 0.58);
+        if (code >= 95) coverMix = Math.max(coverMix, 0.38);
+        for (int i = 0; i < colors.length; i++) {
+            double amount = i / (double) (colors.length - 1);
+            int overcast = Color.rgb(interpolate(55, 130, amount),
+                    interpolate(68, 140, amount), interpolate(84, 151, amount));
+            colors[i] = blend(palette[i], overcast, coverMix);
             if (daylight < 0.35 && code >= 61) {
-                skyColor = blend(skyColor, Color.rgb(27, 34, 53), 0.16);
+                colors[i] = blend(colors[i], Color.rgb(27, 34, 53), 0.16);
             }
-            paint.setColor(skyColor);
-            canvas.drawRect(0, y, SCENE_WIDTH, y + bandHeight, paint);
         }
+        paint.setShader(new LinearGradient(0, 0, 0, SCENE_HEIGHT, colors, null,
+                Shader.TileMode.CLAMP));
+        canvas.drawRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT, paint);
+        paint.setShader(null);
     }
 
     /**
