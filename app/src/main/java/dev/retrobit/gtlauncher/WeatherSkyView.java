@@ -1078,10 +1078,12 @@ public final class WeatherSkyView extends View {
         for (int row = 0; row < shape.length; row += 1) {
             String line = shape[row];
             float top = centreY - height * 0.5f + row * cellY;
-            for (int column = 0; column < line.length(); column += 1) {
-                if (line.charAt(column) == '0') continue;
+            for (int column = 0; column < line.length();) {
+                if (line.charAt(column) == '0') { column++; continue; }
+                int end=column+1; while(end<line.length() && line.charAt(end)!='0') end++;
                 float left = centreX - width * 0.5f + column * cellX;
-                canvas.drawRect(left, top, left + cellX, top + cellY, paint);
+                canvas.drawRect(left, top, left + (end-column)*cellX, top + cellY, paint);
+                column=end;
             }
         }
     }
@@ -1134,8 +1136,8 @@ public final class WeatherSkyView extends View {
             float x = cloud.planeX, y = cloud.planeY + LANGIT_AWAN_LIFT;
             float[] position=CloudShadowPlacement.onIsland(x,y,SCENE_WIDTH/2f,ISLAND_CENTER_Y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,ISLAND_GRID_SIZE);
             drawGroundSilhouette(canvas, cloud.shape, position[0], position[1],
-                    cloud.shape[0].length() * cloud.cell * CLOUD_SHADOW_SCALE,
-                    cloud.shape.length * cloud.cell * CLOUD_SHADOW_SCALE);
+                    cloud.shape[0].length() * cloud.cell * (ISLAND_GRID_SIZE==20 ? 2f : CLOUD_SHADOW_SCALE),
+                    cloud.shape.length * cloud.cell * (ISLAND_GRID_SIZE==20 ? 2f : CLOUD_SHADOW_SCALE));
         }
         canvas.restoreToCount(save);
     }
@@ -2054,7 +2056,7 @@ public final class WeatherSkyView extends View {
     }
 
     private float[] celestialScreenPosition(SkyMath.Position body) {
-        float[] offset=CelestialArc.islandOffset(body.hourAngleDegrees,body.declinationDegrees,latitude,300f,250f);
+        float[] offset=CelestialArc.islandOffset(body.hourAngleDegrees,body.declinationDegrees,latitude,300f,200f);
         float x=SCENE_WIDTH/2f+offset[0], y=ISLAND_CENTER_Y+offset[1];
         return new float[]{mapDestinationX()+(x-mapSourceX())*islandScaleX()*mapZoom(),
                 mapDestinationY()+(y-mapSourceY())*islandScaleY()*mapZoom()};
@@ -2101,7 +2103,7 @@ public final class WeatherSkyView extends View {
         int seed = (int) (latitude * 37 + longitude * 17) ^ (count * 0x2545f491);
         CloudState[] clouds = new CloudState[count];
         double len = Math.hypot(ISLAND_TILE_WIDTH, ISLAND_TILE_HEIGHT);
-        float lift=cloudDisplayLift(), sx=islandScaleX()*mapZoom(), sy=islandScaleY()*mapZoom();
+        float lift=cloudDisplayLift(), sx=islandScaleX()*mapZoom(), sy=islandScaleY()*mapZoom(), cell=CLOUD_CELL*(ISLAND_GRID_SIZE==20 ? 2f : 1f);
         int cols=(int)Math.ceil(Math.sqrt(count)),rows=(int)Math.ceil(count/(double)cols);
         for (int index = 0; index < count; index++) {
             int variant = (int) (cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length);
@@ -2115,10 +2117,10 @@ public final class WeatherSkyView extends View {
             float y = (float) (ISLAND_CENTER_Y - LANGIT_AWAN_LIFT
                     - LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_HEIGHT / len
                     + (east - north) * ISLAND_TILE_HEIGHT / 2.0);
-            float displayY=y-(lift-LANGIT_AWAN_LIFT)-shape.length*CLOUD_CELL/2f;
+            float displayY=y-(lift-LANGIT_AWAN_LIFT)-shape.length*cell/2f;
             float screenX=mapDestinationX()+(x-mapSourceX())*sx;
             float screenY=mapDestinationY()+(displayY-mapSourceY())*sy;
-            clouds[index] = new CloudState(shape, CLOUD_CELL, x, y, displayY, screenX, screenY, sy);
+            clouds[index] = new CloudState(shape, cell, x, y, displayY, screenX, screenY, sy);
         }
         return clouds;
     }
@@ -2144,15 +2146,18 @@ public final class WeatherSkyView extends View {
             String line = shape[row];
             float rowTop = snapToArtGrid(top + row * cell);
             float rowBottom = snapToArtGrid(top + (row + 1) * cell);
-            for (int column = 0; column < line.length(); column += 1) {
-                char band = line.charAt(column);
-                if (band == '0') continue;
-                paint.setColor(palette[band - '1']);
-                paint.setStyle(Paint.Style.FILL);
-                paint.setAlpha(layerAlpha);
-                float runLeft = snapToArtGrid(left + column * cell);
-                float runRight = snapToArtGrid(left + (column + 1) * cell);
-                canvas.drawRect(runLeft, rowTop, runRight, rowBottom, paint);
+            for (int column = 0; column < line.length();) {
+                char band = line.charAt(column); int end=column+1;
+                while(end<line.length() && line.charAt(end)==band) end++;
+                if (band != '0') {
+                    paint.setColor(palette[band - '1']);
+                    paint.setStyle(Paint.Style.FILL);
+                    paint.setAlpha(layerAlpha);
+                    float runLeft = snapToArtGrid(left + column * cell);
+                    float runRight = snapToArtGrid(left + end * cell);
+                    canvas.drawRect(runLeft, rowTop, runRight, rowBottom, paint);
+                }
+                column=end;
             }
         }
     }

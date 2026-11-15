@@ -12,10 +12,10 @@ public class CelestialArcTest {
   assertEquals(0,peak[0],.001);assertEquals(-300,peak[1],.001);
   assertEquals(-300,set[0],.001);assertEquals(0,set[1],.001);
  }
- @Test public void ellipticalArcHeightIs250() {
-  float[] peak=CelestialArc.islandOffset(0,0,0,300,250);
-  assertEquals(0,peak[0],.001);assertEquals(-250,peak[1],.001);
-  float[] rise=CelestialArc.islandOffset(-90,0,0,300,250);
+ @Test public void ellipticalArcHeightIs200() {
+  float[] peak=CelestialArc.islandOffset(0,0,0,300,200);
+  assertEquals(0,peak[0],.001);assertEquals(-200,peak[1],.001);
+  float[] rise=CelestialArc.islandOffset(-90,0,0,300,200);
   assertEquals(300,rise[0],.001);assertEquals(0,rise[1],.001);
  }
  @Test public void risePeakSetAndLatitude() {
