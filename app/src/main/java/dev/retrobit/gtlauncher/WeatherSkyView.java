@@ -262,7 +262,7 @@ public final class WeatherSkyView extends View {
     private boolean animationEnabled = true;
     private double plantMotionSeconds;
     private Integer worldIslandTint;
-    private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, houseWideImage, houseWideBackImage, portalMarkerImage;
+    private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
     private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron;
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
     private Bitmap treeDormant,treeBananaFruitless,treeCoconutFruitless;
@@ -317,7 +317,8 @@ public final class WeatherSkyView extends View {
         mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.main_character_back);
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_redesign);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_redesign_back);
-        houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_wide);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_wide_back);
+        houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_back);
+        houseWideMirrorImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_mirror);houseWideBackMirrorImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_back_mirror);
         portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation_red);
         fenceFarm=BitmapFactory.decodeResource(getResources(),R.drawable.fence_farm);fenceSlat=BitmapFactory.decodeResource(getResources(),R.drawable.fence_slat);fenceStone=BitmapFactory.decodeResource(getResources(),R.drawable.fence_stone);fenceIron=BitmapFactory.decodeResource(getResources(),R.drawable.fence_iron);
         flowerSprites.put("rose",BitmapFactory.decodeResource(getResources(),R.drawable.petals_rose));
@@ -570,10 +571,15 @@ public final class WeatherSkyView extends View {
         }
         return null;
     }
+    private Bitmap houseArtwork(WorldStore.House house) {
+        boolean back=house.facing.equals("N")||house.facing.equals("W"),mirror=house.facing.equals("N")||house.facing.equals("E");
+        if(!"wide".equals(house.design))return back?houseBackImage:houseImage;
+        return back?(mirror?houseWideBackMirrorImage:houseWideBackImage):(mirror?houseWideMirrorImage:houseWideImage);
+    }
     private boolean fenceCoversEarlierObject(Bitmap image,RectF f,boolean mirror,boolean front) {
         for(WorldStore.House house:worldHouses) if(house.visible && (front || !showCharacter || house.column+house.row+2<characterColumn+characterRow)) {
             boolean back=house.facing.equals("N")||house.facing.equals("W"),wide="wide".equals(house.design);
-            Bitmap sprite=wide?(back?houseWideBackImage:houseWideImage):(back?houseBackImage:houseImage);float scale=(float)house.scale;
+            Bitmap sprite=houseArtwork(house);float scale=(float)house.scale;
             float x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0),bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f+1.25f*ISLAND_TILE_HEIGHT*scale;
             float width=70*scale*(wide?7f/6:1),height=(wide?100:74)*scale;
             if(fenceOverlaps(image,f,mirror,sprite,new RectF(x-width/2,bottom-height,x+width/2,bottom),house.facing.equals("N")||house.facing.equals("E")))return true;
@@ -770,7 +776,7 @@ public final class WeatherSkyView extends View {
         float[] lightPoint = sunPlanePosition(light.hourAngleDegrees);
         for(WorldStore.House house:worldHouses) if(house.visible) {
             boolean wide="wide".equals(house.design),back="N".equals(house.facing)||"W".equals(house.facing);
-            Bitmap image=wide?(back?houseWideBackImage:houseWideImage):(back?houseBackImage:houseImage);if(image==null)continue;
+            Bitmap image=houseArtwork(house);if(image==null)continue;
             float scale=(float)house.scale,x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
             float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f;
             int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-Math.max(0,house.opacity))/100f));
@@ -815,7 +821,7 @@ public final class WeatherSkyView extends View {
             if(showCharacter && (depth>=characterColumn+characterRow)!=front)continue;
             if(!showCharacter && front)continue;
             boolean back="N".equals(house.facing)||"W".equals(house.facing),mirror="N".equals(house.facing)||"E".equals(house.facing),wide="wide".equals(house.design);
-            Bitmap sprite=wide?(back?houseWideBackImage:houseWideImage):(back?houseBackImage:houseImage);if(sprite==null)continue;
+            Bitmap sprite=houseArtwork(house);if(sprite==null)continue;
             float scale=(float)house.scale,x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
             float bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f+1.25f*ISLAND_TILE_HEIGHT*scale;
             float width=70*scale*(wide?7f/6:1),height=(wide?100:74)*scale;
