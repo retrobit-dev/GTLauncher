@@ -922,7 +922,6 @@ public final class WeatherSkyView extends View {
         int save = scene.save();
         scene.scale((float)getWidth() / SCENE_WIDTH, (float)getHeight() / SCENE_HEIGHT);
         drawSky(scene, sun, cloudCover, code);
-        drawStars(scene, sun.altitudeDegrees, cloudCover);
         int skySave = scene.save();
         // The sky band runs from above the frame down to the horizon; clipping at half height
         // used to behead any cloud tall enough to reach past it.
@@ -931,8 +930,6 @@ public final class WeatherSkyView extends View {
         SkyMath.Position shadowLight = sun.altitudeDegrees <= MOON_VISIBLE_BELOW_SUN ? moon : sun;
         float sunY = celestialScreenPosition(shadowLight)[1];
         drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, true);
-        drawSun(scene, sun, cloudCover, motionSeconds);
-        drawMoon(scene, moon, motionSeconds, sun.altitudeDegrees);
         drawClouds(scene, cloudStates, sun.altitudeDegrees, code, sunY, false);
         drawFog(scene, code);
         drawStormFlash(scene, elapsedSeconds, code);
@@ -957,6 +954,10 @@ public final class WeatherSkyView extends View {
         drawSurfaceSprites(scene, true);
         drawFences(scene, true);
         scene.restoreToCount(islandSave);
+        // Celestial sprites remain visible in front of the island and its objects.
+        drawStars(scene, sun.altitudeDegrees, cloudCover);
+        drawSun(scene, sun, cloudCover, motionSeconds);
+        drawMoon(scene, moon, motionSeconds, sun.altitudeDegrees);
         drawPrecipitation(scene, elapsedSeconds);
         int markerSave=scene.save();applyIslandScale(scene);
         drawPortalMarkers(scene);
