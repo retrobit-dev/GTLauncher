@@ -907,7 +907,8 @@ public final class WeatherSkyView extends View {
         float flight = runBlend*(1-Math.abs(phase))*1.1f*characterScale;
         float idle = characterStepping ? Math.abs(phase)*(.25f+.3f*runBlend)*characterScale
                 : (Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5f : 0.0f);
-        float height = 25.0f * characterScale + idle;
+        // Keep the dimensions fixed while moving; bounce translates rather than stretches.
+        float height = 25.0f * characterScale + (characterStepping ? 0 : idle);
         paint.setColor(Color.WHITE);
         paint.setAlpha(255);
         paint.setFilterBitmap(true);
@@ -917,7 +918,7 @@ public final class WeatherSkyView extends View {
             canvas.drawBitmap(sprite, null, new RectF(x - width / 2, y - height, x + width / 2, y), paint);
         } else {
             int sw=sprite.getWidth(),sh=sprite.getHeight(),cut=(int)(sh*.78f),top=(int)(sh*.49f),arm=(int)(sw*.27f),split=sw/2;
-            float left=x-width/2, base=y-height-flight, topH=height*top/sh, bodyH=height*cut/sh;
+            float left=x-width/2, base=y-height-flight-idle, topH=height*top/sh, bodyH=height*cut/sh;
             float armW=width*arm/sw, armH=height*(cut-top)/sh, halfW=width*split/sw;
             float screenX=("N".equals(characterFacing)||"E".equals(characterFacing))?1:-1;
             float screenY=("E".equals(characterFacing)||"S".equals(characterFacing))?1:-1;
