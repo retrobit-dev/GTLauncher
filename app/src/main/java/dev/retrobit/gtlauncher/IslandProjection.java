@@ -7,5 +7,8 @@ final class IslandProjection {
     static float toScene(float screenValue,float viewSize,float sceneSize,float anchor) {
         return anchor+(screenValue*sceneSize/viewSize-anchor)/scale(viewSize,sceneSize);
     }
+    static float inverse(float screenValue,float viewSize,float sceneSize,float source,float destination,float zoom) {
+        return source + (screenValue*sceneSize/viewSize-destination)/(scale(viewSize,sceneSize)*zoom);
+    }
     private IslandProjection() {}
 }

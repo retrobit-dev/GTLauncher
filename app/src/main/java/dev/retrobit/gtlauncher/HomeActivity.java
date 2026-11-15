@@ -230,6 +230,12 @@ public class HomeActivity extends Activity {
         weatherLicenseView = findViewById(R.id.weather_attribution_license);
         configureWeatherAttribution();
 
+        setMapMode(false);
+        findViewById(R.id.mode_gameplay).setOnClickListener(view -> setMapMode(true));
+        findViewById(R.id.mode_map_editor).setOnClickListener(view -> {
+            setMapMode(false);
+            Toast.makeText(this, "Editor peta Android belum tersedia. Buat map di preview dan impor ke Android.", Toast.LENGTH_LONG).show();
+        });
         homeScreen.setOnTouchListener((view, event) -> {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
                 portalWalkGeneration++;
@@ -244,7 +250,7 @@ public class HomeActivity extends Activity {
                 float deltaY = event.getY() - swipeStartY;
                 if (deltaY < -dp(72) && Math.abs(deltaY) > Math.abs(deltaX) * 1.15f) {
                     openDrawer();
-                } else if (Math.hypot(deltaX,deltaY) < dp(8)) {
+                } else if (gameplayMode && Math.hypot(deltaX,deltaY) < dp(8)) {
                     WorldStore.SurfaceObject selling=skyView.sellingMarkerAt(event.getX(),event.getY());
                     String marker=selling==null ? skyView.portalMarkerAt(event.getX(),event.getY()) : null;
                     String portal=marker==null && selling==null ? skyView.portalAt(event.getX(),event.getY()) : null;
@@ -256,7 +262,7 @@ public class HomeActivity extends Activity {
                         WorldStore.SurfaceObject tree=box==null?skyView.treeAt(event.getX(),event.getY()):null;
                         if(box!=null) approachBox(box);
                         else if(tree!=null) interactTree(tree);
-                        else applyActiveWorld();
+                        else walkToGround(event.getX(),event.getY());
                     }
                 }
                 return true;
@@ -412,6 +418,46 @@ public class HomeActivity extends Activity {
         if (!batteryReceiverRegistered) return;
         unregisterReceiver(batteryReceiver);
         batteryReceiverRegistered = false;
+    }
+
+    private boolean gameplayMode;
+    private void setMapMode(boolean gameplay) {
+        gameplayMode=gameplay;
+        portalWalkGeneration++;
+        skyView.setPortalWalkActive(false);
+        applyActiveWorld();
+        skyView.setGameplayMode(gameplay);
+        findViewById(R.id.mode_gameplay).setSelected(gameplay);
+        findViewById(R.id.mode_map_editor).setSelected(!gameplay);
+        findViewById(R.id.mode_gameplay).setAlpha(gameplay ? 1f : .6f);
+        findViewById(R.id.mode_map_editor).setAlpha(gameplay ? .6f : 1f);
+    }
+    private void walkToGround(float x,float y) {
+        PortalTravel.Tile target=skyView.groundTileAt(x,y);
+        if(target==null)return;
+        try {
+            WorldStore.World world=worldStore.activeWorld();
+            if(world==null || !world.showCharacter)return;
+            java.util.List<PortalTravel.Tile> route=PortalTravel.path(
+                new PortalTravel.Tile(world.characterColumn,world.characterRow),target,portalTerrain(world));
+            if(route==null){Toast.makeText(this,"Jalan terhalang.",Toast.LENGTH_SHORT).show();return;}
+            int generation=++portalWalkGeneration; skyView.setPortalWalkActive(true);
+            walkGroundStep(world,route,1,generation,world.characterFacing);
+        } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
+    }
+    private void walkGroundStep(WorldStore.World world,java.util.List<PortalTravel.Tile> route,int index,int generation,String facing) {
+        if(generation!=portalWalkGeneration)return;
+        if(index>=route.size()) {
+            try {PortalTravel.Tile end=route.get(route.size()-1);
+                if(!worldStore.moveCharacter(world.id,end.column,end.row,facing)) throw new JSONException("Move failed");
+                skyView.setPortalWalkActive(false);applyActiveWorld();
+            } catch(JSONException e){skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Posisi tidak dapat disimpan.",Toast.LENGTH_SHORT).show();}
+            return;
+        }
+        PortalTravel.Tile previous=route.get(index-1),next=route.get(index);
+        String direction=next.column>previous.column?"E":next.column<previous.column?"W":next.row>previous.row?"S":"N";
+        skyView.setWorldCharacter(true,next.column,next.row,(float)world.characterScale,direction);
+        mainHandler.postDelayed(()->walkGroundStep(world,route,index+1,generation,direction),180);
     }
 
     private void applyActiveWorld() {

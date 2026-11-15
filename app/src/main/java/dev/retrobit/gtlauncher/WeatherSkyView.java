@@ -473,14 +473,40 @@ public final class WeatherSkyView extends View {
             paint.setColor(Color.WHITE);canvas.drawBitmap(portalMarkerImage,null,new RectF(g.left+2.5f,g.top+1,g.right-2.5f,g.bottom-3),paint);
         }
     }
-    // Reverse the shared island transform for all object and marker hit tests.
-    private float islandX(float screenX) {return IslandProjection.toScene(screenX,getWidth(),SCENE_WIDTH,SCENE_WIDTH/2f);}
-    private float islandY(float screenY) {return IslandProjection.toScene(screenY,getHeight(),SCENE_HEIGHT,SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN);}
+    private boolean gameplayMode = false;
+    void setGameplayMode(boolean value) { gameplayMode=value; invalidate(); }
+    private float mapSourceX() { return gameplayMode && showCharacter
+            ? SCENE_WIDTH/2f+(characterColumn-characterRow)*ISLAND_TILE_WIDTH/2f : SCENE_WIDTH/2f; }
+    private float mapSourceY() { return gameplayMode && showCharacter
+            ? ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(characterColumn+characterRow)*ISLAND_TILE_HEIGHT/2f
+            : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
+    private float mapDestinationX() { return SCENE_WIDTH/2f; }
+    private float mapDestinationY() { return gameplayMode && showCharacter ? SCENE_HEIGHT*.56f : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
+    private float mapZoom() { return gameplayMode ? 2f : 1f; }
+    // Object and marker hit tests use the exact inverse of the current map camera.
+    private float islandX(float screenX) {return IslandProjection.inverse(screenX,getWidth(),SCENE_WIDTH,mapSourceX(),mapDestinationX(),mapZoom());}
+    private float islandY(float screenY) {return IslandProjection.inverse(screenY,getHeight(),SCENE_HEIGHT,mapSourceY(),mapDestinationY(),mapZoom());}
     private float islandScaleX() { return IslandProjection.scale(getWidth(), SCENE_WIDTH); }
     private float islandScaleY() { return IslandProjection.scale(getHeight(), SCENE_HEIGHT); }
+    // Celestial positions remain in the sky, independent of the map camera.
     private float islandScreenX(float x) {return SCENE_WIDTH/2f+(x-SCENE_WIDTH/2f)*islandScaleX();}
     private float islandScreenY(float y) {float anchor=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN;return anchor+(y-anchor)*islandScaleY();}
-    private void applyIslandScale(Canvas canvas) {canvas.scale(islandScaleX(),islandScaleY(),SCENE_WIDTH/2f,SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN);}
+    private void applyIslandScale(Canvas canvas) {
+        canvas.translate(mapDestinationX(),mapDestinationY());
+        canvas.scale(islandScaleX()*mapZoom(),islandScaleY()*mapZoom());
+        canvas.translate(-mapSourceX(),-mapSourceY());
+    }
+    PortalTravel.Tile groundTileAt(float sx,float sy) {
+        if(getWidth()<=0 || getHeight()<=0)return null;
+        float x=islandX(sx), y=islandY(sy);
+        float dx=(x-SCENE_WIDTH/2f)/(ISLAND_TILE_WIDTH/2f);
+        float dy=(y-ISLAND_TOP-ISLAND_TILE_HEIGHT/2f)/(ISLAND_TILE_HEIGHT/2f);
+        float c=(dx+dy)/2f, r=(dy-dx)/2f;
+        int col=Math.round(c),row=Math.round(r);
+        if(col<0 || col>=ISLAND_GRID_SIZE || row<0 || row>=ISLAND_GRID_SIZE
+                || Math.abs(c-col)>.5f || Math.abs(r-row)>.5f) return null;
+        return new PortalTravel.Tile(col,row);
+    }
     WorldStore.SurfaceObject sellingMarkerAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;float x=islandX(sx),y=islandY(sy);
         for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);RectF hit=sellingMarkerBounds(o);hit.inset(-3,-3);if(sellingMarkerVisible(o) && hit.contains(x,y))return o;}return null;

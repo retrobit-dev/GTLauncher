@@ -20,4 +20,15 @@ public class IslandProjectionTest {
    }
   }
  }
+ @Test public void gameplayCameraFollowsAndInvertsAtTwoTimesZoom() {
+  for(float width:new float[]{640,960,2560}) for(float source:new float[]{90,160,230}) {
+   float scale=IslandProjection.scale(width,320)*2;
+   float destination=160;
+   for(float value:new float[]{0,source,300}) {
+    float screen=(destination+(value-source)*scale)*width/320;
+    assertEquals(value,IslandProjection.inverse(screen,width,320,source,destination,2),0.001f);
+   }
+   assertEquals(64f,28*scale*width/320,0.001f);
+  }
+ }
 }
