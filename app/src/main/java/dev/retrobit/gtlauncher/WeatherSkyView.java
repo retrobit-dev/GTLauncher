@@ -133,7 +133,6 @@ public final class WeatherSkyView extends View {
     private static final float CLOUD_EDGE_INSET = 4.0f;
     // The shadow is a shrunk copy of the cloud, not a same-size one: at full size it covered
     // most of the island and read as a hole rather than as shade.
-    private static final float CLOUD_SHADOW_SCALE = 0.78f;
     // A soft, dark tint so the shadow reads as shade on grass rather than a grey sticker.
     private static final int CLOUD_SHADOW_ON_ISLAND_COLOR = Color.argb(36, 17, 26, 39);
     // The island's own cast shadow: close to the base, drifting with the light direction.
@@ -1070,7 +1069,7 @@ public final class WeatherSkyView extends View {
      * Draws a sprite mask as a ground shadow: the same cells, scaled down, then squashed by the
      * island's own tile ratio so it lies flat on the dimetric surface instead of standing upright.
      */
-    private void drawGroundSilhouette(Canvas canvas, String[] shape, float centreX, float centreY,
+    private void addGroundSilhouette(Path path, String[] shape, float centreX, float centreY,
             float width, float height) {
         float cellX = width / shape[0].length();
         float cellY = height / shape.length;
@@ -1082,7 +1081,7 @@ public final class WeatherSkyView extends View {
                 if (line.charAt(column) == '0') { column++; continue; }
                 int end=column+1; while(end<line.length() && line.charAt(end)!='0') end++;
                 float left = centreX - width * 0.5f + column * cellX;
-                canvas.drawRect(left, top, left + (end-column)*cellX, top + cellY, paint);
+                path.addRect(left, top, left + (end-column)*cellX, top + cellY, Path.Direction.CW);
                 column=end;
             }
         }
@@ -1132,13 +1131,18 @@ public final class WeatherSkyView extends View {
         int save = canvas.save();
         if (clipToIsland) setClipIslandSurface(canvas);
         paint.setColor(Color.argb((int) (255.0 * opacity), 12, 23, 40));
+        Path mask = new Path();
         for (CloudState cloud : clouds) {
             float x = cloud.planeX, y = cloud.planeY + LANGIT_AWAN_LIFT;
             float[] position=CloudShadowPlacement.onIsland(x,y,SCENE_WIDTH/2f,ISLAND_CENTER_Y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,ISLAND_GRID_SIZE);
-            drawGroundSilhouette(canvas, cloud.shape, position[0], position[1],
-                    cloud.shape[0].length() * cloud.cell * (ISLAND_GRID_SIZE==20 ? 2f : CLOUD_SHADOW_SCALE),
-                    cloud.shape.length * cloud.cell * (ISLAND_GRID_SIZE==20 ? 2f : CLOUD_SHADOW_SCALE));
+            float width=cloud.shape[0].length()*cloud.cell, height=cloud.shape.length*cloud.cell;
+            float scale=Math.min(1f, Math.min(ISLAND_TILE_WIDTH/width, ISLAND_TILE_HEIGHT/height));
+            if (canvas.quickReject(position[0]-width*scale/2, position[1]-height*scale/2,
+                    position[0]+width*scale/2, position[1]+height*scale/2, Canvas.EdgeType.AA)) continue;
+            addGroundSilhouette(mask, cloud.shape, position[0], position[1], width*scale, height*scale);
         }
+        paint.setStyle(Paint.Style.FILL);
+        canvas.drawPath(mask, paint); // Apply the shadow alpha once to the union of all clouds.
         canvas.restoreToCount(save);
     }
 
@@ -2187,6 +2191,9 @@ public final class WeatherSkyView extends View {
         int save=canvas.save(); applyIslandScale(canvas);
         for (CloudState cloud : clouds) {
             if ((cloud.screenBottomY - cloud.screenHeight / 2 < sunY) != behind) continue;
+            float halfWidth=cloud.shape[0].length()*cloud.cell/2f;
+            if (canvas.quickReject(cloud.planeX-halfWidth, cloud.displayY-cloud.shape.length*cloud.cell/2f,
+                    cloud.planeX+halfWidth, cloud.displayY+cloud.shape.length*cloud.cell/2f, Canvas.EdgeType.AA)) continue;
             // A cloud crossing the island drops to partial opacity, so whatever sits on the tiles
             // is not hidden behind it.
             int previousAlpha = paint.getAlpha();
