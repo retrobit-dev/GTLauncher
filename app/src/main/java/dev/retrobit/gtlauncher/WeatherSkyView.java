@@ -910,7 +910,7 @@ public final class WeatherSkyView extends View {
         double windSpeed = weather == null ? 4.0 : weather.windSpeedKmh;
         double windDirection = weather == null ? 90.0 : weather.windDirectionDegrees;
         CloudState[] cloudStates = createCloudStates(motionSeconds, cloudCover,
-                windSpeed, windDirection, sun.altitudeDegrees, sun.hourAngleDegrees);
+                windSpeed, windDirection, sun.altitudeDegrees, sun.hourAngleDegrees, code);
 
         if (sceneBitmap == null || sceneBitmap.getWidth() != getWidth()
                 || sceneBitmap.getHeight() != getHeight()) {
@@ -1134,7 +1134,7 @@ public final class WeatherSkyView extends View {
             float x = cloud.planeX, y = cloud.planeY + LANGIT_AWAN_LIFT;
             float[] position=CloudShadowPlacement.onIsland(x,y,SCENE_WIDTH/2f,ISLAND_CENTER_Y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,ISLAND_GRID_SIZE);
             float width=cloud.shape[0].length()*cloud.cell, height=cloud.shape.length*cloud.cell;
-            float scale=Math.min(1f, Math.min(ISLAND_TILE_WIDTH/width, ISLAND_TILE_HEIGHT/height));
+            float scale=Math.min(1f, Math.min(4f*ISLAND_TILE_WIDTH/width, 4f*ISLAND_TILE_HEIGHT/height));
             if (canvas.quickReject(position[0]-width*scale/2, position[1]-height*scale/2,
                     position[0]+width*scale/2, position[1]+height*scale/2, Canvas.EdgeType.AA)) continue;
             addGroundSilhouette(mask, cloud.shape, position[0], position[1], width*scale, height*scale);
@@ -2032,8 +2032,8 @@ public final class WeatherSkyView extends View {
         return variants;
     }
 
-    private int cloudCountForCover(double cloudCover) {
-        return CloudLayout.count(cloudCover, ISLAND_GRID_SIZE);
+    private int cloudCountForCover(double cloudCover, int weatherCode) {
+        return CloudLayout.count(cloudCover, weatherCode);
     }
 
     private static double cloudHash(int seed, int index, int salt) {
@@ -2053,7 +2053,7 @@ public final class WeatherSkyView extends View {
     }
 
     private float[] celestialScreenPosition(SkyMath.Position body) {
-        float[] offset=CelestialArc.islandOffset(body.hourAngleDegrees,body.declinationDegrees,latitude,300f,200f);
+        float[] offset=CelestialArc.islandOffset(body.hourAngleDegrees,body.declinationDegrees,latitude,300f,300f);
         float x=SCENE_WIDTH/2f+offset[0], y=ISLAND_CENTER_Y+offset[1];
         return new float[]{mapDestinationX()+(x-mapSourceX())*islandScaleX()*mapZoom(),
                 mapDestinationY()+(y-mapSourceY())*islandScaleY()*mapZoom()};
@@ -2079,7 +2079,7 @@ public final class WeatherSkyView extends View {
     private float cloudDisplayLift() { return (float)(1000.0 / ISLAND_TILE_METERS * ISLAND_TILE_WIDTH); }
 
     private CloudState[] createCloudStates(double elapsedSeconds, double cloudCover,
-            double windSpeed, double windDirection, double sunAltitude, double sunHourAngle) {
+            double windSpeed, double windDirection, double sunAltitude, double sunHourAngle, int weatherCode) {
         double bearing = normalizeDegrees(windDirection + 180.0);
         if (windSpeed > 0.0) {
             double difference = Double.isNaN(cloudWindCardinal) ? 180.0
@@ -2096,7 +2096,7 @@ public final class WeatherSkyView extends View {
             cloudNorthTravel += Math.cos(Math.toRadians(cloudWindCardinal)) * distance;
         }
         cloudLastElapsed = elapsedSeconds;
-        int count = cloudCountForCover(cloudCover);
+        int count = cloudCountForCover(cloudCover, weatherCode);
         int seed = (int) (latitude * 37 + longitude * 17) ^ (count * 0x2545f491);
         CloudState[] clouds = new CloudState[count];
         double len = Math.hypot(ISLAND_TILE_WIDTH, ISLAND_TILE_HEIGHT);
