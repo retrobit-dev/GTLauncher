@@ -1386,7 +1386,8 @@ public final class WeatherSkyView extends View {
                 cornerRadius, fill, sunlight);
         // Match the preview's stable, transparent 320×160 detail variants.
         if (grassDetail != null) {
-            int variant = (column * 17 + row * 29) % 4;
+            int variant = GrassDetail.variant(column, row);
+            if (variant == 0) return; // Empty tile variant keeps the meadow calm.
             grassDetailSource.set(variant * 320, 0, variant * 320 + 320, 160);
             grassDetailDestination.set(centerX - ISLAND_TILE_WIDTH / 2f, centerY - ISLAND_TILE_HEIGHT / 2f,
                     centerX + ISLAND_TILE_WIDTH / 2f, centerY + ISLAND_TILE_HEIGHT / 2f);
