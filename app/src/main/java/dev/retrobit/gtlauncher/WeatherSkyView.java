@@ -931,10 +931,11 @@ public final class WeatherSkyView extends View {
             canvas.translate(left+width/2+lean*bodyH,base);
             canvas.skew(-lean,0);
             canvas.drawBitmap(sprite,new Rect(0,0,sw,top),new RectF(-width/2,0,width/2,topH),paint);
-            int bodyRight=back?sw:sw-arm;
+            // The far side includes the backpack even in the front sprite.
+            // Keep it attached to the torso rather than pivoting it as an arm.
+            int bodyRight=sw;
             canvas.drawBitmap(sprite,new Rect(arm,top,bodyRight,cut),new RectF(-width/2+armW,topH,-width/2+width*bodyRight/sw,topH+armH),paint);
             drawPivotedSleeve(canvas,sprite,0,top,arm,cut,-width/2+armW/2,topH,armW,armH,angle,phase,runBlend,true);
-            if(!back) drawPivotedSleeve(canvas,sprite,sw-arm,top,sw,cut,width/2-armW/2,topH,armW,armH,-angle,phase,runBlend,false);
             canvas.restoreToCount(upper);
             float y1=base+bodyH+dy-(phase>0?lift:0),y2=base+bodyH-dy-(phase<0?lift:0),bh=height-bodyH;
             canvas.drawBitmap(sprite,new Rect(0,cut,split,sh),new RectF(left+dx,y1,left+halfW+dx,y1+bh),paint);
