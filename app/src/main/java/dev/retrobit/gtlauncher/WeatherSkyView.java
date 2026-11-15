@@ -1017,8 +1017,8 @@ public final class WeatherSkyView extends View {
         for(int i=0;i<stars.length;i++) {
             float side=RENDER_CELL*celestialScale()*(i%4==0?2:1);
             double angle=Math.PI*(i+.5)/stars.length;
-            float x=mapDestinationX()+(SCENE_WIDTH/2f+(float)(500*Math.cos(angle))-mapSourceX())*islandScaleX()*mapZoom();
-            float y=mapDestinationY()+(ISLAND_CENTER_Y-(float)(500*Math.sin(angle))-mapSourceY())*islandScaleY()*mapZoom();
+            float x=mapDestinationX()+(SCENE_WIDTH/2f+(float)(300*Math.cos(angle))-mapSourceX())*islandScaleX()*mapZoom();
+            float y=mapDestinationY()+(ISLAND_CENTER_Y-(float)(300*Math.sin(angle))-mapSourceY())*islandScaleY()*mapZoom();
             canvas.drawRect(x-side/2,y-side/2,x+side/2,y+side/2,paint);
         }
         paint.setAlpha(255);
@@ -2036,13 +2036,8 @@ public final class WeatherSkyView extends View {
         return variants;
     }
 
-    private static int cloudCountForCover(double cloudCover) {
-        double cover = clamp(cloudCover, 0.0, 100.0);
-        int count = 0;
-        for (int step : CLOUD_COVER_STEPS) {
-            if (cover >= step) count += 1;
-        }
-        return count;
+    private int cloudCountForCover(double cloudCover) {
+        return CloudLayout.count(cloudCover, ISLAND_GRID_SIZE);
     }
 
     private static double cloudHash(int seed, int index, int salt) {
@@ -2062,7 +2057,7 @@ public final class WeatherSkyView extends View {
     }
 
     private float[] celestialScreenPosition(SkyMath.Position body) {
-        float[] offset=CelestialArc.islandOffset(body.hourAngleDegrees,body.declinationDegrees,latitude,500f);
+        float[] offset=CelestialArc.islandOffset(body.hourAngleDegrees,body.declinationDegrees,latitude,300f);
         float x=SCENE_WIDTH/2f+offset[0], y=ISLAND_CENTER_Y+offset[1];
         return new float[]{mapDestinationX()+(x-mapSourceX())*islandScaleX()*mapZoom(),
                 mapDestinationY()+(y-mapSourceY())*islandScaleY()*mapZoom()};
@@ -2084,19 +2079,8 @@ public final class WeatherSkyView extends View {
         };
     }
 
-    // Sprite altitude follows the tallest island object; the established shadow
-    // projection is intentionally independent so it remains visible on the island.
-    private float cloudDisplayLift() {
-        float tallest=showCharacter?25f*characterScale:0f;
-        for(WorldStore.House house:worldHouses) if(house.visible)
-            tallest=Math.max(tallest, ("wide".equals(house.design)?100f:74f)*(float)house.scale);
-        for(WorldStore.SurfaceObject o:worldSurfaces) {
-            if(o.type.equals("tree") || o.type.equals("sunflower") || o.type.equals("bush") || o.type.equals("mailbox") || o.type.equals("storage-box") || o.type.equals("selling-box"))
-                tallest=Math.max(tallest,surfaceSpriteBounds(o).height());
-            else if(o.type.equals("fence")) tallest=Math.max(tallest,25f);
-        }
-        return Math.max(LANGIT_AWAN_LIFT,tallest+8f);
-    }
+    // The cloud base is 150 scene units above the ground; shadow projection remains separate.
+    private float cloudDisplayLift() { return 150f; }
 
     private CloudState[] createCloudStates(double elapsedSeconds, double cloudCover,
             double windSpeed, double windDirection, double sunAltitude, double sunHourAngle) {
@@ -2124,8 +2108,8 @@ public final class WeatherSkyView extends View {
         for (int index = 0; index < count; index++) {
             int variant = (int) (cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length);
             String[] shape = CLOUD_SHAPE_VARIANTS[variant];
-            double east = ((cloudHash(seed, index, 2) * 9 + cloudEastTravel) % 9 + 9) % 9 - 4.5;
-            double north = ((cloudHash(seed, index, 3) * 9 + cloudNorthTravel) % 9 + 9) % 9 - 4.5;
+            double east = ((cloudHash(seed, index, 2) * ISLAND_GRID_SIZE + cloudEastTravel) % ISLAND_GRID_SIZE + ISLAND_GRID_SIZE) % ISLAND_GRID_SIZE - ISLAND_GRID_SIZE / 2.0;
+            double north = ((cloudHash(seed, index, 3) * ISLAND_GRID_SIZE + cloudNorthTravel) % ISLAND_GRID_SIZE + ISLAND_GRID_SIZE) % ISLAND_GRID_SIZE - ISLAND_GRID_SIZE / 2.0;
             float x = (float) (SCENE_WIDTH / 2.0 - LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_WIDTH / len
                     + (east + north) * ISLAND_TILE_WIDTH / 2.0);
             float y = (float) (ISLAND_CENTER_Y - LANGIT_AWAN_LIFT
