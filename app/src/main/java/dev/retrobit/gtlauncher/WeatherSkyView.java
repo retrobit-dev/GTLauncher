@@ -60,6 +60,8 @@ public final class WeatherSkyView extends View {
     // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
     // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
     private static final float SUN_BODY_RADIUS = 10.5f;
+    private float celestialScale() { return ISLAND_GRID_SIZE / 9f; }
+    private float celestialRadius() { return SUN_BODY_RADIUS * celestialScale(); }
     // East and west ends of the celestial arc, inset so the disc never clips the frame.
     // East sits on the right of the screen and west on the left, so the sun rises on the right
     // and sets on the left, which is the reading most people expect from a sky panel.
@@ -920,6 +922,7 @@ public final class WeatherSkyView extends View {
         int save = scene.save();
         scene.scale((float)getWidth() / SCENE_WIDTH, (float)getHeight() / SCENE_HEIGHT);
         drawSky(scene, sun, cloudCover, code);
+        drawStars(scene, sun.altitudeDegrees, cloudCover);
         int skySave = scene.save();
         // The sky band runs from above the frame down to the horizon; clipping at half height
         // used to behead any cloud tall enough to reach past it.
@@ -1002,6 +1005,19 @@ public final class WeatherSkyView extends View {
                 Shader.TileMode.CLAMP));
         canvas.drawRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT, paint);
         paint.setShader(null);
+    }
+
+    // Decorative screen-space stars; not a representation of the real night sky.
+    private void drawStars(Canvas canvas, double altitude, double cloudCover) {
+        double opacity=clamp((-altitude-4)/8,0,1)*(1-clamp(cloudCover/100,0,1)*.85);
+        if(opacity<=0)return;
+        float[][] stars={{.08f,.12f},{.18f,.22f},{.30f,.08f},{.39f,.19f},{.51f,.06f},{.62f,.16f},{.73f,.08f},{.85f,.20f},{.94f,.09f},{.11f,.35f},{.25f,.30f},{.44f,.34f},{.57f,.28f},{.68f,.36f},{.80f,.31f},{.93f,.38f}};
+        paint.setColor(Color.rgb(244,245,220)); paint.setAlpha((int)Math.round(255*opacity));
+        for(int i=0;i<stars.length;i++) {
+            float side=RENDER_CELL*celestialScale()*(i%4==0?2:1), x=stars[i][0]*SCENE_WIDTH, y=stars[i][1]*SCENE_HEIGHT;
+            canvas.drawRect(x-side/2,y-side/2,x+side/2,y+side/2,paint);
+        }
+        paint.setAlpha(255);
     }
 
     /**
@@ -1845,18 +1861,18 @@ public final class WeatherSkyView extends View {
         double high = clamp(clamp(altitude, 0.0, 90.0) / 45.0, 0.0, 1.0);
         float squash = (float) (0.52 + high * 0.48);
         double breathe = 0.5 + 0.5 * Math.sin(elapsedSeconds * GLOW_PULSE_SPEED);
-        float reach = (float) (GLOW_REACH * (1.15 - high * 0.45) * (0.82 + breathe * 0.36));
+        float reach = (float) (GLOW_REACH * celestialScale() * (1.15 - high * 0.45) * (0.82 + breathe * 0.36));
         double alpha = GLOW_ALPHA * (0.72 + breathe * 0.42) * visibility * strength;
         int color = (tint & 0x00FFFFFF) | ((int) Math.round(255.0 * alpha) << 24);
         for (int step = 0; step < GLOW_STEPS; step++) {
             float progress = step / (float) (GLOW_STEPS - 1);
-            glowDisc(canvas, centerX, centerY, SUN_BODY_RADIUS + 1.0f + progress * reach,
+            glowDisc(canvas, centerX, centerY, celestialRadius() + celestialScale() + progress * reach,
                     squash, color);
         }
     }
 
     private void drawSunBody(Canvas canvas, float centerX, float centerY, int[] palette) {
-        float radius = SUN_BODY_RADIUS;
+        float radius = celestialRadius();
         paint.setStyle(Paint.Style.FILL);
         for (float row = -radius; row < radius; row += RENDER_CELL) {
             float sampleY = row + RENDER_CELL / 2.0f;
@@ -1929,7 +1945,7 @@ public final class WeatherSkyView extends View {
      */
     private void drawMoonBody(Canvas canvas, float centerX, float centerY, int[] palette,
                               SkyMath.Position moon) {
-        float radius = SUN_BODY_RADIUS;
+        float radius = celestialRadius();
         double illumination = clamp(moon.illumination, 0.0, 1.0);
         float terminator = (float) (1.0 - illumination * 2.0);
         // In the southern hemisphere the lit limb faces the opposite side from the north.
@@ -2037,9 +2053,9 @@ public final class WeatherSkyView extends View {
     private float[] celestialScreenPosition(SkyMath.Position body) {
         float anchor=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN;
         float horizon=(float)clamp(ISLAND_GRID_SIZE==20 ? mapDestinationY() : anchor+(ISLAND_CENTER_Y-anchor)*islandScaleY()*2,
-                SUN_BODY_RADIUS+6,SCENE_HEIGHT-SUN_BODY_RADIUS-2);
+                celestialRadius()+6,SCENE_HEIGHT-celestialRadius()-2);
         return CelestialArc.position(body.hourAngleDegrees,body.declinationDegrees,latitude,
-                SCENE_WIDTH,horizon,SUN_BODY_RADIUS+2);
+                SCENE_WIDTH,horizon,celestialRadius()+2);
     }
 
     // The Sun stays on Langit Matahari. The same continuous orbit is used as a virtual
