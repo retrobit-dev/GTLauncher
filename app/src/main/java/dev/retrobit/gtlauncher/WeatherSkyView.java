@@ -411,6 +411,11 @@ public final class WeatherSkyView extends View {
         }
         return new RectF(x-width/2,bottom-height,x+width/2,bottom);
     }
+    private double plantSway(WorldStore.SurfaceObject o,double factor) {
+        if(weather==null)return 0;
+        return factor*PlantMotion.sway(animationEnabled,weather.windSpeedKmh,weather.windDirectionDegrees,
+                headingDegrees,plantMotionSeconds,o.column,o.row,o.type,o.material);
+    }
     private void drawSurfaceSprites(Canvas canvas,boolean front) {
         for(WorldStore.SurfaceObject o:worldSurfaces) {
             if(o.type.equals("road") || o.type.equals("fence") || o.type.equals("flower")) continue;
@@ -430,11 +435,8 @@ public final class WeatherSkyView extends View {
             int alpha=Math.round(255*(100-Math.max(0,o.opacity))/100f);
             paint.setColor(Color.argb(Math.round(35*alpha/255f),12,23,40));paint.setStyle(Paint.Style.FILL);canvas.drawOval(new RectF(g.centerX()-g.width()*.3f,g.bottom-1,g.centerX()+g.width()*.3f,g.bottom+1),paint);
             paint.setColor(Color.WHITE);paint.setAlpha(alpha);paint.setFilterBitmap(true);int saved=canvas.save();
-            if(animationEnabled && weather!=null && weather.windSpeedKmh>=1 && (o.type.equals("sunflower") || o.type.equals("tree") && (o.material.equals("banana") || o.material.equals("palm")))) {
-                double bearing=Math.toRadians(weather.windDirectionDegrees+180-headingDegrees);
-                double direction=Math.sin(bearing)+.25*Math.cos(bearing),strength=Math.min(1,.25+weather.windSpeedKmh/35);
-                double phase=o.column*1.73+o.row*2.31,frequency=o.type.equals("tree")?.6:.9,amplitude=o.type.equals("tree")?1.1:.65;
-                double sway=amplitude*strength*direction*(.18+.82*Math.sin(plantMotionSeconds*frequency+phase));
+            if(o.type.equals("sunflower") || o.type.equals("tree") || o.type.equals("bush")) {
+                double sway=plantSway(o,1.0);
                 canvas.rotate((float)Math.toDegrees(Math.atan2(sway,g.height())),g.centerX(),g.bottom);
             }
             if(mirror)canvas.scale(-1,1,g.centerX(),0);
@@ -528,7 +530,8 @@ public final class WeatherSkyView extends View {
             float cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(flower.column+flower.row)*ISLAND_TILE_HEIGHT/2f;
             for(float u:offsets)for(float v:offsets) {
                 float x=cx+(u-v)*ISLAND_TILE_WIDTH/2f,y=cy+(u+v-1)*ISLAND_TILE_HEIGHT/2f;
-                canvas.drawBitmap(image,null,new RectF(x-2.1f,y-2.8f,x+2.1f,y+.7f),paint);
+                int save=canvas.save();canvas.rotate((float)Math.toDegrees(Math.atan2(plantSway(flower,.3),3.5)),x,y+.7f);
+                canvas.drawBitmap(image,null,new RectF(x-2.1f,y-2.8f,x+2.1f,y+.7f),paint);canvas.restoreToCount(save);
             }
         }
     }
@@ -1109,7 +1112,8 @@ public final class WeatherSkyView extends View {
         for (CloudState cloud : clouds) {
             float x = sun[0] + ratio * (cloud.planeX - sun[0]);
             float y = sun[1] + ratio * (cloud.planeY - sun[1]);
-            drawGroundSilhouette(canvas, cloud.shape, x, y,
+            float[] position=CloudShadowPlacement.onIsland(x,y,SCENE_WIDTH/2f,ISLAND_CENTER_Y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT);
+            drawGroundSilhouette(canvas, cloud.shape, position[0], position[1],
                     cloud.shape[0].length() * cloud.cell * CLOUD_SHADOW_SCALE,
                     cloud.shape.length * cloud.cell * CLOUD_SHADOW_SCALE);
         }
