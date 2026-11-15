@@ -17,6 +17,9 @@ final class CharacterGait {
         float out = step == totalSteps - 1 ? (1f-progress) * 4 : 1f;
         return Math.max(0f,Math.min(1f,Math.min(in,out)));
     }
+    static float elbowRadians(float phase, float runBlend, boolean left) {
+        return runBlend * (1.05f + (left ? .18f : -.18f) * phase);
+    }
     static double phase(int step, float progress) {
         return (step - 1 + progress) * Math.PI * 2;
     }

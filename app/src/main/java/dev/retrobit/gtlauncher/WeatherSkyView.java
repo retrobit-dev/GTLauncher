@@ -933,8 +933,8 @@ public final class WeatherSkyView extends View {
             canvas.drawBitmap(sprite,new Rect(0,0,sw,top),new RectF(-width/2,0,width/2,topH),paint);
             int bodyRight=back?sw:sw-arm;
             canvas.drawBitmap(sprite,new Rect(arm,top,bodyRight,cut),new RectF(-width/2+armW,topH,-width/2+width*bodyRight/sw,topH+armH),paint);
-            drawPivotedSleeve(canvas,sprite,0,top,arm,cut,-width/2+armW/2,topH,armW,armH,angle);
-            if(!back) drawPivotedSleeve(canvas,sprite,sw-arm,top,sw,cut,width/2-armW/2,topH,armW,armH,-angle);
+            drawPivotedSleeve(canvas,sprite,0,top,arm,cut,-width/2+armW/2,topH,armW,armH,angle,phase,runBlend,true);
+            if(!back) drawPivotedSleeve(canvas,sprite,sw-arm,top,sw,cut,width/2-armW/2,topH,armW,armH,-angle,phase,runBlend,false);
             canvas.restoreToCount(upper);
             float y1=base+bodyH+dy-(phase>0?lift:0),y2=base+bodyH-dy-(phase<0?lift:0),bh=height-bodyH;
             canvas.drawBitmap(sprite,new Rect(0,cut,split,sh),new RectF(left+dx,y1,left+halfW+dx,y1+bh),paint);
@@ -944,9 +944,17 @@ public final class WeatherSkyView extends View {
     }
 
     private void drawPivotedSleeve(Canvas canvas,Bitmap sprite,int left,int top,int right,int bottom,
-            float x,float y,float width,float height,float angle) {
+            float x,float y,float width,float height,float angle,float phase,float runBlend,boolean leftArm) {
+        int elbow=top+(int)((bottom-top)*.55f);
+        float upperHeight=height*(elbow-top)/(bottom-top);
         int save=canvas.save(); canvas.translate(x,y); canvas.rotate(angle);
-        canvas.drawBitmap(sprite,new Rect(left,top,right,bottom),new RectF(-width/2,0,width/2,height),paint);
+        // One source pixel of overlap avoids a gap at the rotating elbow.
+        canvas.drawBitmap(sprite,new Rect(left,top,right,elbow+1),
+                new RectF(-width/2,0,width/2,upperHeight+height/(bottom-top)),paint);
+        canvas.translate(0,upperHeight);
+        canvas.rotate((float)Math.toDegrees(CharacterGait.elbowRadians(phase,runBlend,leftArm)));
+        canvas.drawBitmap(sprite,new Rect(left,elbow,right,bottom),
+                new RectF(-width/2,0,width/2,height-upperHeight),paint);
         canvas.restoreToCount(save);
     }
 
