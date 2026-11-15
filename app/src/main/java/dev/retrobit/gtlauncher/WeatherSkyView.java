@@ -315,8 +315,8 @@ public final class WeatherSkyView extends View {
         sceneCanvas = new Canvas(sceneBitmap);
         mainCharacter = BitmapFactory.decodeResource(getResources(), R.drawable.main_character);
         mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.main_character_back);
-        houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house);
-        houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_back);
+        houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_redesign);
+        houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_redesign_back);
         houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_wide);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_wide_back);
         portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation_red);
         fenceFarm=BitmapFactory.decodeResource(getResources(),R.drawable.fence_farm);fenceSlat=BitmapFactory.decodeResource(getResources(),R.drawable.fence_slat);fenceStone=BitmapFactory.decodeResource(getResources(),R.drawable.fence_stone);fenceIron=BitmapFactory.decodeResource(getResources(),R.drawable.fence_iron);
@@ -575,7 +575,7 @@ public final class WeatherSkyView extends View {
             boolean back=house.facing.equals("N")||house.facing.equals("W"),wide="wide".equals(house.design);
             Bitmap sprite=wide?(back?houseWideBackImage:houseWideImage):(back?houseBackImage:houseImage);float scale=(float)house.scale;
             float x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0),bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f+1.25f*ISLAND_TILE_HEIGHT*scale;
-            float width=70*scale*(wide?7f/6:1),height=(wide?100:67)*scale;
+            float width=70*scale*(wide?7f/6:1),height=(wide?100:74)*scale;
             if(fenceOverlaps(image,f,mirror,sprite,new RectF(x-width/2,bottom-height,x+width/2,bottom),house.facing.equals("N")||house.facing.equals("E")))return true;
         }
         if(front && showCharacter) {
@@ -774,7 +774,7 @@ public final class WeatherSkyView extends View {
             float scale=(float)house.scale,x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
             float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f;
             int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-Math.max(0,house.opacity))/100f));
-            drawObjectSilhouette(canvas,image,x,y,70*scale*(wide?7f/6:1),(wide?100:67)*scale,lightPoint,"N".equals(house.facing)||"E".equals(house.facing));
+            drawObjectSilhouette(canvas,image,x,y,70*scale*(wide?7f/6:1),(wide?100:74)*scale,lightPoint,"N".equals(house.facing)||"E".equals(house.facing));
             paint.setAlpha(originalAlpha);
         }
         Bitmap sprite = ("N".equals(characterFacing) || "W".equals(characterFacing)) ? mainCharacterBack : mainCharacter;
@@ -818,7 +818,7 @@ public final class WeatherSkyView extends View {
             Bitmap sprite=wide?(back?houseWideBackImage:houseWideImage):(back?houseBackImage:houseImage);if(sprite==null)continue;
             float scale=(float)house.scale,x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
             float bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f+1.25f*ISLAND_TILE_HEIGHT*scale;
-            float width=70*scale*(wide?7f/6:1),height=(wide?100:67)*scale;
+            float width=70*scale*(wide?7f/6:1),height=(wide?100:74)*scale;
             paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,house.opacity))/100f));paint.setFilterBitmap(true);
             int save=canvas.save();if(mirror)canvas.scale(-1,1,x,0);
             canvas.drawBitmap(sprite,null,new RectF(x-width/2,bottom-height,x+width/2,bottom),paint);canvas.restoreToCount(save);
