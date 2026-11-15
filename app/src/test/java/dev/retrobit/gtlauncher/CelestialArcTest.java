@@ -12,6 +12,12 @@ public class CelestialArcTest {
   assertEquals(0,peak[0],.001);assertEquals(-300,peak[1],.001);
   assertEquals(-300,set[0],.001);assertEquals(0,set[1],.001);
  }
+ @Test public void ellipticalArcHeightIs250() {
+  float[] peak=CelestialArc.islandOffset(0,0,0,300,250);
+  assertEquals(0,peak[0],.001);assertEquals(-250,peak[1],.001);
+  float[] rise=CelestialArc.islandOffset(-90,0,0,300,250);
+  assertEquals(300,rise[0],.001);assertEquals(0,rise[1],.001);
+ }
  @Test public void risePeakSetAndLatitude() {
   double lat=-7,dec=20,angle=Math.toDegrees(Math.acos(-Math.tan(Math.toRadians(lat))*Math.tan(Math.toRadians(dec))));
   float[] rise=CelestialArc.position(-angle,dec,lat,320,85,12.5f),peak=CelestialArc.position(0,dec,lat,320,85,12.5f),set=CelestialArc.position(angle,dec,lat,320,85,12.5f);
