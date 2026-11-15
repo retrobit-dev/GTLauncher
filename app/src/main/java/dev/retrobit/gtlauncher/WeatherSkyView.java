@@ -1104,7 +1104,7 @@ public final class WeatherSkyView extends View {
         double directLight = clamp((altitude + 8.0) / 28.0, 0.0, 1.0);
         double cloudFilter = 1.0 - clamp(cloudCover / 100.0 * 0.45, 0.0, 0.45);
         if (code >= 95) cloudFilter *= 0.82;
-        return (0.10 + directLight * 0.30) * cloudFilter * 0.70 * 0.9;
+        return (0.10 + directLight * 0.30) * cloudFilter * 0.70 * 0.9 * 0.6;
     }
 
     /**
@@ -2075,7 +2075,6 @@ public final class WeatherSkyView extends View {
         };
     }
 
-    // The cloud base is 75 scene units above the ground; shadow projection remains separate.
     // Illustrative 1 km cloud base with 250 metres per 28-unit tile.
     private float cloudDisplayLift() { return (float)(1000.0 / ISLAND_TILE_METERS * ISLAND_TILE_WIDTH); }
 
