@@ -427,7 +427,7 @@ public final class WeatherSkyView extends View {
                 image=o.type.equals("selling-box")?(opened?sellingBoxOpen:sellingBoxClosed):back?(opened?storageBackOpen:storageBackClosed):(opened?storageOpen:storageClosed);
             }
             if(image==null)continue;RectF g=surfaceSpriteBounds(o);
-            int alpha=Math.round(255*(100-Math.max(0,o.opacity))/100f*(registerSprite(o,image,g,mirror,o.opacity)?.5f:1f));
+            int alpha=Math.round(255*(100-Math.max(0,o.opacity))/100f);
             paint.setColor(Color.argb(Math.round(35*alpha/255f),12,23,40));paint.setStyle(Paint.Style.FILL);canvas.drawOval(new RectF(g.centerX()-g.width()*.3f,g.bottom-1,g.centerX()+g.width()*.3f,g.bottom+1),paint);
             paint.setColor(Color.WHITE);paint.setAlpha(alpha);paint.setFilterBitmap(true);int saved=canvas.save();
             if(animationEnabled && weather!=null && weather.windSpeedKmh>=1 && (o.type.equals("sunflower") || o.type.equals("tree") && (o.material.equals("banana") || o.material.equals("palm")))) {
@@ -528,9 +528,7 @@ public final class WeatherSkyView extends View {
             float cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(flower.column+flower.row)*ISLAND_TILE_HEIGHT/2f;
             for(float u:offsets)for(float v:offsets) {
                 float x=cx+(u-v)*ISLAND_TILE_WIDTH/2f,y=cy+(u+v-1)*ISLAND_TILE_HEIGHT/2f;
-                RectF bounds=new RectF(x-2.1f,y-2.8f,x+2.1f,y+.7f);
-                paint.setAlpha(registerSprite(flower,image,bounds,false,0)?128:255);
-                canvas.drawBitmap(image,null,bounds,paint);
+                canvas.drawBitmap(image,null,new RectF(x-2.1f,y-2.8f,x+2.1f,y+.7f),paint);
             }
         }
     }
@@ -578,15 +576,6 @@ public final class WeatherSkyView extends View {
             canvas.restoreToCount(save);paint.setStyle(Paint.Style.FILL);paint.setAlpha(255);
         }
     }
-    // Maintain the actual paint order, not an approximation based on type or tile.
-    // Automatic fading is cosmetic and never mutates the stored opacity.
-    private final FenceOcclusion.Stack paintedObjects=new FenceOcclusion.Stack();
-    private boolean registerVisual(Object owner,RectF bounds,FenceOcclusion.PixelHit hit,int opacity) {
-        return paintedObjects.register(owner,occlusionBounds(bounds),hit,opacity<100);
-    }
-    private boolean registerSprite(Object owner,Bitmap image,RectF bounds,boolean mirror,int opacity) {
-        return image!=null && registerVisual(owner,bounds,(x,y)->opaqueAt(image,bounds,x,y,mirror),opacity);
-    }
     private static FenceOcclusion.Bounds occlusionBounds(RectF r) {return new FenceOcclusion.Bounds(r.left,r.top,r.right,r.bottom);}
     private final java.util.IdentityHashMap<Bitmap,int[]> occlusionPixels=new java.util.IdentityHashMap<>();
     private boolean opaqueAt(Bitmap bitmap,RectF bounds,float x,float y,boolean mirror) {
@@ -596,6 +585,9 @@ public final class WeatherSkyView extends View {
         int px=Math.max(0,Math.min(bitmap.getWidth()-1,(int)(u*bitmap.getWidth()))),py=Math.max(0,Math.min(bitmap.getHeight()-1,(int)(v*bitmap.getHeight())));
         int[] pixels=occlusionPixels.get(bitmap);if(pixels==null){pixels=new int[bitmap.getWidth()*bitmap.getHeight()];bitmap.getPixels(pixels,0,bitmap.getWidth(),0,0,bitmap.getWidth(),bitmap.getHeight());occlusionPixels.put(bitmap,pixels);}
         return Color.alpha(pixels[py*bitmap.getWidth()+px])>=32;
+    }
+    private boolean fenceOverlaps(Bitmap fence,RectF fenceBounds,boolean mirror,Bitmap target,RectF targetBounds,boolean targetMirror) {
+        return target!=null && FenceOcclusion.overlaps(occlusionBounds(fenceBounds),(x,y)->opaqueAt(fence,fenceBounds,x,y,mirror),occlusionBounds(targetBounds),(x,y)->opaqueAt(target,targetBounds,x,y,targetMirror));
     }
     private Bitmap surfaceImage(WorldStore.SurfaceObject o) {
         if(o.type.equals("tree"))return treeImage(o);
@@ -613,6 +605,32 @@ public final class WeatherSkyView extends View {
         if(!"wide".equals(house.design))return back?houseBackImage:houseImage;
         return back?(mirror?houseWideBackMirrorImage:houseWideBackImage):(mirror?houseWideMirrorImage:houseWideImage);
     }
+    private boolean fenceCoversEarlierObject(Bitmap image,RectF f,boolean mirror,boolean front) {
+        for(WorldStore.House house:worldHouses) if(house.visible && (front || !showCharacter || house.column+house.row+2<characterColumn+characterRow)) {
+            boolean back=house.facing.equals("N")||house.facing.equals("W"),wide="wide".equals(house.design);
+            Bitmap sprite=houseArtwork(house);float scale=(float)house.scale;
+            float x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0),bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f+1.25f*ISLAND_TILE_HEIGHT*scale;
+            float width=70*scale*(wide?7f/6:1),height=(wide?100:74)*scale;
+            if(fenceOverlaps(image,f,mirror,sprite,new RectF(x-width/2,bottom-height,x+width/2,bottom),house.facing.equals("N")||house.facing.equals("E")))return true;
+        }
+        if(front && showCharacter) {
+            float x=SCENE_WIDTH/2f+(characterColumn-characterRow)*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(characterColumn+characterRow)*ISLAND_TILE_HEIGHT/2f,width=13.5f*characterScale,height=25*characterScale;
+            boolean back=characterFacing.equals("N")||characterFacing.equals("W");
+            if(fenceOverlaps(image,f,mirror,back?mainCharacterBack:mainCharacter,new RectF(x-width/2,y-height,x+width/2,y),characterFacing.equals("N")||characterFacing.equals("E")))return true;
+        }
+        for(WorldStore.SurfaceObject o:worldSurfaces) {
+            if(o.type.equals("flower")) {
+                Bitmap sprite=flowerSprites.get(o.material);if(sprite==null)continue;
+                float cx=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
+                for(float u:new float[]{.2f,.5f,.8f})for(float v:new float[]{.2f,.5f,.8f}){float x=cx+(u-v)*ISLAND_TILE_WIDTH/2,y=cy+(u+v-1)*ISLAND_TILE_HEIGHT/2;if(fenceOverlaps(image,f,mirror,sprite,new RectF(x-2.1f,y-2.8f,x+2.1f,y+.7f),false))return true;}
+            } else if(front) {
+                Bitmap sprite=surfaceImage(o);if(sprite==null)continue;
+                boolean flipped=(o.type.equals("sunflower") || o.type.equals("storage-box") || o.type.equals("selling-box")) && (o.material.equals("N")||o.material.equals("E"));
+                if(fenceOverlaps(image,f,mirror,sprite,surfaceSpriteBounds(o),flipped))return true;
+            }
+        }
+        return false;
+    }
     private void drawFences(Canvas canvas,boolean front) {
         java.util.List<FenceGeometry.Edge> edges=new java.util.ArrayList<>();
         for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("fence"))edges.add(new FenceGeometry.Edge(o.column,o.row,o.edge));
@@ -626,7 +644,7 @@ public final class WeatherSkyView extends View {
             FenceGeometry.Bounds g=FenceGeometry.bounds(new FenceGeometry.Edge(o.column,o.row,o.edge),edges,x,y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT);
             Bitmap image="slat".equals(o.material)?fenceSlat:"stone".equals(o.material)?fenceStone:"iron".equals(o.material)?fenceIron:fenceFarm;
             if(image==null)continue;
-            RectF fenceBounds=new RectF(g.x,g.y,g.x+g.width,g.y+g.height);boolean fades=registerSprite(o,image,fenceBounds,!g.rising,o.opacity);
+            RectF fenceBounds=new RectF(g.x,g.y,g.x+g.width,g.y+g.height);boolean fades=fenceCoversEarlierObject(image,fenceBounds,!g.rising,front);
             paint.setStyle(Paint.Style.FILL);paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f*(fades?.5f:1f)));paint.setFilterBitmap(true);
             int save=canvas.save();if(!g.rising)canvas.scale(-1,1,g.x+g.width/2,0);
             canvas.drawBitmap(image,null,new RectF(g.x,g.y,g.x+g.width,g.y+g.height),paint);canvas.restoreToCount(save);
@@ -670,9 +688,7 @@ public final class WeatherSkyView extends View {
     private void drawPortals(Canvas canvas, boolean front) {
         if(front)return;
         for(PortalTravel.Portal portal:worldPortals) {
-            RectF g=groundPortalBounds(portal);
-            boolean fades=registerVisual(portal,g,(x,y)->{float d=Math.abs(x-g.centerX())/(g.width()/2)+Math.abs(y-g.centerY())/(g.height()/2);return d<=1f && d>=.68f;},portal.opacity);
-            int alpha=Math.round(255*(100-Math.max(0,portal.opacity))/100f*(fades?.5f:1f));
+            int alpha=Math.round(255*(100-Math.max(0,portal.opacity))/100f);RectF g=groundPortalBounds(portal);
             Path outline=new Path();outline.setFillType(Path.FillType.EVEN_ODD);portalDiamond(outline,g,1f);portalDiamond(outline,g,.68f);
             paint.setStyle(Paint.Style.FILL);paint.setColor(Color.rgb(54,159,146));paint.setAlpha(alpha);canvas.drawPath(outline,paint);
             int save=canvas.save();canvas.clipPath(outline);
@@ -838,9 +854,7 @@ public final class WeatherSkyView extends View {
             float scale=(float)house.scale,x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
             float bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f+1.25f*ISLAND_TILE_HEIGHT*scale;
             float width=70*scale*(wide?7f/6:1),height=(wide?100:74)*scale;
-            RectF bounds=new RectF(x-width/2,bottom-height,x+width/2,bottom);
-            boolean fades=registerSprite(house,sprite,bounds,mirror,house.opacity);
-            paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,house.opacity))/100f*(fades?.5f:1f)));paint.setFilterBitmap(true);
+            paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,house.opacity))/100f));paint.setFilterBitmap(true);
             int save=canvas.save();if(mirror)canvas.scale(-1,1,x,0);
             canvas.drawBitmap(sprite,null,new RectF(x-width/2,bottom-height,x+width/2,bottom),paint);canvas.restoreToCount(save);
         }
@@ -859,8 +873,7 @@ public final class WeatherSkyView extends View {
         float idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5f : 0.0f;
         float height = 25.0f * characterScale + idle;
         paint.setColor(Color.WHITE);
-        RectF bounds=new RectF(x-width/2,y-height,x+width/2,y);
-        paint.setAlpha(registerSprite(this,sprite,bounds,mirror,0)?128:255);
+        paint.setAlpha(255);
         paint.setFilterBitmap(true);
         int save = canvas.save();
         if (mirror) canvas.scale(-1, 1, x, 0);
@@ -922,7 +935,6 @@ public final class WeatherSkyView extends View {
                 shadowLight.hourAngleDegrees, cloudCover, code, false);
         drawFloatingIsland(scene, sun.altitudeDegrees, sun.azimuthDegrees,
                 sun.hourAngleDegrees, cloudCover, code, moon, cloudStates);
-        paintedObjects.clear();
         drawDecorativeFlowers(scene);
         drawRoads(scene);
         drawSurfaceObjectShadows(scene, shadowLight, cloudCover, code);
