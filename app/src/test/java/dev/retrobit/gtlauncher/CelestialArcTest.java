@@ -2,6 +2,16 @@ package dev.retrobit.gtlauncher;
 import org.junit.Test;
 import static org.junit.Assert.*;
 public class CelestialArcTest {
+ @Test public void islandArcHasHundredUnitRadius() {
+  for (int hour=-90;hour<=90;hour+=15) {
+   float[] offset=CelestialArc.islandOffset(hour,0,0,100);
+   assertEquals(100,Math.hypot(offset[0],offset[1]),.0001);
+  }
+  float[] rise=CelestialArc.islandOffset(-90,0,0,100),peak=CelestialArc.islandOffset(0,0,0,100),set=CelestialArc.islandOffset(90,0,0,100);
+  assertEquals(100,rise[0],.001);assertEquals(0,rise[1],.001);
+  assertEquals(0,peak[0],.001);assertEquals(-100,peak[1],.001);
+  assertEquals(-100,set[0],.001);assertEquals(0,set[1],.001);
+ }
  @Test public void risePeakSetAndLatitude() {
   double lat=-7,dec=20,angle=Math.toDegrees(Math.acos(-Math.tan(Math.toRadians(lat))*Math.tan(Math.toRadians(dec))));
   float[] rise=CelestialArc.position(-angle,dec,lat,320,85,12.5f),peak=CelestialArc.position(0,dec,lat,320,85,12.5f),set=CelestialArc.position(angle,dec,lat,320,85,12.5f);

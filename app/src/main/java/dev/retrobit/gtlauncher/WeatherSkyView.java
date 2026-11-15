@@ -59,7 +59,7 @@ public final class WeatherSkyView extends View {
     // Keep celestial centers in the upper third with enough margin for the Sun's glow.
     // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
     // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
-    private float celestialReferenceRadius() { return ISLAND_TILE_WIDTH * islandScaleX() * 2f; }
+    private float celestialReferenceRadius() { return ISLAND_TILE_WIDTH * islandScaleX(); }
     private float celestialScale() { return mapZoom() / 2f; }
     private float celestialRadius() { return celestialReferenceRadius() * celestialScale(); }
     // East and west ends of the celestial arc, inset so the disc never clips the frame.
@@ -2058,13 +2058,10 @@ public final class WeatherSkyView extends View {
     }
 
     private float[] celestialScreenPosition(SkyMath.Position body) {
-        float anchor=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN;
-        float radius=celestialReferenceRadius();
-        float horizon=(float)clamp(ISLAND_GRID_SIZE==20 ? SCENE_HEIGHT*.56f : anchor+(ISLAND_CENTER_Y-anchor)*islandScaleY()*2,
-                radius+6,SCENE_HEIGHT-radius-2);
-        float[] p=CelestialArc.position(body.hourAngleDegrees,body.declinationDegrees,latitude,
-                SCENE_WIDTH,horizon,radius+2);
-        return celestialViewPoint(p[0],p[1]);
+        float[] offset=CelestialArc.islandOffset(body.hourAngleDegrees,body.declinationDegrees,latitude,100f);
+        float x=SCENE_WIDTH/2f+offset[0], y=ISLAND_CENTER_Y+offset[1];
+        return new float[]{mapDestinationX()+(x-mapSourceX())*islandScaleX()*mapZoom(),
+                mapDestinationY()+(y-mapSourceY())*islandScaleY()*mapZoom()};
     }
 
     // The Sun stays on Langit Matahari. The same continuous orbit is used as a virtual
