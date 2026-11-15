@@ -10,4 +10,11 @@ public class CloudLayoutTest {
             assertEquals(large[i],CloudLayout.count(covers[i],20));
         }
     }
+    @Test public void cloudFitsOneTile() {
+        for(int columns : new int[]{16,30,40}) for(int rows : new int[]{8,13,20}) {
+            float cell=CloudLayout.cellSize(28,14,columns,rows);
+            org.junit.Assert.assertTrue(cell*columns<=28.0001f);
+            org.junit.Assert.assertTrue(cell*rows<=14.0001f);
+        }
+    }
 }
