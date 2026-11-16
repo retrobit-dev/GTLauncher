@@ -1673,6 +1673,17 @@
     ctx.restore();
   }
 
+  function drawHoeTarget() {
+    if(cameraMode !== 'gameplay' || document.querySelector('[data-dock="hoe"]')?.getAttribute('aria-pressed') !== 'true')return;
+    const world=window.worldManager?.getActive(), character=gameplayDraft || window.worldManager?.getCharacter();
+    if(!world || world.id==='base' || !character?.visible)return;
+    const offset={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[character.facing];if(!offset)return;
+    const column=Math.round(character.column)+offset[0],row=Math.round(character.row)+offset[1];
+    if(column<0 || row<0 || column>=ISLAND_GRID_SIZE || row>=ISLAND_GRID_SIZE || (world.tiles && !world.tiles[row*ISLAND_GRID_SIZE+column]))return;
+    const {x,y}=characterCentre({column,row}),hw=ISLAND_TILE_WIDTH/2-.5,hh=islandTileHeight/2-.3;
+    ctx.save();applyIslandTransform();ctx.strokeStyle='#fff';ctx.lineWidth=1.2;ctx.lineJoin='round';ctx.beginPath();
+    ctx.moveTo(x,y-hh);ctx.lineTo(x+hw,y);ctx.lineTo(x,y+hh);ctx.lineTo(x-hw,y);ctx.closePath();ctx.stroke();ctx.restore();
+  }
   function drawMainCharacter(motionTime) {
     const world = window.worldManager?.getActive();
     if (!world || world.id === 'base') return;
@@ -1941,6 +1952,7 @@
     drawFloatingIsland(sun.altitude, sun.azimuth, sun.hourAngleDegrees,
       sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates);
     drawSurfaceObjectShadows(shadowLight, sceneWeather.cloudCover, sceneWeather.weatherCode);
+    drawHoeTarget();
     drawHouse();
     drawMainCharacter(motionTime);
     // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
@@ -2050,6 +2062,7 @@
   window.previewHudLocation = () => ({latitude: location.latitude, longitude: location.longitude});
   window.previewHudSunAltitude = time => sunPosition(time, location.latitude, location.longitude).altitude;
   window.previewHudWeatherCode = () => lastFetch ? weather.weatherCode : null;
+  window.addEventListener('gameplaytoolchange',()=>{if(REDUCED_MOTION)drawFrame();});
   window.addEventListener('worldchange', () => {
     const nextWorldId = window.worldManager?.getActive()?.id;
     if (nextWorldId !== cameraWorldId) {

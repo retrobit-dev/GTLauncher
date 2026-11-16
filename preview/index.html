@@ -9,14 +9,14 @@
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./worlds.js?v=25" defer></script>
   <script src="./object-editor.js?v=8" defer></script>
-  <script src="./app.js?v=live-sky-174" defer></script>
+  <script src="./app.js?v=live-sky-175" defer></script>
   <script src="./preview-modes.js?v=2" defer></script>
   <script src="./editor-camera.js?v=3" defer></script>
   <script src="./terrain-tools.js?v=2" defer></script>
   <script src="./gameplay-path.js?v=6" defer></script>
-  <script src="./gameplay-movement.js?v=4" defer></script>
+  <script src="./gameplay-movement.js?v=5" defer></script>
   <script src="./season-estimate.js?v=1" defer></script>
-  <script src="./hud.js?v=4" defer></script>
+  <script src="./hud.js?v=5" defer></script>
 </head>
 <body>
   <main class="preview-stage" aria-label="Pratinjau GTLauncher">
@@ -44,7 +44,7 @@
         <div class="home-dock-shell"><div class="dock-tabs"><button type="button" class="dock-tab selected" data-dock="tools" aria-current="page">Tools</button><button type="button" class="dock-tab" data-dock="add" aria-label="Tambah tab dock" title="Tambah tab dock">+</button></div>
         <nav class="home-dock" aria-label="Dock launcher">
           <button type="button" data-dock="hand" aria-label="Tangan — bergerak dan berinteraksi" title="Tangan — bergerak dan berinteraksi" aria-pressed="true"><img src="assets/hud/tools/hand.svg?v=2" alt=""></button>
-          <button type="button" data-dock="hoe" aria-label="Cangkul — olah tanah" title="Cangkul — olah tanah" aria-pressed="false"><img src="assets/hud/tools/hoe.svg?v=2" alt=""></button>
+          <button type="button" data-dock="hoe" aria-label="Cangkul — tanah pertanian belum tersedia" title="Cangkul — tanah pertanian belum tersedia" aria-pressed="false"><img src="assets/hud/tools/hoe.svg?v=3" alt=""></button>
           <button type="button" data-dock="shovel" aria-label="Sekop — belum tersedia" title="Sekop — belum tersedia"><img src="assets/hud/tools/shovel.svg" alt=""></button>
           <button type="button" data-dock="water" aria-label="Penyiram — belum tersedia" title="Penyiram — belum tersedia"><img src="assets/hud/tools/water.svg" alt=""></button>
           <button type="button" data-dock="sickle" aria-label="Sabit — belum tersedia" title="Sabit — belum tersedia"><img src="assets/hud/tools/sickle.svg" alt=""></button>
@@ -69,7 +69,7 @@
       <button id="terrain-erase" type="button" aria-label="Hapus tile" title="Hapus tile" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15 14 5l6 6-9 9H7zM7 20h13M7 12l5 5"/></svg></button>
       <button id="terrain-pick" type="button" aria-label="Ambil material" title="Ambil material" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 17 9-9M13 6l5 5m-1-8 4 4-3 3-4-4zM7 17l-3 4 4-1 2-2"/></svg></button>
       <button id="terrain-fill" type="button" aria-label="Isi area tile" title="Isi area tile" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13 12 5l8 8-8 7zM8 9l8 8M14 4 9 2M20 18v3"/></svg></button>
-      <label for="terrain-material">Material</label><select id="terrain-material" aria-label="Material tile"><option value="1">Rumput</option><option value="2">Tanah</option><option value="3">Air</option><option value="4">Batu</option><option value="5">Pasir</option><option value="6">Lahan</option></select>
+      <label for="terrain-material">Material</label><select id="terrain-material" aria-label="Material tile"><option value="1">Rumput</option><option value="2">Tanah</option><option value="3">Air</option><option value="4">Batu</option><option value="5">Pasir</option></select>
       <span id="terrain-status" role="status" aria-live="polite"></span>
     </nav>
     <aside id="rotate-controls" class="rotate-controls" aria-label="Putar arah objek" hidden>

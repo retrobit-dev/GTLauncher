@@ -25,8 +25,7 @@ let active=win.worldManager.getActive(),modified=active.tiles.slice();modified[1
 tap(14,12);assert.equal(win.worldManager.getCharacter().column,13);assert.match(d.getElementById('gameplay-movement-status').textContent,/tidak dapat dicapai/);
 modified=win.worldManager.getActive().tiles.slice();modified[12*25+14]=1;assert(win.worldManager.updateTiles(active.id,modified));
 d.querySelector('[data-dock="hand"]').setAttribute('aria-pressed','false');d.querySelector('[data-dock="hoe"]').setAttribute('aria-pressed','true');
-tap(15,12);assert.equal(win.worldManager.getCharacter().column,14,'character approaches before tilling');assert.equal(win.worldManager.getActive().tiles[12*25+15],6,'hoe persists tilled tile');assert.match(d.getElementById('gameplay-movement-status').textContent,/berhasil dicangkul/);
-const afterTill=win.localStorage.getItem('gtlauncher.worlds.v1');tap(15,12);assert.equal(win.localStorage.getItem('gtlauncher.worlds.v1'),afterTill,'cannot till same tile twice');
+const afterTill=win.localStorage.getItem('gtlauncher.worlds.v1');tap(15,12);assert.equal(win.localStorage.getItem('gtlauncher.worlds.v1'),afterTill,'hoe does not alter ordinary terrain');assert.equal(win.worldManager.getCharacter().column,13);assert.match(d.getElementById('gameplay-movement-status').textContent,/tanah pertanian belum tersedia/);
 d.querySelector('[data-dock="hoe"]').setAttribute('aria-pressed','false');d.querySelector('[data-dock="hand"]').setAttribute('aria-pressed','true');
 d.getElementById('mode-map-editor').click();const before=win.localStorage.getItem('gtlauncher.worlds.v1');tap(14,12);assert.equal(win.localStorage.getItem('gtlauncher.worlds.v1'),before,'editor tap does not initiate gameplay walking');
 dom.window.close();console.log('Gameplay routing: 9x9/20x20, obstacles, water traversal, tap, persistence and editor isolation OK');

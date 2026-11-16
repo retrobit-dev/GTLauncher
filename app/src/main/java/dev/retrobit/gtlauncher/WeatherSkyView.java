@@ -510,6 +510,8 @@ public final class WeatherSkyView extends View {
             paint.setColor(Color.WHITE);canvas.drawBitmap(portalMarkerImage,null,new RectF(g.left+2.5f,g.top+1,g.right-2.5f,g.bottom-3),paint);
         }
     }
+    private boolean hoeSelected = false;
+    void setHoeSelected(boolean selected) { hoeSelected=selected;invalidate(); }
     private boolean gameplayMode = false;
     void setGameplayMode(boolean value) { gameplayMode=value; invalidate(); }
     private float mapSourceX() { return gameplayMode && showCharacter
@@ -916,6 +918,18 @@ public final class WeatherSkyView extends View {
         paint.setAlpha(255);
     }
 
+    private void drawHoeTarget(Canvas canvas) {
+        if(!gameplayMode || !hoeSelected || !showCharacter)return;
+        int column=Math.round(visualColumn()),row=Math.round(visualRow());
+        switch(characterFacing) {case "N":row--;break;case "E":column++;break;case "S":row++;break;case "W":column--;break;default:return;}
+        if(column<0 || row<0 || column>=ISLAND_GRID_SIZE || row>=ISLAND_GRID_SIZE || (worldTerrain!=null && !worldTerrain.canStand(column,row)))return;
+        float x=SCENE_WIDTH/2f+(column-row)*ISLAND_TILE_WIDTH/2f;
+        float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(column+row)*ISLAND_TILE_HEIGHT/2f;
+        float hw=ISLAND_TILE_WIDTH/2f-.5f,hh=ISLAND_TILE_HEIGHT/2f-.3f;
+        Path outline=new Path();outline.moveTo(x,y-hh);outline.lineTo(x+hw,y);outline.lineTo(x,y+hh);outline.lineTo(x-hw,y);outline.close();
+        paint.setColor(Color.WHITE);paint.setStrokeWidth(1.2f);paint.setStrokeJoin(Paint.Join.ROUND);paint.setStyle(Paint.Style.STROKE);
+        canvas.drawPath(outline,paint);paint.setStyle(Paint.Style.FILL);
+    }
     private void drawMainCharacter(Canvas canvas, double motionTime) {
         boolean back = "N".equals(characterFacing) || "W".equals(characterFacing);
         boolean mirror = "N".equals(characterFacing) || "E".equals(characterFacing);
@@ -1045,6 +1059,7 @@ public final class WeatherSkyView extends View {
         drawFloatingIsland(scene, sun.altitudeDegrees, sun.azimuthDegrees,
                 sun.hourAngleDegrees, cloudCover, code, moon, cloudStates, sun);
         drawDecorativeFlowers(scene);
+        drawHoeTarget(scene);
         drawRoads(scene);
         drawSurfaceObjectShadows(scene, shadowLight, cloudCover, code);
         drawHouses(scene,false);
