@@ -192,6 +192,9 @@ body {
 .sky-canvas.is-editing { touch-action: none; cursor: crosshair; }
 .sky-canvas.is-panning { touch-action: none; cursor: grab; }
 .sky-canvas.is-panning:active { cursor: grabbing; }
+.editor-pan-surface { position:absolute; inset:0; z-index:10; touch-action:none; cursor:grab; }
+.editor-pan-surface[hidden] { display:none; }
+.editor-pan-surface:active { cursor:grabbing; }
 
 .object-history-button:disabled { opacity: .38; cursor: not-allowed; }
 .object-history-button:not(:disabled) { background: #e2eadf; color: #314f3b; }

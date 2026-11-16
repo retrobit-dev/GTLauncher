@@ -62,6 +62,8 @@
   // Fit the larger locked Base in the existing preview viewport; legacy worlds retain their scale.
   let islandZoom = ISLAND_GRID_SIZE === 20 ? 9 / 20 : 1;
   let editorZoom = 1, cameraPanX = 0, cameraPanY = 0;
+  let cameraMode = 'gameplay', savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
+  let cameraWorldId = window.worldManager?.getActive()?.id;
   function baseFitZoom() { return ISLAND_GRID_SIZE === 20 ? 9 / 20 : 1; }
   // Interior tile faces stay shallow; exposed perimeter faces extend through the grass band.
   const ISLAND_TILE_SIDE_DEPTH = 2.5;
@@ -1980,13 +1982,20 @@
   window.previewHudSunAltitude = time => sunPosition(time, location.latitude, location.longitude).altitude;
   window.previewHudWeatherCode = () => lastFetch ? weather.weatherCode : null;
   window.addEventListener('worldchange', () => {
-    const nextSize = window.worldManager?.getActive()?.id === 'base' ? 20 : 9;
+    const nextWorldId = window.worldManager?.getActive()?.id;
+    if (nextWorldId !== cameraWorldId) {
+      cameraWorldId = nextWorldId;
+      savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
+    }
+    const nextSize = nextWorldId === 'base' ? 20 : 9;
     if (nextSize !== ISLAND_GRID_SIZE) {
       ISLAND_GRID_SIZE = nextSize;
       editorZoom = 1; cameraPanX = 0; cameraPanY = 0;
       islandZoom = baseFitZoom();
+      savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
       rebuildIslandProjection();
     }
+    if (cameraMode === 'gameplay') applyGameplayCamera();
     if (REDUCED_MOTION) drawFrame();
   });
   updateWeatherModeControls();
@@ -2013,10 +2022,37 @@
     }, true);
   }
 
+  // Gameplay uses five times the editor's default fit scale, independent of its camera controls.
+  function applyGameplayCamera() {
+    editorZoom = 1;
+    islandZoom = baseFitZoom() * 5;
+    const character = window.worldManager?.getCharacter();
+    const target = character?.visible ? characterCentre(character) : {x: WIDTH / 2, y: islandCenterY};
+    const [anchorX, anchorY] = islandAnchor();
+    cameraPanX = WIDTH / 2 - anchorX - (target.x - anchorX) * islandZoom;
+    cameraPanY = HEIGHT * 0.56 - anchorY - (target.y - anchorY) * islandZoom;
+  }
+  function setPreviewCameraMode(mode) {
+    if (mode !== 'gameplay' && mode !== 'editor') return;
+    if (cameraMode === mode) return;
+    if (mode === 'gameplay') {
+      savedEditorCamera = {zoom: editorZoom, panX: cameraPanX, panY: cameraPanY};
+      cameraMode = mode;
+      applyGameplayCamera();
+    } else {
+      cameraMode = mode;
+      ({zoom: editorZoom, panX: cameraPanX, panY: cameraPanY} = savedEditorCamera);
+      islandZoom = baseFitZoom() * editorZoom;
+    }
+    if (REDUCED_MOTION) drawFrame();
+  }
+  applyGameplayCamera();
+
   // Geometry bridge for the preview editor. Coordinates are transformed through the actual
   // canvas bounds and island zoom, so dragging remains correct on different device sizes.
   window.sceneEditing = Object.freeze({
     camera() { return {zoom: editorZoom, panX: cameraPanX, panY: cameraPanY}; },
+    setMode: setPreviewCameraMode,
     setCamera(zoom, panX, panY) {
       if (![zoom, panX, panY].every(Number.isFinite)) return false;
       editorZoom = clamp(zoom, 0.1, 5);
