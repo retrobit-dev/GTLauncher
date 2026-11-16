@@ -1562,7 +1562,7 @@
     drawProjectedCloudShadows(clouds, lightAltitude, lightHourAngle, cloudCover, code, true);
   }
 
-  let editingDraft = null, editingHouseDraft = null;
+  let editingDraft = null, editingHouseDraft = null, gameplayDraft = null;
   let editingSelected = false, editingHouseSelected = false;
   function characterCentre(character) {
     return {x: WIDTH / 2 + (character.column - character.row) * ISLAND_TILE_WIDTH / 2,
@@ -1608,7 +1608,7 @@
       shadows.push({anchor: {x: centre.x, y: centre.y + 1.25 * islandTileHeight * house.scale},
         width: 70 * house.scale, depth: islandTileHeight * 2.5 * house.scale, height: 67 * house.scale});
     }
-    const character = editingDraft || window.worldManager.getCharacter();
+    const character = editingDraft || gameplayDraft || window.worldManager.getCharacter();
     const sprite = character.facing === 'N' || character.facing === 'W' ? playerBackImage : playerImage;
     if (character.visible && sprite.complete && sprite.naturalWidth) {
       shadows.push({anchor: characterCentre(character), width: PLAYER_WIDTH * character.scale,
@@ -1655,7 +1655,7 @@
   function drawMainCharacter(motionTime) {
     const world = window.worldManager?.getActive();
     if (!world || world.id === 'base') return;
-    const character = editingDraft || window.worldManager.getCharacter();
+    const character = editingDraft || gameplayDraft || window.worldManager.getCharacter();
     if (!character.visible) return;
     const back = character.facing === 'N' || character.facing === 'W';
     const mirror = character.facing === 'N' || character.facing === 'E';
@@ -2072,7 +2072,7 @@
   function applyGameplayCamera() {
     editorZoom = 1;
     islandZoom = baseFitZoom() * 2.5;
-    const character = window.worldManager?.getCharacter();
+    const character = gameplayDraft || window.worldManager?.getCharacter();
     const target = character?.visible ? characterCentre(character) : {x: WIDTH / 2, y: islandCenterY};
     const [anchorX, anchorY] = islandAnchor();
     cameraPanX = WIDTH / 2 - anchorX - (target.x - anchorX) * islandZoom;
@@ -2099,6 +2099,11 @@
   window.sceneEditing = Object.freeze({
     camera() { return {zoom: editorZoom, panX: cameraPanX, panY: cameraPanY}; },
     setMode: setPreviewCameraMode,
+    setGameplayDraft(draft) {
+      gameplayDraft = draft;
+      if (cameraMode === 'gameplay') applyGameplayCamera();
+      if (REDUCED_MOTION) drawFrame();
+    },
     setCamera(zoom, panX, panY) {
       if (![zoom, panX, panY].every(Number.isFinite)) return false;
       editorZoom = clamp(zoom, 0.1, 5);

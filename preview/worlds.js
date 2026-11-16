@@ -506,8 +506,8 @@
     if (id === 'base' || world.id !== id || world.gridSize !== 20 || !Array.isArray(tiles)
       || tiles.length !== 400 || tiles.some(t => !validTile(t))) return false;
     const character = getCharacter(world), house = getHouse(world);
-    if (!tiles[character.row * 20 + character.column]) return false;
-    if (house) for (let r = house.row; r < house.row + 3; r++) for (let c = house.column; c < house.column + 3; c++) if (!tiles[r * 20 + c]) return false;
+    if (!tiles[character.row * 20 + character.column] || tiles[character.row * 20 + character.column] === 3) return false;
+    if (house) for (let r = house.row; r < house.row + 3; r++) for (let c = house.column; c < house.column + 3; c++) if (!tiles[r * 20 + c] || tiles[r * 20 + c] === 3) return false;
     return commit({...state, worlds: state.worlds.map(w => w.id === id ? {...w, tiles: tiles.slice()} : w)});
   }
   window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, updateTiles});
