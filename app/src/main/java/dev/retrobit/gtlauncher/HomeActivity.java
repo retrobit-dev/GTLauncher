@@ -489,7 +489,7 @@ public class HomeActivity extends Activity {
             WorldStore.World world=worldStore.activeWorld();
             if(world==null || !world.showCharacter)return;
             java.util.List<PortalTravel.Tile> route=PortalTravel.path(
-                new PortalTravel.Tile(world.characterColumn,world.characterRow),target,portalTerrain(world));
+                new PortalTravel.Tile(world.characterColumn,world.characterRow),target,portalTerrain(world),world.gridSize());
             if(route==null){Toast.makeText(this,"Jalan terhalang.",Toast.LENGTH_SHORT).show();return;}
             int generation=++portalWalkGeneration; skyView.setPortalWalkActive(true);
             walkGroundStep(world,route,1,generation,world.characterFacing);
@@ -520,6 +520,7 @@ public class HomeActivity extends Activity {
             skyView.setWorldIslandTint(world == null ? null : Color.parseColor(world.color));
             skyView.setWorldPortals(world == null ? null : world.portals);
             skyView.setWorldSurfaces(world == null ? null : world.id,world == null ? null : world.surfaces);
+            skyView.setWorldTerrain(world == null ? null : world.previewData);
             refreshHarvestDisplay(world);
             skyView.setWorldHouses(world == null ? null : world.houses);
             skyView.setWorldCharacter(world != null && world.showCharacter,
@@ -530,6 +531,7 @@ public class HomeActivity extends Activity {
             skyView.setWorldIslandTint(null);
             skyView.setWorldPortals(null);
             skyView.setWorldSurfaces(null,null);
+            skyView.setWorldTerrain(null);
             skyView.setWorldHouses(null);
             skyView.setWorldCharacter(false, 4, 4, 1.0f, "S");
             Toast.makeText(this, "Data world tidak dapat dibaca; data lama tidak ditimpa.",
@@ -669,6 +671,7 @@ public class HomeActivity extends Activity {
     private PortalTravel.Terrain portalTerrain(WorldStore.World world) {
         return new PortalTravel.Terrain() {
             public boolean canStand(int c,int r) {
+                if(!world.tileExists(c,r)) return false;
                 for(WorldStore.House house:world.houses)if(house.covers(c,r))return false;
                 for(WorldStore.SurfaceObject o:world.surfaces) {
                     if(o.type.equals("tree") && c>=o.column && c<o.column+((o.material.equals("banana") || o.material.equals("palm"))?1:2) && r>=o.row && r<o.row+((o.material.equals("banana") || o.material.equals("palm"))?1:2)) return false;

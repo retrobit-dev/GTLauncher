@@ -46,6 +46,9 @@ final class WorldStore {
         final double houseScale;
         final String houseFacing, houseId, houseDesign;
         final int formatVersion;
+        PreviewWorld20 previewData;
+        int gridSize() { return previewData == null ? 9 : previewData.size; }
+        boolean tileExists(int c,int r) { return previewData == null ? c>=0 && r>=0 && c<9 && r<9 : previewData.canStand(c,r); }
         final int characterColumn, characterRow;
         final double characterScale;
         final String characterFacing;
@@ -294,8 +297,22 @@ final class WorldStore {
         }
     }
 
+    private static World fromPreview(PreviewWorld20 data) throws JSONException {
+        JSONObject w=new JSONObject(data.toJson()).getJSONObject("world");
+        JSONObject h=w.isNull("house") ? null : w.getJSONObject("house");
+        List<House> houses=new ArrayList<>();
+        if(h!=null) houses.add(new House(h.getInt("column"),h.getInt("row"),h.optDouble("scale",1),h.optString("facing","S"),h.optBoolean("visible",true),null,null,-1));
+        House first=houses.isEmpty()?null:houses.get(0);
+        World result=new World(data.id,w.getString("name"),w.getString("description"),w.getString("color"),
+                w.getBoolean("showCharacter"),w.getInt("characterColumn"),w.getInt("characterRow"),w.getDouble("characterScale"),w.getString("characterFacing"),
+                first!=null,first!=null && first.visible,first==null?0:first.column,first==null?0:first.row,first==null?1:first.scale,
+                first==null?"S":first.facing,null,null,-1,32,new ArrayList<>(),new ArrayList<>(),houses);
+        result.previewData=data; return result;
+    }
+
     static World parseExport(String json) throws JSONException {
         JSONObject root = new JSONObject(json);
+        if ("gtlauncher-preview-world".equals(root.optString("format"))) return fromPreview(PreviewWorld20.parse(json));
         if (!"gtlauncher-world".equals(requiredString(root, "format"))
                 || !(root.get("version") instanceof Number)
                 || !(root.get("world") instanceof JSONObject)) {
@@ -349,7 +366,12 @@ final class WorldStore {
             String id = requiredString(item, "id");
             if (id.isEmpty() || BASE_ID.equals(id)) throw new JSONException("Invalid world id");
             for (World previous : worlds) if (previous.id.equals(id)) throw new JSONException("Duplicate world id");
-            worlds.add(parseWorld(item, id, storedVersion(item)));
+            if(item.has("previewExport")) {
+                requireOnlyKeys(item,"id","previewExport");
+                World world=fromPreview(PreviewWorld20.parse(requiredString(item,"previewExport")));
+                if(!world.id.equals(id)) throw new JSONException("World id mismatch");
+                worlds.add(world);
+            } else worlds.add(parseWorld(item, id, storedVersion(item)));
         }
         return worlds;
     }
@@ -378,6 +400,7 @@ final class WorldStore {
         boolean found = false;
         for (int i = 0; i < existing.size(); i++) {
             if (existing.get(i).id.equals(world.id)) {
+                if(existing.get(i).previewData!=null && world.previewData==null) throw new JSONException("Legacy export cannot replace terrain");
                 if(world.formatVersion<21 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("flower") && !java.util.Arrays.asList("rose","tulip","lavender","daisy","marigold","bluebell").contains(o.material)))throw new JSONException("Legacy export cannot replace flower variant");
                 if(world.formatVersion<21 && hasOverlappingFlowers(existing.get(i).surfaces))throw new JSONException("Legacy export cannot replace overlapping flowers");
                 if(world.formatVersion<20 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("flower")))throw new JSONException("Legacy export cannot replace flowers");
@@ -432,6 +455,9 @@ final class WorldStore {
         JSONArray array = new JSONArray();
         for (World item : worlds) {
             JSONObject object = new JSONObject();
+            if(item.previewData != null) {
+                object.put("id",item.id); object.put("previewExport",item.previewData.toJson()); array.put(object); continue;
+            }
             object.put("id", item.id); object.put("name", item.name);
             object.put("description", item.description); object.put("color", item.color);
             JSONArray objects = new JSONArray();
@@ -463,10 +489,15 @@ final class WorldStore {
     }
 
     boolean moveCharacter(String worldId, int column, int row, String facing) throws JSONException {
-        if (!worldId.equals(activeId()) || column<0 || column>8 || row<0 || row>8 || !java.util.Arrays.asList("N","E","S","W").contains(facing)) return false;
+        if (!worldId.equals(activeId()) || !java.util.Arrays.asList("N","E","S","W").contains(facing)) return false;
         List<World> worlds=list();
         for(int i=0;i<worlds.size();i++) { World w=worlds.get(i); if(w.id.equals(worldId) && w.showCharacter) {
-            worlds.set(i, new World(w.id,w.name,w.description,w.color,true,column,row,w.characterScale,facing,w.hasHouse,w.showHouse,w.houseColumn,w.houseRow,w.houseScale,w.houseFacing,w.houseId,w.houseDesign,w.houseOpacity,w.formatVersion,w.portals,w.surfaces,w.houses));
+            if(!w.tileExists(column,row) || houseCovers(w.houses,column,row)) return false;
+            if(w.previewData!=null) {
+                JSONObject root=new JSONObject(w.previewData.toJson()), data=root.getJSONObject("world");
+                data.put("characterColumn",column); data.put("characterRow",row); data.put("characterFacing",facing);
+                worlds.set(i,fromPreview(PreviewWorld20.parse(root.toString())));
+            } else worlds.set(i, new World(w.id,w.name,w.description,w.color,true,column,row,w.characterScale,facing,w.hasHouse,w.showHouse,w.houseColumn,w.houseRow,w.houseScale,w.houseFacing,w.houseId,w.houseDesign,w.houseOpacity,w.formatVersion,w.portals,w.surfaces,w.houses));
             return saveWorlds(worlds,worldId);
         }}
         return false;

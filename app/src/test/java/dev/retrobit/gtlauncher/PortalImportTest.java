@@ -190,6 +190,26 @@ public class PortalImportTest {
         SharedPreferences full=prefs();full.edit().putString("items_v1","[{\"name\":\"Apel\",\"quantity\":999999}]").commit();InventoryStore fullInventory=new InventoryStore(full);before=full.getString("items_v1",null);
         try{fullInventory.harvest(tree,"2026-01-01","Apel");fail("full stack");}catch(JSONException expected){}assertEquals(before,full.getString("items_v1",null));assertFalse(fullInventory.wasHarvested(tree,"2026-01-01"));
     }
+    @Test public void portableWorldStoresMovesAndPreservesTerrain() throws Exception {
+        org.json.JSONArray tiles=new org.json.JSONArray(); for(int i=0;i<625;i++)tiles.put(1);
+        tiles.put(624,3);tiles.put(623,0);tiles.put(100,5);
+        org.json.JSONObject house=new org.json.JSONObject().put("column",0).put("row",0).put("visible",true).put("scale",1).put("facing","S");
+        org.json.JSONObject w=new org.json.JSONObject().put("id","home").put("name","Home").put("description","").put("color","#a8c795")
+                .put("gridSize",25).put("tiles",tiles).put("house",house).put("showCharacter",true)
+                .put("characterColumn",12).put("characterRow",12).put("characterScale",1).put("characterFacing","S");
+        String json=new org.json.JSONObject().put("format","gtlauncher-preview-world").put("version",2).put("world",w).toString();
+        WorldStore store=new WorldStore(prefs()); assertTrue(store.upsertAndSelect(WorldStore.parseExport(json)));
+        assertEquals(25,store.activeWorld().gridSize()); assertFalse(store.activeWorld().tileExists(23,24));
+        assertTrue(store.moveCharacter("home",24,24,"E"));
+        WorldStore.World restored=store.activeWorld(); assertEquals(24,restored.characterColumn); assertEquals(3,restored.previewData.tile(24,24));
+        assertEquals(5,restored.previewData.tile(0,4)); assertEquals(1,restored.houses.size());
+        assertFalse(store.moveCharacter("home",23,24,"E")); assertFalse(store.moveCharacter("home",0,0,"E"));
+        assertFalse(store.moveCharacter("home",25,24,"E"));
+        try {store.upsertAndSelect(WorldStore.parseExport(world("")));fail("legacy replacement cannot drop terrain");} catch(JSONException expected) {}
+        assertEquals(3,store.activeWorld().previewData.tile(24,24));
+        w.put("unsupported",true); try {WorldStore.parseExport(new org.json.JSONObject().put("format","gtlauncher-preview-world").put("version",2).put("world",w).toString());fail("unknown data");} catch(JSONException expected) {}
+    }
+
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {

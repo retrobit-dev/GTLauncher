@@ -394,8 +394,8 @@ public final class WeatherSkyView extends View {
         characterStepping = false;
         showCharacter = visible;
         characterFacing = facing;
-        characterColumn = Math.max(0, Math.min(8, column));
-        characterRow = Math.max(0, Math.min(8, row));
+        characterColumn = Math.max(0, Math.min(ISLAND_GRID_SIZE-1, column));
+        characterRow = Math.max(0, Math.min(ISLAND_GRID_SIZE-1, row));
         characterScale = Math.max(0.5f, Math.min(1.5f, scale));
         invalidate();
     }
@@ -423,6 +423,16 @@ public final class WeatherSkyView extends View {
         ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2f;
         String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;}
         worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects); invalidate();
+    }
+    private PreviewWorld20 worldTerrain;
+    void setWorldTerrain(PreviewWorld20 terrain) {
+        worldTerrain=terrain;
+        if(terrain!=null) {
+            ISLAND_GRID_SIZE=terrain.size;
+            ISLAND_TOP=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN-ISLAND_DEPTH-ISLAND_GRID_SIZE*ISLAND_TILE_HEIGHT;
+            ISLAND_CENTER_Y=ISLAND_TOP+ISLAND_GRID_SIZE*ISLAND_TILE_HEIGHT/2f;
+        }
+        invalidate();
     }
     private RectF surfaceSpriteBounds(WorldStore.SurfaceObject o) {
         float x=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f;
@@ -1143,6 +1153,16 @@ public final class WeatherSkyView extends View {
         float halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 2.0f;
         float halfHeight = ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2.0f;
         islandClipPath.reset();
+        if(worldTerrain!=null) {
+            for(int row=0;row<ISLAND_GRID_SIZE;row++) for(int column=0;column<ISLAND_GRID_SIZE;column++) {
+                if(!worldTerrain.canStand(column,row)) continue;
+                float x=centerX+(column-row)*ISLAND_TILE_WIDTH/2f;
+                float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(column+row)*ISLAND_TILE_HEIGHT/2f;
+                islandClipPath.moveTo(x,y-ISLAND_TILE_HEIGHT/2f);islandClipPath.lineTo(x+ISLAND_TILE_WIDTH/2f,y);
+                islandClipPath.lineTo(x,y+ISLAND_TILE_HEIGHT/2f);islandClipPath.lineTo(x-ISLAND_TILE_WIDTH/2f,y);islandClipPath.close();
+            }
+            canvas.clipPath(islandClipPath);return;
+        }
         islandClipPath.moveTo(centerX, ISLAND_CENTER_Y - halfHeight);
         islandClipPath.lineTo(centerX + halfWidth, ISLAND_CENTER_Y);
         islandClipPath.lineTo(centerX, ISLAND_CENTER_Y + halfHeight);
@@ -1269,6 +1289,10 @@ public final class WeatherSkyView extends View {
         // Cloud shadows are separate; the island shadow scales with its selected light's distance.
         drawIslandShadow(canvas, centerX, lowerY, lightAltitude, lightHourAngle, cloudCover, code, lightDeclination);
 
+        if(worldTerrain!=null) {
+            drawPortableTerrain(canvas,palette,sunlight);
+            return;
+        }
         // One rounded, uninterrupted soil slab sits inside the wider grass cap.
         drawIslandSoilBody(canvas, soilLeftX, centerX, soilRightX,
                 middleY, soilFrontY, grassBandDepth, palette);
@@ -1340,6 +1364,30 @@ public final class WeatherSkyView extends View {
         int topRim = blend(palette.grassSeam, palette.grassDark, 0.32);
         drawSmoothIslandLine(canvas, leftX, middleY, centerX, bottomY, topRim, 0.60f);
         drawSmoothIslandLine(canvas, centerX, bottomY, rightX, middleY, topRim, 0.60f);
+    }
+
+    private void drawPortableTerrain(Canvas canvas, IslandPalette palette, IslandSunlight sunlight) {
+        for(int diagonal=0;diagonal<ISLAND_GRID_SIZE*2-1;diagonal++) for(int row=0;row<ISLAND_GRID_SIZE;row++) {
+            int column=diagonal-row;
+            if(column<0 || column>=ISLAND_GRID_SIZE) continue;
+            int material=worldTerrain.tile(column,row); if(material==0)continue;
+            float x=SCENE_WIDTH/2f+(column-row)*ISLAND_TILE_WIDTH/2f;
+            float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(column+row)*ISLAND_TILE_HEIGHT/2f;
+            float hw=ISLAND_TILE_WIDTH/2f,hh=ISLAND_TILE_HEIGHT/2f;
+            if(canvas.quickReject(x-hw,y-hh,x+hw,y+hh+ISLAND_DEPTH,Canvas.EdgeType.AA))continue;
+            if(!worldTerrain.canStand(column,row+1))
+                drawSmoothIslandQuad(canvas,x-hw,y,x,y+hh,x,y+hh+ISLAND_DEPTH,x-hw,y+ISLAND_DEPTH,palette.soilLight,palette.soilDark,0,0f);
+            if(!worldTerrain.canStand(column+1,row))
+                drawSmoothIslandQuad(canvas,x,y+hh,x+hw,y,x+hw,y+ISLAND_DEPTH,x,y+hh+ISLAND_DEPTH,palette.soilDark,palette.soilDark,0,0f);
+            if(material==1) drawGrassTile(canvas,x,y,(column+row)%2==0,column,row,palette,sunlight);
+            else {
+                int[] colors={0,0,0xffae8b68,0xff5e9eb4,0xff929995,0xffdac695};
+                int fill=blend(colors[material],palette.grassDark,0.12);
+                drawGrassTileSide(canvas,x,y,hw,hh,1.4f,ISLAND_TILE_SIDE_DEPTH,fill,true);
+                drawGrassTileSide(canvas,x,y,hw,hh,1.4f,ISLAND_TILE_SIDE_DEPTH,fill,false);
+                drawSunlitIslandDiamond(canvas,x,y,hw-0.05f,hh-0.025f,1.4f,fill,sunlight);
+            }
+        }
     }
 
     /**
