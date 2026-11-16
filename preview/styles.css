@@ -273,26 +273,29 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 /* HUD is screen-space UI: it does not zoom or move with the island. */
 @font-face { font-family: HudPixel; src: url('./assets/hud/press-start-2p.ttf') format('truetype'); font-display:swap; }
 .device-display { container-type:inline-size; }
-.character-hud { position:absolute; z-index:3; top:6%; left:4%; width:23%; height:13%; display:flex; gap:2%; pointer-events:none; }
-.character-hud-portrait, .character-hud-stats { background:#60452299; border:1px solid #eed39bb3; border-radius:4px; }
-.character-hud-portrait { width:32%; height:100%; object-fit:contain; transform:scaleX(-1); image-rendering:auto; }
-.character-hud-stats { flex:1; display:flex; flex-direction:column; justify-content:space-around; padding:2%; }
-.character-hud-stats div { display:flex; align-items:center; gap:3%; height:22%; color:#fff1cc; }
-.character-hud-stats small { font: .72cqw HudPixel,monospace; }
-.stat-icon { width:10%; font-size:1.15cqw; text-align:center; line-height:1; }
-.stat-icon.health { color:#f06054; }.stat-icon.stamina { color:#f7c74a; }.stat-icon.food { color:#9bc34a; }.stat-icon.water { color:#58b7db; }
+ .character-hud { position:absolute; z-index:3; top:2%; left:3%; width:20.5%; height:10.5%; display:flex; gap:3%; pointer-events:none; }
+.character-hud-portrait, .character-hud-stats { background:#725a3bcc; border:2px solid #d2bb88; border-radius:.7cqw; box-shadow:inset 0 0 0 1px #6e502f, 0 1px 2px #1c211b77; }
+.character-hud-portrait { width:33%; height:100%; object-fit:cover; object-position:center top; transform:scaleX(-1); image-rendering:pixelated; }
+.character-hud-stats { flex:1; display:flex; flex-direction:column; justify-content:space-around; padding:1.5% 2%; }
+.character-hud-stats div { display:flex; align-items:center; gap:2%; height:23%; color:#fff1cc; }
+.character-hud-stats small { font: .75cqw HudPixel,monospace; text-shadow:1px 1px #61492f; }
+.stat-icon { width:10%; height:95%; flex:none; }
 .stat-bar { flex:1; height:55%; border:1px solid #594529; background:repeating-linear-gradient(90deg,transparent 0 8%,#4a3729 8% 10%),var(--bar); }
 .stat-bar.health { --bar:#c94e43; }.stat-bar.stamina { --bar:#e5af3c; }.stat-bar.food { --bar:#80aa42; }.stat-bar.water { --bar:#4c9dc1; }
-.clock-hud { position:absolute; z-index:3; top:5%; right:3%; width:24%; height:14%; display:flex; gap:3%; pointer-events:none; color:#342b1e; font-family:HudPixel,monospace; }
+.clock-hud { position:absolute; z-index:3; top:2%; right:3%; width:18%; height:11%; display:flex; gap:3%; pointer-events:none; color:#342b1e; font-family:HudPixel,monospace; }
 .clock-readouts { display:flex; flex-direction:column; gap:4%; flex:1; min-width:0; }
 .hud-panel,.hud-calendar,.home-dock button { background:#f5e1b0ef; border:2px solid #815a2e; border-radius:4px; }
 .hud-panel { flex:1; display:flex; align-items:center; justify-content:space-around; padding:2%; font-size:1.1cqw; }
 .hud-panel img { height:70%; width:18%; object-fit:contain; image-rendering:pixelated; }
-.battery-panel { justify-content:space-between; padding:2% 7%; }
+.battery-panel { justify-content:space-between; padding:2% 7%; }.hud-battery-icon { height:75%; width:14%; }
 .hud-calendar { width:31%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3%; padding-top:3%; border-top: .9cqw solid #94bd2b; font-size:.72cqw; }
 .hud-calendar strong { font-size:1.65cqw; }
-.home-dock { position:absolute; z-index:4; bottom:4%; left:58%; display:flex; align-items:center; gap:.4cqw; height:12%; }
-.home-dock button { height:100%; aspect-ratio:1; padding:.6cqw; cursor:pointer; }
-.home-dock button.dock-settings { height:60%; padding:.3cqw; }
+ .home-dock-shell { position:absolute; z-index:4; bottom:3%; left:18%; width:64%; height:9.7%; }
+.dock-tabs { position:absolute; left:1%; bottom:100%; display:flex; gap:.25cqw; height:45%; align-items:stretch; }
+.dock-tab { min-width:3.8cqw; padding:0 .6cqw; background:#c4a781; color:#513c2d; border:.19cqw solid #806244; border-bottom:0; border-radius:.45cqw .45cqw 0 0; font: .85cqw HudPixel,monospace; cursor:pointer; }
+.dock-tab.selected { background:#f1e4c5; }
+.home-dock { height:100%; display:grid; grid-template-columns:repeat(11,minmax(0,1fr)); padding:.35cqw; gap:.15cqw; background:#c2a47d; border:.24cqw solid #806346; border-radius:.7cqw; box-shadow:inset 0 0 0 .15cqw #f4dfbb; }
+.home-dock button { min-width:0; width:100%; height:100%; padding:.5cqw; background:#e3cfaa; border:.16cqw solid #a88863; border-radius:0; cursor:pointer; }
 .home-dock button img { width:100%; height:100%; object-fit:contain; image-rendering:pixelated; }
+.dock-tab:focus-visible { outline:3px solid white; outline-offset:2px; }
 .home-dock button:focus-visible { outline:3px solid white; outline-offset:2px; }

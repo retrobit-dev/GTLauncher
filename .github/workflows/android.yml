@@ -28,6 +28,7 @@ jobs:
       - name: Static Android checks
         run: |
           python3 tools/test_android_drawer.py
+          python3 tools/test_android_restored_dock.py
           python3 tools/test_android_pixel_icons.py
           python3 tools/test_android_character_hud.py
           python3 tools/test_android_portal_compatibility.py

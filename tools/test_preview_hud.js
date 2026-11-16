@@ -18,5 +18,10 @@ assert.throws(()=>season.classify(rainfall(0),new Date('2026-12-01T12:00:00Z')))
  d.getElementById('dock-close').click();assert(!dialog.open);
  for(const img of d.querySelectorAll('.character-hud img, .home-dock img'))assert(fs.existsSync(path.join(root,img.getAttribute('src'))));
  assert.equal(d.querySelectorAll('.character-hud-stats > div').length,4);
+ assert.equal(d.querySelectorAll('.home-dock button').length,11);
+ assert.equal(d.querySelector('.dock-tab.selected').textContent,'Tools');
+ assert(!d.querySelector('[data-dock="close"]'),'no close icon in dock');
+ d.querySelector('[data-dock="hoe"]').click();assert(dialog.open);assert.match(d.getElementById('dock-message').textContent,/belum dipulihkan/);d.getElementById('dock-close').click();
+ d.querySelector('[data-dock="add"]').click();assert(dialog.open);assert.match(d.getElementById('dock-message').textContent,/belum dipulihkan/);
  await Promise.resolve();dom.window.close();console.log('HUD phase, clock, battery fallback, season validation, dock and assets: OK');
 })().catch(error=>{console.error(error);process.exitCode=1});

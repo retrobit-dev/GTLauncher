@@ -45,14 +45,27 @@
 </LinearLayout>
     </LinearLayout>
 
+    <!-- Tools are visual placeholders until their gameplay actions are restored. -->
+    <HorizontalScrollView android:id="@+id/home_dock_scroll" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="12dp" android:scrollbars="none">
+      <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical">
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="24dp" android:orientation="horizontal">
+          <TextView android:layout_width="56dp" android:layout_height="match_parent" android:gravity="center" android:text="Tools" android:textSize="9sp" android:fontFamily="@font/press_start_2p" android:background="@drawable/bg_date_hud_panel" />
+          <Button android:id="@+id/dock_add_tab" android:layout_width="40dp" android:layout_height="match_parent" android:minHeight="0dp" android:minWidth="0dp" android:padding="0dp" android:text="+" android:contentDescription="Tambah tab dock — belum tersedia" android:background="@drawable/bg_date_hud_panel" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="wrap_content" android:layout_height="44dp" android:orientation="horizontal">
+            <ImageButton android:id="@+id/dock_tool_hand" android:layout_width="40dp" android:layout_height="44dp" android:padding="5dp" android:background="@drawable/bg_date_hud_panel" android:src="@drawable/dock_tool_hand" android:scaleType="fitCenter" android:contentDescription="Tangan — belum tersedia" />
+            <ImageButton android:id="@+id/dock_tool_hoe" android:layout_width="40dp" android:layout_height="44dp" android:padding="5dp" android:background="@drawable/bg_date_hud_panel" android:src="@drawable/dock_tool_hoe" android:scaleType="fitCenter" android:contentDescription="Cangkul — belum tersedia" />
+            <ImageButton android:id="@+id/dock_tool_shovel" android:layout_width="40dp" android:layout_height="44dp" android:padding="5dp" android:background="@drawable/bg_date_hud_panel" android:src="@drawable/dock_tool_shovel" android:scaleType="fitCenter" android:contentDescription="Sekop — belum tersedia" />
+            <ImageButton android:id="@+id/dock_tool_water" android:layout_width="40dp" android:layout_height="44dp" android:padding="5dp" android:background="@drawable/bg_date_hud_panel" android:src="@drawable/dock_tool_water" android:scaleType="fitCenter" android:contentDescription="Penyiram — belum tersedia" />
+            <ImageButton android:id="@+id/dock_tool_sickle" android:layout_width="40dp" android:layout_height="44dp" android:padding="5dp" android:background="@drawable/bg_date_hud_panel" android:src="@drawable/dock_tool_sickle" android:scaleType="fitCenter" android:contentDescription="Sabit — belum tersedia" />
+            <ImageButton android:id="@+id/dock_tool_axe" android:layout_width="40dp" android:layout_height="44dp" android:padding="5dp" android:background="@drawable/bg_date_hud_panel" android:src="@drawable/dock_tool_axe" android:scaleType="fitCenter" android:contentDescription="Kapak — belum tersedia" />
+            <ImageButton android:id="@+id/dock_tool_pickaxe" android:layout_width="40dp" android:layout_height="44dp" android:padding="5dp" android:background="@drawable/bg_date_hud_panel" android:src="@drawable/dock_tool_pickaxe" android:scaleType="fitCenter" android:contentDescription="Beliung — belum tersedia" />
+            <ImageButton android:id="@+id/dock_tool_fishing" android:layout_width="40dp" android:layout_height="44dp" android:padding="5dp" android:background="@drawable/bg_date_hud_panel" android:src="@drawable/dock_tool_fishing" android:scaleType="fitCenter" android:contentDescription="Pancing — belum tersedia" />
     <!-- Phone and bag remain together on every world. -->
     <LinearLayout
         android:id="@+id/home_phone_slots"
         android:layout_width="112dp"
         android:layout_height="44dp"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="12dp"
-        android:translationX="134dp"
         android:orientation="horizontal">
         <ImageButton
             android:id="@+id/home_phone_button"
@@ -83,6 +96,10 @@
             android:scaleType="fitCenter"
             android:contentDescription="Pengaturan — belum tersedia" />
     </LinearLayout>
+
+        </LinearLayout>
+      </LinearLayout>
+    </HorizontalScrollView>
 
     <!-- Non-interactive device clock and estimated season. -->
     <LinearLayout

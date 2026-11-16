@@ -45,7 +45,7 @@
     info.addEventListener('levelchange',update);info.addEventListener('chargingchange',update);update();
   }).catch(()=>{});
   const dialog=$('dock-dialog'),title=$('dock-dialog-title'),message=$('dock-message');
-  const info={phone:['Aplikasi','Daftar aplikasi perangkat hanya tersedia di Android; browser tidak dapat membacanya.'],bag:['Tas','Tas preview belum dipulihkan. Data inventaris tidak diubah.'],settings:['Pengaturan','Pengaturan dock belum tersedia.']};
-  for(const button of document.querySelectorAll('[data-dock]'))button.addEventListener('click',()=>{const entry=info[button.dataset.dock];if(!entry)return;title.textContent=entry[0];message.textContent=entry[1];if(!dialog.open)dialog.showModal();});
+  const info={add:['Tab dock','Penambahan tab dock belum dipulihkan.'],phone:['Aplikasi','Daftar aplikasi perangkat hanya tersedia di Android; browser tidak dapat membacanya.'],bag:['Tas','Tas preview belum dipulihkan. Data inventaris tidak diubah.'],settings:['Pengaturan','Pengaturan dock belum tersedia.']};
+  for(const button of document.querySelectorAll('[data-dock]'))button.addEventListener('click',()=>{if(button.dataset.dock==='tools')return;const entry=info[button.dataset.dock] || [button.getAttribute('title').split(' — ')[0], 'Fungsi alat ini belum dipulihkan di preview.'];title.textContent=entry[0];message.textContent=entry[1];if(!dialog.open)dialog.showModal();});
   $('dock-close').addEventListener('click',()=>dialog.close());
 })();

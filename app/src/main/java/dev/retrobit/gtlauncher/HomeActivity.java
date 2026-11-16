@@ -284,6 +284,13 @@ public class HomeActivity extends Activity {
             return true;
         });
         findViewById(R.id.drawer_back).setOnClickListener(view -> closeDrawer());
+        int[] dockTools = {R.id.dock_tool_hand, R.id.dock_tool_hoe, R.id.dock_tool_shovel,
+                R.id.dock_tool_water, R.id.dock_tool_sickle, R.id.dock_tool_axe,
+                R.id.dock_tool_pickaxe, R.id.dock_tool_fishing};
+        for (int tool : dockTools) findViewById(tool).setOnClickListener(view ->
+                Toast.makeText(this, "Fungsi alat belum tersedia.", Toast.LENGTH_SHORT).show());
+        findViewById(R.id.dock_add_tab).setOnClickListener(view ->
+                Toast.makeText(this, "Penambahan tab dock belum tersedia.", Toast.LENGTH_SHORT).show());
         findViewById(R.id.home_phone_button).setOnClickListener(view -> openDrawer());
         findViewById(R.id.home_settings_button).setOnClickListener(view -> Toast.makeText(this,"Pengaturan belum tersedia.",Toast.LENGTH_SHORT).show());
         findViewById(R.id.home_bag_button).setOnClickListener(view -> showBag());

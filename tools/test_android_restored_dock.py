@@ -1,0 +1,19 @@
+from pathlib import Path
+import xml.etree.ElementTree as ET
+root = Path(__file__).resolve().parent.parent
+ns = '{http://schemas.android.com/apk/res/android}'
+layout = ET.parse(root/'app/src/main/res/layout/activity_home.xml').getroot()
+ids = {n.get(ns+'id'):n for n in layout.iter() if n.get(ns+'id')}
+assert ids['@+id/home_dock_scroll'].tag == 'HorizontalScrollView'
+keys = ('hand','hoe','shovel','water','sickle','axe','pickaxe','fishing')
+for name in keys:
+    node=ids['@+id/dock_tool_'+name]
+    assert node.tag=='ImageButton' and node.get(ns+'src')=='@drawable/dock_tool_'+name
+    assert 'belum tersedia' in node.get(ns+'contentDescription')
+    ET.parse(root/'app/src/main/res/drawable'/('dock_tool_'+name+'.xml'))
+assert '@+id/dock_add_tab' in ids
+assert '@+id/dock_close' not in ids
+java=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
+for name in keys: assert 'R.id.dock_tool_'+name in java
+assert 'Fungsi alat belum tersedia.' in java
+print('Android restored dock controls, vector icons and unavailable-action disclosure: static OK')

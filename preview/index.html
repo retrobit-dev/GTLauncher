@@ -26,18 +26,31 @@
         <section class="character-hud" aria-label="Status karakter sementara">
           <img class="character-hud-portrait" src="assets/character-original-uhd-front.png" alt="Potret karakter">
           <div class="character-hud-stats" aria-label="Health, stamina, makanan dan air masing-masing 100 dari 100; nilai sementara">
-            <div><b class="stat-icon health">♥</b><span class="stat-bar health"></span><small>100</small></div>
-            <div><b class="stat-icon stamina">ϟ</b><span class="stat-bar stamina"></span><small>100</small></div>
-            <div><b class="stat-icon food">●</b><span class="stat-bar food"></span><small>100</small></div>
-            <div><b class="stat-icon water">♦</b><span class="stat-bar water"></span><small>100</small></div>
+            <div><svg class="stat-icon" viewBox="0 0 12 12" aria-hidden="true"><path fill="#b73d38" d="M1 2h4v1h2V2h4v5H10v1H9v1H8v1H7v1H5v-1H4V9H3V8H2V7H1z"/></svg><span class="stat-bar health"></span><small>100</small></div>
+            <div><svg class="stat-icon" viewBox="0 0 12 12" aria-hidden="true"><path fill="#e1a52e" d="M6 0h4L7 4h3L3 12l1-5H2z"/></svg><span class="stat-bar stamina"></span><small>100</small></div>
+            <div><svg class="stat-icon" viewBox="0 0 12 12" aria-hidden="true"><path fill="#83ae32" d="M6 2V0h2v2H7v1h3v1h1v5h-1v2H8v1H4v-1H2V9H1V4h1V3h3V2z"/></svg><span class="stat-bar food"></span><small>100</small></div>
+            <div><svg class="stat-icon" viewBox="0 0 12 12" aria-hidden="true"><path fill="#438cb1" d="M5 0h2v2h1v2h1v2h1v3H9v2H7v1H5v-1H3V9H2V6h1V4h1V2h1z"/></svg><span class="stat-bar water"></span><small>100</small></div>
           </div>
         </section>
         <section class="clock-hud" aria-label="Waktu, musim dan baterai">
           <div class="clock-readouts"><div class="hud-panel time-panel"><img id="hud-phase" src="assets/hud-day.svg" alt="Siang"><img id="hud-season" src="assets/hud/season_unknown.png" alt="Musim belum diketahui"><time id="hud-clock">--:--</time></div>
-          <div class="hud-panel battery-panel"><span aria-hidden="true">▣</span><span id="hud-battery" aria-label="Status baterai tidak tersedia">--%</span></div></div>
+          <div class="hud-panel battery-panel"><svg class="hud-battery-icon" viewBox="0 0 12 16" aria-hidden="true"><path d="M4 1h4v2h2v12H2V3h2z" fill="#e2cf9d" stroke="#75532f" stroke-width="1.3"/><path d="M4 6h4v7H4z" fill="#87ae35"/></svg><span id="hud-battery" aria-label="Status baterai tidak tersedia">--%</span></div></div>
           <div class="hud-calendar"><span id="hud-month">--/--</span><strong id="hud-day">--</strong><span id="hud-weekday">---</span></div>
         </section>
-        <nav class="home-dock" aria-label="Dock launcher"><button type="button" data-dock="phone" aria-label="Aplikasi" title="Aplikasi"><img src="assets/hud/dock_phone.png" alt=""></button><button type="button" data-dock="bag" aria-label="Tas" title="Tas"><img src="assets/hud/dock_bag.png" alt=""></button><button class="dock-settings" type="button" data-dock="settings" aria-label="Pengaturan" title="Pengaturan"><img src="assets/hud/dock_settings.png" alt=""></button></nav>
+        <div class="home-dock-shell"><div class="dock-tabs"><button type="button" class="dock-tab selected" data-dock="tools" aria-current="page">Tools</button><button type="button" class="dock-tab" data-dock="add" aria-label="Tambah tab dock" title="Tambah tab dock">+</button></div>
+        <nav class="home-dock" aria-label="Dock launcher">
+          <button type="button" data-dock="hand" aria-label="Tangan — belum tersedia" title="Tangan — belum tersedia"><img src="assets/hud/tools/hand.svg" alt=""></button>
+          <button type="button" data-dock="hoe" aria-label="Cangkul — belum tersedia" title="Cangkul — belum tersedia"><img src="assets/hud/tools/hoe.svg" alt=""></button>
+          <button type="button" data-dock="shovel" aria-label="Sekop — belum tersedia" title="Sekop — belum tersedia"><img src="assets/hud/tools/shovel.svg" alt=""></button>
+          <button type="button" data-dock="water" aria-label="Penyiram — belum tersedia" title="Penyiram — belum tersedia"><img src="assets/hud/tools/water.svg" alt=""></button>
+          <button type="button" data-dock="sickle" aria-label="Sabit — belum tersedia" title="Sabit — belum tersedia"><img src="assets/hud/tools/sickle.svg" alt=""></button>
+          <button type="button" data-dock="axe" aria-label="Kapak — belum tersedia" title="Kapak — belum tersedia"><img src="assets/hud/tools/axe.svg" alt=""></button>
+          <button type="button" data-dock="pickaxe" aria-label="Beliung — belum tersedia" title="Beliung — belum tersedia"><img src="assets/hud/tools/pickaxe.svg" alt=""></button>
+          <button type="button" data-dock="fishing" aria-label="Pancing — belum tersedia" title="Pancing — belum tersedia"><img src="assets/hud/tools/fishing.svg" alt=""></button>
+          <button type="button" data-dock="phone" aria-label="Aplikasi" title="Aplikasi"><img src="assets/hud/dock_phone.png" alt=""></button>
+          <button type="button" data-dock="bag" aria-label="Tas" title="Tas"><img src="assets/hud/dock_bag.png" alt=""></button>
+          <button type="button" data-dock="settings" aria-label="Pengaturan" title="Pengaturan"><img src="assets/hud/dock_settings.png" alt=""></button>
+        </nav></div>
       </div>
     </div><aside id="rotate-controls" class="rotate-controls" aria-label="Putar arah objek" hidden>
       <button id="rotate-left" type="button" aria-label="Putar ke kiri" title="Putar ke kiri">↶</button>
