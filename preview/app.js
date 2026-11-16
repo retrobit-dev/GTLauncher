@@ -1660,8 +1660,11 @@
     if(Math.abs(ray.y)<height*.12)ray.y=(ray.y<0?-1:1)*height*.12; // visible thickness for side-lit sprites
     const strength=clamp((light.altitude/10),0,1)*(1-.65*clamp(cloudCover/100,0,1));
     ctx.save();applyIslandTransform();clipIslandSurface();ctx.globalAlpha=.34*strength;
-    // Preserve contact at the foot and flatten the sprite toward the projected tip.
-    ctx.transform(1,0,-ray.x/height,-ray.y/height,anchor.x-width/2+ray.x,anchor.y+ray.y);
+    // Bound the complete projected silhouette to the character dimensions. Scale around
+    // its ground anchor so the feet stay attached and the light direction is preserved.
+    const shadowScale=Math.min(1,width/(width+Math.abs(ray.x)),height/Math.abs(ray.y));
+    ctx.translate(anchor.x,anchor.y);ctx.scale(shadowScale,shadowScale);
+    ctx.transform(1,0,-ray.x/height,-ray.y/height,-width/2+ray.x,ray.y);
     if(character.facing==='W'||character.facing==='E'){ctx.translate(width,0);ctx.scale(-1,1);}
     ctx.drawImage(mask,0,0,width,height);ctx.restore();
   }

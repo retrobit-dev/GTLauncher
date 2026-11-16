@@ -918,7 +918,8 @@ public final class WeatherSkyView extends View {
             if(Math.abs(ray[1])<height*.12f)ray[1]=Math.copySign(height*.12f,ray[1]);
             float strength=(float)Math.min(1,light.altitudeDegrees/10)*(1-.65f*(float)Math.max(0,Math.min(1,cloudCover/100)));
             paint.setColor(Color.argb(Math.round(255*.34f*strength),12,23,40));
-            Matrix transform=new Matrix();transform.setValues(new float[]{1,-ray[0]/height,x-width/2+ray[0],0,-ray[1]/height,y+ray[1],0,0,1});
+            float shadowScale=CharacterShadow.fitScale(width,height,ray[0],ray[1]);
+            Matrix transform=new Matrix();transform.setValues(new float[]{shadowScale,-shadowScale*ray[0]/height,x+shadowScale*(-width/2+ray[0]),0,-shadowScale*ray[1]/height,y+shadowScale*ray[1],0,0,1});
             int shadowSave=canvas.save();canvas.concat(transform);
             if("W".equals(characterFacing)||"E".equals(characterFacing)){canvas.translate(width,0);canvas.scale(-1,1);}
             paint.setColorFilter(OBJECT_SHADOW_FILTER);paint.setFilterBitmap(true);

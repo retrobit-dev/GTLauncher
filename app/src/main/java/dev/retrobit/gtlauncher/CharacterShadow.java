@@ -8,5 +8,10 @@ final class CharacterShadow {
         return new float[]{(float)(-length*(Math.sin(a)+Math.cos(a))/Math.sqrt(2)),
                 (float)(-length*(Math.sin(a)-Math.cos(a))*.30)};
     }
+    // The transformed sprite spans width + |dx| horizontally and |dy| vertically.
+    static float fitScale(float width, float height, float dx, float dy) {
+        return Math.min(1f, Math.min(width / (width + Math.abs(dx)),
+                Math.abs(dy) > 0 ? height / Math.abs(dy) : 1f));
+    }
     private CharacterShadow() {}
 }
