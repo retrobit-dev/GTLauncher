@@ -1,4 +1,4 @@
-// Exact-tile routing on legacy and 20x20/25x25 preview worlds, without changing saved data.
+// Exact-tile routing on legacy and 20x20/25x25/100x100 preview worlds, without changing saved data.
 (function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.GameplayPath=factory();})(typeof window!=='undefined'?window:globalThis,()=>{
   'use strict';
   function find(world,start,end,house) {

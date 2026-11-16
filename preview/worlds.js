@@ -297,7 +297,7 @@
     event.target.value = ''; cancelImport();
     if (!file) return;
     if (storageError) { announce(storageError); return; }
-    if (file.size > 65536) { announce('Berkas terlalu besar (maksimal 64 KiB).'); return; }
+    if (file.size > 256 * 1024) { announce('Berkas terlalu besar (maksimal 256 KiB).'); return; }
     const reader = new FileReader();
     reader.onload = () => {
       if (generation !== importGeneration) return;
