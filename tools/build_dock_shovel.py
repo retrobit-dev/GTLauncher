@@ -4,14 +4,14 @@ from collections import deque
 from pathlib import Path
 from PIL import Image
 ROOT=Path(__file__).resolve().parents[1]
-source=ROOT/'preview/assets/character-redraw/shovel-pixel-concept.png'
+source=ROOT/'preview/assets/character-redraw/shovel-short-concept.png'
 im=Image.open(source).convert('RGBA');w,h=im.size;p=im.load();seen=bytearray(w*h);q=deque()
 def visit(x,y):
     i=y*w+x
     if seen[i]:return
     seen[i]=1
     r,g,b,a=p[x,y]
-    if a<8 or min(r,g,b)>=225:q.append((x,y))
+    if a<8 or min(r,g,b)>=210:q.append((x,y))
 for x in range(w):visit(x,0);visit(x,h-1)
 for y in range(h):visit(0,y);visit(w-1,y)
 while q:
