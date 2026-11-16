@@ -525,6 +525,17 @@ public class HomeActivity extends Activity {
         try {
             WorldStore.World world=worldStore.activeWorld();
             if(world==null || !world.showCharacter)return;
+            for(WorldStore.House house:world.houses)if(house.covers(target.column,target.row)
+                    && (target.column!=world.characterColumn || target.row!=world.characterRow)) {
+                if(selectedTool!=-1 && Math.abs(target.column-world.characterColumn)+Math.abs(target.row-world.characterRow)==1) {
+                    String facing=GameplayTarget.direction(new PortalTravel.Tile(world.characterColumn,world.characterRow),target);
+                    if(!facing.equals(world.characterFacing)) {
+                        if(!worldStore.moveCharacter(world.id,world.characterColumn,world.characterRow,facing))throw new JSONException("Facing failed");
+                        applyActiveWorld();Toast.makeText(this,"Arah hadap berubah.",Toast.LENGTH_SHORT).show();return;
+                    }
+                }
+                Toast.makeText(this,"Tile ditempati rumah.",Toast.LENGTH_SHORT).show();return;
+            }
             java.util.List<PortalTravel.Tile> route=PortalTravel.path(
                 new PortalTravel.Tile(world.characterColumn,world.characterRow),target,portalTerrain(world),world.gridSize());
             if(route==null) {
@@ -736,6 +747,8 @@ public class HomeActivity extends Activity {
                 return true;
             }
             public boolean canStep(int a,int b,int c,int d) {
+                // Legacy saves may start inside a house. They can escape, but cannot re-enter.
+                for(WorldStore.House house:world.houses)if(house.covers(c,d) && !house.covers(a,b))return false;
                 for(WorldStore.SurfaceObject o:world.surfaces) if(o.type.equals("fence")) {
                     int x=o.column+(o.edge.equals("E")?1:o.edge.equals("W")?-1:0),y=o.row+(o.edge.equals("S")?1:o.edge.equals("N")?-1:0);
                     if((o.column==a && o.row==b && x==c && y==d) || (o.column==c && o.row==d && x==a && y==b)) return false;

@@ -18,7 +18,7 @@
         const route=[];let n=key(p);while(n!==null){route.push({column:n%size,row:Math.floor(n/size)});n=prev.get(n);}return route.reverse();
       }
       for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
-        const next={column:p.column+dx,row:p.row+dy};if(!pass(next)||prev.has(key(next)))continue;
+        const next={column:p.column+dx,row:p.row+dy};if(!pass(next)||prev.has(key(next)) || (escaping && !inHouse(p) && inHouse(next)))continue;
         prev.set(key(next),key(p));queue.push(next);
       }
     }

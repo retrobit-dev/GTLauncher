@@ -41,6 +41,20 @@ public class PortalTravelTest {
         assertNotNull(path);assertFalse(path.contains(new PortalTravel.Tile(2,1)));assertEquals(new PortalTravel.Tile(3,1),path.get(path.size()-1));
         assertNull(PortalTravel.path(new PortalTravel.Tile(1,1),new PortalTravel.Tile(2,1),blocked));assertNull(PortalTravel.path(new PortalTravel.Tile(1,1),new PortalTravel.Tile(-1,1),blocked));
     }
+    @Test public void routeUsesShortestAvailableDetourAroundObjectsAndFences() {
+        PortalTravel.Terrain obstacle=new PortalTravel.Terrain(){
+            public boolean canStand(int c,int r){return !(c==1 && r==0);}
+            public boolean canStep(int c,int r,int x,int y){return true;}
+        };
+        List<PortalTravel.Tile> route=PortalTravel.path(new PortalTravel.Tile(0,0),new PortalTravel.Tile(2,0),obstacle,25);
+        assertNotNull(route);assertEquals(5,route.size());assertFalse(route.contains(new PortalTravel.Tile(1,0)));
+        PortalTravel.Terrain fence=new PortalTravel.Terrain(){
+            public boolean canStand(int c,int r){return true;}
+            public boolean canStep(int c,int r,int x,int y){return !((c==0&&r==0&&x==1&&y==0)||(c==1&&r==0&&x==0&&y==0));}
+        };
+        route=PortalTravel.path(new PortalTravel.Tile(0,0),new PortalTravel.Tile(1,0),fence,25);
+        assertNotNull(route);assertEquals(4,route.size());
+    }
     @Test public void pathSupportsExplicitTwentyTileGridWithoutChangingLegacyBounds() {
         PortalTravel.Tile start = new PortalTravel.Tile(9,9), end = new PortalTravel.Tile(19,19);
         assertNull(PortalTravel.path(start,end,clear));

@@ -2,11 +2,12 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const Path=require('../preview/gameplay-path.js'),root=path.join(__dirname,'../preview');
 const tiles=Array(400).fill(1),w20={gridSize:20,tiles};tiles[1]=0;tiles[20]=0;
 assert.equal(Path.find(w20,{column:0,row:0},{column:2,row:0},null),null,'blocked start has no route');
-tiles[20]=1;const route=Path.find(w20,{column:0,row:0},{column:2,row:0},null);assert(route.length>3 && !route.some(p=>p.column===1&&p.row===0));
+tiles[20]=1;const route=Path.find(w20,{column:0,row:0},{column:2,row:0},null);assert.equal(route.length,5,'shortest detour around obstacle');assert(route.length>3 && !route.some(p=>p.column===1&&p.row===0));
 tiles[1]=3;assert(Path.find(w20,{column:0,row:0},{column:1,row:0},null),'water is a tile and is walkable');
 assert.equal(Path.find(w20,{column:0,row:0},{column:20,row:0},null),null);
 assert.equal(Path.find(w20,{column:0,row:0},{column:4,row:4},{column:3,row:3,visible:true}),null,'house blocks footprint');
 assert(Path.find(w20,{column:4,row:4},{column:6,row:4},{column:3,row:3,visible:true}),'character can escape a house overlapping its old starting tile');
+const around=Path.find(w20,{column:2,row:4},{column:6,row:4},{column:3,row:3,visible:true});assert.equal(around.length,9,'shortest route around 3x3 house');assert(!around.some(p=>p.column>=3&&p.column<6&&p.row>=3&&p.row<6));
 const beside=Path.findBeside(w20,{column:6,row:4},{column:3,row:3,visible:true});assert.equal(beside.length,1,'already beside house');
 const approach=Path.findBeside(w20,{column:9,row:9},{column:3,row:3,visible:true});assert(approach && approach.length>1);assert(!approach.some(p=>p.column>=3&&p.column<6&&p.row>=3&&p.row<6));
 assert(Path.find({}, {column:0,row:0},{column:8,row:8},null));assert.equal(Path.find({}, {column:0,row:0},{column:9,row:8},null),null);
@@ -26,23 +27,23 @@ tap(14,12);assert.equal(win.worldManager.getCharacter().column,13);assert.match(
 modified=win.worldManager.getActive().tiles.slice();modified[12*25+14]=1;assert(win.worldManager.updateTiles(active.id,modified));
 d.querySelector('[data-dock="hand"]').setAttribute('aria-pressed','false');d.querySelector('[data-dock="hoe"]').setAttribute('aria-pressed','true');
 const beforeTiles=win.worldManager.getActive().tiles.slice();tap(15,12);assert.equal(win.worldManager.getCharacter().column,15,'hoe permits walking');assert.deepEqual(win.worldManager.getActive().tiles,beforeTiles,'hoe does not alter ordinary terrain');
-d.querySelector('[data-dock="hoe"]').setAttribute('aria-pressed','false');d.querySelector('[data-dock="hand"]').setAttribute('aria-pressed','true');
+d.querySelector('[data-dock="hoe"]').setAttribute('aria-pressed','false');tap(15,13);assert.equal(win.worldManager.getCharacter().row,13,'no tool walks on first tap even when facing another direction');assert.equal(win.worldManager.getCharacter().facing,'S');d.querySelector('[data-dock="hand"]').setAttribute('aria-pressed','true');
 d.getElementById('mode-map-editor').click();const before=win.localStorage.getItem('gtlauncher.worlds.v1');tap(14,12);assert.equal(win.localStorage.getItem('gtlauncher.worlds.v1'),before,'editor tap does not initiate gameplay walking');
 dom.window.close();console.log('Gameplay routing: 9x9/20x20, obstacles, water traversal, tap, persistence and editor isolation OK');
 {
- const run=new JSDOM('<main class="preview-stage" data-mode="gameplay"><canvas id="sky-canvas"></canvas><p id="gameplay-movement-status"></p><button id="mode-map-editor"></button></main>',{url:'https://example.test/',runScripts:'outside-only'}),w=run.window,d=w.document,c=d.querySelector('canvas');
+ const run=new JSDOM('<div class="home-dock"><button data-dock="hand" aria-pressed="true"></button></div><main class="preview-stage" data-mode="gameplay"><canvas id="sky-canvas"></canvas><p id="gameplay-movement-status"></p><button id="mode-map-editor"></button></main>',{url:'https://example.test/',runScripts:'outside-only'}),w=run.window,d=w.document,c=d.querySelector('canvas');
  let character={visible:true,column:8,row:4,scale:1,facing:'S'},world={id:'house-world',gridSize:25,tiles:Array(625).fill(1)},house={column:3,row:3,visible:true};
  w.matchMedia=()=>({matches:true});w.GameplayPath=Path;w.worldManager={getActive:()=>world,getCharacter:()=>({...character}),getHouse:()=>house,updateCharacter:(id,value)=>{character=value;return true;}};
  w.sceneEditing={setGameplayDraft(){},toLocal:(x,y)=>({x,y}),tileAt:p=>({column:p.x,row:p.y})};
  w.eval(fs.readFileSync(path.join(root,'gameplay-movement.js'),'utf8'));
  function tap(x,y){for(const type of ['pointerdown','pointerup']){let e=new w.MouseEvent(type,{bubbles:true,clientX:x,clientY:y});Object.defineProperties(e,{pointerId:{value:1},pointerType:{value:'touch'}});c.dispatchEvent(e);}}
  tap(4,4);assert.equal(character.column,8);tap(4,4);assert.equal(character.column,6);assert.equal(character.row,4);assert.match(d.getElementById('gameplay-movement-status').textContent,/interaksi rumah belum tersedia/i);
- character.facing='S';const dock=d.createElement('div');dock.className='home-dock';dock.innerHTML='<button data-dock="hand" aria-pressed="true"></button>';d.body.appendChild(dock);
+ character.facing='S';
 tap(5,4);assert.equal(character.facing,'W','adjacent house first turns to face it');assert.equal(character.column,6);tap(5,4);assert.equal(character.column,6);assert.match(d.getElementById('gameplay-movement-status').textContent,/Rumah dipilih/);
 run.window.close();console.log('Hand interaction approaches and selects house only when facing it: OK');
 }
 {
- const run=new JSDOM('<main class="preview-stage" data-mode="gameplay"><canvas id="sky-canvas"></canvas><p id="gameplay-movement-status"></p><button id="mode-map-editor"></button></main>',{url:'https://example.test/',runScripts:'outside-only'}),w=run.window,d=w.document,c=d.querySelector('canvas');
+ const run=new JSDOM('<div class="home-dock"><button data-dock="hand" aria-pressed="true"></button></div><main class="preview-stage" data-mode="gameplay"><canvas id="sky-canvas"></canvas><p id="gameplay-movement-status"></p><button id="mode-map-editor"></button></main>',{url:'https://example.test/',runScripts:'outside-only'}),w=run.window,d=w.document,c=d.querySelector('canvas');
  let frames=[],writes=0,character={visible:true,column:0,row:0,scale:1,facing:'S'},draft=null,routeDisplay=null,world={id:'walk',gridSize:20,tiles:Array(400).fill(1)};
  w.matchMedia=()=>({matches:false});w.requestAnimationFrame=cb=>frames.push(cb);w.GameplayPath=Path;
  w.worldManager={getActive:()=>world,getCharacter:()=>({...character}),getHouse:()=>null,updateCharacter:(id,value)=>{writes++;character=value;w.dispatchEvent(new w.Event('worldchange'));return true;}};

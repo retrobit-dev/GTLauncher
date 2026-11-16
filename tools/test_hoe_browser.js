@@ -20,5 +20,6 @@ try{
    const before=await page.evaluate(()=>worldManager.getCharacter());await tap(c,r);let turned=await page.evaluate(()=>worldManager.getCharacter());assert.equal(turned.facing,dir,`turn ${dir}`);assert.equal(turned.column,before.column);assert.equal(turned.row,before.row);
    await tap(c,r);const moved=await page.evaluate(()=>worldManager.getCharacter());assert.equal(moved.column,c,`walk ${dir} column`);assert.equal(moved.row,r,`walk ${dir} row`);
  }
+ await page.locator('[data-dock="hoe"]').click();const before=await page.evaluate(()=>worldManager.getCharacter());assert.equal(before.facing,'E');await tap(16,11);const direct=await page.evaluate(()=>worldManager.getCharacter());assert.equal(direct.row,11,'with no tool, first tap in a different direction moves immediately');assert.equal(direct.facing,'N');
  assert.deepEqual(errors,[]);console.log('Browser: facing-first movement with hoe, other tools and no tool; empty-front fallback and character action: OK');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
