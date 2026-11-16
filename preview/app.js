@@ -21,6 +21,9 @@
   ctx.scale(RENDER_SCALE, RENDER_SCALE);
   // Reference-derived stationary front view; a single logical character shared by worlds.
   // The per-world visibility flag is currently a preview-only setting.
+  const grassDetailImage = new Image();
+  grassDetailImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
+  grassDetailImage.src = './assets/island-grass-detail.png';
   const playerImage = new Image();
   playerImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
   playerImage.src = './assets/main-character.png';
@@ -1038,7 +1041,7 @@
     let weatherShade = clamp((cloudCover - 25) / 100 * 0.34, 0, 0.26);
     if (weatherCodeIsStorm(code)) weatherShade = Math.max(weatherShade, 0.34);
     const atmosphere = skyAtmosphere(sunAltitude, cloudCover, code);
-    let grass = blendColor('#385344', '#5a7365', daylight);
+    let grass = blendColor('#384c43', '#91ad91', daylight);
     grass = blendColor(grass, '#c39d60', twilight * 0.25);
     grass = blendColor(grass, '#78836f', weatherShade);
     const wet = (code >= 51 && code <= 67) || (code >= 80 && code <= 82);
@@ -1046,22 +1049,22 @@
     grass = blendColor(grass, atmosphere.tint, atmosphere.islandMix);
     const grassDark = blendColor(grass, '#2d4938', 0.24);
     const grassTileMix = (0.18 + daylight * 0.77) * (1 - weatherShade * 0.30);
-    const grassTileSoftFern = blendColor(grass, '#a8c795', grassTileMix);
-    const grassTileFernSage = blendColor(grass, '#98ba87', grassTileMix);
+    const grassTileSoftFern = blendColor(grass, '#96b397', grassTileMix);
+    const grassTileFernSage = blendColor(grass, '#8ba78c', grassTileMix);
     const grassSeam = blendColor(grass, '#314d37', 0.08);
-    const grassWall = blendColor(grass, '#23482c', 0.28);
-    let soil = blendColor('#32251c', '#9a4a0f', daylight);
+    const grassWall = blendColor(grass, '#587761', 0.28);
+    let soil = blendColor('#4a4036', '#b6a183', daylight);
     soil = blendColor(soil, '#be742d', twilight * 0.24);
     soil = blendColor(soil, '#5b4837', weatherShade * 0.45);
     soil = blendColor(soil, atmosphere.tint, atmosphere.islandMix * 0.22);
-    const soilLight = blendColor(soil, '#be6a1a', 0.20);
-    const soilDark = blendColor(soil, '#3a1b07', 0.50);
+    const soilLight = blendColor(soil, '#cdbb99', 0.20);
+    const soilDark = blendColor(soil, '#604e40', 0.50);
     const palette = { grass, grassDark, grassTileSoftFern, grassTileFernSage,
       grassSeam, grassWall, soilLight, soilDark };
     // Base World stays byte-for-byte unchanged. A custom world applies a tint to the island
     // only; weather, paths, shadows and the rest of the shared world remain unchanged.
     const worldColor = window.worldManager?.getActive()?.color;
-    if (worldColor) {
+    if (worldColor && !['#a8c795', '#a4cf36'].includes(worldColor.toLowerCase())) {
       for (const key of ['grass', 'grassDark', 'grassTileSoftFern', 'grassTileFernSage',
         'grassSeam', 'grassWall']) palette[key] = blendColor(palette[key], worldColor, 0.55);
     }
@@ -1075,6 +1078,14 @@
       * (1 - clamp(cloudCover / 100, 0, 1));
     if (weatherCodeIsStorm(code)) strength *= 0.55;
     return { strength };
+  }
+
+  // The same 32-bit hash as Android GrassDetail.variant.
+  function grassDetailVariant(column, row) {
+    let hash = Math.imul(column, 73856093) ^ Math.imul(row, 19349663);
+    hash ^= hash >>> 16; hash = Math.imul(hash, 0x7feb352d); hash ^= hash >>> 15;
+    const slot = hash & 7;
+    return slot < 4 ? 0 : 1 + (slot - 4) % 3;
   }
 
   function drawGrassTile(tile, palette, sunlight) {
@@ -1099,6 +1110,17 @@
     // Each top stays solid; direct sunlight adds only a uniform, subtle color lift.
     drawSunlitIslandDiamond(tile.x, tile.y, halfWidth, halfHeight,
       cornerRadius, fill, sunlight);
+    // Stable sparse variants match Android's sheet and hash; no world data is changed.
+    const variant = grassDetailVariant(tile.column, tile.row);
+    if (variant && grassDetailImage.complete && grassDetailImage.naturalWidth === 1280) {
+      ctx.save();
+      ctx.globalAlpha *= 0.45 + 0.55 * clamp(sunlight.strength * 2, 0, 1);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(grassDetailImage, variant * 320, 0, 320, 160,
+        tile.x - ISLAND_TILE_WIDTH / 2, tile.y - islandTileHeight / 2,
+        ISLAND_TILE_WIDTH, islandTileHeight);
+      ctx.restore();
+    }
   }
 
   function drawGrassTileSide(centerX, centerY, halfWidth, halfHeight, cornerRadius,
@@ -1249,7 +1271,7 @@
     cornerRadius, baseColor, sunlight) {
     // Keep the whole tile solid; direct sunlight adds only a subtle uniform tint.
     const tileColor = sunlight && sunlight.strength > 0.015
-      ? blendColor(baseColor, '#b6d0a1', 0.10 * sunlight.strength)
+      ? blendColor(baseColor, '#ccdec1', 0.10 * sunlight.strength)
       : baseColor;
     drawSmoothIslandDiamond(centerX, centerY, halfWidth, halfHeight,
       cornerRadius, tileColor, tileColor);
@@ -1829,12 +1851,7 @@
     // At night the Moon is the light source, even below its horizon (virtual Moon), so
     // cloud shadows remain visible as requested.
     const shadowLight = sun.altitude <= MOON_VISIBLE_BELOW_SUN ? moonNow : sun;
-    const lightPlane = sunPlanePosition(shadowLight.hourAngleDegrees);
-    const sunScreen = planeToScreen(lightPlane.x, lightPlane.y);
-    const behindSun = cloudStates.filter(cloud => cloud.screenBottomY
-      - cloud.shape.length * cloud.cell / 2 < sunScreen.y);
-    const inFrontOfSun = cloudStates.filter(cloud => !behindSun.includes(cloud));
-    drawClouds(behindSun, sun.altitude, sceneWeather.weatherCode);
+    // Cloud sprites are hidden; their moving island shadows remain.
     drawSun(sun, sceneWeather.cloudCover, motionTime);
     drawMoon(moonNow, motionTime, sun.altitude);
     ctx.restore();
@@ -1847,8 +1864,6 @@
     ctx.restore();
     // Ground shadows go down before the island so the plate covers them, and before the clouds so
     // no sprite is ever painted over by a shadow it did not come from.
-    drawProjectedCloudShadows(cloudStates, shadowLight.altitude, shadowLight.hourAngleDegrees,
-      sceneWeather.cloudCover, sceneWeather.weatherCode, false);
     drawFloatingIsland(sun.altitude, sun.azimuth, sun.hourAngleDegrees,
       sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates);
     drawSurfaceObjectShadows(shadowLight, sceneWeather.cloudCover, sceneWeather.weatherCode);
@@ -1857,7 +1872,7 @@
     // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
     // cloud can hang below the horizon line, and clipping it there hid the cloud while its
     // shadow still showed on the grass. Edge clamping already keeps every sprite in frame.
-    drawClouds(inFrontOfSun, sun.altitude, sceneWeather.weatherCode);
+    // Foreground cloud sprites are hidden as well.
     drawPrecipitation(sceneWeather);
     if (!REDUCED_MOTION) window.requestAnimationFrame(drawFrame);
   }

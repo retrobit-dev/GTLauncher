@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 let src=fs.readFileSync(path.join(__dirname,'../preview/app.js'),'utf8');
 const marker='  drawFrame();\n  initializeWeather();';assert(src.includes(marker));
-src=src.replace(marker,`  window.inspectGrid = () => ({size: ISLAND_GRID_SIZE, zoom: islandZoom, tiles: ISLAND_TILES.map(t => ({...t})), centre: islandCenterY});`);
+src=src.replace(marker,`  window.inspectGrid = () => ({size: ISLAND_GRID_SIZE, zoom: islandZoom, tiles: ISLAND_TILES.map(t => ({...t})), centre: islandCenterY, variant: grassDetailVariant});`);
 const ctx=new Proxy({}, {get:(target,key)=>key in target?target[key]:()=>{},set:(target,key,value)=>(target[key]=value,true)});
 const canvas={getContext:()=>ctx,addEventListener(){},getBoundingClientRect:()=>({left:0,top:0,width:320,height:200})};
 let active={id:'base'},worldChanges=[],writes=0;
@@ -12,6 +12,7 @@ vm.createContext(sandbox);vm.runInContext(src,sandbox);
 let grid=window.inspectGrid();assert.equal(grid.size,20);assert.equal(grid.tiles.length,400);assert.equal(grid.zoom,9/20);
 assert(grid.tiles.some(t=>t.coordinate==='A1'));assert(grid.tiles.some(t=>t.coordinate==='T20'));
 assert.equal(new Set(grid.tiles.map(t=>t.coordinate)).size,400);
+const counts=[0,0,0,0];for(const tile of grid.tiles)counts[grid.variant(tile.column,tile.row)]++;assert(counts[0]>150 && counts[0]<250);assert(counts.slice(1).every(n=>n>0));
 const first=grid.tiles.find(t=>t.coordinate==='A1'),last=grid.tiles.find(t=>t.coordinate==='T20');
 assert.equal(first.column,0);assert.equal(first.row,0);assert.equal(last.column,19);assert.equal(last.row,19);
 assert(Math.abs((20*28)*grid.zoom-252)<1e-9,'Base fits legacy preview width');
