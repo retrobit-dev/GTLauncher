@@ -11,10 +11,12 @@ for(const type of ['pointerdown','pointerup']){let e=new w.MouseEvent(type,{bubb
 function tick(t){assert(frames.length);frames.shift()(t)}
 tick(0);assert.equal(draft.facing,'E');assert.equal(draft.walkPhase,0);
 tick(162.5);assert.equal(draft.facing,'E');assert(Math.abs(Math.sin(draft.walkPhase)-1)<1e-9,'gait reaches opposite limb swing');
+const previous=draft;w.dispatchEvent(new w.Event('gameplaytoolchange'));assert.equal(draft,previous,'switching tools preserves the active walk and draft');
 tick(650);assert.equal(draft.facing,'N');
 tick(1300);assert.equal(draft.facing,'W');
 tick(1950);assert.equal(draft.facing,'S');
 tick(2600);assert.equal(draft,null);assert.equal(character.facing,'S');assert.equal(writes,1,'only final position persisted');
 const app=fs.readFileSync(path.join(root,'app.js'),'utf8');assert(app.includes("const mirror = character.facing === 'W' || character.facing === 'E'"));assert(app.includes('ctx.drawImage(drawnSprite,-width/2,-height,width,height)'));assert(!app.includes('ctx.rotate(side*phase*.10)'));
+const activity=fs.readFileSync(path.join(root,'../app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java'),'utf8');const toolMethod=activity.slice(activity.indexOf('private void selectTool('),activity.indexOf('private WorldStore.SurfaceObject frontSurface('));assert(!toolMethod.includes('portalWalkGeneration++') && !toolMethod.includes('applyActiveWorld()') && !toolMethod.includes('setPortalWalkActive(false)'), 'Android tool selection does not cancel or reset a route');
 const java=fs.readFileSync(path.join(root,'../app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java'),'utf8');assert(java.includes('boolean mirror = "W".equals(characterFacing) || "E".equals(characterFacing)'));assert(java.includes('Render whole gait frames'));
 dom.window.close();console.log('Facing follows each route segment; relaxed timing and intact sprite rendering match: OK');
