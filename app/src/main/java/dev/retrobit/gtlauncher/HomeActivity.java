@@ -677,9 +677,8 @@ public class HomeActivity extends Activity {
             public boolean canStand(int c,int r) {
                 if(!world.tileExists(c,r)) return false;
                 // Recover safely if an older editor allowed a house over the character.
-                boolean escapingHouse=false;
-                for(WorldStore.House house:world.houses) if(house.covers(world.characterColumn,world.characterRow)) escapingHouse=true;
-                for(WorldStore.House house:world.houses)if(house.covers(c,r) && !escapingHouse)return false;
+                for(WorldStore.House house:world.houses)
+                    if(house.covers(c,r) && !house.covers(world.characterColumn,world.characterRow)) return false;
                 for(WorldStore.SurfaceObject o:world.surfaces) {
                     if(o.type.equals("tree") && c>=o.column && c<o.column+((o.material.equals("banana") || o.material.equals("palm"))?1:2) && r>=o.row && r<o.row+((o.material.equals("banana") || o.material.equals("palm"))?1:2)) return false;
                     if((o.type.equals("bush")||o.type.equals("sunflower")||o.type.equals("mailbox")||o.type.equals("storage-box")||o.type.equals("selling-box")||(o.type.equals("road") && "water".equals(o.material))) && o.column==c && o.row==r)return false;
