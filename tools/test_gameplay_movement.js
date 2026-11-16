@@ -1,9 +1,9 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{JSDOM}=require('jsdom');
 const Path=require('../preview/gameplay-path.js'),root=path.join(__dirname,'../preview');
-const tiles=Array(400).fill(1),w20={gridSize:20,tiles};tiles[1]=3;tiles[20]=0;
+const tiles=Array(400).fill(1),w20={gridSize:20,tiles};tiles[1]=0;tiles[20]=0;
 assert.equal(Path.find(w20,{column:0,row:0},{column:2,row:0},null),null,'blocked start has no route');
 tiles[20]=1;const route=Path.find(w20,{column:0,row:0},{column:2,row:0},null);assert(route.length>3 && !route.some(p=>p.column===1&&p.row===0));
-assert.equal(Path.find(w20,{column:0,row:0},{column:1,row:0},null),null,'water cannot be destination');
+tiles[1]=3;assert(Path.find(w20,{column:0,row:0},{column:1,row:0},null),'water is a tile and is walkable');
 assert.equal(Path.find(w20,{column:0,row:0},{column:20,row:0},null),null);
 assert.equal(Path.find(w20,{column:0,row:0},{column:4,row:4},{column:3,row:3,visible:true}),null,'house blocks footprint');
 assert(Path.find({}, {column:0,row:0},{column:8,row:8},null));assert.equal(Path.find({}, {column:0,row:0},{column:9,row:8},null),null);
@@ -18,10 +18,10 @@ d.getElementById('world-new').click();d.getElementById('world-name').value='Berg
 assert.equal(win.worldManager.getCharacter().column,12);
 function tap(c,r){const target=win.sceneEditing.centre({column:c,row:r}),cam=win.sceneEditing.camera(),zoom=.36*2.5;const x=(160+(target.x-160)*zoom+cam.panX)*2,y=(182+(target.y-182)*zoom+cam.panY)*2;for(const type of ['pointerdown','pointerup']){const e=new win.MouseEvent(type,{bubbles:true,cancelable:true,clientX:x,clientY:y,button:0});Object.defineProperties(e,{pointerId:{value:1},pointerType:{value:'touch'}});canvas.dispatchEvent(e);}}
 tap(13,12);assert.equal(win.worldManager.getCharacter().column,13,'gameplay tap moves and persists');assert.equal(win.worldManager.getCharacter().facing,'E');
-let active=win.worldManager.getActive(),modified=active.tiles.slice();modified[12*25+14]=3;assert(win.worldManager.updateTiles(active.id,modified));
+let active=win.worldManager.getActive(),modified=active.tiles.slice();modified[12*25+14]=0;assert(win.worldManager.updateTiles(active.id,modified));
 tap(14,12);assert.equal(win.worldManager.getCharacter().column,13);assert.match(d.getElementById('gameplay-movement-status').textContent,/tidak dapat dicapai/);
 d.getElementById('mode-map-editor').click();const before=win.localStorage.getItem('gtlauncher.worlds.v1');tap(14,12);assert.equal(win.localStorage.getItem('gtlauncher.worlds.v1'),before,'editor tap does not initiate gameplay walking');
-dom.window.close();console.log('Gameplay routing: 9x9/20x20, obstacles, water, tap, persistence and editor isolation OK');
+dom.window.close();console.log('Gameplay routing: 9x9/20x20, obstacles, water traversal, tap, persistence and editor isolation OK');
 {
  const run=new JSDOM('<main class="preview-stage" data-mode="gameplay"><canvas id="sky-canvas"></canvas><p id="gameplay-movement-status"></p><button id="mode-map-editor"></button></main>',{url:'https://example.test/',runScripts:'outside-only'}),w=run.window,d=w.document,c=d.querySelector('canvas');
  let frames=[],writes=0,character={visible:true,column:0,row:0,scale:1,facing:'S'},draft=null,world={id:'walk',gridSize:20,tiles:Array(400).fill(1)};

@@ -506,7 +506,7 @@
     if (id === 'base' || world.id !== id || ![20,25].includes(world.gridSize) || !Array.isArray(tiles)
       || tiles.length !== world.gridSize * world.gridSize || tiles.some(t => !validTile(t))) return false;
     const character = getCharacter(world), house = getHouse(world);
-    if (!tiles[character.row * world.gridSize + character.column] || tiles[character.row * world.gridSize + character.column] === 3) return false;
+    if (!tiles[character.row * world.gridSize + character.column]) return false;
     if (house) for (let r = house.row; r < house.row + 3; r++) for (let c = house.column; c < house.column + 3; c++) if (!tiles[r * world.gridSize + c] || tiles[r * world.gridSize + c] === 3) return false;
     return commit({...state, worlds: state.worlds.map(w => w.id === id ? {...w, tiles: tiles.slice()} : w)});
   }
