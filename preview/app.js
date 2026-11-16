@@ -1698,18 +1698,20 @@
     // Breathing changes height only, never the ground anchor. With reduced motion time is zero.
     const idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5 : 0;
     const height = PLAYER_HEIGHT * character.scale + idle;
-    // Keep the existing sprite while making walking visible even when the camera follows it.
-    const walkBob = gameplayDraft && cameraMode === 'gameplay' ? Math.abs(Math.sin(motionTime * Math.PI * 6)) * 1.4 * character.scale : 0;
+    // Walking no longer translates both feet above the tile; keep the sole anchored.
+    const walkStretch = gameplayDraft && cameraMode === 'gameplay' ? Math.abs(Math.sin(motionTime * Math.PI * 6)) * .35 * character.scale : 0;
     ctx.save();
     applyIslandTransform();
+    // A small contact shadow anchors the feet even when the projected sun shadow falls away.
+    ctx.fillStyle='rgba(12,23,40,.22)';ctx.beginPath();ctx.ellipse(x,y,4.5*character.scale,1.35*character.scale,0,0,Math.PI*2);ctx.fill();
     ctx.imageSmoothingEnabled = false;
     if (mirror) {
       ctx.save();
       ctx.translate(x, 0);
       ctx.scale(-1, 1);
-      ctx.drawImage(sprite, -width / 2, y - height - walkBob, width, height);
+      ctx.drawImage(sprite, -width / 2, y - height - walkStretch, width, height + walkStretch);
       ctx.restore();
-    } else ctx.drawImage(sprite, x - width / 2, y - height - walkBob, width, height);
+    } else ctx.drawImage(sprite, x - width / 2, y - height - walkStretch, width, height + walkStretch);
     if (editingSelected) {
       ctx.strokeStyle = '#fff4a8';
       ctx.lineWidth = 1;
