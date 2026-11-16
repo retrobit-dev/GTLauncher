@@ -122,8 +122,18 @@ public class HomeActivity extends Activity {
     private void updateDayNightIcon() {
         if (dayNightIcon == null) return;
         boolean night = DayNight.isNight(System.currentTimeMillis(), currentLatitude, currentLongitude);
-        dayNightIcon.setImageResource(night ? R.drawable.hud_night : R.drawable.hud_day);
-        dayNightIcon.setContentDescription(getString(night ? R.string.hud_night : R.string.hud_day));
+        String kind = HudWeather.kind(currentWeather == null ? -1 : currentWeather.weatherCode);
+        int image;
+        String weatherLabel;
+        switch (kind) {
+            case "cloud": image = night ? R.drawable.hud_weather_night_cloud : R.drawable.hud_weather_day_cloud; weatherLabel = "berawan"; break;
+            case "rain": image = night ? R.drawable.hud_weather_night_rain : R.drawable.hud_weather_day_rain; weatherLabel = "hujan"; break;
+            case "snow": image = night ? R.drawable.hud_weather_night_snow : R.drawable.hud_weather_day_snow; weatherLabel = "salju"; break;
+            case "storm": image = night ? R.drawable.hud_weather_night_storm : R.drawable.hud_weather_day_storm; weatherLabel = "badai"; break;
+            default: image = night ? R.drawable.hud_night : R.drawable.hud_day; weatherLabel = "clear".equals(kind) ? "cerah" : "cuaca belum diketahui";
+        }
+        dayNightIcon.setImageResource(image);
+        dayNightIcon.setContentDescription(getString(night ? R.string.hud_night : R.string.hud_day) + " · " + weatherLabel);
     }
     private TextView batteryHud;
     private ImageView batteryIcon;
@@ -414,7 +424,7 @@ public class HomeActivity extends Activity {
         View batteryPanel = findViewById(R.id.hud_battery_panel);
         // Keep the clock panel width fixed as battery readings change.
         float textWidth = time.getPaint().measureText("88:88");
-        int width = dp(8) + dp(14) + dp(3) + dp(8) + (int) Math.ceil(textWidth);
+        int width = dp(8) + dp(14) + dp(1) + dp(8) + (int) Math.ceil(textWidth);
         for (View panel : new View[]{timePanel, batteryPanel}) {
             if (panel.getLayoutParams().width != width) {
                 android.view.ViewGroup.LayoutParams params = panel.getLayoutParams();

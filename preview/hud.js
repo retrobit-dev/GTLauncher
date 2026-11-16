@@ -7,8 +7,7 @@
   let seasonKey = '', lastFetch = 0, requestId = 0;
   function showSeason(value) {
     const labels={wet:'Perkiraan musim hujan',dry:'Perkiraan musim kemarau',unknown:'Musim belum diketahui'};
-    season.src=`assets/hud/season_${value}.png`;
-    season.alt=labels[value];season.title=labels[value];
+    season.textContent=labels[value];
   }
   async function refreshSeason(loc,now) {
     if (!loc || !Number.isFinite(loc.latitude) || !Number.isFinite(loc.longitude)) return;
@@ -26,6 +25,15 @@
       if(id===requestId)showSeason(result);
     } catch (_) { if(id===requestId)showSeason('unknown'); }
   }
+  function weatherKind(code) {
+    if (!Number.isInteger(code)) return 'unknown';
+    if (code === 0 || code === 1) return 'clear';
+    if (code === 2 || code === 3 || code === 45 || code === 48) return 'cloud';
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain';
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
+    if (code >= 95 && code <= 99) return 'storm';
+    return 'unknown';
+  }
   function updateClock() {
     const now=new Date();$('hud-clock').textContent=`${pad(now.getHours())}:${pad(now.getMinutes())}`;
     $('hud-month').textContent=`${pad(now.getMonth()+1)}/${String(now.getFullYear()).slice(-2)}`;
@@ -34,12 +42,16 @@
     const altitude=window.previewHudSunAltitude?.(now.getTime());
     const isNight=Number.isFinite(altitude) && altitude<=0;
     phase.hidden=!Number.isFinite(altitude);
-    phase.src=`assets/hud-${isNight?'night':'day'}.svg`;
-    phase.alt=Number.isFinite(altitude)?(isNight?'Malam':'Siang'):'Waktu siang atau malam belum diketahui';
+    const kind=weatherKind(window.previewHudWeatherCode?.());
+    const weatherNames={clear:'cerah',cloud:'berawan',rain:'hujan',snow:'salju',storm:'badai',unknown:'cuaca belum diketahui'};
+    const timeName=isNight?'Malam':'Siang';
+    phase.src=kind==='clear'||kind==='unknown' ? `assets/hud-${isNight?'night':'day'}.svg` : `assets/hud-weather-${isNight?'night':'day'}-${kind}.svg`;
+    phase.alt=Number.isFinite(altitude)?`${timeName} · ${weatherNames[kind]}`:'Waktu siang atau malam belum diketahui';
     phase.title=phase.alt;
     refreshSeason(window.previewHudLocation?.(),now);
   }
   updateClock();window.setInterval(updateClock,60000);
+  window.addEventListener('hudweatherchange',updateClock);
   function updateBattery(info) {
     const level=info?.level, valid=Number.isFinite(level) && level>=0 && level<=1;
     const value=valid ? (level*100).toFixed(2) : '--.--';

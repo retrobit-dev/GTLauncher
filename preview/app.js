@@ -1923,6 +1923,7 @@
     location = target;
     lastFetch = Date.now();
     updateWeatherModeControls();
+    window.dispatchEvent(new Event('hudweatherchange'));
     if (PREVIEW_MODES[previewModeIndex].live) rebuildParticles(weather);
     if (REDUCED_MOTION) drawFrame();
   }
@@ -1976,6 +1977,7 @@
   // Clock uses the real device time and active location, never the weather demo time.
   window.previewHudLocation = () => ({latitude: location.latitude, longitude: location.longitude});
   window.previewHudSunAltitude = time => sunPosition(time, location.latitude, location.longitude).altitude;
+  window.previewHudWeatherCode = () => lastFetch ? weather.weatherCode : null;
   window.addEventListener('worldchange', () => {
     const nextSize = window.worldManager?.getActive()?.id === 'base' ? 20 : 9;
     if (nextSize !== ISLAND_GRID_SIZE) {
