@@ -1066,7 +1066,6 @@ public final class WeatherSkyView extends View {
         drawFloatingIsland(scene, sun.altitudeDegrees, sun.azimuthDegrees,
                 sun.hourAngleDegrees, cloudCover, code, moon, cloudStates, sun);
         drawDecorativeFlowers(scene);
-        drawHoeTarget(scene);
         drawRoads(scene);
         drawSurfaceObjectShadows(scene, shadowLight, cloudCover, code);
         drawHouses(scene,false);
@@ -1078,6 +1077,7 @@ public final class WeatherSkyView extends View {
         drawPortals(scene, true);
         drawSurfaceSprites(scene, true);
         drawFences(scene, true);
+        drawHoeTarget(scene);
         // Shadow union is above the island and its objects but clipped to the surface.
         drawProjectedCloudShadows(scene, cloudStates, shadowLight.altitudeDegrees,
                 shadowLight.hourAngleDegrees, cloudCover, code, true,
