@@ -19,6 +19,7 @@ const world=w.worldManager.getActive();assert.equal(world.gridSize,20);assert.eq
 assert.deepEqual(JSON.parse(w.localStorage.getItem('gtlauncher.worlds.v1')).worlds[0],legacy,'legacy world unchanged');
 assert.equal(d.getElementById('tile-remove'),null,'old right-side tile controls remain removed');
 assert.equal(d.getElementById('terrain-draw').closest('.device-frame'),null,'terrain tools are outside the tablet');
+assert(d.getElementById('terrain-draw').closest('.editor-right-controls'));assert(d.getElementById('terrain-draw').closest('.device-wrap'));
 const tiles=world.tiles.slice();tiles[84]=0;assert.equal(w.worldManager.updateTiles(world.id,tiles),true);
 assert.equal(w.worldManager.getActive().tiles[84],0,'existing tile data remains supported');
 assert.equal(w.worldManager.updateTiles(world.id,tiles.map((x,i)=>i===189?0:x)),false,'character tile protected');

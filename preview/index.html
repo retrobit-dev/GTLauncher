@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#e2e4e1">
   <title>GTLauncher — Live Weather Preview</title>
-  <link rel="stylesheet" href="./styles.css?v=live-sky-47">
+  <link rel="stylesheet" href="./styles.css?v=live-sky-48">
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./worlds.js?v=20" defer></script>
   <script src="./object-editor.js?v=7" defer></script>
@@ -60,11 +60,7 @@
           <button id="editor-zoom-in" type="button" aria-label="Perbesar peta" title="Perbesar">+</button><output id="editor-zoom-value" aria-live="polite">100%</output><button id="editor-zoom-out" type="button" aria-label="Perkecil peta" title="Perkecil">−</button>
           <button id="editor-fit" type="button" aria-label="Atur ulang kamera" title="Atur ulang kamera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
         </nav>
-    <aside id="rotate-controls" class="rotate-controls" aria-label="Putar arah objek" hidden>
-      <button id="rotate-left" type="button" aria-label="Putar ke kiri" title="Putar ke kiri">↶</button>
-      <span id="rotate-direction" aria-live="polite">Selatan</span>
-      <button id="rotate-right" type="button" aria-label="Putar ke kanan" title="Putar ke kanan">↷</button>
-    </aside></div>
+    <div class="editor-right-controls">
     <nav class="terrain-tools" aria-label="Alat tile preview">
       <button id="terrain-draw" type="button" aria-label="Gambar tile" title="Gambar tile" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 17 10-10 3 3-10 10-4 1zM13 8l3-3 3 3-3 3"/></svg></button>
       <button id="terrain-erase" type="button" aria-label="Hapus tile" title="Hapus tile" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15 14 5l6 6-9 9H7zM7 20h13M7 12l5 5"/></svg></button>
@@ -73,6 +69,12 @@
       <label for="terrain-material">Material</label><select id="terrain-material" aria-label="Material tile"><option value="1">Rumput</option><option value="2">Tanah</option><option value="3">Air</option><option value="4">Batu</option><option value="5">Pasir</option></select>
       <span id="terrain-status" role="status" aria-live="polite"></span>
     </nav>
+    <aside id="rotate-controls" class="rotate-controls" aria-label="Putar arah objek" hidden>
+      <button id="rotate-left" type="button" aria-label="Putar ke kiri" title="Putar ke kiri">↶</button>
+      <span id="rotate-direction" aria-live="polite">Selatan</span>
+      <button id="rotate-right" type="button" aria-label="Putar ke kanan" title="Putar ke kanan">↷</button>
+    </aside>
+    </div></div>
     <section class="preview-controls" aria-label="Kontrol suasana preview">
       <div class="weather-preview-control"><button id="weather-cycle-button" class="weather-cycle-button" type="button" aria-label="Ganti suasana preview">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>

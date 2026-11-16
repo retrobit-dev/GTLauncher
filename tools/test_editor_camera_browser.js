@@ -27,6 +27,8 @@ const {chromium} = require('playwright-core');
     assert(Math.abs(hud.calendar.bottom-hud.readouts.bottom)<1);
     assert(hud.month.bottom<hud.day.top && hud.day.bottom<hud.weekday.top && hud.weekday.bottom<hud.calendar.bottom, 'calendar text remains spaced and within panel');
     await page.locator('#mode-map-editor').click();
+    const side = await page.evaluate(()=>{const frame=document.querySelector('.device-frame').getBoundingClientRect(),tools=document.querySelector('.terrain-tools').getBoundingClientRect();return {frameRight:frame.right,toolsLeft:tools.left};});
+    assert(side.toolsLeft>side.frameRight,'tile editor is outside on the right');
     await page.locator('#editor-pan').click();
     const overlay=page.locator('#editor-pan-surface'), box=await overlay.boundingBox();
     assert(box && box.width>0 && box.height>0);

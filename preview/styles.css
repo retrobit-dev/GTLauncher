@@ -352,3 +352,12 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
   .world-topbar .mode-tabs { gap:2px; padding:2px; }
   .world-topbar .mode-tabs button { padding:4px 3px; font-size:9px; }
 }
+
+/* Tile and object-rotation tools stay outside the right side of the tablet. */
+.editor-right-controls { position:absolute; left:calc(100% + 6px); top:0; bottom:0; width:64px; z-index:5; display:flex; flex-direction:column; align-items:center; gap:7px; overflow-y:auto; overflow-x:hidden; }
+.preview-stage:not([data-mode="editor"]) .editor-right-controls { display:none; }
+.editor-right-controls .terrain-tools { flex:none; width:100%; flex-direction:column; flex-wrap:nowrap; justify-content:flex-start; }
+.editor-right-controls .terrain-tools select { width:100%; max-width:100%; }
+.editor-right-controls .terrain-tools span { flex-basis:auto; max-width:100%; overflow-wrap:anywhere; font-size:9px; line-height:1.2; }
+.editor-right-controls .rotate-controls { position:static; transform:none; width:100%; flex:none; }
+@media (max-width:420px) { .editor-right-controls { left:calc(100% + 5px); width:46px; } .editor-right-controls .terrain-tools select { font-size:9px; } }
