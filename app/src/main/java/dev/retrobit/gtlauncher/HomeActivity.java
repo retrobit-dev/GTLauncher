@@ -116,6 +116,7 @@ public class HomeActivity extends Activity {
     private final Runnable dayNightRefresh = new Runnable() {
         @Override public void run() {
             updateDayNightIcon();
+            updateCalendarHud();
             mainHandler.postDelayed(this, 30_000L);
         }
     };
@@ -134,6 +135,20 @@ public class HomeActivity extends Activity {
         }
         dayNightIcon.setImageResource(image);
         dayNightIcon.setContentDescription(getString(night ? R.string.hud_night : R.string.hud_day) + " · " + weatherLabel);
+    }
+    private int lastCalendarBackground = 0;
+    private void updateCalendarHud() {
+        View calendar = findViewById(R.id.hud_calendar);
+        if (calendar == null) return;
+        int day = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_WEEK);
+        int background = CalendarHud.isWeekend(day)
+                ? R.drawable.bg_date_hud_calendar_weekend : R.drawable.bg_date_hud_calendar;
+        if (background == lastCalendarBackground) return;
+        int left = calendar.getPaddingLeft(), top = calendar.getPaddingTop();
+        int right = calendar.getPaddingRight(), bottom = calendar.getPaddingBottom();
+        calendar.setBackgroundResource(background);
+        calendar.setPadding(left, top, right, bottom);
+        lastCalendarBackground = background;
     }
     private TextView batteryHud;
     private ImageView batteryIcon;
@@ -424,7 +439,7 @@ public class HomeActivity extends Activity {
         View batteryPanel = findViewById(R.id.hud_battery_panel);
         // Keep the clock panel width fixed as battery readings change.
         float textWidth = time.getPaint().measureText("88:88");
-        int width = dp(8) + dp(14) + dp(1) + dp(8) + (int) Math.ceil(textWidth);
+        int width = dp(8) + dp(14) + dp(1) + dp(3) + (int) Math.ceil(textWidth);
         for (View panel : new View[]{timePanel, batteryPanel}) {
             if (panel.getLayoutParams().width != width) {
                 android.view.ViewGroup.LayoutParams params = panel.getLayoutParams();

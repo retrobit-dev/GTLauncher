@@ -8,6 +8,8 @@ const invalid=rainfall(1);invalid.daily.precipitation_sum[1]=null;assert.throws(
 assert.throws(()=>season.classify(rainfall(0),new Date('2026-12-01T12:00:00Z')));
 (async()=>{
  const dom=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:'https://test.invalid/',runScripts:'outside-only'}),w=dom.window,d=w.document;
+ let mockNow=new Date(2026,10,2,12).getTime();
+ const RealDate=w.Date;w.Date=class extends RealDate {constructor(...args){super(...(args.length?args:[mockNow]));}static now(){return mockNow;}};
  const dialog=d.getElementById('dock-dialog');dialog.showModal=()=>dialog.open=true;dialog.close=()=>dialog.open=false;
  let altitude=-10,code=0,calls=0,interval;w.SeasonEstimate=season;w.previewHudWeatherCode=()=>code;w.previewHudLocation=()=>({latitude:-6.7,longitude:110.4});w.previewHudSunAltitude=()=>altitude;
  w.setInterval=cb=>{interval=cb};w.fetch=async()=>{calls++;return {ok:false}};
@@ -30,6 +32,11 @@ assert.throws(()=>season.classify(rainfall(0),new Date('2026-12-01T12:00:00Z')))
  assert(d.querySelector('.clock-readouts > #hud-season.visually-hidden'),'season remains accessible without an outside icon');
  assert.equal(d.querySelector('.season-indicator'),null);
  assert.equal(d.querySelectorAll('.hud-calendar > *').length,3);
+ const calendar=d.querySelector('.hud-calendar');assert.equal(calendar.dataset.weekend,'false','Monday is a working day');
+ mockNow=new Date(2026,10,6,12).getTime();interval();assert.equal(calendar.dataset.weekend,'false','Friday is a working day');
+ mockNow=new Date(2026,10,7,12).getTime();interval();assert.equal(calendar.dataset.weekend,'true','Saturday is a weekend');
+ mockNow=new Date(2026,10,8,12).getTime();interval();assert.equal(calendar.dataset.weekend,'true','Sunday is a weekend');
+ mockNow=new Date(2026,10,9,12).getTime();interval();assert.equal(calendar.dataset.weekend,'false','Monday reverts to weekday');
  await Promise.resolve();dom.window.close();
  const other=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:'https://test.invalid/',runScripts:'outside-only'}),v=other.window, doc=v.document;
  const listeners={},batteryInfo={level:1,charging:false,addEventListener:(name,fn)=>listeners[name]=fn};

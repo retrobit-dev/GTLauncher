@@ -39,6 +39,10 @@
     $('hud-month').textContent=`${pad(now.getMonth()+1)}/${String(now.getFullYear()).slice(-2)}`;
     $('hud-day').textContent=String(now.getDate());
     $('hud-weekday').textContent=new Intl.DateTimeFormat('id-ID',{weekday:'short'}).format(now).toUpperCase();
+    const weekend = now.getDay() === 0 || now.getDay() === 6;
+    const calendar = document.querySelector('.hud-calendar');
+    calendar.dataset.weekend = String(weekend);
+    calendar.title = weekend ? 'Akhir pekan' : 'Hari kerja';
     const altitude=window.previewHudSunAltitude?.(now.getTime());
     const isNight=Number.isFinite(altitude) && altitude<=0;
     phase.hidden=!Number.isFinite(altitude);

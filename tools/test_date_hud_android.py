@@ -13,7 +13,7 @@ assert [c.get(ns+'format24Hour') for c in clocks]==['HH:mm','MM/yy','d','EEE']
 assert [c.get(ns+'format12Hour') for c in clocks]==['HH:mm','MM/yy','d','EEE']
 calendar=hud.find(".//*[@"+ns+"background='@drawable/bg_date_hud_calendar']")
 assert [c.get(ns+'id') for c in calendar.findall('TextClock')]==['@+id/hud_month','@+id/hud_day','@+id/hud_weekday']
-for f in ['bg_date_hud_panel.xml','bg_date_hud_calendar.xml']: ET.parse(root/'app/src/main/res/drawable'/f)
+for f in ['bg_date_hud_panel.xml','bg_date_hud_calendar.xml','bg_date_hud_calendar_weekend.xml']: ET.parse(root/'app/src/main/res/drawable'/f)
 activity=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
 # The drawer is an overlay; opening it must not hide the underlying world HUD.
 drawer=activity.split('private void openDrawer()',1)[1].split('private void closeDrawer()',1)[0]
@@ -27,7 +27,7 @@ panel=next(el for el in hud.iter() if time in list(el))
 assert panel.get(ns+'layout_width')=='83dp' and panel.get(ns+'layout_height')=='0dp' and panel.get(ns+'layout_weight')=='1'
 assert hud.find(".//*[@"+ns+"id='@+id/hud_season_icon']") is not None
 
-assert clocks[2].get(ns+'layout_marginTop') == clocks[3].get(ns+'layout_marginTop') == '2dp'
+assert clocks[2].get(ns+'layout_marginTop') == clocks[3].get(ns+'layout_marginTop') == '4dp'
 
 assert 'updateSeason(FALLBACK_LATITUDE, FALLBACK_LONGITUDE, true);' in activity
 assert 'updateSeason(currentLatitude, currentLongitude, false);' in activity
@@ -37,3 +37,13 @@ assert 'seasonFallback != fallback' in activity
 assert hud.get(ns+'scaleX') == hud.get(ns+'scaleY') == '0.75'
 assert hud.get(ns+'transformPivotY') == '0dp'
 assert 'view.setPivotX(right - left);' in activity and 'view.setPivotY(0f);' in activity
+
+assert calendar.get(ns+'id') == '@+id/hud_calendar'
+assert 'updateCalendarHud();' in activity and 'CalendarHud.isWeekend(day)' in activity
+assert 'calendar.setPadding(left, top, right, bottom)' in activity
+for file, color in [('bg_date_hud_calendar.xml','#94BD2B'),('bg_date_hud_calendar_weekend.xml','#C85439')]:
+    layers=ET.parse(root/'app/src/main/res/drawable'/file).getroot()
+    header=list(layers)[1]
+    assert header.get(ns+'left') == header.get(ns+'right') == header.get(ns+'top') == '2dp'
+    assert header.get(ns+'height') == '8dp'
+    assert header.find('shape/solid').get(ns+'color') == color
