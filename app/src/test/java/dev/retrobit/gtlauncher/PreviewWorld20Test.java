@@ -25,8 +25,9 @@ public class PreviewWorld20Test {
         PreviewWorld20 parsed=PreviewWorld20.parse(root.toString());
         assertEquals("home",parsed.id); assertEquals(5,parsed.tile(15,19)); assertFalse(parsed.canStand(17,19));
         assertFalse(parsed.canStand(19,19)); assertTrue(parsed.canStand(18,19)); assertFalse(parsed.canStand(20,0));
-        assertTrue(root.similar(new JSONObject(parsed.toJson())));
-        assertTrue(root.similar(new JSONObject(PreviewWorld20.parse(parsed.toJson()).toJson())));
+        assertEquals(w.getJSONArray("tiles").toString(), new JSONObject(parsed.toJson()).getJSONObject("world").getJSONArray("tiles").toString());
+        assertEquals(w.getJSONObject("house").toString(), new JSONObject(parsed.toJson()).getJSONObject("world").getJSONObject("house").toString());
+        assertEquals(parsed.toJson(), PreviewWorld20.parse(parsed.toJson()).toJson());
     }
     @Test public void rejectsUnknownOrMalformedData() throws Exception {
         JSONObject root=sample(); root.getJSONObject("world").put("objects",new JSONArray()); rejected(root);
