@@ -3,7 +3,6 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
 try {const p=await b.newPage({viewport:{width:1000,height:700},reducedMotion:'no-preference'}),errors=[];p.on('pageerror',e=>errors.push(e.message));
 await p.addInitScript(()=>localStorage.setItem('gtlauncher.worlds.v1',JSON.stringify({activeId:'walk',worlds:[{id:'walk',name:'Walk',description:'',color:'#a8c795',gridSize:50,tiles:Array(2500).fill(1),showCharacter:true,characterColumn:24,characterRow:24,characterScale:1,characterFacing:'S',house:null}]})));
 await p.goto(process.env.PREVIEW_URL||'http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});await p.waitForFunction(()=>window.sceneEditing&&window.worldManager);
-await p.locator('[data-dock="hand"]').click();
 const before=await p.evaluate(()=>sceneEditing.camera());
 const point=await p.evaluate(()=>{const tile=sceneEditing.centre({column:26,row:24}),c=sceneEditing.camera(),r=document.querySelector('#sky-canvas').getBoundingClientRect();return {x:r.left+(160+(tile.x-160)*c.renderZoom+c.panX)*r.width/320,y:r.top+(182+(tile.y-182)*c.renderZoom+c.panY)*r.height/200}});
 assert.equal(await p.evaluate(({x,y})=>document.elementFromPoint(x,y)?.id,point),'sky-canvas');await p.mouse.click(point.x,point.y);

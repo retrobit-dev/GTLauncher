@@ -23,7 +23,9 @@ assert '@+id/dock_close' not in ids
 java=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
 for name in keys: assert 'R.id.dock_tool_'+name in java
 assert 'Fungsi alat ini belum tersedia.' in java
-assert 'findViewById(R.id.dock_tool_hand).setSelected(true)' in java
+assert 'private int selectedTool = -1;' in java
+assert 'findViewById(R.id.dock_tool_hand).setSelected(true)' not in java
+assert 'skyView.setHoeSelected(true)' not in java
 assert 'for(int tool: gameplayTools())' in java
 assert 'worldStore.tillTile(world.id,target.column,target.row)' not in java
 assert 'selectedTool=selectedTool==tool ? -1 : tool' in java

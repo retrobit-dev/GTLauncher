@@ -6,6 +6,7 @@ try{
  await page.addInitScript(()=>{if(!localStorage.getItem('gtlauncher.worlds.v1'))localStorage.setItem('gtlauncher.worlds.v1',JSON.stringify({activeId:'home',worlds:[{id:'home',name:'Home',description:'',color:'#a8c795',gridSize:25,tiles:Array(625).fill(1),showCharacter:true,characterColumn:8,characterRow:4,characterScale:1,characterFacing:'S',house:{column:4,row:2,scale:1,facing:'S',visible:true}}]}));});
  await page.goto(process.env.PREVIEW_URL||'http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.sceneEditing && worldManager.getHouse() && sceneEditing.houseAt);
+ await page.locator('[data-dock="hand"]').click();
  assert.equal(await page.locator('[data-dock="hand"]').getAttribute('aria-pressed'),'true');assert.equal(await page.locator('#dock-dialog').evaluate(e=>e.open),false);
  await page.waitForFunction(()=>{const h=worldManager.getHouse(), p=sceneEditing.centreHouse(h);for(let y=p.y-50;y<p.y;y+=2)for(let x=p.x-30;x<p.x+30;x+=2)if(sceneEditing.houseAt({x,y},h))return true;return false;});
  const target=await page.evaluate(()=>{const h=worldManager.getHouse(),p=sceneEditing.centreHouse(h),c=sceneEditing.camera(),r=document.querySelector('#sky-canvas').getBoundingClientRect();for(let y=p.y-50;y<p.y;y+=2)for(let x=p.x-30;x<p.x+30;x+=2)if(sceneEditing.houseAt({x,y},h)){return {x:r.left+(160+(x-160)*c.renderZoom+c.panX)*r.width/320,y:r.top+(182+(y-182)*c.renderZoom+c.panY)*r.height/200};}});

@@ -70,10 +70,7 @@ const {chromium} = require('playwright-core');
     const destinationFor=async()=>await page.evaluate(()=>{const tile=sceneEditing.centre({column:25,row:24}),c=sceneEditing.camera(),r=document.getElementById('sky-canvas').getBoundingClientRect();return {x:r.left+(160+(tile.x-160)*c.renderZoom+c.panX)*r.width/320,y:r.top+(182+(tile.y-182)*c.renderZoom+c.panY)*r.height/200};});
     let destination=await destinationFor();
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...destination,id:3}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-    assert.equal(await page.evaluate(()=>worldManager.getCharacter().column),24,'first touch changes facing');
-    destination=await destinationFor();
-    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...destination,id:3}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-    assert.equal(await page.evaluate(()=>worldManager.getCharacter().column),25,'gameplay touch moves character');
+    assert.equal(await page.evaluate(()=>worldManager.getCharacter().column),25,'first gameplay touch moves character with no tool selected');
     assert.deepEqual(errors,[]);
     console.log('Chromium touch pan, visible repaint, terrain tap and gameplay movement: OK');
   } finally {await browser.close();}
