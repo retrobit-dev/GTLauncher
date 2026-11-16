@@ -38,6 +38,9 @@
   const playerBackImage = new Image();
   playerBackImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
   playerBackImage.src = './assets/main-character-back.png?v=backpack-2';
+  // Full-image gait frames keep hands and feet connected to the body.
+  const walkingFrames = Object.fromEntries(['front','back'].map(side => [side,
+    Array.from({length:12},(_,i)=>{const image=new Image();image.src=`./assets/character-walk/${side}-${String(i).padStart(2,'0')}.png?v=1`;return image;})]));
   const houseImage = new Image();
   houseImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
   houseImage.src = './assets/house.png';
@@ -1715,9 +1718,13 @@
     ctx.fillStyle='rgba(12,23,30,.38)';ctx.beginPath();ctx.ellipse(x,y-.45*character.scale,4.6*character.scale,.8*character.scale,0,0,Math.PI*2);ctx.fill();
     ctx.imageSmoothingEnabled = false;
     ctx.save();ctx.translate(x,y);if (mirror) ctx.scale(-1,1);
-    if (gameplayDraft && Number.isFinite(gameplayDraft.walkPhase) && !REDUCED_MOTION)
-      ctx.rotate(Math.sin(gameplayDraft.walkPhase)*.018);
-    ctx.drawImage(sprite,-width/2,-height,width,height);
+    let drawnSprite=sprite;
+    if (gameplayDraft && Number.isFinite(gameplayDraft.walkPhase) && !REDUCED_MOTION) {
+      const index=((Math.floor(gameplayDraft.walkPhase/(Math.PI*2)*12)%12)+12)%12;
+      const frame=walkingFrames[back?'back':'front'][index];
+      if(frame.complete && frame.naturalWidth) drawnSprite=frame;
+    }
+    ctx.drawImage(drawnSprite,-width/2,-height,width,height);
     ctx.restore();
     if (editingSelected) {
       ctx.strokeStyle = '#fff4a8';

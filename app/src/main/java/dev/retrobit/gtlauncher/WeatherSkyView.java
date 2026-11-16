@@ -268,6 +268,7 @@ public final class WeatherSkyView extends View {
     private double plantMotionSeconds;
     private Integer worldIslandTint;
     private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
+    private final Bitmap[] walkFront=new Bitmap[12], walkBack=new Bitmap[12];
     private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron;
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
     private Bitmap treeDormant,treeBananaFruitless,treeCoconutFruitless;
@@ -332,6 +333,9 @@ public final class WeatherSkyView extends View {
         grassDetail = BitmapFactory.decodeResource(getResources(), R.drawable.island_grass_detail);
         mainCharacter = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_uhd_front);
         mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_uhd_back);
+        int[] frontFrames={R.drawable.character_walk_front_00, R.drawable.character_walk_front_01, R.drawable.character_walk_front_02, R.drawable.character_walk_front_03, R.drawable.character_walk_front_04, R.drawable.character_walk_front_05, R.drawable.character_walk_front_06, R.drawable.character_walk_front_07, R.drawable.character_walk_front_08, R.drawable.character_walk_front_09, R.drawable.character_walk_front_10, R.drawable.character_walk_front_11};
+        int[] backFrames={R.drawable.character_walk_back_00, R.drawable.character_walk_back_01, R.drawable.character_walk_back_02, R.drawable.character_walk_back_03, R.drawable.character_walk_back_04, R.drawable.character_walk_back_05, R.drawable.character_walk_back_06, R.drawable.character_walk_back_07, R.drawable.character_walk_back_08, R.drawable.character_walk_back_09, R.drawable.character_walk_back_10, R.drawable.character_walk_back_11};
+        for(int i=0;i<12;i++) {walkFront[i]=BitmapFactory.decodeResource(getResources(),frontFrames[i]);walkBack[i]=BitmapFactory.decodeResource(getResources(),backFrames[i]);}
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_redesign);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_redesign_back);
         houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_back);
@@ -962,8 +966,6 @@ public final class WeatherSkyView extends View {
         float width = 13.5f * characterScale;
         paint.setStyle(Paint.Style.FILL);paint.setColor(Color.argb(97,12,23,30));
         canvas.drawOval(new RectF(x-4.6f*characterScale,y-1.25f*characterScale,x+4.6f*characterScale,y+.35f*characterScale),paint);
-        float phase = characterStepping ? (float)Math.sin(CharacterGait.phase(stepIndex,stepProgress())) : 0f;
-        float runBlend = characterStepping ? CharacterGait.runBlend(stepIndex,stepCount,stepProgress()) : 0f;
         float idle = characterStepping ? 0f : (Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5f : 0.0f);
         // Keep the dimensions fixed while moving; bounce translates rather than stretches.
         float height = 25.0f * characterScale + (characterStepping ? 0 : idle);
@@ -972,10 +974,12 @@ public final class WeatherSkyView extends View {
         paint.setFilterBitmap(true);
         int save = canvas.save();
         if (mirror) canvas.scale(-1, 1, x, 0);
-        // Draw a whole sprite so limbs cannot be severed by rectangular crops.
-        // Independent, anatomically accurate limb motion requires dedicated artwork.
-        if (characterStepping && animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled())
-            canvas.rotate((float)Math.toDegrees(phase*.018f),x,y);
+        // Render whole gait frames, rather than cutting sleeves or shoes from the sprite.
+        if (characterStepping && animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            int frame=(int)Math.floor((stepIndex-1+stepProgress())*12)%12;
+            Bitmap walking=(back ? walkBack : walkFront)[frame];
+            if(walking!=null) sprite=walking;
+        }
         canvas.drawBitmap(sprite, null, new RectF(x - width / 2, y - height, x + width / 2, y), paint);
         canvas.restoreToCount(save);
     }
