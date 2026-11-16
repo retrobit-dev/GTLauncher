@@ -425,7 +425,7 @@ public final class WeatherSkyView extends View {
         ISLAND_GRID_SIZE = worldId == null || "base".equals(worldId) ? 50 : 9;
         ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
         ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2f;
-        String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;}
+        String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;gameplayCamera.reset();cameraFrameTime=0;}
         worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects); invalidate();
     }
     private PreviewWorld20 worldTerrain;
@@ -517,11 +517,14 @@ public final class WeatherSkyView extends View {
     private boolean hoeSelected = false;
     void setHoeSelected(boolean selected) { hoeSelected=selected;invalidate(); }
     private boolean gameplayMode = false;
-    void setGameplayMode(boolean value) { gameplayMode=value; invalidate(); }
+    private final CameraFollow gameplayCamera=new CameraFollow();
+    private long cameraFrameTime;
+    private boolean cameraMoving;
+    void setGameplayMode(boolean value) { if(gameplayMode!=value){gameplayCamera.reset();cameraFrameTime=0;} gameplayMode=value; invalidate(); }
     private float mapSourceX() { return gameplayMode && showCharacter
-            ? SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f : SCENE_WIDTH/2f; }
+            ? (gameplayCamera.ready()?gameplayCamera.x():SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f) : SCENE_WIDTH/2f; }
     private float mapSourceY() { return gameplayMode && showCharacter
-            ? ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f
+            ? (gameplayCamera.ready()?gameplayCamera.y():ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f)
             : ISLAND_GRID_SIZE >= 20 ? ISLAND_CENTER_Y : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
     private float mapDestinationX() { return SCENE_WIDTH/2f; }
     private float mapDestinationY() { return (gameplayMode && showCharacter) || ISLAND_GRID_SIZE >= 20 ? SCENE_HEIGHT*.56f : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
@@ -1026,6 +1029,15 @@ public final class WeatherSkyView extends View {
         super.onDraw(canvas);
         if (getWidth() <= 0 || getHeight() <= 0) return;
 
+        long frameTime=SystemClock.uptimeMillis();
+        if(gameplayMode && showCharacter) {
+            float tx=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f;
+            float ty=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f;
+            float dt=cameraFrameTime==0?0:(frameTime-cameraFrameTime)/1000f;
+            boolean snap=!animationEnabled || !android.animation.ValueAnimator.areAnimatorsEnabled();
+            cameraMoving=gameplayCamera.advance(tx,ty,28f/(islandScaleX()*mapZoom()),16f/(islandScaleY()*mapZoom()),dt,snap);
+        } else {gameplayCamera.reset();cameraMoving=false;}
+        cameraFrameTime=frameTime;
         long now = System.currentTimeMillis();
         double elapsedSeconds = (now - animationStartMillis) / 1000.0;
         double motionSeconds = animationEnabled ? elapsedSeconds : 0.0;
@@ -1092,8 +1104,8 @@ public final class WeatherSkyView extends View {
         renderedSceneBounds.set(0, 0, getWidth(), getHeight());
         canvas.drawBitmap(sceneBitmap, null, renderedSceneBounds, renderBitmapPaint);
 
-        if (animationEnabled && getVisibility() == VISIBLE) {
-            postInvalidateDelayed(40);
+        if (getVisibility() == VISIBLE && (animationEnabled || cameraMoving)) {
+            postInvalidateDelayed((characterStepping || cameraMoving) ? 33 : 40);
         }
     }
 
