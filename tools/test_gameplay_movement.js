@@ -43,16 +43,16 @@ run.window.close();console.log('Hand interaction approaches and selects house on
 }
 {
  const run=new JSDOM('<main class="preview-stage" data-mode="gameplay"><canvas id="sky-canvas"></canvas><p id="gameplay-movement-status"></p><button id="mode-map-editor"></button></main>',{url:'https://example.test/',runScripts:'outside-only'}),w=run.window,d=w.document,c=d.querySelector('canvas');
- let frames=[],writes=0,character={visible:true,column:0,row:0,scale:1,facing:'S'},draft=null,world={id:'walk',gridSize:20,tiles:Array(400).fill(1)};
+ let frames=[],writes=0,character={visible:true,column:0,row:0,scale:1,facing:'S'},draft=null,routeDisplay=null,world={id:'walk',gridSize:20,tiles:Array(400).fill(1)};
  w.matchMedia=()=>({matches:false});w.requestAnimationFrame=cb=>frames.push(cb);w.GameplayPath=Path;
  w.worldManager={getActive:()=>world,getCharacter:()=>({...character}),getHouse:()=>null,updateCharacter:(id,value)=>{writes++;character=value;w.dispatchEvent(new w.Event('worldchange'));return true;}};
- w.sceneEditing={setGameplayDraft:x=>draft=x,toLocal:(x,y)=>({x,y}),tileAt:p=>({column:p.x,row:p.y})};
+ w.sceneEditing={setGameplayDraft:x=>draft=x,setGameplayRoute:(route,index)=>routeDisplay=route?{route,index}:null,toLocal:(x,y)=>({x,y}),tileAt:p=>({column:p.x,row:p.y})};
  w.eval(fs.readFileSync(path.join(root,'gameplay-movement.js'),'utf8'));
  function tap(x,y){for(const type of ['pointerdown','pointerup']){let e=new w.MouseEvent(type,{bubbles:true,clientX:x,clientY:y});Object.defineProperties(e,{pointerId:{value:1},pointerType:{value:'touch'}});c.dispatchEvent(e);}}
  const tick=t=>{const cb=frames.shift();assert(cb,'animation frame scheduled');cb(t);};
- tap(4,0);assert.equal(character.facing,'E');tap(4,0);tick(0);tick(150);assert.equal(draft.column,.5);assert.equal(writes,1,'only facing is saved before arrival');
- tick(300);tick(480);tick(660);tick(960);assert.equal(writes,2);assert.equal(character.column,4);assert.equal(draft,null);
+ tap(4,0);assert.equal(character.facing,'E');assert.equal(routeDisplay.route.length,5,'route appears after facing turn');tap(4,0);tick(0);tick(150);assert.equal(routeDisplay.index,1,'route starts at next tile');assert.equal(draft.column,.5);assert.equal(writes,1,'only facing is saved before arrival');
+ tick(300);assert.equal(routeDisplay.index,2,'route advances when character passes a tile');tick(480);tick(660);tick(960);assert.equal(routeDisplay,null,'arrival clears route');assert.equal(writes,2);assert.equal(character.column,4);assert.equal(draft,null);
  tap(5,0);tick(1000);tap(6,0);tick(1300);assert.equal(writes,3,'first move finishes before queued destination');tick(1400);tick(1700);assert.equal(writes,4);assert.equal(character.column,6,'tap during movement queues the next route');
- tap(7,0);tick(1800);w.dispatchEvent(new w.Event('worldchange'));tick(1950);assert.equal(writes,4,'external world change cancels pending move');assert.equal(draft,null);
+ tap(7,0);tick(1800);w.dispatchEvent(new w.Event('worldchange'));tick(1950);assert.equal(writes,4,'external world change cancels pending move');assert.equal(draft,null);assert.equal(routeDisplay,null,'world change clears route');
  run.window.close();console.log('Gameplay interpolated route timing, one final write and cancellation OK');
 }
