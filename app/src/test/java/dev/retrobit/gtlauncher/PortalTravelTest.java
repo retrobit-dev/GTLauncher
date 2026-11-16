@@ -41,6 +41,19 @@ public class PortalTravelTest {
         assertNotNull(path);assertFalse(path.contains(new PortalTravel.Tile(2,1)));assertEquals(new PortalTravel.Tile(3,1),path.get(path.size()-1));
         assertNull(PortalTravel.path(new PortalTravel.Tile(1,1),new PortalTravel.Tile(2,1),blocked));assertNull(PortalTravel.path(new PortalTravel.Tile(1,1),new PortalTravel.Tile(-1,1),blocked));
     }
+    @Test public void pathSupportsExplicitTwentyTileGridWithoutChangingLegacyBounds() {
+        PortalTravel.Tile start = new PortalTravel.Tile(9,9), end = new PortalTravel.Tile(19,19);
+        assertNull(PortalTravel.path(start,end,clear));
+        List<PortalTravel.Tile> path = PortalTravel.path(start,end,clear,20);
+        assertNotNull(path); assertEquals(21,path.size()); assertEquals(end,path.get(path.size()-1));
+        assertNull(PortalTravel.path(start,new PortalTravel.Tile(20,19),clear,20));
+        assertNull(PortalTravel.path(start,end,clear,21));
+        PortalTravel.Terrain blocked = new PortalTravel.Terrain() {
+            public boolean canStand(int c,int r) { return !(c==10 && r==9); }
+            public boolean canStep(int c,int r,int x,int y) { return true; }
+        };
+        assertFalse(PortalTravel.path(start,end,blocked,20).contains(new PortalTravel.Tile(10,9)));
+    }
     @Test public void pathBesideChoosesReachableClosestFootprintEdge() {
         PortalTravel.Terrain terrain=new PortalTravel.Terrain(){
             public boolean canStand(int c,int r){return !(c==4 && r==4) && !(c==3 && r==4);}

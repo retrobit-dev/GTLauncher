@@ -14,7 +14,7 @@ final class PortalTravel {
         @Override public boolean equals(Object value) {
             return value instanceof Tile && ((Tile) value).column == column && ((Tile) value).row == row;
         }
-        @Override public int hashCode() { return row * SIZE + column; }
+        @Override public int hashCode() { return 31 * row + column; }
     }
     static final class Portal {
         final String worldId, id, edge, destinationWorldId, destinationPortalId;
@@ -32,8 +32,9 @@ final class PortalTravel {
         boolean canStand(int column, int row);
         boolean canStep(int fromColumn, int fromRow, int toColumn, int toRow);
     }
-    private static boolean validTile(Tile tile) {
-        return tile != null && tile.column >= 0 && tile.column < SIZE && tile.row >= 0 && tile.row < SIZE;
+    private static boolean validTile(Tile tile) { return validTile(tile, SIZE); }
+    private static boolean validTile(Tile tile, int size) {
+        return size > 0 && size <= 20 && tile != null && tile.column >= 0 && tile.column < size && tile.row >= 0 && tile.row < size;
     }
     private static boolean isPortalOnEdge(Portal p) {
         if (p == null || p.worldId == null || p.id == null || !validTile(p.tile) || p.edge == null) return false;
@@ -62,8 +63,12 @@ final class PortalTravel {
     }
     /** Path to an exact tile, respecting every obstacle and boundary. */
     static List<Tile> path(Tile start,Tile destination,Terrain terrain) {
-        if(!validTile(start) || !validTile(destination) || terrain==null || !terrain.canStand(start.column,start.row) || !terrain.canStand(destination.column,destination.row))return null;
-        Tile[][] previous = new Tile[SIZE][SIZE]; boolean[][] visited = new boolean[SIZE][SIZE];
+        return path(start, destination, terrain, SIZE);
+    }
+    /** Route within an explicit square grid; existing 9x9 callers retain their bounds. */
+    static List<Tile> path(Tile start, Tile destination, Terrain terrain, int size) {
+        if(!validTile(start, size) || !validTile(destination, size) || terrain==null || !terrain.canStand(start.column,start.row) || !terrain.canStand(destination.column,destination.row))return null;
+        Tile[][] previous = new Tile[size][size]; boolean[][] visited = new boolean[size][size];
         ArrayDeque<Tile> queue = new ArrayDeque<>(); queue.add(start); visited[start.row][start.column] = true;
         final int[][] steps = {{0,-1},{1,0},{0,1},{-1,0}};
         while (!queue.isEmpty()) {
@@ -75,7 +80,7 @@ final class PortalTravel {
             }
             for (int[] step : steps) {
                 int c=current.column+step[0], r=current.row+step[1];
-                if (c<0 || c>=SIZE || r<0 || r>=SIZE || visited[r][c] || !terrain.canStand(c,r)
+                if (c<0 || c>=size || r<0 || r>=size || visited[r][c] || !terrain.canStand(c,r)
                         || !terrain.canStep(current.column,current.row,c,r)) continue;
                 Tile next=new Tile(c,r); previous[r][c]=current; visited[r][c]=true; queue.add(next);
             }
