@@ -168,6 +168,7 @@ public class HomeActivity extends Activity {
     private boolean treeFallback;
     private TreePhenology.Result treePhenology;
     private WeatherSkyView skyView;
+    private boolean hoeSelected = false;
     private WorldStore worldStore;
     private int portalWalkGeneration;
     private SensorManager sensorManager;
@@ -286,6 +287,7 @@ public class HomeActivity extends Activity {
                 if (deltaY < -dp(72) && Math.abs(deltaY) > Math.abs(deltaX) * 1.15f) {
                     openDrawer();
                 } else if (gameplayMode && Math.hypot(deltaX,deltaY) < dp(8)) {
+                    if(hoeSelected) { hoeGround(event.getX(),event.getY());return true; }
                     WorldStore.SurfaceObject selling=skyView.sellingMarkerAt(event.getX(),event.getY());
                     String marker=selling==null ? skyView.portalMarkerAt(event.getX(),event.getY()) : null;
                     String portal=marker==null && selling==null ? skyView.portalAt(event.getX(),event.getY()) : null;
@@ -309,8 +311,9 @@ public class HomeActivity extends Activity {
         });
         findViewById(R.id.drawer_back).setOnClickListener(view -> closeDrawer());
         findViewById(R.id.dock_tool_hand).setSelected(true);
-        findViewById(R.id.dock_tool_hand).setOnClickListener(view -> { view.setSelected(true); Toast.makeText(this, "Tangan aktif: ketuk tanah atau objek.", Toast.LENGTH_SHORT).show(); });
-        int[] dockTools = {R.id.dock_tool_hoe, R.id.dock_tool_shovel,
+        findViewById(R.id.dock_tool_hand).setOnClickListener(view -> selectHoe(false));
+        findViewById(R.id.dock_tool_hoe).setOnClickListener(view -> selectHoe(true));
+        int[] dockTools = {R.id.dock_tool_shovel,
                 R.id.dock_tool_water, R.id.dock_tool_sickle, R.id.dock_tool_axe,
                 R.id.dock_tool_pickaxe, R.id.dock_tool_fishing};
         for (int tool : dockTools) findViewById(tool).setOnClickListener(view ->
@@ -486,6 +489,56 @@ public class HomeActivity extends Activity {
         } catch (ActivityNotFoundException | SecurityException error) {
             Toast.makeText(this, "Pengaturan perangkat tidak tersedia.", Toast.LENGTH_SHORT).show();
         }
+    }
+    private void selectHoe(boolean value) {
+        hoeSelected=value;
+        findViewById(R.id.dock_tool_hand).setSelected(!value);
+        findViewById(R.id.dock_tool_hoe).setSelected(value);
+        portalWalkGeneration++; skyView.setPortalWalkActive(false); applyActiveWorld();
+        Toast.makeText(this,value?"Cangkul aktif: ketuk rumput atau tanah.":"Tangan aktif: ketuk tanah atau objek.",Toast.LENGTH_SHORT).show();
+    }
+    private void hoeGround(float x,float y) {
+        PortalTravel.Tile target=skyView.groundTileAt(x,y);
+        if(target==null || skyView.houseAt(x,y)!=null || skyView.treeAt(x,y)!=null || skyView.storageBoxAt(x,y)!=null) {
+            Toast.makeText(this,"Cangkul hanya untuk rumput atau tanah tanpa objek.",Toast.LENGTH_SHORT).show();return;
+        }
+        try {
+            WorldStore.World world=worldStore.activeWorld();
+            if(world==null || !world.showCharacter || world.previewData==null || !world.tileExists(target.column,target.row)) {
+                Toast.makeText(this,"Cangkul tersedia pada world terrain 20×20 atau 25×25 dengan karakter.",Toast.LENGTH_SHORT).show();return;
+            }
+            for(WorldStore.House house:world.houses)if(house.covers(target.column,target.row)) {
+                Toast.makeText(this,"Tile digunakan rumah.",Toast.LENGTH_SHORT).show();return;
+            }
+            int material=world.previewData.tile(target.column,target.row);
+            if(material!=1 && material!=2){Toast.makeText(this,"Cangkul hanya dapat mengolah rumput atau tanah.",Toast.LENGTH_SHORT).show();return;}
+            PortalTravel.Tile start=new PortalTravel.Tile(world.characterColumn,world.characterRow);
+            PortalTravel.Terrain terrain=portalTerrain(world);java.util.List<PortalTravel.Tile> best=null;
+            for(int[] step:new int[][]{{0,-1},{1,0},{0,1},{-1,0}}) {
+                PortalTravel.Tile beside=new PortalTravel.Tile(target.column+step[0],target.row+step[1]);
+                java.util.List<PortalTravel.Tile> route=PortalTravel.path(start,beside,terrain,world.gridSize());
+                if(route!=null && (best==null || route.size()<best.size()))best=route;
+            }
+            if(best==null){Toast.makeText(this,"Jalan menuju tanah terhalang.",Toast.LENGTH_SHORT).show();return;}
+            int generation=++portalWalkGeneration;skyView.setPortalWalkActive(true);
+            walkHoeStep(world,best,1,generation,world.characterFacing,target);
+        } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
+    }
+    private void walkHoeStep(WorldStore.World world,java.util.List<PortalTravel.Tile> route,int index,int generation,String facing,PortalTravel.Tile target) {
+        if(generation!=portalWalkGeneration || !hoeSelected || isFinishing() || isDestroyed() || !world.id.equals(worldStore.activeId()))return;
+        if(index>=route.size()) {
+            try {
+                PortalTravel.Tile end=route.get(route.size()-1);
+                if(!worldStore.moveCharacter(world.id,end.column,end.row,facing) || !worldStore.tillTile(world.id,target.column,target.row))throw new JSONException("Save failed");
+                skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Tanah berhasil dicangkul.",Toast.LENGTH_SHORT).show();
+            } catch(JSONException error){skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Tanah tidak dapat dicangkul; world atau tile berubah.",Toast.LENGTH_LONG).show();}
+            return;
+        }
+        PortalTravel.Tile previous=route.get(index-1),next=route.get(index);
+        String direction=next.column>previous.column?"E":next.column<previous.column?"W":next.row>previous.row?"S":"N";
+        int duration=android.animation.ValueAnimator.areAnimatorsEnabled()?CharacterGait.durationMillis(index,route.size()-1):1;
+        skyView.animateCharacterStep(previous.column,previous.row,next.column,next.row,(float)world.characterScale,direction,index,route.size()-1,duration);
+        mainHandler.postDelayed(()->walkHoeStep(world,route,index+1,generation,direction,target),duration);
     }
     private void walkToGround(float x,float y) {
         PortalTravel.Tile target=skyView.groundTileAt(x,y);
