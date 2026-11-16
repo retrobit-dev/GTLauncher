@@ -6,7 +6,7 @@ try{
  page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>localStorage.setItem('gtlauncher.worlds.v1',JSON.stringify({activeId:'farm',worlds:[{id:'farm',name:'Farm',description:'',color:'#a8c795',gridSize:25,tiles:Array(625).fill(1),showCharacter:true,characterColumn:12,characterRow:12,characterScale:1,characterFacing:'S',house:null}]})));
  await page.goto(process.env.PREVIEW_URL||'http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.sceneEditing && window.worldManager);
- const point=async(c,r,dy=0)=>page.evaluate(({c,r,dy})=>{const p=sceneEditing.centre({column:c,row:r}),cam=sceneEditing.camera(),rect=document.querySelector('#sky-canvas').getBoundingClientRect();return {x:rect.left+(160+(p.x-160)*.9+cam.panX)*rect.width/320,y:rect.top+(182+(p.y+dy-182)*.9+cam.panY)*rect.height/200};},{c,r,dy});
+ const point=async(c,r,dy=0)=>page.evaluate(({c,r,dy})=>{const p=sceneEditing.centre({column:c,row:r}),cam=sceneEditing.camera(),rect=document.querySelector('#sky-canvas').getBoundingClientRect();return {x:rect.left+(160+(p.x-160)*cam.renderZoom+cam.panX)*rect.width/320,y:rect.top+(182+(p.y+dy-182)*cam.renderZoom+cam.panY)*rect.height/200};},{c,r,dy});
  const tap=async(c,r)=>{const p=await point(c,r);await page.mouse.click(p.x,p.y);};
  await page.locator('[data-dock="hoe"]').click();await tap(13,12);
  let character=await page.evaluate(()=>worldManager.getCharacter());assert.equal(character.column,12);assert.equal(character.facing,'E','first tap turns');

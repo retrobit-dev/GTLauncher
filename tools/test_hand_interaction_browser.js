@@ -8,7 +8,7 @@ try{
  await page.waitForFunction(()=>window.sceneEditing && worldManager.getHouse() && sceneEditing.houseAt);
  assert.equal(await page.locator('[data-dock="hand"]').getAttribute('aria-pressed'),'true');assert.equal(await page.locator('#dock-dialog').evaluate(e=>e.open),false);
  await page.waitForFunction(()=>{const h=worldManager.getHouse(), p=sceneEditing.centreHouse(h);for(let y=p.y-50;y<p.y;y+=2)for(let x=p.x-30;x<p.x+30;x+=2)if(sceneEditing.houseAt({x,y},h))return true;return false;});
- const target=await page.evaluate(()=>{const h=worldManager.getHouse(),p=sceneEditing.centreHouse(h),c=sceneEditing.camera(),r=document.querySelector('#sky-canvas').getBoundingClientRect();for(let y=p.y-50;y<p.y;y+=2)for(let x=p.x-30;x<p.x+30;x+=2)if(sceneEditing.houseAt({x,y},h)){return {x:r.left+(160+(x-160)*.9+c.panX)*r.width/320,y:r.top+(182+(y-182)*.9+c.panY)*r.height/200};}});
+ const target=await page.evaluate(()=>{const h=worldManager.getHouse(),p=sceneEditing.centreHouse(h),c=sceneEditing.camera(),r=document.querySelector('#sky-canvas').getBoundingClientRect();for(let y=p.y-50;y<p.y;y+=2)for(let x=p.x-30;x<p.x+30;x+=2)if(sceneEditing.houseAt({x,y},h)){return {x:r.left+(160+(x-160)*c.renderZoom+c.panX)*r.width/320,y:r.top+(182+(y-182)*c.renderZoom+c.panY)*r.height/200};}});
  assert.equal(await page.evaluate(({x,y})=>document.elementFromPoint(x,y).id,target),'sky-canvas');
  await page.mouse.click(target.x,target.y);assert.equal((await page.evaluate(()=>worldManager.getCharacter())).column,8,'first tap turns toward the house');
  await page.mouse.click(target.x,target.y);
@@ -16,10 +16,10 @@ try{
  const dx=Math.max(4-character.column,0,character.column-6),dy=Math.max(2-character.row,0,character.row-4);
  assert.equal(dx+dy,1,'character approaches house footprint');
  const front=await page.evaluate(()=>{const c=worldManager.getCharacter();return {column: c.column-1,row:c.row};});
- const frontPoint=await page.evaluate(f=>{let p=sceneEditing.centre(f),cam=sceneEditing.camera(),r=document.querySelector('#sky-canvas').getBoundingClientRect();return {x:r.left+(160+(p.x-160)*.9+cam.panX)*r.width/320,y:r.top+(182+(p.y-182)*.9+cam.panY)*r.height/200}},front);
+ const frontPoint=await page.evaluate(f=>{let p=sceneEditing.centre(f),cam=sceneEditing.camera(),r=document.querySelector('#sky-canvas').getBoundingClientRect();return {x:r.left+(160+(p.x-160)*cam.renderZoom+cam.panX)*r.width/320,y:r.top+(182+(p.y-182)*cam.renderZoom+cam.panY)*r.height/200}},front);
  await page.mouse.click(frontPoint.x,frontPoint.y);assert.match(await page.locator('#gameplay-movement-status').innerText(),/Rumah dipilih/i);
  assert(await page.locator('#hand-object-dialog').evaluate(e=>e.open));assert(await page.locator('#hand-object-take').isDisabled());await page.locator('#hand-object-move').click();
- const placement=await page.evaluate(()=>{let p=sceneEditing.centre({column:10,row:7}),cam=sceneEditing.camera(),r=document.querySelector('#sky-canvas').getBoundingClientRect();return {x:r.left+(160+(p.x-160)*.9+cam.panX)*r.width/320,y:r.top+(182+(p.y-182)*.9+cam.panY)*r.height/200}});await page.mouse.click(placement.x,placement.y);
+ const placement=await page.evaluate(()=>{let p=sceneEditing.centre({column:10,row:7}),cam=sceneEditing.camera(),r=document.querySelector('#sky-canvas').getBoundingClientRect();return {x:r.left+(160+(p.x-160)*cam.renderZoom+cam.panX)*r.width/320,y:r.top+(182+(p.y-182)*cam.renderZoom+cam.panY)*r.height/200}});await page.mouse.click(placement.x,placement.y);
  assert.equal((await page.evaluate(()=>worldManager.getHouse())).column,10);assert.equal((await page.evaluate(()=>worldManager.getHouse())).row,7);assert.match(await page.locator('#gameplay-movement-status').innerText(),/berhasil dipindahkan/i);
  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.worldManager);assert.equal((await page.evaluate(()=>worldManager.getHouse())).column,10,'house position persists');
  console.log('Hand selection and opaque house hit approach: OK');

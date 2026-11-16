@@ -66,7 +66,7 @@ const {chromium} = require('playwright-core');
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...target,id:2}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
     assert.equal(await page.evaluate(()=>worldManager.getActive().tiles[104]),4,'touch paints stone on E5');
     await page.locator('#mode-gameplay').click();
-    const destination=await page.evaluate(()=>{const tile=sceneEditing.centre({column:13,row:12}),c=sceneEditing.camera(),r=document.getElementById('sky-canvas').getBoundingClientRect();return {x:r.left+(160+(tile.x-160)*.36*2.5+c.panX)*r.width/320,y:r.top+(182+(tile.y-182)*.36*2.5+c.panY)*r.height/200};});
+    const destination=await page.evaluate(()=>{const tile=sceneEditing.centre({column:13,row:12}),c=sceneEditing.camera(),r=document.getElementById('sky-canvas').getBoundingClientRect();return {x:r.left+(160+(tile.x-160)*c.renderZoom+c.panX)*r.width/320,y:r.top+(182+(tile.y-182)*c.renderZoom+c.panY)*r.height/200};});
     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...destination,id:3}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
     assert.equal(await page.evaluate(()=>worldManager.getCharacter().column),13,'gameplay touch moves character');
     assert.deepEqual(errors,[]);

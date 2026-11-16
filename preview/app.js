@@ -2120,10 +2120,10 @@
     }, true);
   }
 
-  // Gameplay uses 2.5 times the editor's default fit scale, independent of its camera controls.
+  // Gameplay uses 3 times the editor's default fit scale, independent of its camera controls.
   function applyGameplayCamera() {
     editorZoom = 1;
-    islandZoom = baseFitZoom() * 2.5;
+    islandZoom = baseFitZoom() * 3;
     const character = gameplayDraft || window.worldManager?.getCharacter();
     const target = character?.visible ? characterCentre(character) : {x: WIDTH / 2, y: islandCenterY};
     // A small screen-space dead zone keeps short walks visible while the camera
@@ -2176,7 +2176,7 @@
   // Geometry bridge for the preview editor. Coordinates are transformed through the actual
   // canvas bounds and island zoom, so dragging remains correct on different device sizes.
   window.sceneEditing = Object.freeze({
-    camera() { return {zoom: editorZoom, panX: cameraPanX, panY: cameraPanY}; },
+    camera() { return {zoom: editorZoom, renderZoom: islandZoom, panX: cameraPanX, panY: cameraPanY}; },
     setMode: setPreviewCameraMode,
     setGameplayRoute(route, next=1) {
       gameplayRoute = route ? {tiles:route.map(tile=>({column:tile.column,row:tile.row})),next} : null;
