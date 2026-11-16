@@ -2,6 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const root=path.join(__dirname,'../preview');
 const dom=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:'https://example.test/',runScripts:'outside-only'}),w=dom.window,d=w.document;
 const stage=d.querySelector('.preview-stage'),canvas=d.getElementById('sky-canvas');stage.dataset.mode='editor';
+const controls=d.querySelector('.editor-camera-controls');assert(controls.closest('.device-wrap'));assert.equal(controls.closest('.device-frame'),null,'editor camera controls stay outside the tablet');assert.equal(controls.closest('.device-display'),null);
 canvas.getBoundingClientRect=()=>({width:640,height:400});canvas.setPointerCapture=()=>{};
 let camera={zoom:1,panX:0,panY:0}, world={id:'old'};
 w.worldManager={getActive:()=>world};w.sceneEditing={camera:()=>({...camera}),setCamera:(z,x,y)=>{camera={zoom:Math.max(.1,Math.min(2,z)),panX:x,panY:y};return true}};
