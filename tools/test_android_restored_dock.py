@@ -11,7 +11,13 @@ for name in keys:
     assert node.tag=='ImageButton' and node.get(ns+'src')=='@drawable/dock_tool_'+name
     assert ('belum tersedia' in node.get(ns+'contentDescription')) == (name != 'hand')
     assert node.get(ns+'background')=='@drawable/bg_dock_hand'
-    ET.parse(root/'app/src/main/res/drawable'/('dock_tool_'+name+'.xml'))
+    if name == 'hand':
+        import struct
+        png=(root/'app/src/main/res/drawable-nodpi/dock_tool_hand.png').read_bytes()
+        assert png==(root/'preview/assets/hud/tools/glove-selected.png').read_bytes()
+        assert png[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',png[16:24])==(512,512) and png[25]==6
+    else:
+        ET.parse(root/'app/src/main/res/drawable'/('dock_tool_'+name+'.xml'))
 assert '@+id/dock_add_tab' in ids
 assert '@+id/dock_close' not in ids
 java=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
