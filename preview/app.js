@@ -962,11 +962,21 @@
     ];
   }
 
+  function tileVisible(tile, extra = 0) {
+    const [ax, ay] = islandAnchor();
+    const x=ax+cameraPanX+(tile.x-ax)*islandZoom;
+    const y=ay+cameraPanY+(tile.y-ay)*islandZoom;
+    const hw=ISLAND_TILE_WIDTH*islandZoom/2, hh=islandTileHeight*islandZoom/2;
+    return x+hw>=0 && x-hw<=WIDTH && y+hh+extra*islandZoom>=0 && y-hh<=HEIGHT;
+  }
+
   function clipIslandSurface() {
     const tiles = window.worldManager?.getActive()?.tiles;
-    if (tiles && tiles.some(value => value === 0)) {
+    // A complex multi-diamond clip is expensive on mobile. Only create it
+    // when an absent tile intersects the viewport, and omit offscreen tiles.
+    if (tiles && ISLAND_TILES.some(tile => !tiles[tile.row * ISLAND_GRID_SIZE + tile.column] && tileVisible(tile))) {
       ctx.beginPath();
-      for (const tile of ISLAND_TILES) if (tiles[tile.row * ISLAND_GRID_SIZE + tile.column]) {
+      for (const tile of ISLAND_TILES) if (tiles[tile.row * ISLAND_GRID_SIZE + tile.column] && tileVisible(tile, ISLAND_DEPTH)) {
         const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
         ctx.moveTo(tile.x, tile.y-hh); ctx.lineTo(tile.x+hw,tile.y);
         ctx.lineTo(tile.x,tile.y+hh); ctx.lineTo(tile.x-hw,tile.y); ctx.closePath();
@@ -1715,7 +1725,7 @@
     const tileData = window.worldManager?.getActive()?.tiles;
     if (tileData && tileData.some(value => value !== 1)) {
       for (const tile of ISLAND_TILES) {
-        if (!tileData[tile.row * ISLAND_GRID_SIZE + tile.column]) continue;
+        if (!tileData[tile.row * ISLAND_GRID_SIZE + tile.column] || !tileVisible(tile, ISLAND_DEPTH)) continue;
         const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
         // Full-depth faces expose the silhouette and the soil beneath each remaining tile.
         const leftOpen = tile.row === ISLAND_GRID_SIZE - 1 || !tileData[(tile.row + 1) * ISLAND_GRID_SIZE + tile.column];
@@ -1760,7 +1770,7 @@
     drawSmoothIslandPolygon([
       [centerX, topY], [rightX, middleY], [centerX, bottomY], [leftX, middleY]
     ], tileSeam, tileSeam);
-    ISLAND_TILES.forEach(tile => drawGrassTile(tile, palette, sunlight));
+    ISLAND_TILES.forEach(tile => { if (tileVisible(tile, ISLAND_DEPTH)) drawGrassTile(tile, palette, sunlight); });
     }
     const shadowLight = sunAltitude <= MOON_VISIBLE_BELOW_SUN && moon
       ? moon : {altitude: sunAltitude, hourAngleDegrees: sunHourAngle};
