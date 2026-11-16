@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true"><shape><solid android:color="#F8E6B6"/><stroke android:width="2dp" android:color="#56854D"/><corners android:radius="5dp"/></shape></item>
+    <item android:drawable="@drawable/bg_date_hud_panel"/>
+</selector>

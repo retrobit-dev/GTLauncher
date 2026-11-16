@@ -383,3 +383,5 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 /* The label can use the whole tablet width while staying below its button. */
 .weather-preview-control { width:100%; min-width:0; }
 .weather-mode-label { width:100%; max-width:none; overflow-wrap:anywhere; }
+
+.home-dock button[aria-pressed="true"] { background:#f8e6b6; border-color:#56854d; box-shadow:inset 0 0 0 .12cqw #56854d; }

@@ -19,10 +19,11 @@ assert.throws(()=>season.classify(rainfall(0),new Date('2026-12-01T12:00:00Z')))
  for(const [c,name] of [[3,'cloud'],[63,'rain'],[73,'snow'],[95,'storm']]) {code=c;w.dispatchEvent(new w.Event('hudweatherchange'));assert(d.getElementById('hud-phase').getAttribute('src').includes(`hud-weather-day-${name}.svg`));assert(fs.existsSync(path.join(root,d.getElementById('hud-phase').getAttribute('src'))));}
  altitude=-10;code=63;w.dispatchEvent(new w.Event('hudweatherchange'));assert(d.getElementById('hud-phase').getAttribute('src').includes('hud-weather-night-rain.svg'));assert.match(d.getElementById('hud-phase').alt,/Malam.*hujan/);
  code=null;w.dispatchEvent(new w.Event('hudweatherchange'));assert.match(d.getElementById('hud-phase').alt,/cuaca belum diketahui/);
+ const hand=d.querySelector('[data-dock="hand"]');hand.click();assert.equal(hand.getAttribute('aria-pressed'),'true');assert(!dialog.open,'hand selects interaction rather than opening a placeholder');
  d.querySelector('[data-dock="bag"]').click();assert(dialog.open);assert.match(d.getElementById('dock-message').textContent,/belum dipulihkan/);
  d.getElementById('dock-close').click();d.querySelector('[data-dock="settings"]').click();assert.match(d.getElementById('dock-message').textContent,/Android.*pengaturan perangkat/);
  d.getElementById('dock-close').click();assert(!dialog.open);
- for(const img of d.querySelectorAll('.character-hud img, .home-dock img'))assert(fs.existsSync(path.join(root,img.getAttribute('src'))));
+ for(const img of d.querySelectorAll('.character-hud img, .home-dock img'))assert(fs.existsSync(path.join(root,img.getAttribute('src').split('?')[0])));
  assert.equal(d.querySelectorAll('.character-hud-stats > div').length,4);
  assert.equal(d.querySelectorAll('.home-dock button').length,11);
  assert.equal(d.querySelector('.dock-tab.selected').textContent,'Tools');

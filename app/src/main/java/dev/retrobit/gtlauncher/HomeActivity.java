@@ -305,7 +305,9 @@ public class HomeActivity extends Activity {
             return true;
         });
         findViewById(R.id.drawer_back).setOnClickListener(view -> closeDrawer());
-        int[] dockTools = {R.id.dock_tool_hand, R.id.dock_tool_hoe, R.id.dock_tool_shovel,
+        findViewById(R.id.dock_tool_hand).setSelected(true);
+        findViewById(R.id.dock_tool_hand).setOnClickListener(view -> { view.setSelected(true); Toast.makeText(this, "Tangan aktif: ketuk tanah atau objek.", Toast.LENGTH_SHORT).show(); });
+        int[] dockTools = {R.id.dock_tool_hoe, R.id.dock_tool_shovel,
                 R.id.dock_tool_water, R.id.dock_tool_sickle, R.id.dock_tool_axe,
                 R.id.dock_tool_pickaxe, R.id.dock_tool_fishing};
         for (int tool : dockTools) findViewById(tool).setOnClickListener(view ->
