@@ -23,6 +23,10 @@ while q:
 box=im.getchannel('A').getbbox()
 if not box or box[0]==0 or box[1]==0 or box[2]==w or box[3]==h:raise ValueError(f'background extraction failed: {box}')
 im=im.crop(box)
+# Keep the same artwork, tilted like the other dock tools.
+im=im.rotate(-40, resample=Image.Resampling.BICUBIC, expand=True)
+rotated_box=im.getchannel('A').getbbox()
+im=im.crop(rotated_box)
 scale=min(464/im.width,464/im.height)
 im=im.resize((round(im.width*scale),round(im.height*scale)),Image.Resampling.LANCZOS)
 canvas=Image.new('RGBA',(512,512));canvas.alpha_composite(im,((512-im.width)//2,(512-im.height)//2))
