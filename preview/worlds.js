@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   const KEY = 'gtlauncher.worlds.v1';
+  const HOME_BACKUP_PREFIX = 'gtlauncher.home-before-25.';
   const BASE = Object.freeze({id: 'base', name: 'Base World', description: 'Dasar bersama untuk semua world.', color: null});
   const BUILT_INS = [BASE];
   const dialog = document.getElementById('world-dialog');
@@ -129,7 +130,25 @@
     }
   }
   state = readState();
-  // Never migrate or write a world merely by opening the preview.
+  // Home is upgraded only when the complete saved state is readable; a copy of
+  // the original storage is kept before any write, including terrain holes.
+  function upgradeHome25() {
+    if (storageError || loadedRaw === null) return false;
+    const home = state.worlds.find(w => w.name.trim().toLocaleLowerCase() === 'home' && w.gridSize !== 25);
+    if (!home) return false;
+    const oldSize = home.gridSize || 9, tiles = Array(625).fill(1);
+    if (home.tiles) for (let r=0;r<oldSize;r++) for (let c=0;c<oldSize;c++) tiles[r*25+c]=home.tiles[r*oldSize+c];
+    try {
+      if (localStorage.getItem(KEY) !== loadedRaw) { storageError='Data world berubah di tab lain. Muat ulang sebelum mengedit; data tidak ditimpa.'; return false; }
+      const backupKey=HOME_BACKUP_PREFIX + Date.now() + '-' + Math.random().toString(36).slice(2);
+      localStorage.setItem(backupKey,loadedRaw);
+      if (localStorage.getItem(backupKey)!==loadedRaw) throw new Error('backup failed');
+      const next={...state,worlds:state.worlds.map(w=>w===home?{...w,gridSize:25,tiles}:w)};
+      if(localStorage.getItem(KEY)!==loadedRaw) { storageError='Data world berubah di tab lain. Muat ulang sebelum mengedit; data tidak ditimpa.'; return false; }
+      const raw=JSON.stringify(next);localStorage.setItem(KEY,raw);loadedRaw=raw;state=next;return true;
+    } catch (_) { storageError='Home belum dapat diperbarui. Data lama tidak diubah; periksa ruang penyimpanan browser.'; return false; }
+  }
+  const homeUpgraded = upgradeHome25();
 
   function activeWorld() { return BUILT_INS.find(world => world.id === state.activeId)
     || state.worlds.find(world => world.id === state.activeId) || BASE; }
@@ -300,6 +319,8 @@
     const active = activeWorld();
     activeLabel.textContent = storageError ? `World: ${displayName(active)} · Data bermasalah` : `World: ${displayName(active)}`;
     $('world-backup').hidden = !storageError && !state.worlds.some(w => [20,25].includes(w.gridSize));
+    try { $('world-backup-home').hidden = !Object.keys(localStorage).some(key => key.startsWith(HOME_BACKUP_PREFIX)); }
+    catch (_) { $('world-backup-home').hidden = true; }
     $('world-create-home').hidden = Boolean(storageError) || state.worlds.some(w => w.name.trim().toLocaleLowerCase() === 'home');
     const storageInfo = $('world-storage-info');
     try {
@@ -378,6 +399,15 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       announce('Cadangan data asli diunduh. Data di browser tidak diubah.');
     } catch (_) { announce('Cadangan tidak dapat dibaca dari penyimpanan browser.'); }
+  });
+  $('world-backup-home').addEventListener('click', () => {
+    try {
+      const key=Object.keys(localStorage).filter(k=>k.startsWith(HOME_BACKUP_PREFIX)).sort().pop();
+      const raw=key && localStorage.getItem(key); if(!raw) { announce('Cadangan Home tidak ditemukan.');return; }
+      const url=URL.createObjectURL(new Blob([raw],{type:'application/json'})), link=document.createElement('a');
+      link.href=url;link.download='gtlauncher-home-sebelum-25.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      announce('Cadangan sebelum Home diperbarui diunduh.');
+    } catch (_) { announce('Cadangan Home tidak dapat dibaca.'); }
   });
   $('world-new').addEventListener('click', () => showEditor(null));
   $('world-create-home').addEventListener('click', () => {
@@ -512,4 +542,6 @@
   }
   window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, updateTiles});
   render();
+  if (homeUpgraded) announce('Home diperbarui menjadi 25×25. Cadangan sebelum perubahan tersedia untuk diunduh.');
+  else if (storageError) announce(storageError);
 })();

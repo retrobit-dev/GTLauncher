@@ -18,7 +18,10 @@ const old = {id:'old',name:'Home',description:'',color:'#a8c795',showCharacter:t
 { const {w,d}=setup();const tabs=d.querySelector('.mode-tabs'),world=d.getElementById('world-button');assert.equal(tabs.parentElement,world.parentElement);assert.equal(tabs.nextElementSibling,world,'mode tabs immediately precede World');assert.equal(tabs.closest('.device-frame'),null);w.close(); }
 {
  const original={worlds:[old],activeId:'old'};const {w,d}=setup(original);
- assert.deepEqual(JSON.parse(w.localStorage.getItem(key)),original,'opening preview must not write or migrate Home');
+ assert.equal(w.worldManager.getActive().gridSize,25,'legacy Home upgraded');
+ const backup=Object.keys(w.localStorage).find(k=>k.startsWith('gtlauncher.home-before-25.'));
+ assert.deepEqual(JSON.parse(w.localStorage.getItem(backup)),original,'exact old data backed up first');
+ assert.equal(d.getElementById('world-backup-home').hidden,false);
  d.getElementById('mode-map-editor').click();
  assert.equal(d.getElementById('mode-map-editor').getAttribute('aria-pressed'),'true');
  assert.equal(d.getElementById('object-edit-button').getAttribute('aria-pressed'),'true');
@@ -54,4 +57,4 @@ const old = {id:'old',name:'Home',description:'',color:'#a8c795',showCharacter:t
  assert.equal(d.getElementById('object-edit-button').getAttribute('aria-pressed'),'false');
  d.getElementById('mode-gameplay').click();assert.equal(d.getElementById('edit-status').hidden,true);w.close();
 }
-console.log('Mode tabs and icon controls; storage read-only guard, no automatic migration and concurrent write guard: OK');
+console.log('Mode tabs and icon controls; storage read-only guard, backed-up Home migration and concurrent write guard: OK');
