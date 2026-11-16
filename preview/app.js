@@ -46,10 +46,10 @@
   houseBackImage.src = './assets/house-back.png';
   const PLAYER_WIDTH = 13.5;
   const PLAYER_HEIGHT = 25;
-  // Base is a locked 20×20 reference; existing custom worlds stay on their 9×9 grid.
-  let ISLAND_GRID_SIZE = (window.worldManager?.getActive()?.id === 'base' || window.worldManager?.getActive()?.gridSize === 20) ? 20 : 9;
+  // Base and new worlds are 25×25; older worlds retain their original geometry.
+  let ISLAND_GRID_SIZE = window.worldManager?.getActive()?.id === 'base' ? 25 : (window.worldManager?.getActive()?.gridSize || 9);
   const ISLAND_TILE_WIDTH = 28;
-  const ISLAND_COLUMN_LABELS = 'ABCDEFGHIJKLMNOPQRST';
+  const ISLAND_COLUMN_LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXY';
   // Logical grid IDs are A1–I9: columns A–I left to right, rows 1–9 top to bottom.
   // The diamond compass frame is rotated 45° clockwise from the screen diagonal so the grid
   // axes are cardinal: moving along a column runs east–west, moving along a row runs
@@ -67,11 +67,11 @@
   let islandTileHeight = ISLAND_TILE_WIDTH
     * Math.sin(islandCameraElevation * Math.PI / 180);
   // Fit the larger locked Base in the existing preview viewport; legacy worlds retain their scale.
-  let islandZoom = ISLAND_GRID_SIZE === 20 ? 9 / 20 : 1;
+  let islandZoom = 9 / ISLAND_GRID_SIZE;
   let editorZoom = 1, cameraPanX = 0, cameraPanY = 0;
   let cameraMode = 'gameplay', savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
   let cameraWorldId = window.worldManager?.getActive()?.id;
-  function baseFitZoom() { return ISLAND_GRID_SIZE === 20 ? 9 / 20 : 1; }
+  function baseFitZoom() { return 9 / ISLAND_GRID_SIZE; }
   // Interior tile faces stay shallow; exposed perimeter faces extend through the grass band.
   const ISLAND_TILE_SIDE_DEPTH = 2.5;
   // Explicit side-wall bands: 8 units of grass above 16 units of exposed soil.
@@ -965,7 +965,7 @@
     const tiles = window.worldManager?.getActive()?.tiles;
     if (tiles && tiles.some(value => value === 0)) {
       ctx.beginPath();
-      for (const tile of ISLAND_TILES) if (tiles[tile.row * 20 + tile.column]) {
+      for (const tile of ISLAND_TILES) if (tiles[tile.row * ISLAND_GRID_SIZE + tile.column]) {
         const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
         ctx.moveTo(tile.x, tile.y-hh); ctx.lineTo(tile.x+hw,tile.y);
         ctx.lineTo(tile.x,tile.y+hh); ctx.lineTo(tile.x-hw,tile.y); ctx.closePath();
@@ -1712,14 +1712,14 @@
     const tileData = window.worldManager?.getActive()?.tiles;
     if (tileData && tileData.some(value => value !== 1)) {
       for (const tile of ISLAND_TILES) {
-        if (!tileData[tile.row * 20 + tile.column]) continue;
+        if (!tileData[tile.row * ISLAND_GRID_SIZE + tile.column]) continue;
         const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
         // Full-depth faces expose the silhouette and the soil beneath each remaining tile.
-        const leftOpen = tile.row === 19 || !tileData[(tile.row + 1) * 20 + tile.column];
-        const rightOpen = tile.column === 19 || !tileData[tile.row * 20 + tile.column + 1];
+        const leftOpen = tile.row === ISLAND_GRID_SIZE - 1 || !tileData[(tile.row + 1) * ISLAND_GRID_SIZE + tile.column];
+        const rightOpen = tile.column === ISLAND_GRID_SIZE - 1 || !tileData[tile.row * ISLAND_GRID_SIZE + tile.column + 1];
         if (leftOpen) drawSmoothIslandPolygon([[tile.x-hw,tile.y],[tile.x,tile.y+hh],[tile.x,tile.y+hh+ISLAND_DEPTH],[tile.x-hw,tile.y+ISLAND_DEPTH]], palette.soilLight, palette.soilDark);
         if (rightOpen) drawSmoothIslandPolygon([[tile.x,tile.y+hh],[tile.x+hw,tile.y],[tile.x+hw,tile.y+ISLAND_DEPTH],[tile.x,tile.y+hh+ISLAND_DEPTH]], palette.soilDark, palette.soilDark);
-        drawGrassTile(tile, palette, sunlight, tileData[tile.row * 20 + tile.column]);
+        drawGrassTile(tile, palette, sunlight, tileData[tile.row * ISLAND_GRID_SIZE + tile.column]);
       }
     } else {
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.
@@ -2033,7 +2033,7 @@
       cameraWorldId = nextWorldId;
       savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
     }
-    const nextSize = nextWorldId === 'base' || window.worldManager?.getActive()?.gridSize === 20 ? 20 : 9;
+    const nextSize = nextWorldId === 'base' ? 25 : (window.worldManager?.getActive()?.gridSize || 9);
     if (nextSize !== ISLAND_GRID_SIZE) {
       ISLAND_GRID_SIZE = nextSize;
       editorZoom = 1; cameraPanX = 0; cameraPanY = 0;

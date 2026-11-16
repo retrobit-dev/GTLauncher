@@ -7,6 +7,7 @@ assert.equal(Path.find(w20,{column:0,row:0},{column:1,row:0},null),null,'water c
 assert.equal(Path.find(w20,{column:0,row:0},{column:20,row:0},null),null);
 assert.equal(Path.find(w20,{column:0,row:0},{column:4,row:4},{column:3,row:3,visible:true}),null,'house blocks footprint');
 assert(Path.find({}, {column:0,row:0},{column:8,row:8},null));assert.equal(Path.find({}, {column:0,row:0},{column:9,row:8},null),null);
+const w25={gridSize:25,tiles:Array(625).fill(1)};assert(Path.find(w25,{column:0,row:0},{column:24,row:24},null));assert.equal(Path.find(w25,{column:0,row:0},{column:25,row:24},null),null);
 const dom=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:'https://example.test/',runScripts:'outside-only'}),win=dom.window,d=win.document;
 for(const dialog of d.querySelectorAll('dialog')){dialog.showModal=()=>dialog.open=true;dialog.close=()=>dialog.open=false;}
 const ctx=new Proxy({createLinearGradient:()=>({addColorStop(){}}),createRadialGradient:()=>({addColorStop(){}})},{get:(o,k)=>k in o?o[k]:()=>{},set:(o,k,v)=>(o[k]=v,true)});
@@ -14,12 +15,12 @@ win.HTMLCanvasElement.prototype.getContext=()=>ctx;win.matchMedia=()=>({matches:
 const canvas=d.getElementById('sky-canvas');canvas.getBoundingClientRect=()=>({left:0,top:0,width:640,height:400});
 for(const name of ['worlds.js','object-editor.js','app.js','preview-modes.js','editor-camera.js','gameplay-path.js','gameplay-movement.js'])win.eval(fs.readFileSync(path.join(root,name),'utf8'));
 d.getElementById('world-new').click();d.getElementById('world-name').value='Bergerak';d.getElementById('world-character').checked=true;d.getElementById('world-form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
-assert.equal(win.worldManager.getCharacter().column,9);
-function tap(c,r){const target=win.sceneEditing.centre({column:c,row:r}),cam=win.sceneEditing.camera(),zoom=.45*2.5;const x=(160+(target.x-160)*zoom+cam.panX)*2,y=(182+(target.y-182)*zoom+cam.panY)*2;for(const type of ['pointerdown','pointerup']){const e=new win.MouseEvent(type,{bubbles:true,cancelable:true,clientX:x,clientY:y,button:0});Object.defineProperties(e,{pointerId:{value:1},pointerType:{value:'touch'}});canvas.dispatchEvent(e);}}
-tap(10,9);assert.equal(win.worldManager.getCharacter().column,10,'gameplay tap moves and persists');assert.equal(win.worldManager.getCharacter().facing,'E');
-let active=win.worldManager.getActive(),modified=active.tiles.slice();modified[9*20+11]=3;assert(win.worldManager.updateTiles(active.id,modified));
-tap(11,9);assert.equal(win.worldManager.getCharacter().column,10);assert.match(d.getElementById('gameplay-movement-status').textContent,/tidak dapat dicapai/);
-d.getElementById('mode-map-editor').click();const before=win.localStorage.getItem('gtlauncher.worlds.v1');tap(11,9);assert.equal(win.localStorage.getItem('gtlauncher.worlds.v1'),before,'editor tap does not initiate gameplay walking');
+assert.equal(win.worldManager.getCharacter().column,12);
+function tap(c,r){const target=win.sceneEditing.centre({column:c,row:r}),cam=win.sceneEditing.camera(),zoom=.36*2.5;const x=(160+(target.x-160)*zoom+cam.panX)*2,y=(182+(target.y-182)*zoom+cam.panY)*2;for(const type of ['pointerdown','pointerup']){const e=new win.MouseEvent(type,{bubbles:true,cancelable:true,clientX:x,clientY:y,button:0});Object.defineProperties(e,{pointerId:{value:1},pointerType:{value:'touch'}});canvas.dispatchEvent(e);}}
+tap(13,12);assert.equal(win.worldManager.getCharacter().column,13,'gameplay tap moves and persists');assert.equal(win.worldManager.getCharacter().facing,'E');
+let active=win.worldManager.getActive(),modified=active.tiles.slice();modified[12*25+14]=3;assert(win.worldManager.updateTiles(active.id,modified));
+tap(14,12);assert.equal(win.worldManager.getCharacter().column,13);assert.match(d.getElementById('gameplay-movement-status').textContent,/tidak dapat dicapai/);
+d.getElementById('mode-map-editor').click();const before=win.localStorage.getItem('gtlauncher.worlds.v1');tap(14,12);assert.equal(win.localStorage.getItem('gtlauncher.worlds.v1'),before,'editor tap does not initiate gameplay walking');
 dom.window.close();console.log('Gameplay routing: 9x9/20x20, obstacles, water, tap, persistence and editor isolation OK');
 {
  const run=new JSDOM('<main class="preview-stage" data-mode="gameplay"><canvas id="sky-canvas"></canvas><p id="gameplay-movement-status"></p><button id="mode-map-editor"></button></main>',{url:'https://example.test/',runScripts:'outside-only'}),w=run.window,d=w.document,c=d.querySelector('canvas');

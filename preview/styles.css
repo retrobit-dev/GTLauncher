@@ -364,3 +364,6 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 
 .movement-status { margin:0; color:#725322; font:11px system-ui; text-align:center; }
 .movement-status[hidden] { display:none; }
+
+/* Prevent touch scrolling from cancelling gameplay taps on the canvas. */
+.preview-stage[data-mode="gameplay"] .sky-canvas { touch-action: none; }

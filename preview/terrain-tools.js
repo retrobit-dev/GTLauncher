@@ -11,7 +11,7 @@
     tool=next; gesture=null;
     for (const [name, button] of Object.entries(buttons)) button.setAttribute('aria-pressed', String(name===tool));
     canvas.classList.toggle('is-terrain-editing',Boolean(tool));
-    status.textContent=tool ? 'Ketuk atau seret tile pada world 20×20.' : '';
+    status.textContent=tool ? 'Ketuk atau seret tile pada world 20×20 atau 25×25.' : '';
   }
   for (const [name,button] of Object.entries(buttons)) button.addEventListener('click',()=>{
     if (pan.getAttribute('aria-pressed')==='true') pan.click();
@@ -20,25 +20,25 @@
   pan.addEventListener('click',()=>{if(pan.getAttribute('aria-pressed')==='true') select(null);});
   document.getElementById('mode-gameplay').addEventListener('click',()=>select(null));
   window.addEventListener('worldchange',()=>{const id=worlds.getActive().id;if(id!==lastWorld){lastWorld=id;select(null);}});
-  function fill(tiles,start,value) {
+  function fill(tiles,start,value,size) {
     const target=tiles[start];if(target===value)return;
     const queue=[start];tiles[start]=value;
     for(let i=0;i<queue.length;i++) {
-      const at=queue[i],x=at%20,y=Math.floor(at/20);
+      const at=queue[i],x=at%size,y=Math.floor(at/size);
       for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
-        const nx=x+dx,ny=y+dy;if(nx<0||nx>=20||ny<0||ny>=20)continue;
-        const n=ny*20+nx;if(tiles[n]===target){tiles[n]=value;queue.push(n);}
+        const nx=x+dx,ny=y+dy;if(nx<0||nx>=size||ny<0||ny>=size)continue;
+        const n=ny*size+nx;if(tiles[n]===target){tiles[n]=value;queue.push(n);}
       }
     }
   }
   function apply(event) {
     const world=worlds.getActive();
-    if(world.id==='base'||world.gridSize!==20||!Array.isArray(world.tiles)) {
-      status.textContent='Buat atau buka world 20×20; Base dan world lama tidak diubah.';return;
+    if(world.id==='base'||![20,25].includes(world.gridSize)||!Array.isArray(world.tiles)) {
+      status.textContent='Buat atau buka world 20×20 atau 25×25; Base dan world lama tidak diubah.';return;
     }
     const point=scene.tileAt(scene.toLocal(event.clientX,event.clientY));
-    if(!point) {status.textContent='Di luar area 20×20.';return;}
-    const index=point.row*20+point.column;
+    if(!point) {status.textContent='Di luar area world.';return;}
+    const index=point.row*world.gridSize+point.column;
     if(gesture && gesture.last===index) return;
     if(gesture) gesture.last=index;
     const previous=world.tiles[index], value=Number(material.value);
@@ -47,11 +47,11 @@
       material.value=String(previous);status.textContent='Material diambil.';return;
     }
     const next=world.tiles.slice();
-    if(tool==='fill') fill(next,index,value);
+    if(tool==='fill') fill(next,index,value,world.gridSize);
     else next[index]=tool==='erase'?0:value;
     if(next.every((v,i)=>v===world.tiles[i])) return;
     status.textContent=worlds.updateTiles(world.id,next)
-      ? `${'ABCDEFGHIJKLMNOPQRST'[point.column]}${point.row+1} diperbarui.`
+      ? `${'ABCDEFGHIJKLMNOPQRSTUVWXY'[point.column]}${point.row+1} diperbarui.`
       : 'Tidak disimpan: tile digunakan objek atau penyimpanan bermasalah.';
   }
   canvas.addEventListener('pointerdown',event=>{
