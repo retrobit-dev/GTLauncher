@@ -297,7 +297,10 @@ public class HomeActivity extends Activity {
                         WorldStore.SurfaceObject tree=box==null?skyView.treeAt(event.getX(),event.getY()):null;
                         if(box!=null) approachBox(box);
                         else if(tree!=null) interactTree(tree);
-                        else walkToGround(event.getX(),event.getY());
+                        else {
+                            WorldStore.House house=skyView.houseAt(event.getX(),event.getY());
+                            if(house!=null) approachHouse(house); else walkToGround(event.getX(),event.getY());
+                        }
                     }
                 }
                 return true;
@@ -492,7 +495,7 @@ public class HomeActivity extends Activity {
             if(world==null || !world.showCharacter)return;
             for(WorldStore.House house:world.houses) if(house.covers(target.column,target.row)
                     && (target.column!=world.characterColumn || target.row!=world.characterRow)) {
-                Toast.makeText(this,"Jalan terhalang.",Toast.LENGTH_SHORT).show();return;
+                approachHouse(house);return;
             }
             java.util.List<PortalTravel.Tile> route=PortalTravel.path(
                 new PortalTravel.Tile(world.characterColumn,world.characterRow),target,portalTerrain(world),world.gridSize());
@@ -734,9 +737,21 @@ public class HomeActivity extends Activity {
             walkNearObject(world,box,1,1,"Ketuk tanda seru untuk membuka box.");
         } catch(JSONException e){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }
+    private void approachHouse(WorldStore.House house) {
+        try {
+            WorldStore.World world=worldStore.activeWorld();
+            if(world==null || !world.showCharacter){Toast.makeText(this,"Karakter tidak tersedia.",Toast.LENGTH_SHORT).show();return;}
+            HouseFootprint footprint=HouseFootprint.of(house.design);
+            java.util.List<PortalTravel.Tile> route=PortalTravel.pathBeside(new PortalTravel.Tile(world.characterColumn,world.characterRow),house.column,house.row,footprint.columns,footprint.rows,portalTerrain(world),world.gridSize());
+            if(route==null){Toast.makeText(this,"Jalan menuju rumah terhalang.",Toast.LENGTH_SHORT).show();return;}
+            String message="Di dekat rumah. Interaksi rumah belum tersedia.";
+            if(route.size()==1){Toast.makeText(this,message,Toast.LENGTH_SHORT).show();return;}
+            int generation=++portalWalkGeneration;skyView.setPortalWalkActive(true);walkNearObjectStep(world,route,1,generation,world.characterFacing,message);
+        } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
+    }
     private void walkNearObject(WorldStore.World world,WorldStore.SurfaceObject object,int width,int height,String prompt) {
         PortalTravel.Terrain terrain=portalTerrain(world);PortalTravel.Tile start=new PortalTravel.Tile(world.characterColumn,world.characterRow);
-        java.util.List<PortalTravel.Tile> route=PortalTravel.pathBeside(start,object.column,object.row,width,height,terrain);
+        java.util.List<PortalTravel.Tile> route=PortalTravel.pathBeside(start,object.column,object.row,width,height,terrain,world.gridSize());
         if(route==null){Toast.makeText(this,"Jalan menuju objek terhalang.",Toast.LENGTH_SHORT).show();return;}
         int generation=++portalWalkGeneration;skyView.setPortalWalkActive(true);walkNearObjectStep(world,route,1,generation,world.characterFacing,prompt);
     }

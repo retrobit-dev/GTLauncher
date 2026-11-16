@@ -69,6 +69,16 @@ public class PortalTravelTest {
         assertNull(PortalTravel.pathBeside(new PortalTravel.Tile(0,0),8,8,2,1,clear));
         assertEquals(1,PortalTravel.pathBeside(new PortalTravel.Tile(0,1),1,1,2,2,clear).size());
     }
+    @Test public void pathBesideHouseOnTwentyFiveGrid() {
+        PortalTravel.Terrain terrain=new PortalTravel.Terrain(){
+            public boolean canStand(int c,int r){return !(c>=20 && c<23 && r>=20 && r<23);}
+            public boolean canStep(int c,int r,int x,int y){return true;}
+        };
+        List<PortalTravel.Tile> route=PortalTravel.pathBeside(new PortalTravel.Tile(24,24),20,20,3,3,terrain,25);
+        assertNotNull(route); PortalTravel.Tile end=route.get(route.size()-1);
+        int dx=Math.max(Math.max(20-end.column,0),end.column-22),dy=Math.max(Math.max(20-end.row,0),end.row-22);
+        assertEquals(1,dx+dy); assertNull(PortalTravel.pathBeside(new PortalTravel.Tile(24,24),23,23,3,3,terrain,25));
+    }
     @Test public void confirmChecksFrontPairAndDestinationOccupancy() {
         assertTrue(PortalTravel.canTravel(home,farm,north,clear));
         assertFalse(PortalTravel.canTravel(home,farm,new PortalTravel.Tile(6,1),clear));

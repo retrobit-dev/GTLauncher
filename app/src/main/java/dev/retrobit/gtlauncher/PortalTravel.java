@@ -89,12 +89,15 @@ final class PortalTravel {
     }
     /** Shortest reachable tile sharing an edge with a rectangular object footprint. */
     static List<Tile> pathBeside(Tile start,int column,int row,int width,int height,Terrain terrain) {
-        if(!validTile(start) || terrain==null || width<1 || height<1 || column<0 || row<0 || column+width>SIZE || row+height>SIZE)return null;
+        return pathBeside(start,column,row,width,height,terrain,SIZE);
+    }
+    static List<Tile> pathBeside(Tile start,int column,int row,int width,int height,Terrain terrain,int size) {
+        if(!validTile(start,size) || terrain==null || width<1 || height<1 || column<0 || row<0 || column+width>size || row+height>size)return null;
         List<Tile> best=null;
-        for(int r=Math.max(0,row-1);r<=Math.min(SIZE-1,row+height);r++)for(int c=Math.max(0,column-1);c<=Math.min(SIZE-1,column+width);c++) {
+        for(int r=Math.max(0,row-1);r<=Math.min(size-1,row+height);r++)for(int c=Math.max(0,column-1);c<=Math.min(size-1,column+width);c++) {
             int dx=Math.max(Math.max(column-c,0),c-(column+width-1)),dy=Math.max(Math.max(row-r,0),r-(row+height-1));
             if(dx+dy!=1)continue;
-            List<Tile> candidate=path(start,new Tile(c,r),terrain);
+            List<Tile> candidate=path(start,new Tile(c,r),terrain,size);
             if(candidate!=null && (best==null || candidate.size()<best.size()))best=candidate;
         }
         return best;

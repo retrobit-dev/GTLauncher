@@ -557,6 +557,19 @@ public final class WeatherSkyView extends View {
         if(getWidth()<=0 || getHeight()<=0)return null;float x=islandX(sx),y=islandY(sy);
         for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if(o.type.equals("tree") && opaqueAt(surfaceImage(o),surfaceSpriteBounds(o),x,y,false))return o;}return null;
     }
+    WorldStore.House houseAt(float sx,float sy) {
+        if(getWidth()<=0 || getHeight()<=0)return null;
+        float x=islandX(sx), y=islandY(sy);
+        for(int i=worldHouses.size()-1;i>=0;i--) {
+            WorldStore.House h=worldHouses.get(i); if(!h.visible)continue;
+            boolean mirror=h.facing.equals("N")||h.facing.equals("E"),wide="wide".equals(h.design);
+            float scale=(float)h.scale,cx=SCENE_WIDTH/2f+(h.column-h.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
+            float bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(h.column+h.row+2)*ISLAND_TILE_HEIGHT/2f+1.25f*ISLAND_TILE_HEIGHT*scale;
+            float width=70*scale*(wide?7f/6:1),height=(wide?100:74)*scale;
+            if(opaqueAt(houseArtwork(h),new RectF(cx-width/2,bottom-height,cx+width/2,bottom),x,y,mirror))return h;
+        }
+        return null;
+    }
     private void drawDecorativeFlowers(Canvas canvas) {
         paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(true);
         final float[] offsets={.2f,.5f,.8f};
