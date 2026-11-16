@@ -20,12 +20,12 @@ for(const name of ['worlds.js','object-editor.js','app.js','preview-modes.js','e
 d.getElementById('world-new').click();d.getElementById('world-name').value='Bergerak';d.getElementById('world-character').checked=true;d.getElementById('world-form').dispatchEvent(new win.Event('submit',{bubbles:true,cancelable:true}));
 assert.equal(win.worldManager.getCharacter().column,12);
 function tap(c,r){const target=win.sceneEditing.centre({column:c,row:r}),cam=win.sceneEditing.camera(),zoom=.36*2.5;const x=(160+(target.x-160)*zoom+cam.panX)*2,y=(182+(target.y-182)*zoom+cam.panY)*2;for(const type of ['pointerdown','pointerup']){const e=new win.MouseEvent(type,{bubbles:true,cancelable:true,clientX:x,clientY:y,button:0});Object.defineProperties(e,{pointerId:{value:1},pointerType:{value:'touch'}});canvas.dispatchEvent(e);}}
-tap(13,12);assert.equal(win.worldManager.getCharacter().column,13,'gameplay tap moves and persists');assert.equal(win.worldManager.getCharacter().facing,'E');
+tap(13,12);assert.equal(win.worldManager.getCharacter().column,12);assert.equal(win.worldManager.getCharacter().facing,'E');tap(13,12);assert.equal(win.worldManager.getCharacter().column,13,'gameplay tap moves and persists');assert.equal(win.worldManager.getCharacter().facing,'E');
 let active=win.worldManager.getActive(),modified=active.tiles.slice();modified[12*25+14]=0;assert(win.worldManager.updateTiles(active.id,modified));
 tap(14,12);assert.equal(win.worldManager.getCharacter().column,13);assert.match(d.getElementById('gameplay-movement-status').textContent,/tidak dapat dicapai/);
 modified=win.worldManager.getActive().tiles.slice();modified[12*25+14]=1;assert(win.worldManager.updateTiles(active.id,modified));
 d.querySelector('[data-dock="hand"]').setAttribute('aria-pressed','false');d.querySelector('[data-dock="hoe"]').setAttribute('aria-pressed','true');
-const afterTill=win.localStorage.getItem('gtlauncher.worlds.v1');tap(15,12);assert.equal(win.localStorage.getItem('gtlauncher.worlds.v1'),afterTill,'hoe does not alter ordinary terrain');assert.equal(win.worldManager.getCharacter().column,13);assert.match(d.getElementById('gameplay-movement-status').textContent,/tanah pertanian belum tersedia/);
+const beforeTiles=win.worldManager.getActive().tiles.slice();tap(15,12);assert.equal(win.worldManager.getCharacter().column,15,'hoe permits walking');assert.deepEqual(win.worldManager.getActive().tiles,beforeTiles,'hoe does not alter ordinary terrain');
 d.querySelector('[data-dock="hoe"]').setAttribute('aria-pressed','false');d.querySelector('[data-dock="hand"]').setAttribute('aria-pressed','true');
 d.getElementById('mode-map-editor').click();const before=win.localStorage.getItem('gtlauncher.worlds.v1');tap(14,12);assert.equal(win.localStorage.getItem('gtlauncher.worlds.v1'),before,'editor tap does not initiate gameplay walking');
 dom.window.close();console.log('Gameplay routing: 9x9/20x20, obstacles, water traversal, tap, persistence and editor isolation OK');
@@ -36,7 +36,7 @@ dom.window.close();console.log('Gameplay routing: 9x9/20x20, obstacles, water tr
  w.sceneEditing={setGameplayDraft(){},toLocal:(x,y)=>({x,y}),tileAt:p=>({column:p.x,row:p.y})};
  w.eval(fs.readFileSync(path.join(root,'gameplay-movement.js'),'utf8'));
  function tap(x,y){for(const type of ['pointerdown','pointerup']){let e=new w.MouseEvent(type,{bubbles:true,clientX:x,clientY:y});Object.defineProperties(e,{pointerId:{value:1},pointerType:{value:'touch'}});c.dispatchEvent(e);}}
- tap(4,4);assert.equal(character.column,6);assert.equal(character.row,4);assert.match(d.getElementById('gameplay-movement-status').textContent,/interaksi rumah belum tersedia/i);
+ tap(4,4);assert.equal(character.column,8);tap(4,4);assert.equal(character.column,6);assert.equal(character.row,4);assert.match(d.getElementById('gameplay-movement-status').textContent,/interaksi rumah belum tersedia/i);
  run.window.close();console.log('Hand interaction approaches house without entering its footprint: OK');
 }
 {
@@ -48,9 +48,9 @@ dom.window.close();console.log('Gameplay routing: 9x9/20x20, obstacles, water tr
  w.eval(fs.readFileSync(path.join(root,'gameplay-movement.js'),'utf8'));
  function tap(x,y){for(const type of ['pointerdown','pointerup']){let e=new w.MouseEvent(type,{bubbles:true,clientX:x,clientY:y});Object.defineProperties(e,{pointerId:{value:1},pointerType:{value:'touch'}});c.dispatchEvent(e);}}
  const tick=t=>{const cb=frames.shift();assert(cb,'animation frame scheduled');cb(t);};
- tap(4,0);tick(0);tick(150);assert.equal(draft.column,.5);assert.equal(writes,0,'intermediate positions not saved');
- tick(300);tick(480);tick(660);tick(960);assert.equal(writes,1);assert.equal(character.column,4);assert.equal(draft,null);
- tap(5,0);tick(1000);tap(6,0);tick(1300);assert.equal(writes,2,'first move finishes before queued destination');tick(1400);tick(1700);assert.equal(writes,3);assert.equal(character.column,6,'tap during movement queues the next route');
- tap(7,0);tick(1800);w.dispatchEvent(new w.Event('worldchange'));tick(1950);assert.equal(writes,3,'external world change cancels pending move');assert.equal(draft,null);
+ tap(4,0);assert.equal(character.facing,'E');tap(4,0);tick(0);tick(150);assert.equal(draft.column,.5);assert.equal(writes,1,'only facing is saved before arrival');
+ tick(300);tick(480);tick(660);tick(960);assert.equal(writes,2);assert.equal(character.column,4);assert.equal(draft,null);
+ tap(5,0);tick(1000);tap(6,0);tick(1300);assert.equal(writes,3,'first move finishes before queued destination');tick(1400);tick(1700);assert.equal(writes,4);assert.equal(character.column,6,'tap during movement queues the next route');
+ tap(7,0);tick(1800);w.dispatchEvent(new w.Event('worldchange'));tick(1950);assert.equal(writes,4,'external world change cancels pending move');assert.equal(draft,null);
  run.window.close();console.log('Gameplay interpolated route timing, one final write and cancellation OK');
 }

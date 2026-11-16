@@ -35,6 +35,13 @@
     const house=worlds.getHouse(), houseTarget=house?.visible && target.column>=house.column && target.column<house.column+3 && target.row>=house.row && target.row<house.row+3;
     const route=houseTarget?path.findBeside(world,character,house):path.find(world,character,target,house);
     if(!route){tell(houseTarget?'Jalan menuju rumah terhalang.':'Tile tujuan tidak dapat dicapai.');return;}
+    if(route.length>1){
+      const facing=direction(route[0],route[1]);
+      if(character.facing!==facing){
+        committing=true;let ok=false;try{ok=worlds.updateCharacter(world.id,{...character,facing});}finally{committing=false;}
+        tell(ok?'Arah hadap berubah. Ketuk tujuan lagi untuk bergerak.':'Arah hadap tidak tersimpan.');return;
+      }
+    }
     const end=route[route.length-1], completion=houseTarget?'Di dekat rumah. Interaksi rumah belum tersedia.':'';
     cancel();
     if(route.length===1){tell(completion || 'Karakter sudah berada di tile ini.');return;}
@@ -56,11 +63,22 @@
     if(!gesture||gesture.id!==event.pointerId)return;
     const start=gesture;gesture=null;
     if(stage.dataset.mode!=='gameplay'||Math.hypot(event.clientX-start.x,event.clientY-start.y)>8)return;
-    if(document.querySelector('[data-dock="hoe"]')?.getAttribute('aria-pressed')==='true') {tell('Blok tanah pertanian belum tersedia; tidak ada tile yang diubah.');return;}
-    const hand=document.querySelector('[data-dock="hand"]');
-    if(hand && hand.getAttribute('aria-pressed')!=='true')return;
-    const local=scene.toLocal(event.clientX,event.clientY), house=worlds.getHouse();
-    const target=scene.houseAt?.(local,house) ? {column:house.column,row:house.row} : scene.tileAt(local);
+    const local=scene.toLocal(event.clientX,event.clientY), house=worlds.getHouse(), character=worlds.getCharacter();
+    const selected=document.querySelector('.home-dock [data-dock][aria-pressed="true"]')?.dataset.dock;
+    const offset={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[character.facing]||[0,0];
+    const front={column:character.column+offset[0],row:character.row+offset[1]};
+    const hitHouse=scene.houseAt?.(local,house), tile=scene.tileAt(local);
+    const frontHouse=house?.visible && front.column>=house.column && front.column<house.column+3 && front.row>=house.row && front.row<house.row+3;
+    const hitFront=tile && tile.column===front.column && tile.row===front.row;
+    const hitCharacter=!hitFront && !hitHouse && scene.hit?.(local,character);
+    if(selected && (hitCharacter || ((hitFront || hitHouse) && selected==='hand' && frontHouse))) {
+      if(selected==='hand')tell(frontHouse?'Rumah dipilih. Interaksi rumah belum tersedia.':'Tidak ada objek di depan karakter.');
+      else if(selected==='hoe')tell('Blok tanah pertanian belum tersedia; tidak ada tile yang diubah.');
+      else tell('Fungsi alat ini belum tersedia.');
+      return;
+    }
+    // House artwork is an interaction target only from its facing side; otherwise it is a walking destination.
+    const target=hitHouse?{column:Math.max(house.column,Math.min(house.column+2,character.column)),row:Math.max(house.row,Math.min(house.row+2,character.row))}:tile;
     if(target)move(target);
   });
   canvas.addEventListener('pointercancel',()=>{gesture=null;});

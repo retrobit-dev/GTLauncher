@@ -78,6 +78,15 @@
   }
   const dialog=$('dock-dialog'),title=$('dock-dialog-title'),message=$('dock-message');
   const info={add:['Tab dock','Penambahan tab dock belum dipulihkan.'],phone:['Aplikasi','Daftar aplikasi perangkat hanya tersedia di Android; browser tidak dapat membacanya.'],bag:['Tas','Tas preview belum dipulihkan. Data inventaris tidak diubah.'],settings:['Pengaturan','Di Android tombol ini membuka pengaturan perangkat. Browser tidak dapat membuka pengaturan sistem.']};
-  for(const button of document.querySelectorAll('[data-dock]'))button.addEventListener('click',()=>{if(button.dataset.dock==='tools')return;if(['hand','hoe'].includes(button.dataset.dock)){const select=button.getAttribute('aria-pressed')!=='true';for(const tool of document.querySelectorAll('[data-dock=hand], [data-dock=hoe]'))tool.setAttribute('aria-pressed',String(select && tool===button));window.dispatchEvent(new Event('gameplaytoolchange'));return;}const entry=info[button.dataset.dock] || [button.getAttribute('title').split(' — ')[0], 'Fungsi alat ini belum dipulihkan di preview.'];title.textContent=entry[0];message.textContent=entry[1];if(!dialog.open)dialog.showModal();});
+  const toolNames=['hand','hoe','shovel','water','sickle','axe','pickaxe','fishing'];
+  for(const button of document.querySelectorAll('[data-dock]'))button.addEventListener('click',()=>{
+    if(button.dataset.dock==='tools')return;
+    if(toolNames.includes(button.dataset.dock)){
+      const select=button.getAttribute('aria-pressed')!=='true';
+      for(const name of toolNames)document.querySelector(`[data-dock="${name}"]`)?.setAttribute('aria-pressed',String(select && name===button.dataset.dock));
+      window.dispatchEvent(new Event('gameplaytoolchange'));return;
+    }
+    const entry=info[button.dataset.dock] || [button.getAttribute('title').split(' — ')[0], 'Fungsi alat ini belum dipulihkan di preview.'];title.textContent=entry[0];message.textContent=entry[1];if(!dialog.open)dialog.showModal();
+  });
   $('dock-close').addEventListener('click',()=>dialog.close());
 })();

@@ -1674,7 +1674,7 @@
   }
 
   function drawHoeTarget() {
-    if(cameraMode !== 'gameplay' || document.querySelector('[data-dock="hoe"]')?.getAttribute('aria-pressed') !== 'true')return;
+    if(cameraMode !== 'gameplay' || !document.querySelector('[data-dock="hoe"][aria-pressed="true"], [data-dock="hand"][aria-pressed="true"]'))return;
     const world=window.worldManager?.getActive(), character=gameplayDraft || window.worldManager?.getCharacter();
     if(!world || world.id==='base' || !character?.visible)return;
     const offset={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[character.facing];if(!offset)return;
