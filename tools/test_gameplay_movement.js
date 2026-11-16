@@ -33,6 +33,7 @@ dom.window.close();console.log('Gameplay routing: 9x9/20x20, obstacles, water tr
  const tick=t=>{const cb=frames.shift();assert(cb,'animation frame scheduled');cb(t);};
  tap(4,0);tick(0);tick(150);assert.equal(draft.column,.5);assert.equal(writes,0,'intermediate positions not saved');
  tick(300);tick(480);tick(660);tick(960);assert.equal(writes,1);assert.equal(character.column,4);assert.equal(draft,null);
- tap(5,0);tick(1000);w.dispatchEvent(new w.Event('worldchange'));tick(1150);assert.equal(writes,1,'external world change cancels pending move');assert.equal(draft,null);
+ tap(5,0);tick(1000);tap(6,0);tick(1300);assert.equal(writes,2,'first move finishes before queued destination');tick(1400);tick(1700);assert.equal(writes,3);assert.equal(character.column,6,'tap during movement queues the next route');
+ tap(7,0);tick(1800);w.dispatchEvent(new w.Event('worldchange'));tick(1950);assert.equal(writes,3,'external world change cancels pending move');assert.equal(draft,null);
  run.window.close();console.log('Gameplay interpolated route timing, one final write and cancellation OK');
 }
