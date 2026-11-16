@@ -972,25 +972,27 @@
 
   function clipIslandSurface() {
     const tiles = window.worldManager?.getActive()?.tiles;
-    // A complex multi-diamond clip is expensive on mobile. Only create it
-    // when an absent tile intersects the viewport, and omit offscreen tiles.
-    if (tiles && ISLAND_TILES.some(tile => !tiles[tile.row * ISLAND_GRID_SIZE + tile.column] && tileVisible(tile))) {
-      ctx.beginPath();
-      for (const tile of ISLAND_TILES) if (tiles[tile.row * ISLAND_GRID_SIZE + tile.column] && tileVisible(tile, ISLAND_DEPTH)) {
-        const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
-        ctx.moveTo(tile.x, tile.y-hh); ctx.lineTo(tile.x+hw,tile.y);
-        ctx.lineTo(tile.x,tile.y+hh); ctx.lineTo(tile.x-hw,tile.y); ctx.closePath();
-      }
-      ctx.clip(); return;
-    }
+    const visible = tiles ? ISLAND_TILES.filter(tile => tileVisible(tile)) : [];
+    const holes = visible.filter(tile => !tiles[tile.row * ISLAND_GRID_SIZE + tile.column]);
+    const present = visible.filter(tile => tiles[tile.row * ISLAND_GRID_SIZE + tile.column]);
     const points = islandSurfacePoints();
-    ctx.beginPath();
-    ctx.moveTo(points[0][0], points[0][1]);
-    for (let index = 1; index < points.length; index += 1) {
-      ctx.lineTo(points[index][0], points[index][1]);
+    function traceSurface() {
+      ctx.moveTo(points[0][0], points[0][1]);
+      for (let i=1; i<points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+      ctx.closePath();
     }
-    ctx.closePath();
-    ctx.clip();
+    function traceTile(tile) {
+      const hw=ISLAND_TILE_WIDTH/2, hh=islandTileHeight/2;
+      ctx.moveTo(tile.x,tile.y-hh); ctx.lineTo(tile.x+hw,tile.y);
+      ctx.lineTo(tile.x,tile.y+hh); ctx.lineTo(tile.x-hw,tile.y); ctx.closePath();
+    }
+    ctx.beginPath();
+    if (!holes.length) { traceSurface(); ctx.clip(); }
+    else if (holes.length < present.length) {
+      // Subtract visible holes from a single diamond rather than clipping to
+      // hundreds of individual grass tiles on every animation frame.
+      traceSurface(); holes.forEach(traceTile); ctx.clip('evenodd');
+    } else { present.forEach(traceTile); ctx.clip(); }
   }
 
   // Chooses which body is currently lighting the scene: the sun whenever it is up, otherwise the
