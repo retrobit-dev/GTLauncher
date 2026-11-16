@@ -909,12 +909,21 @@ public final class WeatherSkyView extends View {
             drawObjectSilhouette(canvas,image,x,y,70*scale*(wide?7f/6:1),(wide?100:74)*scale,lightPoint,"N".equals(house.facing)||"E".equals(house.facing));
             paint.setAlpha(originalAlpha);
         }
-        Bitmap sprite = ("N".equals(characterFacing) || "W".equals(characterFacing)) ? mainCharacterBack : mainCharacter;
-        if (showCharacter && sprite != null) {
-            float x = SCENE_WIDTH / 2.0f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2.0f;
-            float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2.0f;
-            drawObjectSilhouette(canvas, sprite, x, y, 13.5f * characterScale, 25 * characterScale, lightPoint,
-                    "W".equals(characterFacing) || "E".equals(characterFacing));
+        Bitmap sprite = currentCharacterSprite();
+        if (showCharacter && sprite != null && light.altitudeDegrees > 0) {
+            float x = SCENE_WIDTH / 2f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2f;
+            float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2f + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2f;
+            float height=25f*characterScale,width=13.5f*characterScale;
+            float[] ray=CharacterShadow.offset(light.azimuthDegrees,light.altitudeDegrees,height);
+            if(Math.abs(ray[1])<height*.12f)ray[1]=Math.copySign(height*.12f,ray[1]);
+            float strength=(float)Math.min(1,light.altitudeDegrees/10)*(1-.65f*(float)Math.max(0,Math.min(1,cloudCover/100)));
+            paint.setColor(Color.argb(Math.round(255*.34f*strength),12,23,40));
+            Matrix transform=new Matrix();transform.setValues(new float[]{1,-ray[0]/height,x-width/2+ray[0],0,-ray[1]/height,y+ray[1],0,0,1});
+            int shadowSave=canvas.save();canvas.concat(transform);
+            if("W".equals(characterFacing)||"E".equals(characterFacing)){canvas.translate(width,0);canvas.scale(-1,1);}
+            paint.setColorFilter(OBJECT_SHADOW_FILTER);paint.setFilterBitmap(true);
+            canvas.drawBitmap(sprite,null,new RectF(0,0,width,height),paint);
+            paint.setColorFilter(null);canvas.restoreToCount(shadowSave);
         }
         // Faint contact diamonds stay attached to the ground anchors as objects move or scale.
         paint.setColor(Color.argb((int) (255 * 0.09), 12, 23, 40));
@@ -979,10 +988,20 @@ public final class WeatherSkyView extends View {
         paint.setColor(Color.WHITE);paint.setStrokeWidth(1.2f);paint.setStrokeJoin(Paint.Join.ROUND);paint.setStyle(Paint.Style.STROKE);
         canvas.drawPath(outline,paint);paint.setStyle(Paint.Style.FILL);
     }
+    private Bitmap currentCharacterSprite() {
+        boolean back="N".equals(characterFacing)||"W".equals(characterFacing);
+        Bitmap sprite=back?mainCharacterBack:mainCharacter;
+        if(characterStepping && animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled()) {
+            int frame=(int)Math.floor((stepIndex-1+stepProgress())*12)%12;
+            Bitmap current=characterRunning?(back?runBack:runFront)[frame]:(back?walkBack:walkFront)[frame];
+            if(current!=null)sprite=current;
+        }
+        return sprite;
+    }
     private void drawMainCharacter(Canvas canvas, double motionTime) {
         boolean back = "N".equals(characterFacing) || "W".equals(characterFacing);
         boolean mirror = "W".equals(characterFacing) || "E".equals(characterFacing);
-        Bitmap sprite = back ? mainCharacterBack : mainCharacter;
+        Bitmap sprite = currentCharacterSprite();
         if (!showCharacter || sprite == null) return;
         float x = SCENE_WIDTH / 2.0f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2.0f;
         float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f
@@ -999,12 +1018,7 @@ public final class WeatherSkyView extends View {
         paint.setFilterBitmap(true);
         int save = canvas.save();
         if (mirror) canvas.scale(-1, 1, x, 0);
-        // Render whole gait frames, rather than cutting sleeves or shoes from the sprite.
-        if (characterStepping && animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled()) {
-            int frame=(int)Math.floor((stepIndex-1+stepProgress())*12)%12;
-            Bitmap walking=characterRunning ? (back ? runBack : runFront)[frame] : (back ? walkBack : walkFront)[frame];
-            if(walking!=null) sprite=walking;
-        }
+        // Use the same complete gait frame as the projected shadow.
         canvas.drawBitmap(sprite, null, new RectF(x - width / 2, y - height, x + width / 2, y), paint);
         canvas.restoreToCount(save);
     }

@@ -1626,6 +1626,45 @@
     return hull.map(([x, y]) => [anchor.x + (x - anchor.x) * scale,
       anchor.y + (y - anchor.y) * scale]);
   }
+  // A limited, stylized ground projection of the currently visible character silhouette.
+  function characterShadowOffset(azimuth, altitude, height) {
+    const a=azimuth*Math.PI/180, e=clamp(altitude,8,90)*Math.PI/180;
+    const length=Math.min(height*3,height/Math.tan(e));
+    return {x:-length*(Math.sin(a)+Math.cos(a))/Math.SQRT2,
+      y:-length*(Math.sin(a)-Math.cos(a))*.30};
+  }
+  const characterShadowMasks=new WeakMap();
+  function activeCharacterSprite(character) {
+    const back=character.facing==='N'||character.facing==='W';
+    let sprite=back?playerBackImage:playerImage;
+    if(gameplayDraft && Number.isFinite(gameplayDraft.walkPhase) && !REDUCED_MOTION) {
+      const index=((Math.floor(gameplayDraft.walkPhase/(Math.PI*2)*12)%12)+12)%12;
+      const frame=gaitFrames[gameplayDraft.running?'run':'walk'][back?'back':'front'][index];
+      if(frame.complete && frame.naturalWidth) sprite=frame;
+    }
+    return sprite;
+  }
+  function drawCharacterProjectedShadow(light, cloudCover) {
+    const world=window.worldManager?.getActive(), character=editingDraft || gameplayDraft || window.worldManager?.getCharacter();
+    if(!world || world.id==='base' || !character?.visible || !Number.isFinite(light.azimuth) || light.altitude<=0)return;
+    const sprite=activeCharacterSprite(character);
+    if(!sprite.complete || !sprite.naturalWidth)return;
+    let mask=characterShadowMasks.get(sprite);
+    if(!mask) {
+      mask=document.createElement('canvas');mask.width=sprite.naturalWidth;mask.height=sprite.naturalHeight;
+      const m=mask.getContext('2d');m.drawImage(sprite,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);
+      characterShadowMasks.set(sprite,mask);
+    }
+    const anchor=characterCentre(character), width=PLAYER_WIDTH*character.scale,height=PLAYER_HEIGHT*character.scale;
+    const ray=characterShadowOffset(light.azimuth,light.altitude,height);
+    if(Math.abs(ray.y)<height*.12)ray.y=(ray.y<0?-1:1)*height*.12; // visible thickness for side-lit sprites
+    const strength=clamp((light.altitude/10),0,1)*(1-.65*clamp(cloudCover/100,0,1));
+    ctx.save();applyIslandTransform();clipIslandSurface();ctx.globalAlpha=.34*strength;
+    // Preserve contact at the foot and flatten the sprite toward the projected tip.
+    ctx.transform(1,0,-ray.x/height,-ray.y/height,anchor.x-width/2+ray.x,anchor.y+ray.y);
+    if(character.facing==='W'||character.facing==='E'){ctx.translate(width,0);ctx.scale(-1,1);}
+    ctx.drawImage(mask,0,0,width,height);ctx.restore();
+  }
   function drawSurfaceObjectShadows(light, cloudCover, code) {
     const world = window.worldManager?.getActive();
     if (!world || world.id === 'base') return;
@@ -1637,12 +1676,6 @@
       // Anchor to the front base of the sprite, so the smaller shadow remains visible.
       shadows.push({anchor: {x: centre.x, y: centre.y + 1.25 * islandTileHeight * house.scale},
         width: 70 * house.scale, depth: islandTileHeight * 2.5 * house.scale, height: 67 * house.scale});
-    }
-    const character = editingDraft || gameplayDraft || window.worldManager.getCharacter();
-    const sprite = character.facing === 'N' || character.facing === 'W' ? playerBackImage : playerImage;
-    if (character.visible && sprite.complete && sprite.naturalWidth) {
-      shadows.push({anchor: characterCentre(character), width: PLAYER_WIDTH * character.scale,
-        depth: 5 * character.scale, height: PLAYER_HEIGHT * character.scale});
     }
     if (!shadows.length) return;
     const lightPoint = sunPlanePosition(light.hourAngleDegrees);
@@ -1724,12 +1757,7 @@
     ctx.fillStyle='rgba(12,23,30,.38)';ctx.beginPath();ctx.ellipse(x,y-.45*character.scale,4.6*character.scale,.8*character.scale,0,0,Math.PI*2);ctx.fill();
     ctx.imageSmoothingEnabled = false;
     ctx.save();ctx.translate(x,y);if (mirror) ctx.scale(-1,1);
-    let drawnSprite=sprite;
-    if (gameplayDraft && Number.isFinite(gameplayDraft.walkPhase) && !REDUCED_MOTION) {
-      const index=((Math.floor(gameplayDraft.walkPhase/(Math.PI*2)*12)%12)+12)%12;
-      const frame=gaitFrames[gameplayDraft.running?'run':'walk'][back?'back':'front'][index];
-      if(frame.complete && frame.naturalWidth) drawnSprite=frame;
-    }
+    const drawnSprite=activeCharacterSprite(character);
     ctx.drawImage(drawnSprite,-width/2,-height,width,height);
     ctx.restore();
     if (editingSelected) {
@@ -1974,6 +2002,7 @@
     drawFloatingIsland(sun.altitude, sun.azimuth, sun.hourAngleDegrees,
       sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates);
     drawSurfaceObjectShadows(shadowLight, sceneWeather.cloudCover, sceneWeather.weatherCode);
+    drawCharacterProjectedShadow(shadowLight, sceneWeather.cloudCover);
     drawGameplayRoute();
     drawHouse();
     drawHoeTarget();
