@@ -16,6 +16,14 @@ const counts=[0,0,0,0];for(const tile of grid.tiles)counts[grid.variant(tile.col
 const first=grid.tiles.find(t=>t.coordinate==='A1'),last=grid.tiles.find(t=>t.coordinate==='T20');
 assert.equal(first.column,0);assert.equal(first.row,0);assert.equal(last.column,19);assert.equal(last.row,19);
 assert(Math.abs((20*28)*grid.zoom-252)<1e-9,'Base fits legacy preview width');
+const camera=window.sceneEditing;
+assert.equal(camera.setCamera(1.4,960,-600),true);
+const tile=grid.tiles.find(t=>t.coordinate==='J10'),anchor=182,zoom=.45*1.4;
+const screenX=160+(tile.x-160)*zoom+960, screenY=anchor+(tile.y-anchor)*zoom-600;
+const local=camera.toLocal(screenX,screenY);
+assert(Math.abs(local.x-tile.x)<1e-8 && Math.abs(local.y-tile.y)<1e-8,'camera inverse handles zoom and three viewport pan');
+assert.equal(camera.setCamera(NaN,0,0),false);assert.equal(camera.camera().zoom,1.4);
+camera.setCamera(4,0,0);assert.equal(camera.camera().zoom,2);camera.setCamera(0,0,0);assert.equal(camera.camera().zoom,.1);
 active={id:'legacy'};worldChanges.forEach(f=>f());grid=window.inspectGrid();assert.equal(grid.size,9);assert.equal(grid.zoom,1);assert.equal(grid.tiles.length,81);assert(grid.tiles.some(t=>t.coordinate==='I9'));
 active={id:'base'};worldChanges.forEach(f=>f());assert.equal(window.inspectGrid().tiles.length,400);assert.equal(writes,0,'switching render geometry never writes world data');
 const java=fs.readFileSync(path.join(__dirname,'../app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java'),'utf8');assert(java.includes('worldId == null || "base".equals(worldId) ? 20 : 9'));

@@ -299,3 +299,10 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .home-dock button img { width:100%; height:100%; object-fit:contain; image-rendering:pixelated; }
 .dock-tab:focus-visible { outline:3px solid white; outline-offset:2px; }
 .home-dock button:focus-visible { outline:3px solid white; outline-offset:2px; }
+.editor-camera-controls { position:absolute; right:2%; top:30%; z-index:5; display:flex; flex-direction:column; gap:.4cqw; align-items:center; }
+.preview-stage:not([data-mode="editor"]) .editor-camera-controls { display:none; }
+.editor-camera-controls button { width:3.8cqw; height:3.8cqw; min-width:25px; min-height:25px; border:1px solid #a6bba5; border-radius:.7cqw; background:#f1f6edeb; color:#3b5946; font:700 2.2cqw system-ui; cursor:pointer; display:grid; place-items:center; padding:.55cqw; }
+.editor-camera-controls button[aria-pressed="true"] { background:#4b6a55; color:white; }
+.editor-camera-controls svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linejoin:round; stroke-linecap:round; }
+.editor-camera-controls output { font:700 1.05cqw system-ui; color:#314c3b; background:#f1f6edeb; border-radius:.4cqw; padding:.15cqw .4cqw; }
+.editor-camera-controls button:focus-visible { outline:2px solid white; outline-offset:2px; }

@@ -60,6 +60,8 @@
     * Math.sin(islandCameraElevation * Math.PI / 180);
   // Fit the larger locked Base in the existing preview viewport; legacy worlds retain their scale.
   let islandZoom = ISLAND_GRID_SIZE === 20 ? 9 / 20 : 1;
+  let editorZoom = 1, cameraPanX = 0, cameraPanY = 0;
+  function baseFitZoom() { return ISLAND_GRID_SIZE === 20 ? 9 / 20 : 1; }
   // Interior tile faces stay shallow; exposed perimeter faces extend through the grass band.
   const ISLAND_TILE_SIDE_DEPTH = 2.5;
   // Explicit side-wall bands: 8 units of grass above 16 units of exposed soil.
@@ -725,8 +727,8 @@
 
   function planeToScreen(x, y) {
     const [anchorX, anchorY] = islandAnchor();
-    return { x: anchorX + (x - anchorX) * islandZoom,
-      y: anchorY + (y - anchorY) * islandZoom };
+    return { x: anchorX + (x - anchorX) * islandZoom + cameraPanX,
+      y: anchorY + (y - anchorY) * islandZoom + cameraPanY };
   }
 
   function drawSun(sun, cloudCover, motionTime) {
@@ -932,7 +934,7 @@
 
   function applyIslandTransform() {
     const [anchorX, anchorY] = islandAnchor();
-    ctx.translate(anchorX, anchorY);
+    ctx.translate(anchorX + cameraPanX, anchorY + cameraPanY);
     ctx.scale(islandZoom, islandZoom);
     ctx.translate(-anchorX, -anchorY);
   }
@@ -1821,7 +1823,8 @@
   function applyIslandCameraSettings() {
     islandCameraElevation = clamp(Number(islandElevationInput?.value ?? DEFAULT_ISLAND_CAMERA_ELEVATION),
       MIN_ISLAND_CAMERA_ELEVATION, MAX_ISLAND_CAMERA_ELEVATION);
-    islandZoom = (ISLAND_GRID_SIZE === 20 ? 9 / 20 : 1) * clamp(Number(islandZoomInput?.value ?? 100) / 100, 0.80, 1.05);
+    editorZoom = clamp(Number(islandZoomInput?.value ?? 100) / 100, 0.1, 2);
+    islandZoom = baseFitZoom() * editorZoom;
     rebuildIslandProjection();
     if (islandElevationOutput) islandElevationOutput.textContent = `${Math.round(islandCameraElevation)}°`;
     if (islandZoomOutput) islandZoomOutput.textContent = `${Math.round(islandZoom * 100)}%`;
@@ -1977,7 +1980,8 @@
     const nextSize = window.worldManager?.getActive()?.id === 'base' ? 20 : 9;
     if (nextSize !== ISLAND_GRID_SIZE) {
       ISLAND_GRID_SIZE = nextSize;
-      islandZoom = ISLAND_GRID_SIZE === 20 ? 9 / 20 : 1;
+      editorZoom = 1; cameraPanX = 0; cameraPanY = 0;
+      islandZoom = baseFitZoom();
       rebuildIslandProjection();
     }
     if (REDUCED_MOTION) drawFrame();
@@ -2009,13 +2013,22 @@
   // Geometry bridge for the preview editor. Coordinates are transformed through the actual
   // canvas bounds and island zoom, so dragging remains correct on different device sizes.
   window.sceneEditing = Object.freeze({
+    camera() { return {zoom: editorZoom, panX: cameraPanX, panY: cameraPanY}; },
+    setCamera(zoom, panX, panY) {
+      if (![zoom, panX, panY].every(Number.isFinite)) return false;
+      editorZoom = clamp(zoom, 0.1, 2);
+      cameraPanX = panX; cameraPanY = panY;
+      islandZoom = baseFitZoom() * editorZoom;
+      if (REDUCED_MOTION) drawFrame();
+      return true;
+    },
     toLocal(clientX, clientY) {
       const rect = canvas.getBoundingClientRect();
       const x = (clientX - rect.left) * WIDTH / rect.width;
       const y = (clientY - rect.top) * HEIGHT / rect.height;
       const [anchorX, anchorY] = islandAnchor();
-      return {x: anchorX + (x - anchorX) / islandZoom,
-        y: anchorY + (y - anchorY) / islandZoom};
+      return {x: anchorX + (x - anchorX - cameraPanX) / islandZoom,
+        y: anchorY + (y - anchorY - cameraPanY) / islandZoom};
     },
     centre: characterCentre,
     centreHouse(house) { return characterCentre({column: house.column + 1, row: house.row + 1}); },

@@ -11,6 +11,7 @@
   <script src="./object-editor.js?v=6" defer></script>
   <script src="./app.js?v=live-sky-161" defer></script>
   <script src="./preview-modes.js?v=1" defer></script>
+  <script src="./editor-camera.js?v=1" defer></script>
   <script src="./season-estimate.js?v=1" defer></script>
   <script src="./hud.js?v=1" defer></script>
 </head>
@@ -23,6 +24,11 @@
       <div class="device-display" aria-label="Homescreen GTLauncher dengan langit dan pulau terapung pixel art yang mengikuti cuaca">
         <canvas id="sky-canvas" class="sky-canvas" aria-label="Langit pixel art dan pulau terapung dengan pencahayaan adaptif serta efek cuaca"></canvas>
         <span class="camera-punch-hole" aria-hidden="true"></span>
+        <nav class="editor-camera-controls" aria-label="Kamera editor">
+          <button id="editor-pan" type="button" aria-label="Geser peta" title="Geser peta" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></button>
+          <button id="editor-zoom-in" type="button" aria-label="Perbesar peta" title="Perbesar">+</button><output id="editor-zoom-value" aria-live="polite">100%</output><button id="editor-zoom-out" type="button" aria-label="Perkecil peta" title="Perkecil">−</button>
+          <button id="editor-fit" type="button" aria-label="Atur ulang kamera" title="Atur ulang kamera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
+        </nav>
         <section class="character-hud" aria-label="Status karakter sementara">
           <img class="character-hud-portrait" src="assets/character-original-uhd-front.png" alt="Potret karakter">
           <div class="character-hud-stats" aria-label="Health, stamina, makanan dan air masing-masing 100 dari 100; nilai sementara">
