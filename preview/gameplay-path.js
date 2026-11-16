@@ -36,5 +36,13 @@
     }
     return best;
   }
-  return Object.freeze({find,findBeside});
+  function findNear(world,start,target,house) {
+    let best=null;
+    for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
+      const route=find(world,start,{column:target.column+dx,row:target.row+dy},house);
+      if(route && (!best || route.length<best.length))best=route;
+    }
+    return best;
+  }
+  return Object.freeze({find,findBeside,findNear});
 });

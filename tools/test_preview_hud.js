@@ -28,7 +28,7 @@ assert.throws(()=>season.classify(rainfall(0),new Date('2026-12-01T12:00:00Z')))
  assert.equal(d.querySelectorAll('.home-dock button').length,11);
  assert.equal(d.querySelector('.dock-tab.selected').textContent,'Tools');
  assert(!d.querySelector('[data-dock="close"]'),'no close icon in dock');
- d.querySelector('[data-dock="hoe"]').click();assert(dialog.open);assert.match(d.getElementById('dock-message').textContent,/belum dipulihkan/);d.getElementById('dock-close').click();
+ const hoe=d.querySelector('[data-dock="hoe"]');hoe.click();assert.equal(hoe.getAttribute('aria-pressed'),'true');assert.equal(hand.getAttribute('aria-pressed'),'false');assert(!dialog.open);hand.click();assert.equal(hoe.getAttribute('aria-pressed'),'false');
  d.querySelector('[data-dock="add"]').click();assert(dialog.open);assert.match(d.getElementById('dock-message').textContent,/belum dipulihkan/);
  assert.equal(d.querySelectorAll('.clock-readouts > .hud-panel').length,2,'time and battery share a single left panel');
  assert(d.querySelector('.clock-readouts > #hud-season.visually-hidden'),'season remains accessible without an outside icon');
