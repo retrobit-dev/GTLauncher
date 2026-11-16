@@ -69,7 +69,7 @@
       tell(ok?(completion || `Tiba di ${columnLabel(end.column)}${end.row+1}.`):'Posisi tidak tersimpan; periksa penyimpanan browser.');return;
     }
     scene.setGameplayRoute?.(route,1);
-    walk={id:world.id,character,route,message:completion,routeIndex:1,started:null,durations:route.slice(1).map((_,i)=>total>3&&i>0&&i<total-1?180:300)};
+    walk={id:world.id,character,route,message:completion,routeIndex:1,started:null,durations:route.slice(1).map(()=>650)};
     const token=++generation;window.requestAnimationFrame(t=>step(t,token));
   }
   canvas.addEventListener('pointerdown',event=>{

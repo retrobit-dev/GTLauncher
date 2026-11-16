@@ -1709,34 +1709,15 @@
     // Breathing changes height only, never the ground anchor. With reduced motion time is zero.
     const idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5 : 0;
     const height = PLAYER_HEIGHT * character.scale + idle;
-    // Walking no longer translates both feet above the tile; keep the sole anchored.
-    const walkStretch = gameplayDraft && cameraMode === 'gameplay' ? Math.abs(Math.sin(motionTime * Math.PI * 6)) * .35 * character.scale : 0;
     ctx.save();
     applyIslandTransform();
-    // A small contact shadow anchors the feet even when the projected sun shadow falls away.
+    // The intact sprite avoids exposed seams until independently drawn gait frames exist.
     ctx.fillStyle='rgba(12,23,30,.38)';ctx.beginPath();ctx.ellipse(x,y-.45*character.scale,4.6*character.scale,.8*character.scale,0,0,Math.PI*2);ctx.fill();
     ctx.imageSmoothingEnabled = false;
-    ctx.save();
-    ctx.translate(x, y);
-    if (mirror) ctx.scale(-1, 1);
-    if (gameplayDraft && Number.isFinite(gameplayDraft.walkPhase) && !REDUCED_MOTION) {
-      // Pivot the two sleeve bands and alternate the legs. Keep the upper torso fixed
-      // and the lowest foot anchored; this is a procedural gait, not new sprite frames.
-      const sw=sprite.naturalWidth, sh=sprite.naturalHeight;
-      const shoulder=Math.floor(sh*.49), hip=Math.floor(sh*.78), arm=Math.floor(sw*.27), split=Math.floor(sw/2);
-      const top=-height, sx=width/sw, sy=height/sh, phase=Math.sin(gameplayDraft.walkPhase);
-      const armTop=top+shoulder*sy, armH=(hip-shoulder)*sy, armW=arm*sx;
-      ctx.drawImage(sprite,0,0,sw,shoulder,-width/2,top,width,shoulder*sy);
-      ctx.drawImage(sprite,arm,shoulder,sw-2*arm,hip-shoulder,-width/2+armW,armTop,width-2*armW,armH);
-      for (const side of [-1,1]) {
-        const source=side<0?0:sw-arm, dx=side<0?-width/2:width/2-armW;
-        ctx.save();ctx.translate(dx+armW/2,armTop);ctx.rotate(side*phase*.10);
-        ctx.drawImage(sprite,source,shoulder,arm,hip-shoulder,-armW/2,0,armW,armH);ctx.restore();
-      }
-      const legH=(sh-hip)*sy, shift=phase*.8*character.scale, lift=Math.abs(phase)*.6*character.scale;
-      ctx.drawImage(sprite,0,hip,split,sh-hip,-width/2+shift,-legH-(phase>0?lift:0),split*sx,legH);
-      ctx.drawImage(sprite,split,hip,sw-split,sh-hip,-width/2+split*sx-shift,-legH-(phase<0?lift:0),(sw-split)*sx,legH);
-    } else ctx.drawImage(sprite,-width/2,-height-walkStretch,width,height+walkStretch);
+    ctx.save();ctx.translate(x,y);if (mirror) ctx.scale(-1,1);
+    if (gameplayDraft && Number.isFinite(gameplayDraft.walkPhase) && !REDUCED_MOTION)
+      ctx.rotate(Math.sin(gameplayDraft.walkPhase)*.018);
+    ctx.drawImage(sprite,-width/2,-height,width,height);
     ctx.restore();
     if (editingSelected) {
       ctx.strokeStyle = '#fff4a8';

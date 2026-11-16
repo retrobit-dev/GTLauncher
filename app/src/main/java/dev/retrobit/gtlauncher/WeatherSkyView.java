@@ -972,36 +972,11 @@ public final class WeatherSkyView extends View {
         paint.setFilterBitmap(true);
         int save = canvas.save();
         if (mirror) canvas.scale(-1, 1, x, 0);
-        if (!characterStepping) {
-            canvas.drawBitmap(sprite, null, new RectF(x - width / 2, y - height, x + width / 2, y), paint);
-        } else {
-            int sw=sprite.getWidth(),sh=sprite.getHeight(),cut=(int)(sh*.78f),top=(int)(sh*.49f),arm=(int)(sw*.27f),split=sw/2;
-            float left=x-width/2, base=y-height, topH=height*top/sh, bodyH=height*cut/sh;
-            float armW=width*arm/sw, armH=height*(cut-top)/sh, halfW=width*split/sw;
-            float screenX=("N".equals(characterFacing)||"E".equals(characterFacing))?1:-1;
-            float screenY=("E".equals(characterFacing)||"S".equals(characterFacing))?1:-1;
-            float forward=screenX*(mirror?-1:1);
-            float dx=phase*(1.1f+1.3f*runBlend)*characterScale*forward;
-            float dy=phase*(.55f+.35f*runBlend)*characterScale*screenY;
-            float lift=Math.abs(phase)*(.45f+1.25f*runBlend)*characterScale;
-            float angle=(float)Math.toDegrees(phase*(.14f+.26f*runBlend)*forward);
-            int upper=canvas.save();
-            float lean=.10f*runBlend*forward;
-            canvas.translate(left+width/2+lean*bodyH,base);
-            canvas.skew(-lean,0);
-            drawMovingHair(canvas,sprite,sw,sh,top,width,height,phase,runBlend);
-            // Opposite sleeve bands swing against each other while the torso stays in place.
-            int bodyRight=sw-arm;
-            canvas.drawBitmap(sprite,new Rect(arm,top,bodyRight,cut),new RectF(-width/2+armW,topH,-width/2+width*bodyRight/sw,topH+armH),paint);
-            drawPivotedSleeve(canvas,sprite,0,top,arm,cut,-width/2+armW/2,topH,armW,armH,angle,phase,runBlend,true);
-            drawPivotedSleeve(canvas,sprite,bodyRight,top,sw,cut,width/2-armW/2,topH,armW,armH,-angle,-phase,runBlend,false);
-            canvas.restoreToCount(upper);
-            float bh=height-bodyH;
-            // At least one foot stays on the ground; never bounce the whole sprite into the air.
-            float y1=y-bh-(phase>0?lift:0),y2=y-bh-(phase<0?lift:0);
-            canvas.drawBitmap(sprite,new Rect(0,cut,split,sh),new RectF(left+dx,y1,left+halfW+dx,y1+bh),paint);
-            canvas.drawBitmap(sprite,new Rect(split,cut,sw,sh),new RectF(left+halfW-dx,y2,left+width-dx,y2+bh),paint);
-        }
+        // Draw a whole sprite so limbs cannot be severed by rectangular crops.
+        // Independent, anatomically accurate limb motion requires dedicated artwork.
+        if (characterStepping && animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled())
+            canvas.rotate((float)Math.toDegrees(phase*.018f),x,y);
+        canvas.drawBitmap(sprite, null, new RectF(x - width / 2, y - height, x + width / 2, y), paint);
         canvas.restoreToCount(save);
     }
 

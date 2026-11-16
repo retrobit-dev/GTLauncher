@@ -10,11 +10,11 @@ w.eval(fs.readFileSync(path.join(root,'gameplay-movement.js'),'utf8'));
 for(const type of ['pointerdown','pointerup']){let e=new w.MouseEvent(type,{bubbles:true,clientX:5,clientY:5});Object.defineProperties(e,{pointerId:{value:1},pointerType:{value:'touch'}});c.dispatchEvent(e);}
 function tick(t){assert(frames.length);frames.shift()(t)}
 tick(0);assert.equal(draft.facing,'E');assert.equal(draft.walkPhase,0);
-tick(75);assert.equal(draft.facing,'E');assert(Math.abs(Math.sin(draft.walkPhase)-1)<1e-9,'gait reaches opposite limb swing');
-tick(300);assert.equal(draft.facing,'N');
-tick(480);assert.equal(draft.facing,'W');
-tick(660);assert.equal(draft.facing,'S');
-tick(960);assert.equal(draft,null);assert.equal(character.facing,'S');assert.equal(writes,1,'only final position persisted');
-const app=fs.readFileSync(path.join(root,'app.js'),'utf8');assert(app.includes("const mirror = character.facing === 'W' || character.facing === 'E'"));assert(app.includes('ctx.rotate(side*phase*.10)'));assert(app.includes('shift=phase*.8*character.scale'));
-const java=fs.readFileSync(path.join(root,'../app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java'),'utf8');assert(java.includes('boolean mirror = "W".equals(characterFacing) || "E".equals(characterFacing)'));assert(java.includes('width/2-armW/2,topH,armW,armH,-angle,-phase,runBlend,false'));
-dom.window.close();console.log('Facing follows each route segment; gait alternates and Android mapping matches: OK');
+tick(162.5);assert.equal(draft.facing,'E');assert(Math.abs(Math.sin(draft.walkPhase)-1)<1e-9,'gait reaches opposite limb swing');
+tick(650);assert.equal(draft.facing,'N');
+tick(1300);assert.equal(draft.facing,'W');
+tick(1950);assert.equal(draft.facing,'S');
+tick(2600);assert.equal(draft,null);assert.equal(character.facing,'S');assert.equal(writes,1,'only final position persisted');
+const app=fs.readFileSync(path.join(root,'app.js'),'utf8');assert(app.includes("const mirror = character.facing === 'W' || character.facing === 'E'"));assert(app.includes('ctx.drawImage(sprite,-width/2,-height,width,height)'));assert(!app.includes('ctx.rotate(side*phase*.10)'));
+const java=fs.readFileSync(path.join(root,'../app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java'),'utf8');assert(java.includes('boolean mirror = "W".equals(characterFacing) || "E".equals(characterFacing)'));assert(java.includes('Draw a whole sprite so limbs cannot be severed'));
+dom.window.close();console.log('Facing follows each route segment; relaxed timing and intact sprite rendering match: OK');

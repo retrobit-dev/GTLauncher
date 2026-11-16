@@ -2,21 +2,12 @@ package dev.retrobit.gtlauncher;
 import org.junit.Test;
 import static org.junit.Assert.*;
 public class CharacterGaitTest {
-    @Test public void shortAndLongRoutes() {
-        for(int i=1;i<=3;i++) {assertFalse(CharacterGait.running(i,3));assertEquals(300,CharacterGait.durationMillis(i,3));}
-        assertFalse(CharacterGait.running(1,4));assertTrue(CharacterGait.running(2,4));
-        assertTrue(CharacterGait.running(3,4));assertFalse(CharacterGait.running(4,4));
-        assertEquals(180,CharacterGait.durationMillis(2,4));
-    }
-    @Test public void runPoseBlendsAtWalkRunBoundaries() {
-        assertEquals(0,CharacterGait.runBlend(1,4,1),0);
-        assertEquals(0,CharacterGait.runBlend(2,4,0),0);
-        assertEquals(1,CharacterGait.runBlend(2,4,.5f),0);
-        assertEquals(1,CharacterGait.runBlend(2,4,1),0);
-        assertEquals(1,CharacterGait.runBlend(3,4,0),0);
-        assertEquals(0,CharacterGait.runBlend(3,4,1),0);
-        assertEquals(0,CharacterGait.runBlend(4,4,0),0);
-        assertEquals(0,CharacterGait.runBlend(2,3,.5f),0);
+    @Test public void allRoutesUseRelaxedWalkTiming() {
+        for(int total:new int[]{1,3,4,20}) for(int i=1;i<=total;i++) {
+            assertFalse(CharacterGait.running(i,total));
+            assertEquals(650,CharacterGait.durationMillis(i,total));
+            assertEquals(0,CharacterGait.runBlend(i,total,.5f),0);
+        }
     }
     @Test public void elbowsBendOnlyAsRunningBlendsIn() {
         assertEquals(0, CharacterGait.elbowRadians(1,0,true),0);
