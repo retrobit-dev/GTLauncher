@@ -26,6 +26,9 @@
       while(index<walk.durations.length-1 && elapsed>=walk.durations[index]) {elapsed-=walk.durations[index];index++;}
       const progress=Math.max(0,Math.min(1,elapsed/walk.durations[index]));
       let a=walk.route[index], b=walk.route[index+1], nextProgress=progress;
+      // Discard completed segments before rebasing the current segment's clock.
+      walk.route=walk.route.slice(index);walk.routeIndex=1;
+      scene.setGameplayRoute?.(walk.route,1);
       if(walk.pendingTarget) {
         const target=walk.pendingTarget, world=worlds.getActive(), house=worlds.getHouse();
         const occupied=house?.visible && target.column>=house.column && target.column<house.column+3 && target.row>=house.row && target.row<house.row+3;
