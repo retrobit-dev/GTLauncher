@@ -52,3 +52,11 @@ const falselyVersioned=JSON.stringify({...exported,version:1});Object.defineProp
 const saved=w.localStorage.getItem('gtlauncher.worlds.v1');dom.window.close();
 const again=setup(saved);assert.equal(again.w.worldManager.getActive().gridSize,100);assert.equal(again.w.worldManager.getCharacter().column,99);assert.equal(again.w.localStorage.getItem('gtlauncher.worlds.v1'),saved,'load is non-destructive');again.dom.window.close();
 console.log('100x100 creation, draw/erase/pick/fill, terrain versioning, safeguards, reload and legacy preservation: OK');
+const pathfinder=require('../preview/gameplay-path.js');
+const terrain={gridSize:100,tiles:Array(10000).fill(1)};terrain.tiles[99*100+98]=0;
+const route=pathfinder.find(terrain,{column:97,row:99},{column:99,row:99},null);
+assert(route && route.length===5 && route.every(p=>p.column!==98||p.row!==99),'100x100 path detours around obstacle near edge');
+assert.equal(pathfinder.find(terrain,{column:99,row:99},{column:100,row:99},null),null,'grid bounds enforced');
+const existingHome={id:'home100',name:'Home',description:'',color:'#a8c795',gridSize:100,tiles:Array(10000).fill(1),showCharacter:true,characterColumn:49,characterRow:49,characterScale:1,characterFacing:'S',house:null};
+const homeRaw=JSON.stringify({worlds:[existingHome],activeId:'home100'});const home=setup(homeRaw);
+assert.equal(home.w.localStorage.getItem('gtlauncher.worlds.v1'),homeRaw,'100x100 Home is never downgraded on load');home.dom.window.close();
