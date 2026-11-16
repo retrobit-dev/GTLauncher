@@ -24,5 +24,17 @@
     }
     return null;
   }
-  return Object.freeze({find});
+  function findBeside(world,start,house) {
+    if(!house?.visible)return null;
+    let best=null;
+    for(let row=house.row-1;row<=house.row+3;row++) for(let column=house.column-1;column<=house.column+3;column++) {
+      const dx=Math.max(house.column-column,0,column-(house.column+2));
+      const dy=Math.max(house.row-row,0,row-(house.row+2));
+      if(dx+dy!==1)continue;
+      const route=find(world,start,{column,row},house);
+      if(route && (!best || route.length<best.length))best=route;
+    }
+    return best;
+  }
+  return Object.freeze({find,findBeside});
 });

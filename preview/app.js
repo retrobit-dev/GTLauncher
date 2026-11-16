@@ -2120,6 +2120,24 @@
   }
   applyGameplayCamera();
 
+  const houseHitCache = new WeakMap();
+  function houseAt(point, house) {
+    if (!house?.visible) return false;
+    const back=house.facing==='N'||house.facing==='W', mirror=house.facing==='N'||house.facing==='E';
+    const image=back?houseBackImage:houseImage;
+    if(!image.complete || !image.naturalWidth || !image.naturalHeight) return false;
+    const centre=characterCentre({column:house.column+1,row:house.row+1});
+    const bottom=centre.y+1.25*islandTileHeight*house.scale, width=70*house.scale, height=67*house.scale;
+    let u=(point.x-(centre.x-width/2))/width, v=(point.y-(bottom-height))/height;
+    if(u<0||u>=1||v<0||v>=1) return false;
+    if(mirror) u=1-u;
+    try {
+      let data=houseHitCache.get(image);
+      if(!data){const c=document.createElement('canvas');c.width=128;c.height=128;const h=c.getContext('2d',{willReadFrequently:true});h.drawImage(image,0,0,128,128);data=h.getImageData(0,0,128,128).data;houseHitCache.set(image,data);}
+      return data[(Math.min(127,Math.floor(v*128))*128+Math.min(127,Math.floor(u*128)))*4+3]>32;
+    } catch (_) { return false; }
+  }
+
   // Geometry bridge for the preview editor. Coordinates are transformed through the actual
   // canvas bounds and island zoom, so dragging remains correct on different device sizes.
   window.sceneEditing = Object.freeze({
@@ -2147,6 +2165,7 @@
         y: anchorY + (y - anchorY - cameraPanY) / islandZoom};
     },
     centre: characterCentre,
+    houseAt,
     centreHouse(house) { return characterCentre({column: house.column + 1, row: house.row + 1}); },
     hitHouse(point, house) {
       if (!house?.visible) return false;
