@@ -9,7 +9,7 @@ N=12
 def smooth(a,b,v):
     t=max(0,min(1,(v-a)/(b-a)));return t*t*(3-2*t)
 
-def deform(x,y,w,h,phase,running=False):
+def deform(x,y,w,h,phase,running=False,back=False):
     u=x/w;v=y/h
     swing=math.sin(phase)
     # Smoothly blend displacement in space: a shoulder stays nearly fixed,
@@ -31,6 +31,12 @@ def deform(x,y,w,h,phase,running=False):
         dy += .025*h*leg*(max(0,-swing)*foot_left+max(0,swing)*foot_right)
         dx += lean
         dy += flight
+        # Subtle localized bounce where the pack is drawn; smoothly blended
+        # so it stays connected to the sprite rather than leaving a cutout.
+        pack_x = (smooth(.20,.30,u)*(1-smooth(.62,.73,u)) if back
+                  else smooth(.64,.76,u))
+        pack_y = smooth(.38,.46,v)*(1-smooth(.66,.73,v))
+        dy += .012*h*math.sin(2*phase-.8)*pack_x*pack_y
     return (x-dx,y+dy)
 
 for mode in ('walk','run'):
@@ -42,7 +48,7 @@ for mode in ('walk','run'):
             for y in range(0,h,10):
                 for x in range(0,w,9):
                     x2=min(w,x+9);y2=min(h,y+10)
-                    a=deform(x,y,w,h,phase,mode=='run');b=deform(x,y2,w,h,phase,mode=='run');c=deform(x2,y2,w,h,phase,mode=='run');d=deform(x2,y,w,h,phase,mode=='run')
+                    a=deform(x,y,w,h,phase,mode=='run',facing=='back');b=deform(x,y2,w,h,phase,mode=='run',facing=='back');c=deform(x2,y2,w,h,phase,mode=='run',facing=='back');d=deform(x2,y,w,h,phase,mode=='run',facing=='back')
                     mesh.append(((x,y,x2,y2),a+b+c+d))
             frame=src.transform((w,h),Image.Transform.MESH,mesh,resample=Image.Resampling.BILINEAR)
             dest=ROOT/f'preview/assets/character-{mode}/{facing}-{i:02}.png';dest.parent.mkdir(parents=True,exist_ok=True);frame.save(dest,optimize=True)
