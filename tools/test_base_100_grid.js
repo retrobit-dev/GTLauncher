@@ -25,7 +25,7 @@ const screenX=160+(tile.x-160)*zoom+960, screenY=anchor+(tile.y-anchor)*zoom-600
 const local=camera.toLocal(screenX,screenY);
 assert(Math.abs(local.x-tile.x)<1e-8 && Math.abs(local.y-tile.y)<1e-8,'camera inverse handles zoom and three viewport pan');
 assert.equal(camera.setCamera(NaN,0,0),false);assert.equal(camera.camera().zoom,1.4);
-camera.setCamera(11,7,8);assert.equal(camera.camera().zoom,10);camera.setMode('gameplay');assert.equal(window.inspectGrid().zoom,9/100*3);camera.setMode('editor');assert.equal(camera.camera().zoom,10);assert.equal(camera.camera().panX,7);camera.setCamera(0,0,0);assert.equal(camera.camera().zoom,.1);
+camera.setCamera(21,7,8);assert.equal(camera.camera().zoom,20);camera.setMode('gameplay');assert.equal(window.inspectGrid().zoom,9/100*3);camera.setMode('editor');assert.equal(camera.camera().zoom,20);assert.equal(camera.camera().panX,7);camera.setCamera(0,0,0);assert.equal(camera.camera().zoom,.5);
 active={id:'legacy'};worldChanges.forEach(f=>f());grid=window.inspectGrid();assert.equal(grid.size,9);assert.equal(grid.zoom,1);assert.equal(grid.tiles.length,81);assert(grid.tiles.some(t=>t.coordinate==='I9'));
 active={id:'base'};worldChanges.forEach(f=>f());assert.equal(window.inspectGrid().tiles.length,10000);assert.equal(writes,0,'switching render geometry never writes world data');
 const java=fs.readFileSync(path.join(__dirname,'../app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java'),'utf8');assert(java.includes('worldId == null || "base".equals(worldId) ? 100 : 9'));

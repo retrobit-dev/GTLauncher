@@ -11,8 +11,8 @@
     const {zoom} = scene.camera();
     value.value = String(Math.round(zoom * 10) / 10);
     value.textContent = value.value;
-    $('editor-zoom-in').disabled = zoom >= 10;
-    $('editor-zoom-out').disabled = zoom <= 0.1;
+    $('editor-zoom-in').disabled = zoom >= 20;
+    $('editor-zoom-out').disabled = zoom <= 0.5;
     pan.setAttribute('aria-pressed', String(panning));
     const active = panning && stage.dataset.mode === 'editor';
     surface.hidden = !active;
@@ -21,14 +21,14 @@
   function reset() { scene.setCamera(1, 0, 0); update(); }
   function changeZoom(amount) {
     const c = scene.camera();
-    scene.setCamera(Math.round((c.zoom + amount) * 10) / 10, c.panX, c.panY); update();
+    scene.setCamera(Math.round((c.zoom + amount) * 2) / 2, c.panX, c.panY); update();
   }
   pan.addEventListener('click', event => {
     if (suppressClick) { suppressClick = false; event.preventDefault(); return; }
     panning = !panning; drag = null; update();
   });
-  $('editor-zoom-in').addEventListener('click', () => changeZoom(0.1));
-  $('editor-zoom-out').addEventListener('click', () => changeZoom(-0.1));
+  $('editor-zoom-in').addEventListener('click', () => changeZoom(0.5));
+  $('editor-zoom-out').addEventListener('click', () => changeZoom(-0.5));
   $('editor-fit').addEventListener('click', reset);
   $('mode-gameplay').addEventListener('click', () => { panning = false; drag = null; scene.setMode?.('gameplay'); update(); });
   $('mode-map-editor').addEventListener('click', () => { scene.setMode?.('editor'); update(); });

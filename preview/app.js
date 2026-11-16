@@ -1906,7 +1906,7 @@
   function applyIslandCameraSettings() {
     islandCameraElevation = clamp(Number(islandElevationInput?.value ?? DEFAULT_ISLAND_CAMERA_ELEVATION),
       MIN_ISLAND_CAMERA_ELEVATION, MAX_ISLAND_CAMERA_ELEVATION);
-    editorZoom = clamp(Number(islandZoomInput?.value ?? 100) / 100, 0.1, 10);
+    editorZoom = clamp(Number(islandZoomInput?.value ?? 100) / 100, 0.5, 20);
     islandZoom = baseFitZoom() * editorZoom;
     rebuildIslandProjection();
     if (islandElevationOutput) islandElevationOutput.textContent = `${Math.round(islandCameraElevation)}°`;
@@ -2188,7 +2188,7 @@
     },
     setCamera(zoom, panX, panY) {
       if (![zoom, panX, panY].every(Number.isFinite)) return false;
-      editorZoom = clamp(zoom, 0.1, 10);
+      editorZoom = clamp(zoom, 0.5, 20);
       cameraPanX = panX; cameraPanY = panY;
       islandZoom = baseFitZoom() * editorZoom;
       if (REDUCED_MOTION) drawFrame();
