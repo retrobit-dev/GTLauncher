@@ -19,9 +19,9 @@ assert b.get(ns+'layout_marginTop') is None
 assert a.get(ns+'layout_weight')==b.get(ns+'layout_weight')=='1'
 for prop in ['layout_width','layout_height','gravity','paddingStart','paddingEnd']:
  assert a.get(ns+prop)==b.get(ns+prop), prop
-assert time.get(ns+'layout_marginStart')==battery.get(ns+'layout_marginStart')=='1dp'
+assert time.get(ns+'layout_marginStart')==battery.get(ns+'layout_marginStart')=='3dp'
 assert a.get(ns+'paddingStart')=='8dp' and a.get(ns+'paddingEnd')=='3dp'
-assert a.get(ns+'layout_width')==b.get(ns+'layout_width')=='83dp'
+assert a.get(ns+'layout_width')==b.get(ns+'layout_width')=='85dp'
 assert stack.get(ns+'layoutDirection')=='ltr'
 for value in [time,battery]:
  assert value.get(ns+'layout_width')=='0dp' and value.get(ns+'layout_weight')=='1'
@@ -30,6 +30,6 @@ assert len(b.findall('ImageView'))==1 and battery.get(ns+'text')=='--.--'
 for icon in ['hud_battery_icon.xml','hud_battery_low.xml','hud_battery_charging.xml','hud_battery_unknown.xml']:
  ET.parse(root/'app/src/main/res/drawable'/icon)
 s=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
-for x in ['Intent.ACTION_BATTERY_CHANGED','BatteryManager.EXTRA_LEVEL','BatteryManager.EXTRA_SCALE', 'BatteryManager.EXTRA_STATUS', 'BatteryManager.BATTERY_STATUS_CHARGING', 'level * 5L <= scale', 'R.drawable.hud_battery_low', 'R.drawable.hud_battery_charging', 'R.drawable.hud_battery_unknown','"%.2f"','startBatteryUpdates();','stopBatteryUpdates();','unregisterReceiver(batteryReceiver)', 'resizeHudReadouts()', 'measureText("88:88")', 'value.length() > 5 ? 5f / 6f : 1f', 'dp(8) + dp(14) + dp(1) + dp(3)']:
+for x in ['Intent.ACTION_BATTERY_CHANGED','BatteryManager.EXTRA_LEVEL','BatteryManager.EXTRA_SCALE', 'BatteryManager.EXTRA_STATUS', 'BatteryManager.BATTERY_STATUS_CHARGING', 'level * 5L <= scale', 'R.drawable.hud_battery_low', 'R.drawable.hud_battery_charging', 'R.drawable.hud_battery_unknown','"%.2f"','startBatteryUpdates();','stopBatteryUpdates();','unregisterReceiver(batteryReceiver)', 'resizeHudReadouts()', 'measureText("88:88")', 'value.length() > 5 ? 5f / 6f : 1f', 'dp(8) + dp(14) + dp(3) + dp(3)']:
  assert x in s,x
 print('Android battery HUD layout and lifecycle: static checks OK')

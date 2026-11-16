@@ -283,8 +283,8 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .stat-bar { flex:1; height:55%; border:1px solid #594529; background:repeating-linear-gradient(90deg,transparent 0 8%,#4a3729 8% 10%),var(--bar); }
 .stat-bar.health { --bar:#c94e43; }.stat-bar.stamina { --bar:#e5af3c; }.stat-bar.food { --bar:#80aa42; }.stat-bar.water { --bar:#4c9dc1; }
 .clock-hud { position:absolute; z-index:3; top:2%; right:3%; width:auto; height:11.5%; display:flex; align-items:flex-end; pointer-events:none; color:#342b1e; font-family:HudPixel,monospace; }
-.clock-readouts { width:8.2cqw; flex:none; height:85.42%; display:flex; flex-direction:column; min-width:0; background:#f5e1b0ef; border:2px solid #815a2e; border-radius:5px 0 0 5px; box-shadow:inset 0 0 0 1px #e8c890; }
-.hud-panel { flex:1; min-height:0; display:flex; align-items:center; gap:.15cqw; padding:2% .35cqw; font-size:1.1cqw; }
+.clock-readouts { width:8.4cqw; flex:none; height:85.42%; display:flex; flex-direction:column; min-width:0; background:#f5e1b0ef; border:2px solid #815a2e; border-radius:5px 0 0 5px; box-shadow:inset 0 0 0 1px #e8c890; }
+.hud-panel { flex:1; min-height:0; display:flex; align-items:center; gap:.35cqw; padding:2% .35cqw; font-size:1.1cqw; }
 .hud-panel + .hud-panel { border-top:1px solid #815a2e; }
 .hud-panel img, .hud-battery-icon { height:80%; width:1.4cqw; flex:none; object-fit:contain; image-rendering:pixelated; }
 .hud-panel time, .hud-panel span { min-width:0; flex:0 1 auto; text-align:left; white-space:nowrap; font-size:1.05cqw; }

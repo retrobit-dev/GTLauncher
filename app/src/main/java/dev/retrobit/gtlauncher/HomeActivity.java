@@ -439,7 +439,7 @@ public class HomeActivity extends Activity {
         View batteryPanel = findViewById(R.id.hud_battery_panel);
         // Keep the clock panel width fixed as battery readings change.
         float textWidth = time.getPaint().measureText("88:88");
-        int width = dp(8) + dp(14) + dp(1) + dp(3) + (int) Math.ceil(textWidth);
+        int width = dp(8) + dp(14) + dp(3) + dp(3) + (int) Math.ceil(textWidth);
         for (View panel : new View[]{timePanel, batteryPanel}) {
             if (panel.getLayoutParams().width != width) {
                 android.view.ViewGroup.LayoutParams params = panel.getLayoutParams();

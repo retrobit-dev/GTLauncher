@@ -24,7 +24,7 @@ print('Android date HUD XML and drawer integration OK (static only)')
 assert calendar.get(ns+'layout_width') == calendar.get(ns+'layout_height') == '48dp'
 time=hud.find(".//*[@"+ns+"id='@+id/hud_time']")
 panel=next(el for el in hud.iter() if time in list(el))
-assert panel.get(ns+'layout_width')=='83dp' and panel.get(ns+'layout_height')=='0dp' and panel.get(ns+'layout_weight')=='1'
+assert panel.get(ns+'layout_width')=='85dp' and panel.get(ns+'layout_height')=='0dp' and panel.get(ns+'layout_weight')=='1'
 assert hud.find(".//*[@"+ns+"id='@+id/hud_season_icon']") is not None
 
 assert clocks[2].get(ns+'layout_marginTop') == clocks[3].get(ns+'layout_marginTop') == '4dp'
