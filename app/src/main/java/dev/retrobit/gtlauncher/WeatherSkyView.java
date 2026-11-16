@@ -31,7 +31,7 @@ public final class WeatherSkyView extends View {
     private static final int RENDER_SCALE = 2;
     /** One pixel-art cell in scene units, matching the preview renderer. */
     private static final float RENDER_CELL = 1.0f / RENDER_SCALE;
-    private int ISLAND_GRID_SIZE = 25;
+    private int ISLAND_GRID_SIZE = 100;
     private static final int ISLAND_TILE_WIDTH = 28;
     private static final String ISLAND_COLUMN_LABELS = "ABCDEFGHIJKLMNOPQRSTUVWXY";
     // Logical grid IDs are A1–I9: columns A–I left to right, rows 1–9 top to bottom.
@@ -418,7 +418,7 @@ public final class WeatherSkyView extends View {
         return o.material.equals("banana")?treeBanana:o.material.equals("palm")?treeCoconut:o.material.equals("apple")?treeApple:o.material.equals("orange")?treeOrange:o.material.equals("pear")?treePear:o.material.equals("guava")?treeGuava:o.material.equals("starfruit")?treeStarfruit:treeMango;
     }
     void setWorldSurfaces(String worldId,java.util.List<WorldStore.SurfaceObject> objects) {
-        ISLAND_GRID_SIZE = worldId == null || "base".equals(worldId) ? 25 : 9;
+        ISLAND_GRID_SIZE = worldId == null || "base".equals(worldId) ? 100 : 9;
         ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
         ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2f;
         String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;}
@@ -518,9 +518,9 @@ public final class WeatherSkyView extends View {
             ? SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f : SCENE_WIDTH/2f; }
     private float mapSourceY() { return gameplayMode && showCharacter
             ? ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f
-            : ISLAND_GRID_SIZE == 25 ? ISLAND_CENTER_Y : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
+            : ISLAND_GRID_SIZE >= 20 ? ISLAND_CENTER_Y : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
     private float mapDestinationX() { return SCENE_WIDTH/2f; }
-    private float mapDestinationY() { return (gameplayMode && showCharacter) || ISLAND_GRID_SIZE == 25 ? SCENE_HEIGHT*.56f : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
+    private float mapDestinationY() { return (gameplayMode && showCharacter) || ISLAND_GRID_SIZE >= 20 ? SCENE_HEIGHT*.56f : SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN; }
     private float mapZoom() { return IslandProjection.renderZoom(gameplayMode); }
     // Object and marker hit tests use the exact inverse of the current map camera.
     private float islandX(float screenX) {return IslandProjection.inverse(screenX,getWidth(),SCENE_WIDTH,mapSourceX(),mapDestinationX(),mapZoom());}
@@ -1101,10 +1101,8 @@ public final class WeatherSkyView extends View {
                 CloudLayout.shadowFade(motionSeconds, animationEnabled));
         scene.restoreToCount(islandSave);
         // Cloud sprites are intentionally hidden; only their surface shadows remain.
-        // Celestial sprites remain visible in front of the island and its objects.
+        // Sun and moon sprites are temporarily hidden; lighting and stars remain active.
         drawStars(scene, sun.altitudeDegrees, cloudCover);
-        drawSun(scene, sun, cloudCover, motionSeconds);
-        drawMoon(scene, moon, motionSeconds, sun.altitudeDegrees);
         drawPrecipitation(scene, elapsedSeconds);
         int markerSave=scene.save();applyIslandScale(scene);
         drawPortalMarkers(scene);

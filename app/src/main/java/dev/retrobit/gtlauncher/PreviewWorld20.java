@@ -8,7 +8,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-/** Strict, lossless reader for the preview's portable 20x20 and 25x25 formats.
+/** Strict, lossless reader for the preview's portable 20x20, 25x25 and 100x100 formats.
  */
 final class PreviewWorld20 {
     final int size;
@@ -66,7 +66,7 @@ final class PreviewWorld20 {
         String id=string(w,"id"), name=string(w,"name"), description=string(w,"description"), color=string(w,"color");
         if (!id.matches("[A-Za-z0-9_-]{1,128}") || id.equals("base") || name.trim().isEmpty() || name.length()>48
                 || description.length()>160 || !color.matches("#[0-9a-fA-F]{6}")) throw new JSONException("Invalid world fields");
-        int size=integer(w,"gridSize",20,25); if (size != 20 && size != 25) throw new JSONException("Invalid grid");
+        int size=integer(w,"gridSize",20,100); if (size != 20 && size != 25 && size != 100) throw new JSONException("Invalid grid");
         JSONArray source=w.getJSONArray("tiles"); if (source.length()!=size*size) throw new JSONException("Invalid tiles");
         int[] tiles=new int[size*size];
         for (int i=0;i<tiles.length;i++) {

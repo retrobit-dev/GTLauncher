@@ -33,7 +33,7 @@
   }
   function apply(event) {
     const world=worlds.getActive();
-    if(world.id==='base'||![20,25].includes(world.gridSize)||!Array.isArray(world.tiles)) {
+    if(world.id==='base'||![20,25,100].includes(world.gridSize)||!Array.isArray(world.tiles)) {
       status.textContent='Buat atau buka world 20×20 atau 25×25; Base dan world lama tidak diubah.';return;
     }
     const point=scene.tileAt(scene.toLocal(event.clientX,event.clientY));

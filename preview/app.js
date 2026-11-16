@@ -46,10 +46,10 @@
   houseBackImage.src = './assets/house-back.png';
   const PLAYER_WIDTH = 13.5;
   const PLAYER_HEIGHT = 25;
-  // Base and new worlds are 25×25; older worlds retain their original geometry.
-  let ISLAND_GRID_SIZE = window.worldManager?.getActive()?.id === 'base' ? 25 : (window.worldManager?.getActive()?.gridSize || 9);
+  // Base and new worlds are 100×100; older worlds retain their original geometry.
+  let ISLAND_GRID_SIZE = window.worldManager?.getActive()?.id === 'base' ? 100 : (window.worldManager?.getActive()?.gridSize || 9);
   const ISLAND_TILE_WIDTH = 28;
-  const ISLAND_COLUMN_LABELS = 'ABCDEFGHIJKLMNOPQRSTUVWXY';
+  function columnLabelFor(column) { let n=column+1, label=''; while(n>0) { n--; label=String.fromCharCode(65+n%26)+label; n=Math.floor(n/26); } return label; }
   // Logical grid IDs are A1–I9: columns A–I left to right, rows 1–9 top to bottom.
   // The diamond compass frame is rotated 45° clockwise from the screen diagonal so the grid
   // axes are cardinal: moving along a column runs east–west, moving along a row runs
@@ -248,7 +248,7 @@
       for (let row = 0; row < ISLAND_GRID_SIZE; row += 1) {
         const column = diagonal - row;
         if (column < 0 || column >= ISLAND_GRID_SIZE) continue;
-        const columnLabel = ISLAND_COLUMN_LABELS[column];
+        const columnLabel = columnLabelFor(column);
         const rowLabel = row + 1;
         ISLAND_TILES.push({
           column,
@@ -256,7 +256,7 @@
           columnLabel,
           rowLabel,
           coordinate: `${columnLabel}${rowLabel}`,
-          variant: ((columnLabel.charCodeAt(0) - 65) + rowLabel - 1) % 2,
+          variant: (column + row) % 2,
           x: WIDTH / 2 + (column - row) * ISLAND_TILE_WIDTH / 2,
           y: islandTop + islandTileHeight / 2 + (column + row) * islandTileHeight / 2
         });
@@ -1950,8 +1950,7 @@
     // cloud shadows remain visible as requested.
     const shadowLight = sun.altitude <= MOON_VISIBLE_BELOW_SUN ? moonNow : sun;
     // Cloud sprites are hidden; their moving island shadows remain.
-    drawSun(sun, sceneWeather.cloudCover, motionTime);
-    drawMoon(moonNow, motionTime, sun.altitude);
+    // Sun and moon sprites are temporarily hidden; lighting and stars remain active.
     ctx.restore();
     ctx.save();
     ctx.beginPath();
@@ -2084,7 +2083,7 @@
       gameplayFollowCentre = null;
       savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
     }
-    const nextSize = nextWorldId === 'base' ? 25 : (window.worldManager?.getActive()?.gridSize || 9);
+    const nextSize = nextWorldId === 'base' ? 100 : (window.worldManager?.getActive()?.gridSize || 9);
     if (nextSize !== ISLAND_GRID_SIZE) {
       ISLAND_GRID_SIZE = nextSize;
       gameplayFollowCentre = null;

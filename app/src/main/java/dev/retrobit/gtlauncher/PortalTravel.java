@@ -34,7 +34,7 @@ final class PortalTravel {
     }
     private static boolean validTile(Tile tile) { return validTile(tile, SIZE); }
     private static boolean validTile(Tile tile, int size) {
-        return size > 0 && size <= 25 && tile != null && tile.column >= 0 && tile.column < size && tile.row >= 0 && tile.row < size;
+        return size > 0 && size <= 100 && tile != null && tile.column >= 0 && tile.column < size && tile.row >= 0 && tile.row < size;
     }
     private static boolean isPortalOnEdge(Portal p) {
         if (p == null || p.worldId == null || p.id == null || !validTile(p.tile) || p.edge == null) return false;

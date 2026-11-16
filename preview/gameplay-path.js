@@ -2,7 +2,7 @@
 (function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.GameplayPath=factory();})(typeof window!=='undefined'?window:globalThis,()=>{
   'use strict';
   function find(world,start,end,house) {
-    const size=[20,25].includes(world?.gridSize)?world.gridSize:9;
+    const size=[20,25,100].includes(world?.gridSize)?world.gridSize:9;
     const inside=p=>p && Number.isInteger(p.column)&&Number.isInteger(p.row)&&p.column>=0&&p.column<size&&p.row>=0&&p.row<size;
     const keyOf=p=>p.row*size+p.column;
     const inHouse=p=>house?.visible && p.column>=house.column && p.column<house.column+3 && p.row>=house.row && p.row<house.row+3;
