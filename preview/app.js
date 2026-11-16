@@ -34,13 +34,13 @@
   grassDetailImage.src = './assets/island-grass-detail.png';
   const playerImage = new Image();
   playerImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
-  playerImage.src = './assets/main-character.png?v=backpack-2';
+  playerImage.src = './assets/main-character.png?v=workwear-1';
   const playerBackImage = new Image();
   playerBackImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
-  playerBackImage.src = './assets/main-character-back.png?v=backpack-2';
+  playerBackImage.src = './assets/main-character-back.png?v=workwear-1';
   // Full-image gait frames keep hands and feet connected to the body.
   const gaitFrames = Object.fromEntries(['walk','run'].map(mode => [mode,Object.fromEntries(['front','back'].map(side => [side,
-    Array.from({length:12},(_,i)=>{const image=new Image();image.src=`./assets/character-${mode}/${side}-${String(i).padStart(2,'0')}.png?v=5`;return image;})]))]));
+    Array.from({length:12},(_,i)=>{const image=new Image();image.src=`./assets/character-${mode}/${side}-${String(i).padStart(2,'0')}.png?v=6`;return image;})]))]));
   const houseImage = new Image();
   houseImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
   houseImage.src = './assets/house.png';
