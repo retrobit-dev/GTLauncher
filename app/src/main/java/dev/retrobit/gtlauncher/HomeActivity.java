@@ -537,7 +537,6 @@ public class HomeActivity extends Activity {
         String label=house!=null?"Rumah":object!=null?object.type:"Portal";
         new AlertDialog.Builder(this).setTitle(label+" dipilih")
             .setItems(actions.toArray(new String[0]),(dialog,which)->{
-                try {
                     if(which==0) {
                         if(!small){Toast.makeText(this,"Objek ini tidak dapat diambil.",Toast.LENGTH_SHORT).show();return;}
                         new AlertDialog.Builder(this).setTitle("Ambil objek?")
@@ -555,7 +554,6 @@ public class HomeActivity extends Activity {
                     } else if(object!=null && object.type.equals("tree"))interactTree(object);
                     else if(object!=null)showSellingPlaceholder(object);
                     else if(portal!=null)walkToPortal(portal.id);
-                } catch(JSONException | ClassCastException error){Toast.makeText(this,"Objek tidak berubah; periksa data world dan tas.",Toast.LENGTH_LONG).show();}
             }).setNegativeButton("Batal",null).show();
     }
     private void walkToGround(float x,float y) {
