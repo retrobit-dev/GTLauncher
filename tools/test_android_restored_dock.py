@@ -16,10 +16,10 @@ for name in keys:
         png=(root/'app/src/main/res/drawable-nodpi/dock_tool_hand.png').read_bytes()
         assert png==(root/'preview/assets/hud/tools/glove-selected.png').read_bytes()
         assert png[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',png[16:24])==(512,512) and png[25]==6
-    elif name == 'hoe':
+    elif name in ('hoe','shovel'):
         import struct
-        png=(root/'app/src/main/res/drawable-nodpi/dock_tool_hoe.png').read_bytes()
-        assert png==(root/'preview/assets/hud/tools/hoe-selected.png').read_bytes()
+        png=(root/f'app/src/main/res/drawable-nodpi/dock_tool_{name}.png').read_bytes()
+        assert png==(root/f'preview/assets/hud/tools/{name}-selected.png').read_bytes()
         assert png[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',png[16:24])==(512,512) and png[25]==6
     else:
         ET.parse(root/'app/src/main/res/drawable'/('dock_tool_'+name+'.xml'))
