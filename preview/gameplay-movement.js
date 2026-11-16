@@ -5,7 +5,7 @@
   const stage=document.querySelector('.preview-stage'),canvas=document.getElementById('sky-canvas');
   const status=document.getElementById('gameplay-movement-status'),scene=window.sceneEditing,worlds=window.worldManager,path=window.GameplayPath;
   if(!stage||!canvas||!status||!scene?.setGameplayDraft||!worlds?.updateCharacter||!path)return;
-  let gesture=null, walk=null, queuedTarget=null, generation=0, committing=false, movingHouse=null, selectedHouse=null;
+  let gesture=null, walk=null, generation=0, committing=false, movingHouse=null, selectedHouse=null;
   const objectDialog=document.getElementById('hand-object-dialog');
   function clearObjectSelection(){movingHouse=null;selectedHouse=null;if(objectDialog?.open)objectDialog.close();}
   if(objectDialog){
@@ -16,18 +16,34 @@
   }
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function tell(text){status.textContent=text;status.hidden=!text;}
-  function cancel() { generation++; walk=null;queuedTarget=null;scene.setGameplayRoute?.(null);scene.setGameplayDraft(null); }
+  function cancel() { generation++; walk=null;scene.setGameplayRoute?.(null);scene.setGameplayDraft(null); }
   function step(timestamp,token) {
     if(token!==generation||!walk)return;
     if(stage.dataset.mode!=='gameplay'||worlds.getActive().id!==walk.id){cancel();return;}
     if(walk.started===null) walk.started=timestamp;
-    if(walk.runRequested && !walk.running) {
-      let elapsed=Math.max(0,timestamp-walk.started), index=0, before=0;
-      while(index<walk.durations.length-1 && elapsed>=walk.durations[index]) {elapsed-=walk.durations[index];before+=walk.durations[index];index++;}
-      const progress=Math.min(1,elapsed/walk.durations[index]);
-      for(let i=index;i<walk.durations.length;i++)walk.durations[i]=330;
-      walk.started=timestamp-before-progress*walk.durations[index];
-      walk.running=true;walk.runRequested=false;
+    if(walk.runRequested || walk.pendingTarget) {
+      let elapsed=Math.max(0,timestamp-walk.started), index=0;
+      while(index<walk.durations.length-1 && elapsed>=walk.durations[index]) {elapsed-=walk.durations[index];index++;}
+      const progress=Math.max(0,Math.min(1,elapsed/walk.durations[index]));
+      let a=walk.route[index], b=walk.route[index+1], nextProgress=progress;
+      if(walk.pendingTarget) {
+        const target=walk.pendingTarget, world=worlds.getActive(), house=worlds.getHouse();
+        const occupied=house?.visible && target.column>=house.column && target.column<house.column+3 && target.row>=house.row && target.row<house.row+3;
+        const find=from=>occupied?path.findBeside(world,from,house):path.find(world,from,target,house);
+        const fromA=find(a),fromB=find(b);
+        if(fromA || fromB) {
+          const reverse=fromA && (!fromB || progress+fromA.length-1 < (1-progress)+fromB.length-1);
+          walk.route=reverse?[b,...fromA]:[a,...fromB];
+          nextProgress=reverse?1-progress:progress;
+          walk.routeIndex=1;
+          walk.message=occupied?'Di dekat rumah. Interaksi rumah belum tersedia.':'';
+          scene.setGameplayRoute?.(walk.route,1);
+          tell('Berlari menuju tujuan baru.');
+        } else tell('Tile tujuan tidak dapat dicapai; rute sebelumnya tetap aktif.');
+      }
+      walk.pendingTarget=null;walk.running=true;walk.runRequested=false;
+      walk.durations=walk.route.slice(1).map(()=>330);
+      walk.started=timestamp-nextProgress*330;
     }
     let elapsed=timestamp-walk.started,index=1;
     while(index<walk.route.length && elapsed>=walk.durations[index-1]){elapsed-=walk.durations[index-1];index++;}
@@ -35,9 +51,8 @@
       const end=walk.route[walk.route.length-1],previous=walk.route[walk.route.length-2];
       const facing=direction(previous,end),character={...walk.character,...end,facing};
       committing=true;let ok=false;try{ok=worlds.updateCharacter(walk.id,character);}finally{committing=false;}
-      const next=queuedTarget,walkMessage=walk.message; cancel();
+      const walkMessage=walk.message; cancel();
       if(!ok){tell('Posisi tidak tersimpan; periksa penyimpanan browser.');return;}
-      if(next){move(next,true);return;}
       tell(walkMessage || `Tiba di ${columnLabel(end.column)}${end.row+1}.`);return;
     }
     if(walk.routeIndex!==index){walk.routeIndex=index;scene.setGameplayRoute?.(walk.route,index);}
@@ -49,8 +64,8 @@
   function move(target,continueRunning=false) {
     if(walk){
       const end=walk.route[walk.route.length-1];
-      if(target.column!==end.column || target.row!==end.row) queuedTarget=target;
-      walk.runRequested=true;tell(queuedTarget?'Berlari; tujuan berikutnya disimpan.':'Berlari menuju tujuan.');return;
+      walk.pendingTarget=(target.column!==end.column || target.row!==end.row)?target:null;
+      walk.runRequested=true;tell(walk.pendingTarget?'Mengubah tujuan dan berlari…':'Berlari menuju tujuan.');return;
     }
     const world=worlds.getActive(), character=worlds.getCharacter();
     if(world.id==='base'||!character.visible){tell('Buka atau buat world dengan karakter melalui tombol World.');return;}
@@ -81,7 +96,7 @@
       tell(ok?(completion || `Tiba di ${columnLabel(end.column)}${end.row+1}.`):'Posisi tidak tersimpan; periksa penyimpanan browser.');return;
     }
     scene.setGameplayRoute?.(route,1);
-    walk={id:world.id,character,route,message:completion,routeIndex:1,started:null,running:continueRunning,runRequested:false,durations:route.slice(1).map(()=>continueRunning?330:650)};
+    walk={id:world.id,character,route,message:completion,routeIndex:1,started:null,running:continueRunning,runRequested:false,pendingTarget:null,durations:route.slice(1).map(()=>continueRunning?330:650)};
     const token=++generation;window.requestAnimationFrame(t=>step(t,token));
   }
   canvas.addEventListener('pointerdown',event=>{
