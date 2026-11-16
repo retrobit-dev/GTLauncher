@@ -12,7 +12,7 @@ assert.throws(()=>season.classify(rainfall(0),new Date('2026-12-01T12:00:00Z')))
  let altitude=-10,calls=0,interval;w.SeasonEstimate=season;w.previewHudLocation=()=>({latitude:-6.7,longitude:110.4});w.previewHudSunAltitude=()=>altitude;
  w.setInterval=cb=>{interval=cb};w.fetch=async()=>{calls++;return {ok:false}};
  w.eval(fs.readFileSync(path.join(root,'hud.js'),'utf8'));
- assert.equal(d.getElementById('hud-phase').alt,'Malam');assert.equal(d.getElementById('hud-battery').textContent,'--%');
+ assert.equal(d.getElementById('hud-phase').alt,'Malam');assert.equal(d.getElementById('hud-battery').textContent,'--.--');
  altitude=10;interval();assert.equal(d.getElementById('hud-phase').alt,'Siang');assert.equal(calls,1,'season requests are throttled');
  d.querySelector('[data-dock="bag"]').click();assert(dialog.open);assert.match(d.getElementById('dock-message').textContent,/belum dipulihkan/);
  d.getElementById('dock-close').click();assert(!dialog.open);
@@ -23,5 +23,17 @@ assert.throws(()=>season.classify(rainfall(0),new Date('2026-12-01T12:00:00Z')))
  assert(!d.querySelector('[data-dock="close"]'),'no close icon in dock');
  d.querySelector('[data-dock="hoe"]').click();assert(dialog.open);assert.match(d.getElementById('dock-message').textContent,/belum dipulihkan/);d.getElementById('dock-close').click();
  d.querySelector('[data-dock="add"]').click();assert(dialog.open);assert.match(d.getElementById('dock-message').textContent,/belum dipulihkan/);
- await Promise.resolve();dom.window.close();console.log('HUD phase, clock, battery fallback, season validation, dock and assets: OK');
+ assert.equal(d.querySelector('.clock-readouts').children.length,2,'time and battery share a single left panel');
+ assert(d.querySelector('.clock-hud > .season-indicator'),'season is distinct from time indicator');
+ assert.equal(d.querySelectorAll('.hud-calendar > *').length,3);
+ await Promise.resolve();dom.window.close();
+ const other=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:'https://test.invalid/',runScripts:'outside-only'}),v=other.window, doc=v.document;
+ const listeners={},batteryInfo={level:1,charging:false,addEventListener:(name,fn)=>listeners[name]=fn};
+ v.navigator.getBattery=()=>Promise.resolve(batteryInfo);v.setInterval=()=>{};v.fetch=async()=>({ok:false});v.SeasonEstimate=season;
+ v.eval(fs.readFileSync(path.join(root,'hud.js'),'utf8'));await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(doc.getElementById('hud-battery').textContent,'100.00');assert.equal(doc.getElementById('hud-battery-mark').getAttribute('fill'),'#94BD2B');
+ batteryInfo.level=.18;listeners.levelchange();assert.equal(doc.getElementById('hud-battery').textContent,'18.00');assert.equal(doc.getElementById('hud-battery-mark').getAttribute('fill'),'#C85439');
+ batteryInfo.charging=true;listeners.chargingchange();assert.equal(doc.getElementById('hud-battery-mark').getAttribute('fill'),'#E0A52B');assert.match(doc.getElementById('hud-battery').getAttribute('aria-label'),/mengisi daya/);
+ batteryInfo.level=NaN;listeners.levelchange();assert.equal(doc.getElementById('hud-battery').textContent,'--.--');other.window.close();
+ console.log('HUD phase, clock, two-decimal battery states, season validation, dock and assets: OK');
 })().catch(error=>{console.error(error);process.exitCode=1});

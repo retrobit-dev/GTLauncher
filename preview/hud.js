@@ -40,10 +40,26 @@
     refreshSeason(window.previewHudLocation?.(),now);
   }
   updateClock();window.setInterval(updateClock,60000);
-  if(typeof navigator.getBattery==='function')navigator.getBattery().then(info=>{
-    function update(){const value=Number.isFinite(info.level)?`${Math.round(info.level*100)}%`:'--%';battery.textContent=value;battery.setAttribute('aria-label',value==='--%'?'Status baterai tidak tersedia':`Baterai ${value}${info.charging?', mengisi daya':''}`);}
-    info.addEventListener('levelchange',update);info.addEventListener('chargingchange',update);update();
-  }).catch(()=>{});
+  function updateBattery(info) {
+    const level=info?.level, valid=Number.isFinite(level) && level>=0 && level<=1;
+    const value=valid ? (level*100).toFixed(2) : '--.--';
+    battery.textContent=value;
+    battery.dataset.wide=String(value.length>5);
+    battery.setAttribute('aria-label',valid?`Baterai ${value} persen${info.charging?', mengisi daya':''}`:'Status baterai tidak tersedia');
+    const mark=$('hud-battery-mark');
+    if(!valid) { mark.setAttribute('fill','#8B8979');mark.setAttribute('d','M6 5h4v2H8v2H7V7h2V6H6zm1 5h1v2H7z'); }
+    else if(info.charging) { mark.setAttribute('fill','#E0A52B');mark.setAttribute('d','M8 4H6v4h2L7 13l4-6H9l1-3z'); }
+    else if(level<=0.2) { mark.setAttribute('fill','#C85439');mark.setAttribute('d','M6 10h4v2H6z'); }
+    else { mark.setAttribute('fill','#94BD2B');mark.setAttribute('d','M6 7h4v5H6z'); }
+  }
+  if(typeof navigator.getBattery==='function') {
+    try {
+      Promise.resolve(navigator.getBattery()).then(info=>{
+        const update=()=>updateBattery(info);
+        info.addEventListener('levelchange',update);info.addEventListener('chargingchange',update);update();
+      }).catch(()=>updateBattery(null));
+    } catch (_) { updateBattery(null); }
+  }
   const dialog=$('dock-dialog'),title=$('dock-dialog-title'),message=$('dock-message');
   const info={add:['Tab dock','Penambahan tab dock belum dipulihkan.'],phone:['Aplikasi','Daftar aplikasi perangkat hanya tersedia di Android; browser tidak dapat membacanya.'],bag:['Tas','Tas preview belum dipulihkan. Data inventaris tidak diubah.'],settings:['Pengaturan','Pengaturan dock belum tersedia.']};
   for(const button of document.querySelectorAll('[data-dock]'))button.addEventListener('click',()=>{if(button.dataset.dock==='tools')return;const entry=info[button.dataset.dock] || [button.getAttribute('title').split(' — ')[0], 'Fungsi alat ini belum dipulihkan di preview.'];title.textContent=entry[0];message.textContent=entry[1];if(!dialog.open)dialog.showModal();});
