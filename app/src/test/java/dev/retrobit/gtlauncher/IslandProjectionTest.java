@@ -21,7 +21,7 @@ public class IslandProjectionTest {
   }
  }
  @Test public void gameplayCameraUsesTwelvePointFiveTimesEditorZoomAndInverts() {
-  assertEquals(12.5f,IslandProjection.modeZoom(true),0);assertEquals(1f,IslandProjection.modeZoom(false),0);assertEquals(62.5f,IslandProjection.renderZoom(true),0);assertEquals(5f,IslandProjection.renderZoom(false),0);
+  assertEquals(10f,IslandProjection.modeZoom(true),0);assertEquals(1f,IslandProjection.modeZoom(false),0);assertEquals(50f,IslandProjection.renderZoom(true),0);assertEquals(5f,IslandProjection.renderZoom(false),0);
   for(float width:new float[]{640,960,2560}) for(float source:new float[]{90,160,230}) {
    float scale=IslandProjection.scale(width,320)*IslandProjection.renderZoom(true);
    float destination=160;

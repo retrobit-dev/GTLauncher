@@ -2123,10 +2123,10 @@
     }, true);
   }
 
-  // Gameplay uses 12.5 times the editor's default fit scale, independent of its camera controls.
+  // Gameplay uses 10 times the editor's default fit scale, independent of its camera controls.
   function applyGameplayCamera() {
     editorZoom = 1;
-    islandZoom = baseFitZoom() * 12.5;
+    islandZoom = baseFitZoom() * 10;
     const character = gameplayDraft || window.worldManager?.getCharacter();
     const target = character?.visible ? characterCentre(character) : {x: WIDTH / 2, y: islandCenterY};
     // Ease toward the closest point of the dead zone, independently of frame rate.
