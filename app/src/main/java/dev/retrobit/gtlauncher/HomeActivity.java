@@ -168,7 +168,7 @@ public class HomeActivity extends Activity {
     private boolean treeFallback;
     private TreePhenology.Result treePhenology;
     private WeatherSkyView skyView;
-    private int selectedTool = R.id.dock_tool_hand;
+    private int selectedTool = -1;
     private String movingObjectWorld;
     private WorldStore.House movingHouse;
     private WorldStore.SurfaceObject movingSurface;
@@ -303,8 +303,6 @@ public class HomeActivity extends Activity {
             return true;
         });
         findViewById(R.id.drawer_back).setOnClickListener(view -> closeDrawer());
-        findViewById(R.id.dock_tool_hand).setSelected(true);
-        skyView.setHoeSelected(true);
         for(int tool: gameplayTools()) findViewById(tool).setOnClickListener(view -> selectTool(tool));
         findViewById(R.id.dock_add_tab).setOnClickListener(view ->
                 Toast.makeText(this, "Penambahan tab dock belum tersedia.", Toast.LENGTH_SHORT).show());
