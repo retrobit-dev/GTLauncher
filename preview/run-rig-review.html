@@ -12,9 +12,10 @@
 <p class="notice"><strong>Studi rig, bukan animasi karakter final.</strong> Garis menunjukkan titik sendi perkiraan; gambar karakter di belakangnya diam sebagai acuan saja. Anggota tubuh belum digambar ulang atau dipasang ke rig, dan gerakan ini belum digunakan di game.</p>
 <div class="panel">
 <div class="controls"><label for="view">Arah:</label><select id="view"><option value="front">Depan</option><option value="back">Belakang</option></select><button id="play" type="button">Jeda</button><label for="phase">Fase:</label><input id="phase" type="range" min="0" max="11" step="1" value="0"><output id="frame">1 / 12</output></div>
+<label><input id="show-arm" type="checkbox"> Tampilkan percobaan satu lengan</label>
 <canvas id="rig" width="432" height="800" aria-label="Diagram sendi lari di atas gambar karakter"></canvas>
 <div class="legend"><span class="near">● Anggota dekat</span><span class="far">● Anggota jauh</span></div>
-<small>Geser fase untuk memeriksa kedua langkah. Titik sendi belum dikalibrasi dengan artwork dan belum menunjukkan sambungan final.</small>
+<small>Geser fase untuk memeriksa kedua langkah. Lengan uji hanya digerakkan kaku di bahu; belum ada badan bersih, siku bersendi, pasangan lengan atau sambungan final.</small>
 <p id="error" role="alert" hidden></p>
 </div>
 <script src="./run-rig-review.js" defer></script>
