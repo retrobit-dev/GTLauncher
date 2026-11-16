@@ -8,7 +8,8 @@ final class GroundRedirect {
         Result(List<PortalTravel.Tile> route,boolean reversed){this.route=route;this.reversed=reversed;}
     }
     static Result plan(PortalTravel.Tile a,PortalTravel.Tile b,float progress,PortalTravel.Tile target,PortalTravel.Terrain terrain,int size) {
-        List<PortalTravel.Tile> fromA=PortalTravel.path(a,target,terrain,size),fromB=PortalTravel.path(b,target,terrain,size);
+        List<PortalTravel.Tile> fromA=terrain.canStep(b.column,b.row,a.column,a.row) ? PortalTravel.path(a,target,terrain,size) : null;
+        List<PortalTravel.Tile> fromB=PortalTravel.path(b,target,terrain,size);
         if(fromA==null && fromB==null)return null;
         float t=Math.max(0,Math.min(1,progress));
         boolean reverse=fromA!=null && (fromB==null || t+fromA.size()-1 < (1-t)+fromB.size()-1);
