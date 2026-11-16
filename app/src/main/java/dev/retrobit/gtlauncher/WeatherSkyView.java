@@ -546,6 +546,13 @@ public final class WeatherSkyView extends View {
                 || Math.abs(c-col)>.5f || Math.abs(r-row)>.5f) return null;
         return new PortalTravel.Tile(col,row);
     }
+    boolean characterAt(float sx,float sy) {
+        if(!showCharacter || getWidth()<=0 || getHeight()<=0)return false;
+        Bitmap sprite=(characterFacing.equals("N")||characterFacing.equals("W"))?mainCharacterBack:mainCharacter;
+        float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f;
+        float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f;
+        return opaqueAt(sprite,new RectF(x-6.75f*characterScale,y-25*characterScale,x+6.75f*characterScale,y),islandX(sx),islandY(sy),characterFacing.equals("N")||characterFacing.equals("E"));
+    }
     WorldStore.SurfaceObject sellingMarkerAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;float x=islandX(sx),y=islandY(sy);
         for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);RectF hit=sellingMarkerBounds(o);hit.inset(-3,-3);if(sellingMarkerVisible(o) && hit.contains(x,y))return o;}return null;

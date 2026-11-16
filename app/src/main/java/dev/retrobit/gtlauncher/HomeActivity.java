@@ -168,8 +168,7 @@ public class HomeActivity extends Activity {
     private boolean treeFallback;
     private TreePhenology.Result treePhenology;
     private WeatherSkyView skyView;
-    private boolean hoeSelected = false;
-    private boolean handSelected = true;
+    private int selectedTool = R.id.dock_tool_hand;
     private WorldStore worldStore;
     private int portalWalkGeneration;
     private SensorManager sensorManager;
@@ -288,24 +287,7 @@ public class HomeActivity extends Activity {
                 if (deltaY < -dp(72) && Math.abs(deltaY) > Math.abs(deltaX) * 1.15f) {
                     openDrawer();
                 } else if (gameplayMode && Math.hypot(deltaX,deltaY) < dp(8)) {
-                    if(hoeSelected) { hoeGround(event.getX(),event.getY());return true; }
-                    if(!handSelected)return true;
-                    WorldStore.SurfaceObject selling=skyView.sellingMarkerAt(event.getX(),event.getY());
-                    String marker=selling==null ? skyView.portalMarkerAt(event.getX(),event.getY()) : null;
-                    String portal=marker==null && selling==null ? skyView.portalAt(event.getX(),event.getY()) : null;
-                    if(selling!=null) showSellingPlaceholder(selling);
-                    else if(marker!=null) confirmPortalMarker(marker);
-                    else if(portal!=null) walkToPortal(portal);
-                    else {
-                        WorldStore.SurfaceObject box=skyView.storageBoxAt(event.getX(),event.getY());
-                        WorldStore.SurfaceObject tree=box==null?skyView.treeAt(event.getX(),event.getY()):null;
-                        if(box!=null) approachBox(box);
-                        else if(tree!=null) interactTree(tree);
-                        else {
-                            WorldStore.House house=skyView.houseAt(event.getX(),event.getY());
-                            if(house!=null) approachHouse(house); else walkToGround(event.getX(),event.getY());
-                        }
-                    }
+                    gameplayTap(event.getX(),event.getY());
                 }
                 return true;
             }
@@ -313,13 +295,8 @@ public class HomeActivity extends Activity {
         });
         findViewById(R.id.drawer_back).setOnClickListener(view -> closeDrawer());
         findViewById(R.id.dock_tool_hand).setSelected(true);
-        findViewById(R.id.dock_tool_hand).setOnClickListener(view -> selectHoe(false));
-        findViewById(R.id.dock_tool_hoe).setOnClickListener(view -> selectHoe(true));
-        int[] dockTools = {R.id.dock_tool_shovel,
-                R.id.dock_tool_water, R.id.dock_tool_sickle, R.id.dock_tool_axe,
-                R.id.dock_tool_pickaxe, R.id.dock_tool_fishing};
-        for (int tool : dockTools) findViewById(tool).setOnClickListener(view ->
-                Toast.makeText(this, "Fungsi alat belum tersedia.", Toast.LENGTH_SHORT).show());
+        skyView.setHoeSelected(true);
+        for(int tool: gameplayTools()) findViewById(tool).setOnClickListener(view -> selectTool(tool));
         findViewById(R.id.dock_add_tab).setOnClickListener(view ->
                 Toast.makeText(this, "Penambahan tab dock belum tersedia.", Toast.LENGTH_SHORT).show());
         findViewById(R.id.home_phone_button).setOnClickListener(view -> openDrawer());
@@ -492,17 +469,55 @@ public class HomeActivity extends Activity {
             Toast.makeText(this, "Pengaturan perangkat tidak tersedia.", Toast.LENGTH_SHORT).show();
         }
     }
-    private void selectHoe(boolean value) {
-        boolean wasSelected=value?hoeSelected:handSelected;
-        hoeSelected=value && !wasSelected;handSelected=!value && !wasSelected;
-        findViewById(R.id.dock_tool_hand).setSelected(handSelected);
-        findViewById(R.id.dock_tool_hoe).setSelected(hoeSelected);
+    private int[] gameplayTools() {return new int[]{R.id.dock_tool_hand,R.id.dock_tool_hoe,R.id.dock_tool_shovel,R.id.dock_tool_water,R.id.dock_tool_sickle,R.id.dock_tool_axe,R.id.dock_tool_pickaxe,R.id.dock_tool_fishing};}
+    private void selectTool(int tool) {
+        selectedTool=selectedTool==tool ? -1 : tool;
+        for(int id:gameplayTools())findViewById(id).setSelected(id==selectedTool);
         portalWalkGeneration++;skyView.setPortalWalkActive(false);applyActiveWorld();
-        skyView.setHoeSelected(hoeSelected);
-        Toast.makeText(this,hoeSelected?"Cangkul aktif. Blok tanah pertanian belum tersedia.":handSelected?"Tangan aktif: ketuk tanah atau objek.":"Alat dilepas.",Toast.LENGTH_SHORT).show();
+        skyView.setHoeSelected(selectedTool==R.id.dock_tool_hoe || selectedTool==R.id.dock_tool_hand);
+        Toast.makeText(this,selectedTool==-1?"Alat dilepas.":selectedTool==R.id.dock_tool_hand?"Tangan aktif: pilih objek di depan karakter.":selectedTool==R.id.dock_tool_hoe?"Cangkul aktif. Blok tanah pertanian belum tersedia.":"Alat dipilih; fungsinya belum tersedia.",Toast.LENGTH_SHORT).show();
     }
-    private void hoeGround(float x,float y) {
-        Toast.makeText(this,"Blok tanah pertanian belum tersedia; tidak ada tile yang diubah.",Toast.LENGTH_SHORT).show();
+    private WorldStore.SurfaceObject frontSurface(WorldStore.World world,PortalTravel.Tile front) {
+        for(WorldStore.SurfaceObject object:world.surfaces) {
+            int size=object.type.equals("tree") && !object.material.equals("banana") && !object.material.equals("palm")?2:1;
+            if(front.column>=object.column && front.column<object.column+size && front.row>=object.row && front.row<object.row+size)return object;
+        }
+        return null;
+    }
+    private WorldStore.House frontHouse(WorldStore.World world,PortalTravel.Tile front) {
+        for(WorldStore.House house:world.houses)if(house.covers(front.column,front.row))return house;
+        return null;
+    }
+    private void gameplayTap(float x,float y) {
+        try {
+            WorldStore.World world=worldStore.activeWorld();if(world==null || !world.showCharacter)return;
+            PortalTravel.Tile target=skyView.groundTileAt(x,y),front=GameplayTarget.front(world.characterColumn,world.characterRow,world.characterFacing);
+            if(front==null)return;
+            WorldStore.SurfaceObject object=frontSurface(world,front);WorldStore.House house=frontHouse(world,front);
+            PortalTravel.Portal portal=null;for(PortalTravel.Portal p:world.portals)if(p.tile.equals(front)){portal=p;break;}
+            boolean frontHit=front.equals(target);
+            boolean characterHit=!frontHit && skyView.characterAt(x,y);
+            if(selectedTool!=-1 && (characterHit || (frontHit && selectedTool==R.id.dock_tool_hand && (house!=null || object!=null || portal!=null)))) {
+                if(selectedTool==R.id.dock_tool_hand) {
+                    if(house!=null)Toast.makeText(this,"Rumah dipilih. Interaksi rumah belum tersedia.",Toast.LENGTH_SHORT).show();
+                    else if(object!=null) {
+                        final WorldStore.SurfaceObject chosen=object;
+                        if(object.type.equals("tree"))new AlertDialog.Builder(this).setMessage("Pohon dipilih.").setPositiveButton("Panen",(d,w)->interactTree(chosen)).setNegativeButton("Tutup",null).show();
+                        else if(object.type.equals("storage-box")||object.type.equals("selling-box"))showSellingPlaceholder(object);
+                        else Toast.makeText(this,"Objek dipilih: "+object.type+".",Toast.LENGTH_SHORT).show();
+                    } else if(portal!=null)walkToPortal(portal.id);
+                    else Toast.makeText(this,"Tidak ada objek di depan karakter.",Toast.LENGTH_SHORT).show();
+                } else if(selectedTool==R.id.dock_tool_hoe)Toast.makeText(this,"Blok tanah pertanian belum tersedia; tidak ada tile yang diubah.",Toast.LENGTH_SHORT).show();
+                else Toast.makeText(this,"Fungsi alat ini belum tersedia.",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            // Existing marker UI remains usable with the hand; all other taps target movement.
+            if(selectedTool==R.id.dock_tool_hand) {
+                WorldStore.SurfaceObject markerBox=skyView.sellingMarkerAt(x,y);String marker=skyView.portalMarkerAt(x,y);
+                if(markerBox!=null){showSellingPlaceholder(markerBox);return;}if(marker!=null){confirmPortalMarker(marker);return;}
+            }
+            walkToGround(x,y);
+        } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }
     private void walkToGround(float x,float y) {
         PortalTravel.Tile target=skyView.groundTileAt(x,y);
@@ -510,13 +525,16 @@ public class HomeActivity extends Activity {
         try {
             WorldStore.World world=worldStore.activeWorld();
             if(world==null || !world.showCharacter)return;
-            for(WorldStore.House house:world.houses) if(house.covers(target.column,target.row)
-                    && (target.column!=world.characterColumn || target.row!=world.characterRow)) {
-                approachHouse(house);return;
-            }
             java.util.List<PortalTravel.Tile> route=PortalTravel.path(
                 new PortalTravel.Tile(world.characterColumn,world.characterRow),target,portalTerrain(world),world.gridSize());
             if(route==null){Toast.makeText(this,"Jalan terhalang.",Toast.LENGTH_SHORT).show();return;}
+            if(route.size()>1) {
+                String facing=GameplayTarget.direction(route.get(0),route.get(1));
+                if(!facing.equals(world.characterFacing)) {
+                    if(!worldStore.moveCharacter(world.id,world.characterColumn,world.characterRow,facing))throw new JSONException("Facing failed");
+                    applyActiveWorld();Toast.makeText(this,"Arah hadap berubah. Ketuk tujuan lagi untuk bergerak.",Toast.LENGTH_SHORT).show();return;
+                }
+            }
             int generation=++portalWalkGeneration; skyView.setPortalWalkActive(true);
             walkGroundStep(world,route,1,generation,world.characterFacing);
         } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}

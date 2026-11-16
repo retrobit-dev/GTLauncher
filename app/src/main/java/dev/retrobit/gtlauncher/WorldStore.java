@@ -492,7 +492,7 @@ final class WorldStore {
         if (!worldId.equals(activeId()) || !java.util.Arrays.asList("N","E","S","W").contains(facing)) return false;
         List<World> worlds=list();
         for(int i=0;i<worlds.size();i++) { World w=worlds.get(i); if(w.id.equals(worldId) && w.showCharacter) {
-            if(!w.tileExists(column,row) || houseCovers(w.houses,column,row)) return false;
+            if(!w.tileExists(column,row) || (houseCovers(w.houses,column,row) && (column!=w.characterColumn || row!=w.characterRow))) return false;
             if(w.previewData!=null) {
                 JSONObject root=new JSONObject(w.previewData.toJson()), data=root.getJSONObject("world");
                 data.put("characterColumn",column); data.put("characterRow",row); data.put("characterFacing",facing);
