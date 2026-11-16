@@ -10,10 +10,13 @@ try{
  await page.waitForFunction(()=>{const h=worldManager.getHouse(), p=sceneEditing.centreHouse(h);for(let y=p.y-50;y<p.y;y+=2)for(let x=p.x-30;x<p.x+30;x+=2)if(sceneEditing.houseAt({x,y},h))return true;return false;});
  const target=await page.evaluate(()=>{const h=worldManager.getHouse(),p=sceneEditing.centreHouse(h),c=sceneEditing.camera(),r=document.querySelector('#sky-canvas').getBoundingClientRect();for(let y=p.y-50;y<p.y;y+=2)for(let x=p.x-30;x<p.x+30;x+=2)if(sceneEditing.houseAt({x,y},h)){return {x:r.left+(160+(x-160)*.9+c.panX)*r.width/320,y:r.top+(182+(y-182)*.9+c.panY)*r.height/200};}});
  assert.equal(await page.evaluate(({x,y})=>document.elementFromPoint(x,y).id,target),'sky-canvas');
+ await page.mouse.click(target.x,target.y);assert.equal((await page.evaluate(()=>worldManager.getCharacter())).column,8,'first tap turns toward the house');
  await page.mouse.click(target.x,target.y);
- const character=await page.evaluate(()=>worldManager.getCharacter());
+ let character=await page.evaluate(()=>worldManager.getCharacter());
  const dx=Math.max(4-character.column,0,character.column-6),dy=Math.max(2-character.row,0,character.row-4);
  assert.equal(dx+dy,1,'character approaches house footprint');
- assert.match(await page.locator('#gameplay-movement-status').innerText(),/interaksi rumah belum tersedia/i);
+ const front=await page.evaluate(()=>{const c=worldManager.getCharacter();return {column: c.column-1,row:c.row};});
+ const frontPoint=await page.evaluate(f=>{let p=sceneEditing.centre(f),cam=sceneEditing.camera(),r=document.querySelector('#sky-canvas').getBoundingClientRect();return {x:r.left+(160+(p.x-160)*.9+cam.panX)*r.width/320,y:r.top+(182+(p.y-182)*.9+cam.panY)*r.height/200}},front);
+ await page.mouse.click(frontPoint.x,frontPoint.y);assert.match(await page.locator('#gameplay-movement-status').innerText(),/Rumah dipilih/i);
  console.log('Hand selection and opaque house hit approach: OK');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

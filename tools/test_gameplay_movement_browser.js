@@ -14,9 +14,11 @@ try {
  const cdp=await page.context().newCDPSession(page);let target=await point(10,9);
  assert.equal(await page.evaluate(({x,y})=>document.elementFromPoint(x,y).id,target),'sky-canvas');
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...target,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ assert.equal((await page.evaluate(()=>worldManager.getCharacter())).facing,'E');
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...target,id:1}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  try { await page.waitForFunction(()=>worldManager.getCharacter().column===10,null,{timeout:15000}); } catch(e) { console.log('DIAG',await page.evaluate(()=>({char:worldManager.getCharacter(),status:document.querySelector('#gameplay-movement-status').textContent,mode:document.querySelector('.preview-stage').dataset.mode})),errors); throw e; }
  const movedPosition=await point(10,9);assert(Math.hypot(movedPosition.x-startPosition.x,movedPosition.y-startPosition.y)>5,'character visibly changes screen position on a short walk');
- target=await point(10,10);await page.mouse.click(target.x,target.y);
+ target=await point(10,10);await page.mouse.click(target.x,target.y);await page.mouse.click(target.x,target.y);
  await page.waitForFunction(()=>worldManager.getCharacter().row===10,null,{timeout:30000});
  assert.deepEqual(errors,[]); console.log('Real browser: migrated Home 20 to 25, visible touch and mouse movement, saved arrival: OK');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
