@@ -17,7 +17,7 @@ def deform(x,y,w,h,phase,running=False):
     left=1-smooth(.27,.43,u);right=smooth(.57,.73,u)
     arm=smooth(.43,.72,v)*(1-smooth(.76,.81,v))
     leg=smooth(.72,.92,v)
-    dx=w*swing*((.070 if running else .050)*arm*(left-right) + (.055 if running else .035)*leg*(smooth(.52,.66,u)-(1-smooth(.34,.48,u))))
+    dx=w*swing*((.080 if running else .070)*arm*(left-right) + (.070 if running else .060)*leg*(smooth(.52,.66,u)-(1-smooth(.34,.48,u))))
     # Near the foot, raise one leg while leaving the opposite leg on the baseline.
     ly=smooth(.70,.84,v)*(.035 if running else .022)*h
     foot_left=1-smooth(.44,.51,u);foot_right=smooth(.49,.56,u)
