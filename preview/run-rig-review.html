@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pratinjau panduan rig lari</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,sans-serif;background:#e8ede4;color:#26352b}body{max-width:760px;margin:2rem auto;padding:0 1rem}h1{font-size:1.5rem}p{line-height:1.5}.notice{background:#fff6df;border:1px solid #dcc890;border-radius:10px;padding:.8rem 1rem}.panel{background:#fff;border-radius:14px;padding:1rem;box-shadow:0 4px 22px #26352b18}.controls{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}button,select{font:inherit;padding:.45rem .75rem;border:1px solid #99aa98;border-radius:7px;background:#f8faf6;color:inherit}input{flex:1;min-width:160px}canvas{display:block;max-width:100%;height:auto;margin:1rem auto;background:#eef2eb;border-radius:10px}small{display:block;color:#526154}.legend span{display:inline-block;margin-right:1em}.near{color:#ab422a}.far{color:#16669c}
+</style>
+</head>
+<body>
+<h1>Pratinjau panduan sendi lari</h1>
+<p class="notice"><strong>Studi rig, bukan animasi karakter final.</strong> Garis menunjukkan titik sendi perkiraan; gambar karakter di belakangnya diam sebagai acuan saja. Anggota tubuh belum digambar ulang atau dipasang ke rig, dan gerakan ini belum digunakan di game.</p>
+<div class="panel">
+<div class="controls"><label for="view">Arah:</label><select id="view"><option value="front">Depan</option><option value="back">Belakang</option></select><button id="play" type="button">Jeda</button><label for="phase">Fase:</label><input id="phase" type="range" min="0" max="11" step="1" value="0"><output id="frame">1 / 12</output></div>
+<canvas id="rig" width="432" height="800" aria-label="Diagram sendi lari di atas gambar karakter"></canvas>
+<div class="legend"><span class="near">● Anggota dekat</span><span class="far">● Anggota jauh</span></div>
+<small>Geser fase untuk memeriksa kedua langkah. Titik sendi belum dikalibrasi dengan artwork dan belum menunjukkan sambungan final.</small>
+<p id="error" role="alert" hidden></p>
+</div>
+<script src="./run-rig-review.js" defer></script>
+</body></html>
