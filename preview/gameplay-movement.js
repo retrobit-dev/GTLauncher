@@ -21,6 +21,14 @@
     if(token!==generation||!walk)return;
     if(stage.dataset.mode!=='gameplay'||worlds.getActive().id!==walk.id){cancel();return;}
     if(walk.started===null) walk.started=timestamp;
+    if(walk.runRequested && !walk.running) {
+      let elapsed=Math.max(0,timestamp-walk.started), index=0, before=0;
+      while(index<walk.durations.length-1 && elapsed>=walk.durations[index]) {elapsed-=walk.durations[index];before+=walk.durations[index];index++;}
+      const progress=Math.min(1,elapsed/walk.durations[index]);
+      for(let i=index;i<walk.durations.length;i++)walk.durations[i]=330;
+      walk.started=timestamp-before-progress*walk.durations[index];
+      walk.running=true;walk.runRequested=false;
+    }
     let elapsed=timestamp-walk.started,index=1;
     while(index<walk.route.length && elapsed>=walk.durations[index-1]){elapsed-=walk.durations[index-1];index++;}
     if(index>=walk.route.length){
@@ -34,12 +42,16 @@
     }
     if(walk.routeIndex!==index){walk.routeIndex=index;scene.setGameplayRoute?.(walk.route,index);}
     const a=walk.route[index-1],b=walk.route[index],t=Math.max(0,Math.min(1,elapsed/walk.durations[index-1]));
-    scene.setGameplayDraft({...walk.character,column:a.column+(b.column-a.column)*t,row:a.row+(b.row-a.row)*t,facing:direction(a,b),walkPhase:(index-1+t)*Math.PI*2});
+    scene.setGameplayDraft({...walk.character,column:a.column+(b.column-a.column)*t,row:a.row+(b.row-a.row)*t,facing:direction(a,b),running:walk.running,walkPhase:(index-1+t)*Math.PI*2});
     window.requestAnimationFrame(next=>step(next,token));
   }
   function direction(a,b){return b.column>a.column?'E':b.column<a.column?'W':b.row>a.row?'S':'N';}
   function move(target) {
-    if(walk){queuedTarget=target;tell('Tujuan berikutnya disimpan; karakter sedang berjalan.');return;}
+    if(walk){
+      const end=walk.route[walk.route.length-1];
+      if(target.column!==end.column || target.row!==end.row) queuedTarget=target;
+      walk.runRequested=true;tell(queuedTarget?'Berlari; tujuan berikutnya disimpan.':'Berlari menuju tujuan.');return;
+    }
     const world=worlds.getActive(), character=worlds.getCharacter();
     if(world.id==='base'||!character.visible){tell('Buka atau buat world dengan karakter melalui tombol World.');return;}
     const toolSelected=!!document.querySelector('.home-dock [data-dock][aria-pressed="true"]');
@@ -69,7 +81,7 @@
       tell(ok?(completion || `Tiba di ${columnLabel(end.column)}${end.row+1}.`):'Posisi tidak tersimpan; periksa penyimpanan browser.');return;
     }
     scene.setGameplayRoute?.(route,1);
-    walk={id:world.id,character,route,message:completion,routeIndex:1,started:null,durations:route.slice(1).map(()=>650)};
+    walk={id:world.id,character,route,message:completion,routeIndex:1,started:null,running:false,runRequested:false,durations:route.slice(1).map(()=>650)};
     const token=++generation;window.requestAnimationFrame(t=>step(t,token));
   }
   canvas.addEventListener('pointerdown',event=>{
@@ -91,6 +103,8 @@
     const offset={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[character.facing]||[0,0];
     const front={column:character.column+offset[0],row:character.row+offset[1]};
     const hitHouse=scene.houseAt?.(local,house), tile=scene.tileAt(local);
+    // A second tap on any tile while moving requests a run, even with a tool selected.
+    if(walk && tile){move(tile);return;}
     const frontHouse=house?.visible && front.column>=house.column && front.column<house.column+3 && front.row>=house.row && front.row<house.row+3;
     const hitFront=tile && tile.column===front.column && tile.row===front.row;
     const hitCharacter=!hitFront && !hitHouse && scene.hit?.(local,character);
