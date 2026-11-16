@@ -990,11 +990,11 @@ public final class WeatherSkyView extends View {
             canvas.translate(left+width/2+lean*bodyH,base);
             canvas.skew(-lean,0);
             drawMovingHair(canvas,sprite,sw,sh,top,width,height,phase,runBlend);
-            // The far side includes the backpack even in the front sprite.
-            // Keep it attached to the torso rather than pivoting it as an arm.
-            int bodyRight=sw;
+            // Opposite sleeve bands swing against each other while the torso stays in place.
+            int bodyRight=sw-arm;
             canvas.drawBitmap(sprite,new Rect(arm,top,bodyRight,cut),new RectF(-width/2+armW,topH,-width/2+width*bodyRight/sw,topH+armH),paint);
             drawPivotedSleeve(canvas,sprite,0,top,arm,cut,-width/2+armW/2,topH,armW,armH,angle,phase,runBlend,true);
+            drawPivotedSleeve(canvas,sprite,bodyRight,top,sw,cut,width/2-armW/2,topH,armW,armH,-angle,-phase,runBlend,false);
             canvas.restoreToCount(upper);
             float bh=height-bodyH;
             // At least one foot stays on the ground; never bounce the whole sprite into the air.
