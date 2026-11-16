@@ -535,7 +535,7 @@ public class HomeActivity extends Activity {
         else if(object!=null && (object.type.equals("storage-box") || object.type.equals("selling-box")))actions.add("Buka box");
         else if(portal!=null)actions.add("Gunakan portal");
         String label=house!=null?"Rumah":object!=null?object.type:"Portal";
-        new AlertDialog.Builder(this).setTitle(label+" dipilih").setMessage(house!=null?"Rumah tidak dapat diambil ke tas.":small?"Objek kecil dapat diambil atau dipindahkan.":"Objek ini belum dapat diambil atau dipindahkan dengan aman.")
+        new AlertDialog.Builder(this).setTitle(label+" dipilih")
             .setItems(actions.toArray(new String[0]),(dialog,which)->{
                 try {
                     if(which==0) {
