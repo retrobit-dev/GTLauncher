@@ -255,3 +255,17 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 
 .world-export-result > button { margin: 4px 2px; }
 .world-export-result > button[hidden] { display: none; }
+
+/* The restored tabs wrap the existing object editor; terrain tools are not yet available. */
+.mode-tabs { display:flex; gap:5px; align-self:flex-start; background:#d5dfd5; padding:4px; border-radius:12px; }
+.mode-tabs button { border:0; border-radius:9px; padding:8px 16px; font:inherit; font-size:13px; font-weight:700; color:#425a49; background:transparent; cursor:pointer; }
+.mode-tabs button[aria-pressed="true"] { background:#536f5b; color:white; }
+.mode-tabs button:focus-visible { outline:3px solid #8aa875; outline-offset:2px; }
+.preview-controls .internal-edit-toggle { display:none; }
+.preview-stage:not([data-mode="editor"]) .history-controls,
+.preview-stage:not([data-mode="editor"]) #object-library-button { display:none; }
+.world-topbar .world-button, .preview-controls #weather-cycle-button, .preview-controls #object-library-button { width:42px; height:42px; min-height:42px; padding:9px; display:inline-grid; place-items:center; }
+.world-topbar svg, .preview-controls svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.preview-controls .icon-action { width:38px; height:38px; padding:8px; }
+.restore-notice { margin:0; align-self:flex-start; font-size:11px; line-height:1.35; color:#725322; }
+.preview-stage:not([data-mode="editor"]) .restore-notice { display:none; }

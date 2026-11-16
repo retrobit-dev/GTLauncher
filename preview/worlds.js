@@ -15,6 +15,8 @@
   let pendingDelete = null;
   let state = {worlds: [], activeId: 'base'};
   let storageError = '';
+  let loadedRaw = null;
+  const WORLD_KEYS = ['id','name','description','color','showCharacter','characterColumn','characterRow','characterScale','characterFacing','house'];
   let exportUrl = null;
   let exportFile = null;
   function showExport(url, filename, qr, json = '') {
@@ -92,14 +94,16 @@
   function readState() {
     try {
       const raw = localStorage.getItem(KEY);
+      loadedRaw = raw;
       if (raw === null) return {worlds: [], activeId: 'base'};
       const value = JSON.parse(raw);
       if (!value || !Array.isArray(value.worlds) || typeof value.activeId !== 'string') throw new Error('format');
+      if (Object.keys(value).some(k => !['worlds','activeId'].includes(k))) throw new Error('unsupported fields');
       const ids = new Set();
       const readableWorlds = [];
       let skipped = 0;
       for (const world of value.worlds) {
-        if (!world || typeof world.id !== 'string' || !world.id || world.id === 'base' || ids.has(world.id)
+        if (!world || typeof world !== 'object' || Array.isArray(world) || Object.keys(world).some(k => !WORLD_KEYS.includes(k)) || typeof world.id !== 'string' || !world.id || world.id === 'base' || ids.has(world.id)
           || typeof world.name !== 'string' || !world.name.trim() || world.name.length > 48
           || typeof world.description !== 'string' || world.description.length > 160
           || (world.house !== undefined && !validHouse(world.house))
@@ -120,14 +124,7 @@
     }
   }
   state = readState();
-  // Add the requested house once to an existing Home, preserving every other field and world.
-  // Failure leaves the original data untouched and is surfaced in the World dialog.
-  if (!storageError && state.worlds.some(w => w.name.trim().toLocaleLowerCase() === 'home' && w.house === undefined)) {
-    const next = {...state, worlds: state.worlds.map(w => w.name.trim().toLocaleLowerCase() === 'home' && w.house === undefined
-      ? {...w, house: {column: 0, row: 0}} : w)};
-    try { localStorage.setItem(KEY, JSON.stringify(next)); state = next; }
-    catch (error) { storageError = 'Rumah belum dapat disimpan. Periksa izin atau ruang penyimpanan browser.'; }
-  }
+  // Never migrate or write a world merely by opening the preview.
 
   function activeWorld() { return BUILT_INS.find(world => world.id === state.activeId)
     || state.worlds.find(world => world.id === state.activeId) || BASE; }
@@ -163,7 +160,13 @@
   function announce(text) { message.textContent = text; }
   function commit(next) {
     if (storageError) { announce(storageError); return false; }
-    try { localStorage.setItem(KEY, JSON.stringify(next)); }
+    try {
+      if (localStorage.getItem(KEY) !== loadedRaw) {
+        storageError = 'Data world berubah di tab lain. Muat ulang sebelum mengedit; data tidak ditimpa.';
+        announce(storageError); return false;
+      }
+      const raw = JSON.stringify(next); localStorage.setItem(KEY, raw); loadedRaw = raw;
+    }
     catch (error) { announce('World tidak dapat disimpan. Periksa izin atau ruang penyimpanan browser.'); return false; }
     state = next;
     render();
