@@ -2119,10 +2119,10 @@
     }, true);
   }
 
-  // Gameplay uses 3 times the editor's default fit scale, independent of its camera controls.
+  // Gameplay uses 12.5 times the editor's default fit scale, independent of its camera controls.
   function applyGameplayCamera() {
     editorZoom = 1;
-    islandZoom = baseFitZoom() * 3;
+    islandZoom = baseFitZoom() * 12.5;
     const character = gameplayDraft || window.worldManager?.getCharacter();
     const target = character?.visible ? characterCentre(character) : {x: WIDTH / 2, y: islandCenterY};
     // A small screen-space dead zone keeps short walks visible while the camera
