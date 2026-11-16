@@ -1110,9 +1110,11 @@
     return slot < 4 ? 0 : 1 + (slot - 4) % 3;
   }
 
-  function drawGrassTile(tile, palette, sunlight) {
+  function drawGrassTile(tile, palette, sunlight, material = 1) {
     const lightTile = tile.variant === 0;
-    const fill = lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage;
+    const terrain = {2:'#ae8b68', 3:'#5e9eb4', 4:'#929995', 5:'#dac695'};
+    const fill = material === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
+      : blendColor(terrain[material] || terrain[2], palette.grassDark, 0.12);
     const halfWidth = ISLAND_TILE_WIDTH / 2 - 0.05;
     const halfHeight = islandTileHeight / 2 - 0.025;
     const cornerRadius = 1.4;
@@ -1134,7 +1136,7 @@
       cornerRadius, fill, sunlight);
     // Stable sparse variants match Android's sheet and hash; no world data is changed.
     const variant = grassDetailVariant(tile.column, tile.row);
-    if (variant && grassDetailImage.complete && grassDetailImage.naturalWidth === 1280) {
+    if (material === 1 && variant && grassDetailImage.complete && grassDetailImage.naturalWidth === 1280) {
       ctx.save();
       ctx.globalAlpha *= 0.45 + 0.55 * clamp(sunlight.strength * 2, 0, 1);
       ctx.imageSmoothingEnabled = true;
@@ -1708,7 +1710,7 @@
     const light = pickLightSource(sunAltitude, sunHourAngle, moon, cloudCover);
     drawIslandShadow(centerX, lowerY, light.altitude, light.hourAngle, cloudCover, code);
     const tileData = window.worldManager?.getActive()?.tiles;
-    if (tileData && tileData.some(value => value === 0)) {
+    if (tileData && tileData.some(value => value !== 1)) {
       for (const tile of ISLAND_TILES) {
         if (!tileData[tile.row * 20 + tile.column]) continue;
         const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
@@ -1717,7 +1719,7 @@
         const rightOpen = tile.column === 19 || !tileData[tile.row * 20 + tile.column + 1];
         if (leftOpen) drawSmoothIslandPolygon([[tile.x-hw,tile.y],[tile.x,tile.y+hh],[tile.x,tile.y+hh+ISLAND_DEPTH],[tile.x-hw,tile.y+ISLAND_DEPTH]], palette.soilLight, palette.soilDark);
         if (rightOpen) drawSmoothIslandPolygon([[tile.x,tile.y+hh],[tile.x+hw,tile.y],[tile.x+hw,tile.y+ISLAND_DEPTH],[tile.x,tile.y+hh+ISLAND_DEPTH]], palette.soilDark, palette.soilDark);
-        drawGrassTile(tile, palette, sunlight);
+        drawGrassTile(tile, palette, sunlight, tileData[tile.row * 20 + tile.column]);
       }
     } else {
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.

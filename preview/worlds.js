@@ -16,6 +16,7 @@
   let state = {worlds: [], activeId: 'base'};
   let storageError = '';
   let loadedRaw = null;
+  const validTile = t => Number.isInteger(t) && t >= 0 && t <= 5;
   const WORLD_KEYS = ['id','name','description','color','showCharacter','characterColumn','characterRow','characterScale','characterFacing','house','gridSize','tiles'];
   let exportUrl = null;
   let exportFile = null;
@@ -109,7 +110,7 @@
           || typeof world.description !== 'string' || world.description.length > 160
           || (world.gridSize !== undefined && world.gridSize !== 20)
           || (world.gridSize === 20 && world.tiles === undefined)
-          || (world.tiles !== undefined && (world.gridSize !== 20 || !Array.isArray(world.tiles) || world.tiles.length !== 400 || world.tiles.some(t => t !== 0 && t !== 1)))
+          || (world.tiles !== undefined && (world.gridSize !== 20 || !Array.isArray(world.tiles) || world.tiles.length !== 400 || world.tiles.some(t => !validTile(t))))
           || (world.house !== undefined && !validHouse(world.house, world.gridSize || 9))
           || (world.showCharacter !== undefined && typeof world.showCharacter !== 'boolean')
           || (world.characterFacing !== undefined && !['N', 'E', 'S', 'W'].includes(world.characterFacing))
@@ -185,10 +186,10 @@
     const keys = (value, allowed) => record(value) && Object.keys(value).every(key => allowed.includes(key));
     let root;
     try { root = JSON.parse(text.replace(/^\uFEFF/, '')); } catch (_) { return fail(); }
-    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && root.version === 1) {
+    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2].includes(root.version)) {
       const w = root.world;
       if (!keys(w, WORLD_KEYS) || w.gridSize !== 20 || !Array.isArray(w.tiles) || w.tiles.length !== 400
-        || w.tiles.some(t => t !== 0 && t !== 1) || typeof w.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(w.id) || w.id === 'base'
+        || w.tiles.some(t => !validTile(t) || (root.version === 1 && t > 1)) || typeof w.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(w.id) || w.id === 'base'
         || typeof w.name !== 'string' || !w.name.trim() || w.name.length > 48 || typeof w.description !== 'string' || w.description.length > 160
         || typeof w.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(w.color)
         || typeof w.showCharacter !== 'boolean' || !Number.isInteger(w.characterColumn) || w.characterColumn < 0 || w.characterColumn >= 20
@@ -422,7 +423,7 @@
         const character = getCharacter(world);
         const snapshot = {...world, showCharacter: character.visible, characterColumn: character.column, characterRow: character.row,
           characterScale: character.scale, characterFacing: character.facing, house: getHouse(world)};
-        const json = JSON.stringify({format:'gtlauncher-preview-world',version:1,world:snapshot}, null, 2);
+        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
         const blob = new Blob([json], {type:'application/json'});
         const url = URL.createObjectURL(blob);
         const safeName = world.name.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'world';
@@ -503,7 +504,7 @@
   function updateTiles(id, tiles) {
     const world = activeWorld();
     if (id === 'base' || world.id !== id || world.gridSize !== 20 || !Array.isArray(tiles)
-      || tiles.length !== 400 || tiles.some(t => t !== 0 && t !== 1)) return false;
+      || tiles.length !== 400 || tiles.some(t => !validTile(t))) return false;
     const character = getCharacter(world), house = getHouse(world);
     if (!tiles[character.row * 20 + character.column]) return false;
     if (house) for (let r = house.row; r < house.row + 3; r++) for (let c = house.column; c < house.column + 3; c++) if (!tiles[r * 20 + c]) return false;

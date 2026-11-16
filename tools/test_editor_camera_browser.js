@@ -38,6 +38,15 @@ const {chromium} = require('playwright-core');
     const after=await page.screenshot();
     assert.notEqual(Buffer.compare(before,after),0,'rendered screen changes when island moves');
     assert.deepEqual(errors,[]);
-    console.log('Chromium touch drag, visible repaint and world-data isolation: OK');
+    await page.locator('#editor-pan').click();
+    await page.locator('#world-button').click();await page.locator('#world-new').click();
+    await page.locator('#world-name').fill('Uji terrain');await page.locator('#world-form button[type=submit]').click();
+    await page.locator('#world-close').click();
+    await page.locator('#terrain-material').selectOption('4');await page.locator('#terrain-draw').click();
+    const target=await page.evaluate(()=>{const tile=sceneEditing.centre({column:4,row:4}),c=sceneEditing.camera(),r=document.getElementById('sky-canvas').getBoundingClientRect();return {x:r.left+(160+(tile.x-160)*.45*c.zoom+c.panX)*r.width/320,y:r.top+(182+(tile.y-182)*.45*c.zoom+c.panY)*r.height/200};});
+    await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...target,id:2}]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+    assert.equal(await page.evaluate(()=>worldManager.getActive().tiles[84]),4,'touch paints stone on E5');
+    assert.deepEqual(errors,[]);
+    console.log('Chromium touch pan, visible repaint and terrain tap: OK');
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -1,0 +1,72 @@
+// Editor controls outside the tablet affect preview storage only, never Android or Base World.
+(() => {
+  'use strict';
+  const stage=document.querySelector('.preview-stage'), canvas=document.getElementById('sky-canvas');
+  const material=document.getElementById('terrain-material'), status=document.getElementById('terrain-status');
+  const pan=document.getElementById('editor-pan'), scene=window.sceneEditing, worlds=window.worldManager;
+  const buttons=Object.fromEntries(['draw','erase','pick','fill'].map(name=>[name,document.getElementById('terrain-'+name)]));
+  if (!stage || !canvas || !material || !status || !pan || !scene?.tileAt || !worlds?.updateTiles || Object.values(buttons).some(x=>!x)) return;
+  let tool=null, gesture=null, lastWorld=worlds.getActive().id;
+  function select(next) {
+    tool=next; gesture=null;
+    for (const [name, button] of Object.entries(buttons)) button.setAttribute('aria-pressed', String(name===tool));
+    canvas.classList.toggle('is-terrain-editing',Boolean(tool));
+    status.textContent=tool ? 'Ketuk atau seret tile pada world 20×20.' : '';
+  }
+  for (const [name,button] of Object.entries(buttons)) button.addEventListener('click',()=>{
+    if (pan.getAttribute('aria-pressed')==='true') pan.click();
+    select(tool===name?null:name);
+  });
+  pan.addEventListener('click',()=>{if(pan.getAttribute('aria-pressed')==='true') select(null);});
+  document.getElementById('mode-gameplay').addEventListener('click',()=>select(null));
+  window.addEventListener('worldchange',()=>{const id=worlds.getActive().id;if(id!==lastWorld){lastWorld=id;select(null);}});
+  function fill(tiles,start,value) {
+    const target=tiles[start];if(target===value)return;
+    const queue=[start];tiles[start]=value;
+    for(let i=0;i<queue.length;i++) {
+      const at=queue[i],x=at%20,y=Math.floor(at/20);
+      for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+        const nx=x+dx,ny=y+dy;if(nx<0||nx>=20||ny<0||ny>=20)continue;
+        const n=ny*20+nx;if(tiles[n]===target){tiles[n]=value;queue.push(n);}
+      }
+    }
+  }
+  function apply(event) {
+    const world=worlds.getActive();
+    if(world.id==='base'||world.gridSize!==20||!Array.isArray(world.tiles)) {
+      status.textContent='Buat atau buka world 20×20; Base dan world lama tidak diubah.';return;
+    }
+    const point=scene.tileAt(scene.toLocal(event.clientX,event.clientY));
+    if(!point) {status.textContent='Di luar area 20×20.';return;}
+    const index=point.row*20+point.column;
+    if(gesture && gesture.last===index) return;
+    if(gesture) gesture.last=index;
+    const previous=world.tiles[index], value=Number(material.value);
+    if(tool==='pick') {
+      if(previous===0){status.textContent='Tidak ada tile untuk diambil.';return;}
+      material.value=String(previous);status.textContent='Material diambil.';return;
+    }
+    const next=world.tiles.slice();
+    if(tool==='fill') fill(next,index,value);
+    else next[index]=tool==='erase'?0:value;
+    if(next.every((v,i)=>v===world.tiles[i])) return;
+    status.textContent=worlds.updateTiles(world.id,next)
+      ? `${'ABCDEFGHIJKLMNOPQRST'[point.column]}${point.row+1} diperbarui.`
+      : 'Tidak disimpan: tile digunakan objek atau penyimpanan bermasalah.';
+  }
+  canvas.addEventListener('pointerdown',event=>{
+    if(stage.dataset.mode!=='editor'||!tool||gesture||(event.pointerType==='mouse'&&event.button!==0))return;
+    event.preventDefault();event.stopImmediatePropagation();
+    gesture={id:event.pointerId,last:-1};
+    try{canvas.setPointerCapture(event.pointerId);}catch(_){}
+    apply(event);
+  },true);
+  window.addEventListener('pointermove',event=>{
+    if(!gesture||gesture.id!==event.pointerId)return;
+    event.preventDefault();event.stopPropagation();
+    if(tool==='draw'||tool==='erase')apply(event);
+  },{capture:true,passive:false});
+  function end(event){if(gesture&&gesture.id===event.pointerId)gesture=null;}
+  window.addEventListener('pointerup',end,true);window.addEventListener('pointercancel',end,true);
+  canvas.addEventListener('lostpointercapture',end);
+})();

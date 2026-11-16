@@ -328,3 +328,13 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .world-topbar svg, .preview-controls svg { width:18px; height:18px; }
 .preview-controls .icon-action { width:30px; height:30px; padding:6px; }
 @media (max-width: 420px) { .rotate-controls button { width:30px; height:30px; } }
+
+.terrain-tools { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:5px; font:11px system-ui; color:#314c3b; }
+.preview-stage:not([data-mode="editor"]) .terrain-tools { display:none; }
+.terrain-tools button { width:30px; height:30px; padding:5px; border:1px solid #a6bba5; border-radius:6px; background:#f1f6ed; color:#314c3b; cursor:pointer; }
+.terrain-tools button[aria-pressed="true"] { background:#4b6a55; color:#fff; }
+.terrain-tools svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+.terrain-tools select { max-width:85px; font:11px system-ui; }
+.terrain-tools span { flex-basis:100%; text-align:center; }
+.terrain-tools span:empty { display:none; }
+.sky-canvas.is-terrain-editing { touch-action:none; cursor:crosshair; }
