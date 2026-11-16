@@ -9,6 +9,12 @@ const {chromium} = require('playwright-core');
     const errors=[]; page.on('pageerror', error=>errors.push(error.message));
     await page.goto(process.env.PREVIEW_URL || 'http://127.0.0.1:4173/', {waitUntil:'domcontentloaded'});
     await page.evaluate(() => document.fonts.ready);
+    for (const width of [800, 400, 280]) {
+      await page.setViewportSize({width,height:700});
+      const placement=await page.evaluate(()=>{const tabs=document.querySelector('.mode-tabs').getBoundingClientRect(),world=document.getElementById('world-button').getBoundingClientRect(),bar=document.querySelector('.world-topbar').getBoundingClientRect();return {tabsRight:tabs.right,worldLeft:world.left,worldRight:world.right,barRight:bar.right,tabsY:(tabs.top+tabs.bottom)/2,worldY:(world.top+world.bottom)/2};});
+      assert(placement.tabsRight <= placement.worldLeft && Math.abs(placement.tabsY-placement.worldY)<1 && placement.worldRight<=placement.barRight+1,'mode tabs and World share one row');
+    }
+    await page.setViewportSize({width:800,height:600});
     const hud = await page.evaluate(() => {
       const rect = selector => { const r = document.querySelector(selector).getBoundingClientRect(); return {top:r.top,bottom:r.bottom,height:r.height}; };
       const background = selector => getComputedStyle(document.querySelector(selector)).backgroundColor;

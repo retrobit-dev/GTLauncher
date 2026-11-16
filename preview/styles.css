@@ -338,3 +338,17 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .terrain-tools span { flex-basis:100%; text-align:center; }
 .terrain-tools span:empty { display:none; }
 .sky-canvas.is-terrain-editing { touch-action:none; cursor:crosshair; }
+
+/* Preview mode tabs share the row immediately to the left of World. */
+.world-topbar { flex-wrap:wrap; }
+.world-topbar .mode-tabs { flex:none; align-self:center; }
+.world-topbar .world-button { flex:none; }
+@media (max-width:550px) {
+  .world-topbar .active-world-label { flex-basis:calc(100% - 80px); }
+  .world-topbar .mode-tabs button { padding:5px 6px; }
+}
+@media (max-width:350px) {
+  .world-topbar { gap:4px; }
+  .world-topbar .mode-tabs { gap:2px; padding:2px; }
+  .world-topbar .mode-tabs button { padding:4px 3px; font-size:9px; }
+}

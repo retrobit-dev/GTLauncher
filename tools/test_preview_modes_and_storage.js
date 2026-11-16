@@ -15,6 +15,7 @@ function setup(value) {
   return {w,d};
 }
 const old = {id:'old',name:'Home',description:'',color:'#a8c795',showCharacter:true};
+{ const {w,d}=setup();const tabs=d.querySelector('.mode-tabs'),world=d.getElementById('world-button');assert.equal(tabs.parentElement,world.parentElement);assert.equal(tabs.nextElementSibling,world,'mode tabs immediately precede World');assert.equal(tabs.closest('.device-frame'),null);w.close(); }
 {
  const original={worlds:[old],activeId:'old'};const {w,d}=setup(original);
  assert.deepEqual(JSON.parse(w.localStorage.getItem(key)),original,'opening preview must not write or migrate Home');
