@@ -43,6 +43,7 @@ assert.equal(w.worldManager.getActive().tiles[24*25+23],6);assert(!w.worldManage
 d.querySelector(`[data-action="export"][data-id="${world.id}"]`).click();
 const farmland=JSON.parse(d.getElementById('world-export-json').value);assert.equal(farmland.version,3);assert.equal(farmland.world.tiles[24*25+23],6);
 const exportedText=JSON.stringify(exported);
+const farmImport=setup();farmImport.w.FileReader=class {readAsText(file){this.result=file.contents;this.onload();}};const farmInput=farmImport.d.getElementById('world-import-file');const farmText=JSON.stringify(farmland);Object.defineProperty(farmInput,'files',{configurable:true,value:[{size:farmText.length,contents:farmText}]});farmInput.dispatchEvent(new farmImport.w.Event('change',{bubbles:true}));assert.equal(farmImport.w.worldManager.getActive().tiles[24*25+23],6,'v3 farmland survives preview export/import');farmImport.dom.window.close();
 const imported=setup();imported.w.FileReader=class {readAsText(file){this.result=file.contents;this.onload();}};
 const fileInput=imported.d.getElementById('world-import-file');Object.defineProperty(fileInput,'files',{configurable:true,value:[{size:exportedText.length,contents:exportedText}]});fileInput.dispatchEvent(new imported.w.Event('change',{bubbles:true}));
 assert.deepEqual(Array.from(imported.w.worldManager.getActive().tiles),exported.world.tiles,'preview export/import round trip');

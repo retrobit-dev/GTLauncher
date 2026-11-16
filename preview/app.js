@@ -1150,8 +1150,8 @@
     if (material === 6) {
       ctx.save();ctx.strokeStyle='rgba(62,38,24,.55)';ctx.lineWidth=.75;
       for (const offset of [-.42,0,.42]) {
-        ctx.beginPath();ctx.moveTo(tile.x - halfWidth*(1-Math.abs(offset)) + halfWidth*offset, tile.y + halfHeight*offset);
-        ctx.lineTo(tile.x + halfWidth*(1-Math.abs(offset)) + halfWidth*offset, tile.y + halfHeight*offset);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(tile.x - halfWidth*(1-Math.abs(offset)), tile.y + halfHeight*offset);
+        ctx.lineTo(tile.x + halfWidth*(1-Math.abs(offset)), tile.y + halfHeight*offset);ctx.stroke();
       }
       ctx.restore();
     }

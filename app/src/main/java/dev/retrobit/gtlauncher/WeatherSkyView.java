@@ -1401,7 +1401,7 @@ public final class WeatherSkyView extends View {
                 drawSunlitIslandDiamond(canvas,x,y,hw-0.05f,hh-0.025f,1.4f,fill,sunlight);
                 if(material==6) {
                     paint.setColor(0xff523b2d);paint.setStrokeWidth(.75f);paint.setStyle(Paint.Style.STROKE);
-                    for(float offset:new float[]{-.42f,0f,.42f}) canvas.drawLine(x-hw*(1-Math.abs(offset))+hw*offset,y+hh*offset,x+hw*(1-Math.abs(offset))+hw*offset,y+hh*offset,paint);
+                    for(float offset:new float[]{-.42f,0f,.42f}) canvas.drawLine(x-hw*(1-Math.abs(offset)),y+hh*offset,x+hw*(1-Math.abs(offset)),y+hh*offset,paint);
                     paint.setStyle(Paint.Style.FILL);
                 }
             }
