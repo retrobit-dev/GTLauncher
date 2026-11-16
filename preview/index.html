@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#e2e4e1">
   <title>GTLauncher — Live Weather Preview</title>
-  <link rel="stylesheet" href="./styles.css?v=live-sky-44">
+  <link rel="stylesheet" href="./styles.css?v=live-sky-45">
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./worlds.js?v=19" defer></script>
   <script src="./object-editor.js?v=7" defer></script>
   <script src="./app.js?v=live-sky-164" defer></script>
-  <script src="./preview-modes.js?v=1" defer></script>
+  <script src="./preview-modes.js?v=2" defer></script>
   <script src="./editor-camera.js?v=3" defer></script>
   <script src="./season-estimate.js?v=1" defer></script>
   <script src="./hud.js?v=2" defer></script>
@@ -18,7 +18,6 @@
 <body>
   <main class="preview-stage" aria-label="Pratinjau GTLauncher">
     <nav class="mode-tabs" aria-label="Mode preview"><button id="mode-gameplay" type="button" aria-pressed="true">Gameplay</button><button id="mode-map-editor" type="button" aria-pressed="false">Map Editor</button></nav>
-    <p class="restore-notice">Base World terkunci. World baru 20×20 tersedia di preview; alat tile, terrain, dan ekspor Android belum tersedia. JSON 20×20 hanya untuk preview.</p>
     <div class="world-topbar"><button id="world-button" class="weather-cycle-button world-button" type="button" aria-haspopup="dialog" aria-controls="world-dialog" aria-label="World" title="World"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-3 3-3 15 0 18M12 3c3 3 3 15 0 18"/></svg></button><span id="active-world-label" class="active-world-label" aria-live="polite">World: Base World</span><div class="history-controls" aria-label="Riwayat edit"><button id="object-undo" class="world-secondary object-history-button" type="button" disabled aria-label="Urungkan perubahan objek" title="Undo">↶</button><button id="object-redo" class="world-secondary object-history-button" type="button" disabled aria-label="Ulangi perubahan objek" title="Redo">↷</button></div></div>
     <div class="device-wrap"><div class="device-frame" aria-label="Huawei MatePad Mini dalam orientasi lanskap">
       <div class="device-display" aria-label="Homescreen GTLauncher dengan langit dan pulau terapung pixel art yang mengikuti cuaca">
@@ -90,7 +89,8 @@
         <div class="world-import-controls"><label class="world-secondary world-import-label" for="world-import-file">Impor JSON</label><input id="world-import-file" type="file" accept=".json,application/json,text/plain"></div>
         <div id="world-import-confirm" class="world-import-confirm" hidden><p id="world-import-prompt"></p><button id="world-import-replace" class="world-primary" type="button">Ganti world</button> <button id="world-import-cancel" class="world-secondary" type="button">Batal</button></div>
         <button id="world-create-home" class="world-secondary world-create-home" type="button" hidden>Buat Home baru</button>
-        <p class="world-help">Base World tetap di atas; gunakan ↑ dan ↓ untuk mengurutkan world buatan. Tersimpan di browser ini, bukan di akun atau aplikasi Android.</p>
+        <p class="world-help">Base World adalah contoh terkunci; buat world baru untuk mengubah objek. Gunakan ↑ dan ↓ untuk mengurutkan world buatan.</p>
+        <p id="world-feature-limits" class="world-help">World baru 20×20 dan JSON-nya saat ini hanya tersedia di preview. Alat tile dan terrain serta transfer world 20×20 ke Android masih belum tersedia. World tersimpan di browser ini, bukan di akun atau aplikasi Android.</p>
         <div id="world-list" class="world-list"></div>
         <p id="world-storage-info" class="world-help" aria-live="polite"></p>
       </section>

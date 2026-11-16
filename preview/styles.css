@@ -272,8 +272,6 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .world-topbar .world-button, .preview-controls #weather-cycle-button, .preview-controls #object-library-button { width:42px; height:42px; min-height:42px; padding:9px; display:inline-grid; place-items:center; }
 .world-topbar svg, .preview-controls svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
 .preview-controls .icon-action { width:38px; height:38px; padding:8px; }
-.restore-notice { margin:0; align-self:flex-start; font-size:11px; line-height:1.35; color:#725322; }
-.preview-stage:not([data-mode="editor"]) .restore-notice { display:none; }
 
 /* HUD is screen-space UI: it does not zoom or move with the island. */
 @font-face { font-family: HudPixel; src: url('./assets/hud/press-start-2p.ttf') format('truetype'); font-display:swap; }
