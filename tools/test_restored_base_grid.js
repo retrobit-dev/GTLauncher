@@ -1,0 +1,21 @@
+// Verify actual preview geometry switches without changing world data.
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+let src=fs.readFileSync(path.join(__dirname,'../preview/app.js'),'utf8');
+const marker='  drawFrame();\n  initializeWeather();';assert(src.includes(marker));
+src=src.replace(marker,`  window.inspectGrid = () => ({size: ISLAND_GRID_SIZE, zoom: islandZoom, tiles: ISLAND_TILES.map(t => ({...t})), centre: islandCenterY});`);
+const ctx=new Proxy({}, {get:(target,key)=>key in target?target[key]:()=>{},set:(target,key,value)=>(target[key]=value,true)});
+const canvas={getContext:()=>ctx,addEventListener(){},getBoundingClientRect:()=>({left:0,top:0,width:320,height:200})};
+let active={id:'base'},worldChanges=[],writes=0;
+const window={matchMedia:()=>({matches:false}),requestAnimationFrame(){},setInterval(){},addEventListener:(name,cb)=>{if(name==='worldchange')worldChanges.push(cb)},worldManager:{getActive:()=>active,getCharacter:()=>({visible:false}),updateCharacter:()=>{writes++}}};
+const sandbox={window,console,document:{getElementById:id=>id==='sky-canvas'?canvas:null,createElement:()=>canvas},navigator:{},performance:{now:()=>0},Image:function(){},Date,Map,fetch:async()=>({ok:false})};
+vm.createContext(sandbox);vm.runInContext(src,sandbox);
+let grid=window.inspectGrid();assert.equal(grid.size,20);assert.equal(grid.tiles.length,400);assert.equal(grid.zoom,9/20);
+assert(grid.tiles.some(t=>t.coordinate==='A1'));assert(grid.tiles.some(t=>t.coordinate==='T20'));
+assert.equal(new Set(grid.tiles.map(t=>t.coordinate)).size,400);
+const first=grid.tiles.find(t=>t.coordinate==='A1'),last=grid.tiles.find(t=>t.coordinate==='T20');
+assert.equal(first.column,0);assert.equal(first.row,0);assert.equal(last.column,19);assert.equal(last.row,19);
+assert(Math.abs((20*28)*grid.zoom-252)<1e-9,'Base fits legacy preview width');
+active={id:'legacy'};worldChanges.forEach(f=>f());grid=window.inspectGrid();assert.equal(grid.size,9);assert.equal(grid.zoom,1);assert.equal(grid.tiles.length,81);assert(grid.tiles.some(t=>t.coordinate==='I9'));
+active={id:'base'};worldChanges.forEach(f=>f());assert.equal(window.inspectGrid().tiles.length,400);assert.equal(writes,0,'switching render geometry never writes world data');
+const java=fs.readFileSync(path.join(__dirname,'../app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java'),'utf8');assert(java.includes('worldId == null || "base".equals(worldId) ? 20 : 9'));
+console.log('Base World A1–T20, legacy A1–I9, fit and world-data isolation: OK; Android grid logic present');

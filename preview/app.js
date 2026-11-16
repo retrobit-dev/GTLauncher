@@ -35,9 +35,10 @@
   houseBackImage.src = './assets/house-back.png';
   const PLAYER_WIDTH = 13.5;
   const PLAYER_HEIGHT = 25;
-  const ISLAND_GRID_SIZE = 9;
+  // Base is a locked 20×20 reference; existing custom worlds stay on their 9×9 grid.
+  let ISLAND_GRID_SIZE = window.worldManager?.getActive()?.id === 'base' ? 20 : 9;
   const ISLAND_TILE_WIDTH = 28;
-  const ISLAND_COLUMN_LABELS = 'ABCDEFGHI';
+  const ISLAND_COLUMN_LABELS = 'ABCDEFGHIJKLMNOPQRST';
   // Logical grid IDs are A1–I9: columns A–I left to right, rows 1–9 top to bottom.
   // The diamond compass frame is rotated 45° clockwise from the screen diagonal so the grid
   // axes are cardinal: moving along a column runs east–west, moving along a row runs
@@ -54,7 +55,8 @@
   let islandCameraElevation = DEFAULT_ISLAND_CAMERA_ELEVATION;
   let islandTileHeight = ISLAND_TILE_WIDTH
     * Math.sin(islandCameraElevation * Math.PI / 180);
-  let islandZoom = 1;
+  // Fit the larger locked Base in the existing preview viewport; legacy worlds retain their scale.
+  let islandZoom = ISLAND_GRID_SIZE === 20 ? 9 / 20 : 1;
   // Interior tile faces stay shallow; exposed perimeter faces extend through the grass band.
   const ISLAND_TILE_SIDE_DEPTH = 2.5;
   // Explicit side-wall bands: 8 units of grass above 16 units of exposed soil.
@@ -1797,7 +1799,7 @@
   function applyIslandCameraSettings() {
     islandCameraElevation = clamp(Number(islandElevationInput?.value ?? DEFAULT_ISLAND_CAMERA_ELEVATION),
       MIN_ISLAND_CAMERA_ELEVATION, MAX_ISLAND_CAMERA_ELEVATION);
-    islandZoom = clamp(Number(islandZoomInput?.value ?? 100) / 100, 0.80, 1.05);
+    islandZoom = (ISLAND_GRID_SIZE === 20 ? 9 / 20 : 1) * clamp(Number(islandZoomInput?.value ?? 100) / 100, 0.80, 1.05);
     rebuildIslandProjection();
     if (islandElevationOutput) islandElevationOutput.textContent = `${Math.round(islandCameraElevation)}°`;
     if (islandZoomOutput) islandZoomOutput.textContent = `${Math.round(islandZoom * 100)}%`;
@@ -1957,6 +1959,12 @@
   window.previewHudLocation = () => ({latitude: location.latitude, longitude: location.longitude});
   window.previewHudSunAltitude = time => sunPosition(time, location.latitude, location.longitude).altitude;
   window.addEventListener('worldchange', () => {
+    const nextSize = window.worldManager?.getActive()?.id === 'base' ? 20 : 9;
+    if (nextSize !== ISLAND_GRID_SIZE) {
+      ISLAND_GRID_SIZE = nextSize;
+      islandZoom = ISLAND_GRID_SIZE === 20 ? 9 / 20 : 1;
+      rebuildIslandProjection();
+    }
     if (REDUCED_MOTION) drawFrame();
   });
   updateWeatherModeControls();
@@ -2012,8 +2020,8 @@
     tile(point) {
       const dx = (point.x - WIDTH / 2) / (ISLAND_TILE_WIDTH / 2);
       const dy = (point.y - islandTop - islandTileHeight / 2) / (islandTileHeight / 2);
-      return {column: clamp(Math.round((dx + dy) / 2), 0, 8),
-        row: clamp(Math.round((dy - dx) / 2), 0, 8)};
+      return {column: clamp(Math.round((dx + dy) / 2), 0, ISLAND_GRID_SIZE - 1),
+        row: clamp(Math.round((dy - dx) / 2), 0, ISLAND_GRID_SIZE - 1)};
     },
     update(draft, selected, type = 'character') {
       editingDraft = type === 'character' ? draft : null;

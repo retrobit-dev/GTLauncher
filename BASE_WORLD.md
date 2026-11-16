@@ -1,5 +1,7 @@
 # Base World
 
+> **Status pemulihan:** Base World terkunci menggunakan kisi 20×20 (A1–T20) pada preview dan Android. World lama dan world baru yang dibuat versi ini masih 9×9; editor tile dan format world baru 20×20 belum dipulihkan. Preview mengecilkan tampilan Base agar muat pada viewport lama, tanpa mengubah data world. Bagian lama di bawah ini bersifat historis dan belum seluruhnya diperbarui.
+
 Base World adalah dasar saat ini untuk pengembangan world dengan pulau-pulau yang berbeda fungsinya. Dokumen ini mencatat implementasi sekarang. Preview browser menyediakan pengelola world berbasis Base World; aplikasi Android dapat mengimpor dan memilih world yang diekspor. Ini belum menjadi sistem konfigurasi pulau generik.
 
 ## Pulau
