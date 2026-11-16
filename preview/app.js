@@ -1666,6 +1666,8 @@
     // Breathing changes height only, never the ground anchor. With reduced motion time is zero.
     const idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5 : 0;
     const height = PLAYER_HEIGHT * character.scale + idle;
+    // Keep the existing sprite while making walking visible even when the camera follows it.
+    const walkBob = gameplayDraft && cameraMode === 'gameplay' ? Math.abs(Math.sin(motionTime * Math.PI * 6)) * 1.4 * character.scale : 0;
     ctx.save();
     applyIslandTransform();
     ctx.imageSmoothingEnabled = false;
@@ -1673,9 +1675,9 @@
       ctx.save();
       ctx.translate(x, 0);
       ctx.scale(-1, 1);
-      ctx.drawImage(sprite, -width / 2, y - height, width, height);
+      ctx.drawImage(sprite, -width / 2, y - height - walkBob, width, height);
       ctx.restore();
-    } else ctx.drawImage(sprite, x - width / 2, y - height, width, height);
+    } else ctx.drawImage(sprite, x - width / 2, y - height - walkBob, width, height);
     if (editingSelected) {
       ctx.strokeStyle = '#fff4a8';
       ctx.lineWidth = 1;
