@@ -1,6 +1,7 @@
 // Preview gameplay: route a visible character without changing world data until arrival.
 (() => {
   'use strict';
+  function columnLabel(column) { let n=column+1, label=''; while(n>0) { n--; label=String.fromCharCode(65+n%26)+label; n=Math.floor(n/26); } return label; }
   const stage=document.querySelector('.preview-stage'),canvas=document.getElementById('sky-canvas');
   const status=document.getElementById('gameplay-movement-status'),scene=window.sceneEditing,worlds=window.worldManager,path=window.GameplayPath;
   if(!stage||!canvas||!status||!scene?.setGameplayDraft||!worlds?.updateCharacter||!path)return;
@@ -29,7 +30,7 @@
       const next=queuedTarget,walkMessage=walk.message; cancel();
       if(!ok){tell('Posisi tidak tersimpan; periksa penyimpanan browser.');return;}
       if(next){move(next);return;}
-      tell(walkMessage || `Tiba di ${'ABCDEFGHIJKLMNOPQRSTUVWXY'[end.column]}${end.row+1}.`);return;
+      tell(walkMessage || `Tiba di ${columnLabel(end.column)}${end.row+1}.`);return;
     }
     if(walk.routeIndex!==index){walk.routeIndex=index;scene.setGameplayRoute?.(walk.route,index);}
     const a=walk.route[index-1],b=walk.route[index],t=Math.max(0,Math.min(1,elapsed/walk.durations[index-1]));
@@ -60,12 +61,12 @@
     const end=route[route.length-1], completion=houseTarget?'Di dekat rumah. Interaksi rumah belum tersedia.':'';
     cancel();
     if(route.length===1){tell(completion || 'Karakter sudah berada di tile ini.');return;}
-    tell(houseTarget?'Berjalan mendekati rumah…':`Berjalan ke ${'ABCDEFGHIJKLMNOPQRSTUVWXY'[end.column]}${end.row+1}…`);
+    tell(houseTarget?'Berjalan mendekati rumah…':`Berjalan ke ${columnLabel(end.column)}${end.row+1}…`);
     const total=route.length-1;
     if(reduced){
       const previous=route[total-1];committing=true;let ok=false;
       try{ok=worlds.updateCharacter(world.id,{...character,...route[total],facing:direction(previous,route[total])});}finally{committing=false;}
-      tell(ok?(completion || `Tiba di ${'ABCDEFGHIJKLMNOPQRSTUVWXY'[end.column]}${end.row+1}.`):'Posisi tidak tersimpan; periksa penyimpanan browser.');return;
+      tell(ok?(completion || `Tiba di ${columnLabel(end.column)}${end.row+1}.`):'Posisi tidak tersimpan; periksa penyimpanan browser.');return;
     }
     scene.setGameplayRoute?.(route,1);
     walk={id:world.id,character,route,message:completion,routeIndex:1,started:null,durations:route.slice(1).map((_,i)=>total>3&&i>0&&i<total-1?180:300)};

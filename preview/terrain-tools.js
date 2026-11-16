@@ -1,6 +1,7 @@
 // Editor controls outside the tablet affect preview storage only, never Android or Base World.
 (() => {
   'use strict';
+  function columnLabel(column) { let n=column+1, label=''; while(n>0) { n--; label=String.fromCharCode(65+n%26)+label; n=Math.floor(n/26); } return label; }
   const stage=document.querySelector('.preview-stage'), canvas=document.getElementById('sky-canvas');
   const material=document.getElementById('terrain-material'), status=document.getElementById('terrain-status');
   const pan=document.getElementById('editor-pan'), scene=window.sceneEditing, worlds=window.worldManager;
@@ -51,7 +52,7 @@
     else next[index]=tool==='erase'?0:value;
     if(next.every((v,i)=>v===world.tiles[i])) return;
     status.textContent=worlds.updateTiles(world.id,next)
-      ? `${'ABCDEFGHIJKLMNOPQRSTUVWXY'[point.column]}${point.row+1} diperbarui.`
+      ? `${columnLabel(point.column)}${point.row+1} diperbarui.`
       : 'Tidak disimpan: tile digunakan objek atau penyimpanan bermasalah.';
   }
   canvas.addEventListener('pointerdown',event=>{
