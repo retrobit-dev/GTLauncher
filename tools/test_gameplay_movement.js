@@ -37,7 +37,9 @@ dom.window.close();console.log('Gameplay routing: 9x9/20x20, obstacles, water tr
  w.eval(fs.readFileSync(path.join(root,'gameplay-movement.js'),'utf8'));
  function tap(x,y){for(const type of ['pointerdown','pointerup']){let e=new w.MouseEvent(type,{bubbles:true,clientX:x,clientY:y});Object.defineProperties(e,{pointerId:{value:1},pointerType:{value:'touch'}});c.dispatchEvent(e);}}
  tap(4,4);assert.equal(character.column,8);tap(4,4);assert.equal(character.column,6);assert.equal(character.row,4);assert.match(d.getElementById('gameplay-movement-status').textContent,/interaksi rumah belum tersedia/i);
- run.window.close();console.log('Hand interaction approaches house without entering its footprint: OK');
+ character.facing='S';const dock=d.createElement('div');dock.className='home-dock';dock.innerHTML='<button data-dock="hand" aria-pressed="true"></button>';d.body.appendChild(dock);
+tap(5,4);assert.equal(character.facing,'W','adjacent house first turns to face it');assert.equal(character.column,6);tap(5,4);assert.equal(character.column,6);assert.match(d.getElementById('gameplay-movement-status').textContent,/Rumah dipilih/);
+run.window.close();console.log('Hand interaction approaches and selects house only when facing it: OK');
 }
 {
  const run=new JSDOM('<main class="preview-stage" data-mode="gameplay"><canvas id="sky-canvas"></canvas><p id="gameplay-movement-status"></p><button id="mode-map-editor"></button></main>',{url:'https://example.test/',runScripts:'outside-only'}),w=run.window,d=w.document,c=d.querySelector('canvas');
