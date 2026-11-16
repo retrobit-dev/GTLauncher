@@ -6,6 +6,7 @@ tiles[20]=1;const route=Path.find(w20,{column:0,row:0},{column:2,row:0},null);as
 tiles[1]=3;assert(Path.find(w20,{column:0,row:0},{column:1,row:0},null),'water is a tile and is walkable');
 assert.equal(Path.find(w20,{column:0,row:0},{column:20,row:0},null),null);
 assert.equal(Path.find(w20,{column:0,row:0},{column:4,row:4},{column:3,row:3,visible:true}),null,'house blocks footprint');
+assert(Path.find(w20,{column:4,row:4},{column:6,row:4},{column:3,row:3,visible:true}),'character can escape a house overlapping its old starting tile');
 assert(Path.find({}, {column:0,row:0},{column:8,row:8},null));assert.equal(Path.find({}, {column:0,row:0},{column:9,row:8},null),null);
 const w25={gridSize:25,tiles:Array(625).fill(1)};assert(Path.find(w25,{column:0,row:0},{column:24,row:24},null));assert.equal(Path.find(w25,{column:0,row:0},{column:25,row:24},null),null);
 const dom=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:'https://example.test/',runScripts:'outside-only'}),win=dom.window,d=win.document;
