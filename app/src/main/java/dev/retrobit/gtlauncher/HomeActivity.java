@@ -528,7 +528,7 @@ public class HomeActivity extends Activity {
             java.util.List<PortalTravel.Tile> route=PortalTravel.path(
                 new PortalTravel.Tile(world.characterColumn,world.characterRow),target,portalTerrain(world),world.gridSize());
             if(route==null) {
-                if(world.tileExists(target.column,target.row) && Math.abs(target.column-world.characterColumn)+Math.abs(target.row-world.characterRow)==1) {
+                if(selectedTool!=-1 && world.tileExists(target.column,target.row) && Math.abs(target.column-world.characterColumn)+Math.abs(target.row-world.characterRow)==1) {
                     String facing=GameplayTarget.direction(new PortalTravel.Tile(world.characterColumn,world.characterRow),target);
                     if(!facing.equals(world.characterFacing)) {
                         if(!worldStore.moveCharacter(world.id,world.characterColumn,world.characterRow,facing))throw new JSONException("Facing failed");
@@ -537,7 +537,7 @@ public class HomeActivity extends Activity {
                 }
                 Toast.makeText(this,"Jalan terhalang.",Toast.LENGTH_SHORT).show();return;
             }
-            if(route.size()>1) {
+            if(selectedTool!=-1 && route.size()>1) {
                 String facing=GameplayTarget.direction(route.get(0),route.get(1));
                 if(!facing.equals(world.characterFacing)) {
                     if(!worldStore.moveCharacter(world.id,world.characterColumn,world.characterRow,facing))throw new JSONException("Facing failed");
