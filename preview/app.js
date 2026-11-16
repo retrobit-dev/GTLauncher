@@ -267,6 +267,12 @@
     }
   }
   rebuildIslandProjection();
+  function defaultEditorCamera() {
+    const [anchorX, anchorY] = islandAnchor(), zoom = 7.5;
+    return {zoom, panX: WIDTH / 2 - anchorX - (WIDTH / 2 - anchorX) * baseFitZoom() * zoom,
+      panY: HEIGHT * .56 - anchorY - (islandCenterY - anchorY) * baseFitZoom() * zoom};
+  }
+  savedEditorCamera = defaultEditorCamera();
   const NIGHT = ['#111a35', '#1d2948', '#35415d', '#514c65'];
   const DAWN = ['#425783', '#7183a7', '#c79aa5', '#f0bd88'];
   const SUNSET = ['#39486e', '#6e6f91', '#d38d84', '#f5b573'];
@@ -2081,11 +2087,10 @@
   window.previewHudWeatherCode = () => lastFetch ? weather.weatherCode : null;
   window.addEventListener('gameplaytoolchange',()=>{if(REDUCED_MOTION)drawFrame();});
   window.addEventListener('worldchange', () => {
-    const nextWorldId = window.worldManager?.getActive()?.id;
+    const nextWorldId = window.worldManager?.getActive()?.id, previousWorldId = cameraWorldId;
     if (nextWorldId !== cameraWorldId) {
       cameraWorldId = nextWorldId;
       gameplayFollowCentre = null; gameplayFollowTime = null; gameplayCameraMoving = false;
-      savedEditorCamera = {zoom: 7.5, panX: 0, panY: 0};
     }
     const nextSize = nextWorldId === 'base' ? 50 : (window.worldManager?.getActive()?.gridSize || 9);
     if (nextSize !== ISLAND_GRID_SIZE) {
@@ -2093,8 +2098,14 @@
       gameplayFollowCentre = null; gameplayFollowTime = null; gameplayCameraMoving = false;
       editorZoom = 7.5; cameraPanX = 0; cameraPanY = 0;
       islandZoom = baseFitZoom() * editorZoom;
-      savedEditorCamera = {zoom: 7.5, panX: 0, panY: 0};
       rebuildIslandProjection();
+    }
+    if (nextWorldId !== previousWorldId) {
+      savedEditorCamera = defaultEditorCamera();
+      if (cameraMode === 'editor') {
+        ({zoom: editorZoom, panX: cameraPanX, panY: cameraPanY} = savedEditorCamera);
+        islandZoom = baseFitZoom() * editorZoom;
+      }
     }
     if (cameraMode === 'gameplay') applyGameplayCamera();
     if (REDUCED_MOTION) drawFrame();
@@ -2187,6 +2198,12 @@
   window.sceneEditing = Object.freeze({
     camera() { return {zoom: editorZoom, renderZoom: islandZoom, panX: cameraPanX, panY: cameraPanY}; },
     setMode: setPreviewCameraMode,
+    resetEditorCamera() {
+      const c=defaultEditorCamera();
+      editorZoom=c.zoom;cameraPanX=c.panX;cameraPanY=c.panY;
+      islandZoom=baseFitZoom()*editorZoom;
+      if(REDUCED_MOTION) drawFrame();
+    },
     setGameplayRoute(route, next=1) {
       gameplayRoute = route ? {tiles:route.map(tile=>({column:tile.column,row:tile.row})),next} : null;
       if (REDUCED_MOTION) drawFrame();

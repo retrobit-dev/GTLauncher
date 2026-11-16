@@ -18,7 +18,7 @@
     surface.hidden = !active;
     canvas.classList.toggle('is-panning', active);
   }
-  function reset() { scene.setCamera(7.5, 0, 0); update(); }
+  function reset() { scene.resetEditorCamera(); update(); }
   function changeZoom(amount) {
     const c = scene.camera();
     scene.setCamera(Math.round((c.zoom + amount) * 2) / 2, c.panX, c.panY); update();
