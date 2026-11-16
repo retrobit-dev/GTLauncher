@@ -4,7 +4,7 @@ from collections import deque
 from pathlib import Path
 from PIL import Image
 ROOT=Path(__file__).resolve().parents[1]
-source=ROOT/'preview/assets/character-redraw/sickle-concept.png'
+source=ROOT/'preview/assets/character-redraw/sickle-reference-concept.png'
 im=Image.open(source).convert('RGBA');w,h=im.size;p=im.load();seen=bytearray(w*h);q=deque()
 def visit(x,y):
     i=y*w+x
