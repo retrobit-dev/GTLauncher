@@ -478,7 +478,7 @@ public class HomeActivity extends Activity {
         movingObjectWorld=null;movingHouse=null;movingSurface=null;
         selectedTool=selectedTool==tool ? -1 : tool;
         for(int id:gameplayTools())findViewById(id).setSelected(id==selectedTool);
-        portalWalkGeneration++;skyView.setPortalWalkActive(false);applyActiveWorld();
+        // Changing tools updates the selection without interrupting an active route.
         skyView.setHoeSelected(selectedTool==R.id.dock_tool_hoe || selectedTool==R.id.dock_tool_hand);
         Toast.makeText(this,selectedTool==-1?"Alat dilepas.":selectedTool==R.id.dock_tool_hand?"Tangan aktif: pilih objek di depan karakter.":selectedTool==R.id.dock_tool_hoe?"Cangkul aktif. Blok tanah pertanian belum tersedia.":"Alat dipilih; fungsinya belum tersedia.",Toast.LENGTH_SHORT).show();
     }

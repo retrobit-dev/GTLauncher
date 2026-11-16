@@ -110,6 +110,6 @@
   });
   canvas.addEventListener('pointercancel',()=>{gesture=null;});
   document.getElementById('mode-map-editor').addEventListener('click',()=>{gesture=null;clearObjectSelection();cancel();tell('');});
-  window.addEventListener('gameplaytoolchange',()=>{gesture=null;clearObjectSelection();cancel();tell('');});
+  window.addEventListener('gameplaytoolchange',()=>{gesture=null;clearObjectSelection();if(!walk)tell('');});
   window.addEventListener('worldchange',()=>{if(!committing){gesture=null;clearObjectSelection();cancel();tell('');}});
 })();
