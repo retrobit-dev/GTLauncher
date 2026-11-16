@@ -38,6 +38,12 @@ public class PreviewWorld20Test {
         assertFalse(parsed.canStand(25,24)); assertEquals(parsed.toJson(),PreviewWorld20.parse(parsed.toJson()).toJson());
         w.put("gridSize",24); rejected(root); w.put("gridSize",25); w.getJSONObject("house").put("column",23); rejected(root);
     }
+    @Test public void tilledTerrainRequiresVersionThree() throws Exception {
+        JSONObject root=sample();root.getJSONObject("world").getJSONArray("tiles").put(200,6);
+        rejected(root);root.put("version",3);
+        PreviewWorld20 parsed=PreviewWorld20.parse(root.toString());assertEquals(6,parsed.tile(0,10));assertTrue(parsed.canStand(0,10));
+        assertEquals(parsed.toJson(),PreviewWorld20.parse(parsed.toJson()).toJson());
+    }
     @Test public void rejectsUnknownOrMalformedData() throws Exception {
         JSONObject root=sample(); root.getJSONObject("world").put("objects",new JSONArray()); rejected(root);
         root=sample(); root.getJSONObject("world").getJSONObject("house").put("design","new"); rejected(root);

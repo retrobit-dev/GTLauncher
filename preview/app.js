@@ -1125,7 +1125,7 @@
 
   function drawGrassTile(tile, palette, sunlight, material = 1) {
     const lightTile = tile.variant === 0;
-    const terrain = {2:'#ae8b68', 3:'#5e9eb4', 4:'#929995', 5:'#dac695'};
+    const terrain = {2:'#ae8b68', 3:'#5e9eb4', 4:'#929995', 5:'#dac695', 6:'#805e43'};
     const fill = material === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
       : blendColor(terrain[material] || terrain[2], palette.grassDark, 0.12);
     const halfWidth = ISLAND_TILE_WIDTH / 2 - 0.05;
@@ -1147,6 +1147,14 @@
     // Each top stays solid; direct sunlight adds only a uniform, subtle color lift.
     drawSunlitIslandDiamond(tile.x, tile.y, halfWidth, halfHeight,
       cornerRadius, fill, sunlight);
+    if (material === 6) {
+      ctx.save();ctx.strokeStyle='rgba(62,38,24,.55)';ctx.lineWidth=.75;
+      for (const offset of [-.42,0,.42]) {
+        ctx.beginPath();ctx.moveTo(tile.x - halfWidth*(1-Math.abs(offset)) + halfWidth*offset, tile.y + halfHeight*offset);
+        ctx.lineTo(tile.x + halfWidth*(1-Math.abs(offset)) + halfWidth*offset, tile.y + halfHeight*offset);ctx.stroke();
+      }
+      ctx.restore();
+    }
     // Stable sparse variants match Android's sheet and hash; no world data is changed.
     const variant = grassDetailVariant(tile.column, tile.row);
     if (material === 1 && variant && grassDetailImage.complete && grassDetailImage.naturalWidth === 1280) {

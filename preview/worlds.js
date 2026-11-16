@@ -17,7 +17,7 @@
   let state = {worlds: [], activeId: 'base'};
   let storageError = '';
   let loadedRaw = null;
-  const validTile = t => Number.isInteger(t) && t >= 0 && t <= 5;
+  const validTile = t => Number.isInteger(t) && t >= 0 && t <= 6;
   const WORLD_KEYS = ['id','name','description','color','showCharacter','characterColumn','characterRow','characterScale','characterFacing','house','gridSize','tiles'];
   let exportUrl = null;
   let exportFile = null;
@@ -205,10 +205,10 @@
     const keys = (value, allowed) => record(value) && Object.keys(value).every(key => allowed.includes(key));
     let root;
     try { root = JSON.parse(text.replace(/^\uFEFF/, '')); } catch (_) { return fail(); }
-    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2].includes(root.version)) {
+    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3].includes(root.version)) {
       const w = root.world;
       if (!keys(w, WORLD_KEYS) || ![20,25].includes(w.gridSize) || !Array.isArray(w.tiles) || w.tiles.length !== w.gridSize * w.gridSize
-        || w.tiles.some(t => !validTile(t) || (root.version === 1 && t > 1)) || typeof w.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(w.id) || w.id === 'base'
+        || w.tiles.some(t => !validTile(t) || (t > (root.version === 1 ? 1 : root.version === 2 ? 5 : 6))) || typeof w.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(w.id) || w.id === 'base'
         || typeof w.name !== 'string' || !w.name.trim() || w.name.length > 48 || typeof w.description !== 'string' || w.description.length > 160
         || typeof w.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(w.color)
         || typeof w.showCharacter !== 'boolean' || !Number.isInteger(w.characterColumn) || w.characterColumn < 0 || w.characterColumn >= w.gridSize
@@ -453,7 +453,7 @@
         const character = getCharacter(world);
         const snapshot = {...world, showCharacter: character.visible, characterColumn: character.column, characterRow: character.row,
           characterScale: character.scale, characterFacing: character.facing, house: getHouse(world)};
-        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
+        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.tiles.some(t => t === 6) ? 3 : snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
         const blob = new Blob([json], {type:'application/json'});
         const url = URL.createObjectURL(blob);
         const safeName = world.name.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'world';
@@ -540,7 +540,17 @@
     if (house) for (let r = house.row; r < house.row + 3; r++) for (let c = house.column; c < house.column + 3; c++) if (!tiles[r * world.gridSize + c] || tiles[r * world.gridSize + c] === 3) return false;
     return commit({...state, worlds: state.worlds.map(w => w.id === id ? {...w, tiles: tiles.slice()} : w)});
   }
-  window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, updateTiles});
+  function tillTile(id, column, row) {
+    const world=activeWorld(), character=getCharacter(world), house=getHouse(world), size=world.gridSize;
+    if(id==='base' || world.id!==id || ![20,25].includes(size) || !world.tiles || !character.visible
+      || !Number.isInteger(column) || !Number.isInteger(row) || column<0 || row<0 || column>=size || row>=size
+      || Math.abs(character.column-column)+Math.abs(character.row-row)!==1
+      || (house?.visible && column>=house.column && column<house.column+3 && row>=house.row && row<house.row+3)
+      || ![1,2].includes(world.tiles[row*size+column])) return false;
+    const tiles=world.tiles.slice();tiles[row*size+column]=6;
+    return updateTiles(id,tiles);
+  }
+  window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, updateTiles, tillTile});
   render();
   if (homeUpgraded) announce('Home diperbarui menjadi 25×25. Cadangan sebelum perubahan tersedia untuk diunduh.');
   else if (storageError) announce(storageError);

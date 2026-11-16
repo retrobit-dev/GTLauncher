@@ -203,6 +203,10 @@ public class PortalImportTest {
         assertTrue(store.moveCharacter("home",24,24,"E"));
         WorldStore.World restored=store.activeWorld(); assertEquals(24,restored.characterColumn); assertEquals(3,restored.previewData.tile(24,24));
         assertEquals(5,restored.previewData.tile(0,4)); assertEquals(1,restored.houses.size());
+        assertFalse(store.tillTile("home",24,24)); assertFalse(store.tillTile("home",23,24));
+        assertTrue(store.tillTile("home",24,23)); assertEquals(6,store.activeWorld().previewData.tile(24,23));
+        assertEquals(3,new org.json.JSONObject(store.activeWorld().previewData.toJson()).getInt("version"));
+        assertFalse(store.tillTile("home",24,23)); assertFalse(store.tillTile("home",0,0));
         assertFalse(store.moveCharacter("home",23,24,"E")); assertFalse(store.moveCharacter("home",0,0,"E"));
         assertFalse(store.moveCharacter("home",25,24,"E"));
         try {store.upsertAndSelect(WorldStore.parseExport(world("")));fail("legacy replacement cannot drop terrain");} catch(JSONException expected) {}

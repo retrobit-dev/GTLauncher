@@ -38,6 +38,10 @@ d.getElementById('terrain-fill').click();d.getElementById('terrain-material').va
 assert.equal(w.worldManager.updateCharacter(world.id,{visible:true,column:24,row:24,scale:1,facing:'S'}),true,'20x20 object bounds');
 d.querySelector(`[data-action="export"][data-id="${world.id}"]`).click();assert.match(d.getElementById('world-message').textContent,/Android versi terbaru/);
 const exported=JSON.parse(d.getElementById('world-export-json').value);assert.equal(exported.format,'gtlauncher-preview-world');assert.equal(exported.version,2);assert.equal(exported.world.tiles[104],5);assert.equal(exported.world.gridSize,25);assert.equal(exported.world.characterColumn,24);assert.equal(exported.world.tiles.length,625);
+assert(w.worldManager.tillTile(world.id,23,24),'adjacent grass can be tilled');
+assert.equal(w.worldManager.getActive().tiles[24*25+23],6);assert(!w.worldManager.tillTile(world.id,23,24),'already tilled cannot be tilled again');assert(!w.worldManager.tillTile(world.id,0,0),'distant tile cannot be tilled');
+d.querySelector(`[data-action="export"][data-id="${world.id}"]`).click();
+const farmland=JSON.parse(d.getElementById('world-export-json').value);assert.equal(farmland.version,3);assert.equal(farmland.world.tiles[24*25+23],6);
 const exportedText=JSON.stringify(exported);
 const imported=setup();imported.w.FileReader=class {readAsText(file){this.result=file.contents;this.onload();}};
 const fileInput=imported.d.getElementById('world-import-file');Object.defineProperty(fileInput,'files',{configurable:true,value:[{size:exportedText.length,contents:exportedText}]});fileInput.dispatchEvent(new imported.w.Event('change',{bubbles:true}));

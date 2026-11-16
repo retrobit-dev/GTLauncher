@@ -502,6 +502,21 @@ final class WorldStore {
         }}
         return false;
     }
+    boolean tillTile(String worldId,int column,int row) throws JSONException {
+        if(!worldId.equals(activeId())) return false;
+        List<World> worlds=list();
+        for(int i=0;i<worlds.size();i++) {
+            World world=worlds.get(i); if(!world.id.equals(worldId))continue;
+            if(world.previewData==null || !world.showCharacter || !world.tileExists(column,row)
+                    || Math.abs(world.characterColumn-column)+Math.abs(world.characterRow-row)!=1
+                    || houseCovers(world.houses,column,row)) return false;
+            int tile=world.previewData.tile(column,row);if(tile!=1 && tile!=2)return false;
+            JSONObject root=new JSONObject(world.previewData.toJson());
+            root.put("version",3);root.getJSONObject("world").getJSONArray("tiles").put(row*world.gridSize()+column,6);
+            worlds.set(i,fromPreview(PreviewWorld20.parse(root.toString())));return saveWorlds(worlds,worldId);
+        }
+        return false;
+    }
     boolean travel(String sourceWorldId, String portalId) throws JSONException {
         if (!sourceWorldId.equals(activeId())) return false;
         List<World> worlds=list(); World source=null,destination=null; PortalTravel.Portal from=null,to=null;

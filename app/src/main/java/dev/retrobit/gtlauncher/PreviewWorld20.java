@@ -9,7 +9,6 @@ import java.util.Iterator;
 import java.util.Set;
 
 /** Strict, lossless reader for the preview's portable 20x20 and 25x25 formats.
- * This is intentionally not connected to the importer until rendering and storage support it.
  */
 final class PreviewWorld20 {
     final int size;
@@ -61,7 +60,7 @@ final class PreviewWorld20 {
         JSONObject root = new JSONObject(input);
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
-        int version = integer(root,"version",1,2);
+        int version = integer(root,"version",1,3);
         JSONObject w = root.getJSONObject("world");
         keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles");
         String id=string(w,"id"), name=string(w,"name"), description=string(w,"description"), color=string(w,"color");
@@ -74,7 +73,7 @@ final class PreviewWorld20 {
             Object v=source.get(i);
             if (!(v instanceof Number)) throw new JSONException("Invalid tile");
             double n=((Number)v).doubleValue();
-            if (!Double.isFinite(n) || n!=Math.rint(n) || n<0 || n>(version==1?1:5)) throw new JSONException("Invalid tile");
+            if (!Double.isFinite(n) || n!=Math.rint(n) || n<0 || n>(version==1?1:version==2?5:6)) throw new JSONException("Invalid tile");
             tiles[i]=(int)n;
         }
         bool(w,"showCharacter"); int c=integer(w,"characterColumn",0,size-1), r=integer(w,"characterRow",0,size-1);
