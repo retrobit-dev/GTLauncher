@@ -40,7 +40,7 @@
   playerBackImage.src = './assets/main-character-back.png?v=backpack-2';
   // Full-image gait frames keep hands and feet connected to the body.
   const walkingFrames = Object.fromEntries(['front','back'].map(side => [side,
-    Array.from({length:12},(_,i)=>{const image=new Image();image.src=`./assets/character-walk/${side}-${String(i).padStart(2,'0')}.png?v=1`;return image;})]));
+    Array.from({length:12},(_,i)=>{const image=new Image();image.src=`./assets/character-walk/${side}-${String(i).padStart(2,'0')}.png?v=2`;return image;})]));
   const houseImage = new Image();
   houseImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
   houseImage.src = './assets/house.png';
