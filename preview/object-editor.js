@@ -18,9 +18,9 @@
     libraryList.replaceChildren();
     const objects = [];
     const character = window.worldManager.getCharacter();
-    if (character.visible) objects.push(`Karakter · ${'ABCDEFGHI'[character.column]}${character.row + 1}`);
+    if (character.visible) objects.push(`Karakter · ${'ABCDEFGHIJKLMNOPQRST'[character.column]}${character.row + 1}`);
     const house = window.worldManager.getHouse?.();
-    if (house) objects.push(`Rumah · ${'ABCDEFGHI'[house.column]}${house.row + 1}–${'ABCDEFGHI'[house.column + 2]}${house.row + 3}${house.visible ? '' : ' (tersembunyi)'}`);
+    if (house) objects.push(`Rumah · ${'ABCDEFGHIJKLMNOPQRST'[house.column]}${house.row + 1}–${'ABCDEFGHIJKLMNOPQRST'[house.column + 2]}${house.row + 3}${house.visible ? '' : ' (tersembunyi)'}`);
     if (!objects.length) objects.push('Belum ada objek yang ditampilkan.');
     for (const label of objects) {
       const row = document.createElement('div');
@@ -33,8 +33,8 @@
   $('object-library-close').addEventListener('click', () => libraryDialog.close());
   window.addEventListener('worldchange', () => { if (libraryDialog.open) renderLibrary(); });
   const columns = $('object-column'), rows = $('object-row');
-  for (let i = 0; i < 9; i++) {
-    const col = document.createElement('option'); col.value = i; col.textContent = 'ABCDEFGHI'[i]; columns.append(col);
+  for (let i = 0; i < 20; i++) {
+    const col = document.createElement('option'); col.value = i; col.textContent = 'ABCDEFGHIJKLMNOPQRST'[i]; columns.append(col);
     const row = document.createElement('option'); row.value = i; row.textContent = String(i + 1); rows.append(row);
   }
   let editing = false, selected = false, selectedType = 'character', worldId = null, draft = null;
@@ -86,7 +86,7 @@
     if (to.length > HISTORY_LIMIT) to.shift();
     selectedType = next.type; history.last = snapshot(); draft = null; selected = next.value.visible;
     refresh(); syncControls();
-    tell(`EDITING · ${label}: ${selectedType === 'house' ? 'Rumah' : 'Karakter'} ${'ABCDEFGHI'[next.value.column]}${next.value.row + 1}, skala ${Math.round(next.value.scale * 100)}%.`);
+    tell(`EDITING · ${label}: ${selectedType === 'house' ? 'Rumah' : 'Karakter'} ${'ABCDEFGHIJKLMNOPQRST'[next.value.column]}${next.value.row + 1}, skala ${Math.round(next.value.scale * 100)}%.`);
   }
   const scene = () => window.sceneEditing;
   const tell = text => { status.textContent = text; };
@@ -155,9 +155,9 @@
     $('object-kind-title').textContent = selectedType === 'house' ? 'Rumah' : 'Karakter utama';
     $('object-visible-label').textContent = selectedType === 'house' ? 'Tampilkan rumah' : 'Tampilkan karakter';
     $('object-move-label').textContent = selectedType === 'house' ? 'Move · sudut A1 pada tapak 3×3' : 'Move · pusat tile';
-    $('object-help').textContent = selectedType === 'house' ? 'Kolom dan baris adalah sudut pertama tapak 3×3; pilih A–G dan 1–7. Ukuran gambar 150% dapat melewati tapak.' : 'Kaki karakter terkunci pada pusat tile. Pengaturan ini juga dapat digunakan tanpa gestur sentuh.';
-    for (const opt of columns.options) opt.disabled = selectedType === 'house' && Number(opt.value) > 6;
-    for (const opt of rows.options) opt.disabled = selectedType === 'house' && Number(opt.value) > 6;
+    $('object-help').textContent = selectedType === 'house' ? `Kolom dan baris adalah sudut pertama tapak 3×3; pilih A–${(world.gridSize || 9) === 20 ? 'R' : 'G'} dan 1–${(world.gridSize || 9) - 2}. Ukuran gambar 150% dapat melewati tapak.` : 'Kaki karakter terkunci pada pusat tile. Pengaturan ini juga dapat digunakan tanpa gestur sentuh.';
+    for (const opt of columns.options) opt.disabled = Number(opt.value) >= (window.worldManager.getActive().gridSize || 9) - (selectedType === 'house' ? 2 : 0);
+    for (const opt of rows.options) opt.disabled = Number(opt.value) >= (window.worldManager.getActive().gridSize || 9) - (selectedType === 'house' ? 2 : 0);
     $('object-visible').checked = character.visible;
     columns.value = character.column; rows.value = character.row;
     $('object-scale').value = Math.round(character.scale * 100); syncScale();
@@ -223,8 +223,8 @@
       const local = scene().toLocal(event.clientX, event.clientY);
       const tile = scene().tile({x: local.x - dragOffset.x, y: local.y - dragOffset.y});
       if (selectedType === 'house') {
-        tile.column = Math.max(0, Math.min(6, tile.column - 1));
-        tile.row = Math.max(0, Math.min(6, tile.row - 1));
+        tile.column = Math.max(0, Math.min((window.worldManager.getActive().gridSize || 9) - 3, tile.column - 1));
+        tile.row = Math.max(0, Math.min((window.worldManager.getActive().gridSize || 9) - 3, tile.row - 1));
       }
       draft = {...draft, ...tile}; refresh();
     }
@@ -236,7 +236,7 @@
     const pending = draft; dragOffset = null; pinch = null; suppressDrag = false;
     if (pending && recordEdit(pending)) {
       draft = null; refresh(); syncControls();
-      tell(`EDITING · ${selectedType === 'house' ? 'Rumah' : 'Karakter'} di ${'ABCDEFGHI'[pending.column]}${pending.row + 1}, skala ${Math.round(pending.scale * 100)}%.`);
+      tell(`EDITING · ${selectedType === 'house' ? 'Rumah' : 'Karakter'} di ${'ABCDEFGHIJKLMNOPQRST'[pending.column]}${pending.row + 1}, skala ${Math.round(pending.scale * 100)}%.`);
     } else { draft = null; refresh(); syncControls(); tell('EDITING · Perubahan tidak tersimpan. Periksa penyimpanan browser.'); }
   });
   canvas.addEventListener('pointercancel', event => {

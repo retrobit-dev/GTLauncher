@@ -40,7 +40,7 @@
   const PLAYER_WIDTH = 13.5;
   const PLAYER_HEIGHT = 25;
   // Base is a locked 20×20 reference; existing custom worlds stay on their 9×9 grid.
-  let ISLAND_GRID_SIZE = window.worldManager?.getActive()?.id === 'base' ? 20 : 9;
+  let ISLAND_GRID_SIZE = (window.worldManager?.getActive()?.id === 'base' || window.worldManager?.getActive()?.gridSize === 20) ? 20 : 9;
   const ISLAND_TILE_WIDTH = 28;
   const ISLAND_COLUMN_LABELS = 'ABCDEFGHIJKLMNOPQRST';
   // Logical grid IDs are A1–I9: columns A–I left to right, rows 1–9 top to bottom.
@@ -955,6 +955,16 @@
   }
 
   function clipIslandSurface() {
+    const tiles = window.worldManager?.getActive()?.tiles;
+    if (tiles && tiles.some(value => value === 0)) {
+      ctx.beginPath();
+      for (const tile of ISLAND_TILES) if (tiles[tile.row * 20 + tile.column]) {
+        const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
+        ctx.moveTo(tile.x, tile.y-hh); ctx.lineTo(tile.x+hw,tile.y);
+        ctx.lineTo(tile.x,tile.y+hh); ctx.lineTo(tile.x-hw,tile.y); ctx.closePath();
+      }
+      ctx.clip(); return;
+    }
     const points = islandSurfacePoints();
     ctx.beginPath();
     ctx.moveTo(points[0][0], points[0][1]);
@@ -1690,6 +1700,19 @@
     // The island keeps its original independent shadow, not the cloud ray projection.
     const light = pickLightSource(sunAltitude, sunHourAngle, moon, cloudCover);
     drawIslandShadow(centerX, lowerY, light.altitude, light.hourAngle, cloudCover, code);
+    const tileData = window.worldManager?.getActive()?.tiles;
+    if (tileData && tileData.some(value => value === 0)) {
+      for (const tile of ISLAND_TILES) {
+        if (!tileData[tile.row * 20 + tile.column]) continue;
+        const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
+        // Full-depth faces expose the silhouette and the soil beneath each remaining tile.
+        const leftOpen = tile.row === 19 || !tileData[(tile.row + 1) * 20 + tile.column];
+        const rightOpen = tile.column === 19 || !tileData[tile.row * 20 + tile.column + 1];
+        if (leftOpen) drawSmoothIslandPolygon([[tile.x-hw,tile.y],[tile.x,tile.y+hh],[tile.x,tile.y+hh+ISLAND_DEPTH],[tile.x-hw,tile.y+ISLAND_DEPTH]], palette.soilLight, palette.soilDark);
+        if (rightOpen) drawSmoothIslandPolygon([[tile.x,tile.y+hh],[tile.x+hw,tile.y],[tile.x+hw,tile.y+ISLAND_DEPTH],[tile.x,tile.y+hh+ISLAND_DEPTH]], palette.soilDark, palette.soilDark);
+        drawGrassTile(tile, palette, sunlight);
+      }
+    } else {
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.
     drawIslandSoilBody(soilLeftX, centerX, soilRightX,
       middleY, soilFrontY, grassBandDepth, palette);
@@ -1726,6 +1749,7 @@
       [centerX, topY], [rightX, middleY], [centerX, bottomY], [leftX, middleY]
     ], tileSeam, tileSeam);
     ISLAND_TILES.forEach(tile => drawGrassTile(tile, palette, sunlight));
+    }
     const shadowLight = sunAltitude <= MOON_VISIBLE_BELOW_SUN && moon
       ? moon : {altitude: sunAltitude, hourAngleDegrees: sunHourAngle};
     drawCloudShadowsOnIsland(cloudStates, shadowLight.altitude, shadowLight.hourAngleDegrees,
@@ -1987,7 +2011,7 @@
       cameraWorldId = nextWorldId;
       savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
     }
-    const nextSize = nextWorldId === 'base' ? 20 : 9;
+    const nextSize = nextWorldId === 'base' || window.worldManager?.getActive()?.gridSize === 20 ? 20 : 9;
     if (nextSize !== ISLAND_GRID_SIZE) {
       ISLAND_GRID_SIZE = nextSize;
       editorZoom = 1; cameraPanX = 0; cameraPanY = 0;
@@ -2083,6 +2107,12 @@
       const {x, y} = characterCentre(character);
       return Math.abs(point.x - x) <= PLAYER_WIDTH * character.scale / 2 + 4
         && point.y >= y - PLAYER_HEIGHT * character.scale - 4.5 && point.y <= y + 4;
+    },
+    tileAt(point) {
+      const dx = (point.x - WIDTH / 2) / (ISLAND_TILE_WIDTH / 2);
+      const dy = (point.y - islandTop - islandTileHeight / 2) / (islandTileHeight / 2);
+      const column = Math.round((dx + dy) / 2), row = Math.round((dy - dx) / 2);
+      return column >= 0 && column < ISLAND_GRID_SIZE && row >= 0 && row < ISLAND_GRID_SIZE ? {column, row} : null;
     },
     tile(point) {
       const dx = (point.x - WIDTH / 2) / (ISLAND_TILE_WIDTH / 2);
