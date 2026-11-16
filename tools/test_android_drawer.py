@@ -7,6 +7,7 @@ def id_of(node): return node.attrib.get(a+'id','')
 phone=next(n for n in layout.iter() if id_of(n)=='@+id/home_phone_button')
 end_slot=next(n for n in layout.iter() if id_of(n)=='@+id/home_settings_button')
 assert end_slot.tag=='ImageButton' and end_slot.attrib[a+'src']=='@drawable/dock_settings'
+assert end_slot.attrib[a+'contentDescription']=='Buka pengaturan perangkat'
 assert end_slot.attrib[a+'layout_width']=='24dp' and end_slot.attrib[a+'layout_height']=='24dp'
 overlay=next(n for n in layout.iter() if id_of(n)=='@+id/app_drawer_screen')
 window=next(n for n in overlay.iter() if id_of(n)=='@+id/app_drawer_window')
@@ -20,6 +21,10 @@ assert overlay.tag=='FrameLayout' and window.attrib[a+'layout_gravity']=='center
 assert id_of(list(header)[-1])=='@+id/drawer_back' and list(header)[-1].attrib[a+'text']=='×'
 java=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
 assert 'home_phone_button).setOnClickListener(view -> openDrawer())' in java
+assert 'home_settings_button).setOnClickListener(view -> openDeviceSettings())' in java
+assert 'new Intent(Settings.ACTION_SETTINGS)' in java and 'ActivityNotFoundException | SecurityException' in java
+assert not any(id_of(n) in ('@+id/mode_gameplay','@+id/mode_map_editor') for n in layout.iter())
+assert 'setMapMode(true);' in java and 'R.id.mode_gameplay' not in java and 'R.id.mode_map_editor' not in java
 part=java.split('private void openDrawer()',1)[1].split('private void closeDrawer()',1)[0]
 assert 'drawerScreen.setVisibility(View.VISIBLE)' in part and 'homeScreen.setVisibility(View.GONE)' not in part
 assert 'queryIntentActivities(query, 0)' in java and 'setComponent(new ComponentName(app.packageName, app.activityName))' in java

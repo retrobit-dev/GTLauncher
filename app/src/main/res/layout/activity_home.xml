@@ -15,14 +15,6 @@
         android:contentDescription="@string/blank_home_accessibility"
         android:importantForAccessibility="yes" />
 
-    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_gravity="top|center_horizontal" android:layout_marginTop="6dp" android:orientation="horizontal">
-        <Button android:id="@+id/mode_gameplay" android:layout_width="wrap_content" android:layout_height="40dp"
-            android:text="Gameplay" android:textSize="11sp" android:contentDescription="Mode gameplay" />
-        <Button android:id="@+id/mode_map_editor" android:layout_width="wrap_content" android:layout_height="40dp"
-            android:text="Map Editor" android:textSize="11sp" android:contentDescription="Mode tampilan map editor" />
-    </LinearLayout>
-
     <!-- Launcher status is present in every world, including worlds without a character. -->
     <LinearLayout android:id="@+id/home_character_hud" android:layout_width="wrap_content" android:layout_height="48dp" android:layout_gravity="top|left" android:layout_marginTop="18dp" android:layout_marginLeft="20dp" android:orientation="horizontal" android:clickable="false" android:focusable="false">
         <ImageView android:layout_width="48dp" android:layout_height="48dp" android:background="@drawable/bg_date_hud_panel" android:padding="3dp" android:src="@drawable/character_original_uhd_front" android:scaleType="fitCenter" android:scaleX="-1" android:contentDescription="Potret karakter utama" />
@@ -94,7 +86,7 @@
             android:padding="2dp"
             android:src="@drawable/dock_settings"
             android:scaleType="fitCenter"
-            android:contentDescription="Pengaturan — belum tersedia" />
+            android:contentDescription="Buka pengaturan perangkat" />
     </LinearLayout>
 
         </LinearLayout>

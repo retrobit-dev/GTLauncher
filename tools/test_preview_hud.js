@@ -20,6 +20,7 @@ assert.throws(()=>season.classify(rainfall(0),new Date('2026-12-01T12:00:00Z')))
  altitude=-10;code=63;w.dispatchEvent(new w.Event('hudweatherchange'));assert(d.getElementById('hud-phase').getAttribute('src').includes('hud-weather-night-rain.svg'));assert.match(d.getElementById('hud-phase').alt,/Malam.*hujan/);
  code=null;w.dispatchEvent(new w.Event('hudweatherchange'));assert.match(d.getElementById('hud-phase').alt,/cuaca belum diketahui/);
  d.querySelector('[data-dock="bag"]').click();assert(dialog.open);assert.match(d.getElementById('dock-message').textContent,/belum dipulihkan/);
+ d.getElementById('dock-close').click();d.querySelector('[data-dock="settings"]').click();assert.match(d.getElementById('dock-message').textContent,/Android.*pengaturan perangkat/);
  d.getElementById('dock-close').click();assert(!dialog.open);
  for(const img of d.querySelectorAll('.character-hud img, .home-dock img'))assert(fs.existsSync(path.join(root,img.getAttribute('src'))));
  assert.equal(d.querySelectorAll('.character-hud-stats > div').length,4);

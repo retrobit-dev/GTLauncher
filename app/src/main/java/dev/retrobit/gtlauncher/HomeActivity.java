@@ -269,12 +269,8 @@ public class HomeActivity extends Activity {
         weatherLicenseView = findViewById(R.id.weather_attribution_license);
         configureWeatherAttribution();
 
-        setMapMode(false);
-        findViewById(R.id.mode_gameplay).setOnClickListener(view -> setMapMode(true));
-        findViewById(R.id.mode_map_editor).setOnClickListener(view -> {
-            setMapMode(false);
-            Toast.makeText(this, "Editor peta Android belum tersedia. Buat map di preview dan impor ke Android.", Toast.LENGTH_LONG).show();
-        });
+        // Preview mode switches live outside the simulated tablet. The launcher opens in gameplay.
+        setMapMode(true);
         homeScreen.setOnTouchListener((view, event) -> {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
                 portalWalkGeneration++;
@@ -317,7 +313,7 @@ public class HomeActivity extends Activity {
         findViewById(R.id.dock_add_tab).setOnClickListener(view ->
                 Toast.makeText(this, "Penambahan tab dock belum tersedia.", Toast.LENGTH_SHORT).show());
         findViewById(R.id.home_phone_button).setOnClickListener(view -> openDrawer());
-        findViewById(R.id.home_settings_button).setOnClickListener(view -> Toast.makeText(this,"Pengaturan belum tersedia.",Toast.LENGTH_SHORT).show());
+        findViewById(R.id.home_settings_button).setOnClickListener(view -> openDeviceSettings());
         findViewById(R.id.home_bag_button).setOnClickListener(view -> showBag());
         defaultHomeButton.setOnClickListener(view -> requestDefaultLauncher());
         findViewById(R.id.location_permission_button).setOnClickListener(view -> showLocationPermissionExplanation());
@@ -478,10 +474,13 @@ public class HomeActivity extends Activity {
         skyView.setPortalWalkActive(false);
         applyActiveWorld();
         skyView.setGameplayMode(gameplay);
-        findViewById(R.id.mode_gameplay).setSelected(gameplay);
-        findViewById(R.id.mode_map_editor).setSelected(!gameplay);
-        findViewById(R.id.mode_gameplay).setAlpha(gameplay ? 1f : .6f);
-        findViewById(R.id.mode_map_editor).setAlpha(gameplay ? .6f : 1f);
+    }
+    private void openDeviceSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_SETTINGS));
+        } catch (ActivityNotFoundException | SecurityException error) {
+            Toast.makeText(this, "Pengaturan perangkat tidak tersedia.", Toast.LENGTH_SHORT).show();
+        }
     }
     private void walkToGround(float x,float y) {
         PortalTravel.Tile target=skyView.groundTileAt(x,y);
