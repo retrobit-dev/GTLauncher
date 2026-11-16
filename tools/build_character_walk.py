@@ -22,6 +22,15 @@ def deform(x,y,w,h,phase,running=False):
     ly=smooth(.70,.84,v)*(.035 if running else .022)*h
     foot_left=1-smooth(.44,.51,u);foot_right=smooth(.49,.56,u)
     dy=ly*(max(0,swing)*foot_left+max(0,-swing)*foot_right)
+    if running:
+        # Lean into travel and add a short airborne phase twice per stride.
+        # This is a continuous image warp, not a skeletal or rotoscoped gait.
+        lean = -.035*w*(1-smooth(.42,.98,v))
+        flight = .018*h*max(0, math.cos(2*phase))
+        # Draw trailing feet upward more strongly while the opposite leg advances.
+        dy += .025*h*leg*(max(0,-swing)*foot_left+max(0,swing)*foot_right)
+        dx += lean
+        dy += flight
     return (x-dx,y+dy)
 
 for mode in ('walk','run'):
