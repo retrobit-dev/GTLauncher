@@ -169,6 +169,9 @@ public class HomeActivity extends Activity {
     private TreePhenology.Result treePhenology;
     private WeatherSkyView skyView;
     private int selectedTool = R.id.dock_tool_hand;
+    private String movingObjectWorld;
+    private WorldStore.House movingHouse;
+    private WorldStore.SurfaceObject movingSurface;
     private WorldStore worldStore;
     private int portalWalkGeneration;
     private SensorManager sensorManager;
@@ -457,6 +460,7 @@ public class HomeActivity extends Activity {
     private boolean gameplayMode;
     private void setMapMode(boolean gameplay) {
         gameplayMode=gameplay;
+        movingObjectWorld=null;movingHouse=null;movingSurface=null;
         portalWalkGeneration++;
         skyView.setPortalWalkActive(false);
         applyActiveWorld();
@@ -471,6 +475,7 @@ public class HomeActivity extends Activity {
     }
     private int[] gameplayTools() {return new int[]{R.id.dock_tool_hand,R.id.dock_tool_hoe,R.id.dock_tool_shovel,R.id.dock_tool_water,R.id.dock_tool_sickle,R.id.dock_tool_axe,R.id.dock_tool_pickaxe,R.id.dock_tool_fishing};}
     private void selectTool(int tool) {
+        movingObjectWorld=null;movingHouse=null;movingSurface=null;
         selectedTool=selectedTool==tool ? -1 : tool;
         for(int id:gameplayTools())findViewById(id).setSelected(id==selectedTool);
         portalWalkGeneration++;skyView.setPortalWalkActive(false);applyActiveWorld();
@@ -492,6 +497,14 @@ public class HomeActivity extends Activity {
         try {
             WorldStore.World world=worldStore.activeWorld();if(world==null || !world.showCharacter)return;
             PortalTravel.Tile target=skyView.groundTileAt(x,y),front=GameplayTarget.front(world.characterColumn,world.characterRow,world.characterFacing);
+            if(movingObjectWorld!=null) {
+                if(!movingObjectWorld.equals(world.id)){movingObjectWorld=null;movingHouse=null;movingSurface=null;Toast.makeText(this,"World berubah; pemindahan dibatalkan.",Toast.LENGTH_SHORT).show();return;}
+                if(target==null){Toast.makeText(this,"Pilih tile di dalam world.",Toast.LENGTH_SHORT).show();return;}
+                if(worldStore.moveSelectedObject(movingObjectWorld,movingHouse,movingSurface,target.column,target.row)) {
+                    movingObjectWorld=null;movingHouse=null;movingSurface=null;applyActiveWorld();Toast.makeText(this,"Objek berhasil dipindahkan.",Toast.LENGTH_SHORT).show();
+                } else Toast.makeText(this,"Objek tidak dapat ditempatkan di sini; periksa tapak dan penghalang.",Toast.LENGTH_LONG).show();
+                return;
+            }
             if(front==null)return;
             WorldStore.SurfaceObject object=frontSurface(world,front);WorldStore.House house=frontHouse(world,front);
             PortalTravel.Portal portal=null;for(PortalTravel.Portal p:world.portals)if(p.tile.equals(front)){portal=p;break;}
@@ -499,13 +512,7 @@ public class HomeActivity extends Activity {
             boolean characterHit=!frontHit && skyView.characterAt(x,y);
             if(selectedTool!=-1 && (characterHit || (frontHit && selectedTool==R.id.dock_tool_hand && (house!=null || object!=null || portal!=null)))) {
                 if(selectedTool==R.id.dock_tool_hand) {
-                    if(house!=null)Toast.makeText(this,"Rumah dipilih. Interaksi rumah belum tersedia.",Toast.LENGTH_SHORT).show();
-                    else if(object!=null) {
-                        final WorldStore.SurfaceObject chosen=object;
-                        if(object.type.equals("tree"))new AlertDialog.Builder(this).setMessage("Pohon dipilih.").setPositiveButton("Panen",(d,w)->interactTree(chosen)).setNegativeButton("Tutup",null).show();
-                        else if(object.type.equals("storage-box")||object.type.equals("selling-box"))showSellingPlaceholder(object);
-                        else Toast.makeText(this,"Objek dipilih: "+object.type+".",Toast.LENGTH_SHORT).show();
-                    } else if(portal!=null)walkToPortal(portal.id);
+                    if(house!=null || object!=null || portal!=null)showHandObjectMenu(world.id,house,object,portal);
                     else Toast.makeText(this,"Tidak ada objek di depan karakter.",Toast.LENGTH_SHORT).show();
                 } else if(selectedTool==R.id.dock_tool_hoe)Toast.makeText(this,"Blok tanah pertanian belum tersedia; tidak ada tile yang diubah.",Toast.LENGTH_SHORT).show();
                 else Toast.makeText(this,"Fungsi alat ini belum tersedia.",Toast.LENGTH_SHORT).show();
@@ -518,6 +525,32 @@ public class HomeActivity extends Activity {
             }
             walkToGround(x,y);
         } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
+    }
+    private void showHandObjectMenu(String worldId,WorldStore.House house,WorldStore.SurfaceObject object,PortalTravel.Portal portal) {
+        boolean small=WorldStore.portableSmall(object),movable=house!=null || small;
+        java.util.List<String> actions=new java.util.ArrayList<>();
+        actions.add(small?"Ambil ke tas":"Ambil — tidak tersedia");
+        actions.add(movable?"Pindahkan":"Pindahkan — tidak tersedia");
+        if(object!=null && object.type.equals("tree"))actions.add("Panen pohon");
+        else if(object!=null && (object.type.equals("storage-box") || object.type.equals("selling-box")))actions.add("Buka box");
+        else if(portal!=null)actions.add("Gunakan portal");
+        String label=house!=null?"Rumah":object!=null?object.type:"Portal";
+        new AlertDialog.Builder(this).setTitle(label+" dipilih").setMessage(house!=null?"Rumah tidak dapat diambil ke tas.":small?"Objek kecil dapat diambil atau dipindahkan.":"Objek ini belum dapat diambil atau dipindahkan dengan aman.")
+            .setItems(actions.toArray(new String[0]),(dialog,which)->{
+                try {
+                    if(which==0) {
+                        if(!small){Toast.makeText(this,"Objek ini tidak dapat diambil.",Toast.LENGTH_SHORT).show();return;}
+                        if(!worldStore.takeSelectedObject(worldId,object))throw new JSONException("Object changed");
+                        applyActiveWorld();Toast.makeText(this,"Objek masuk ke tas.",Toast.LENGTH_SHORT).show();
+                    } else if(which==1) {
+                        if(!movable){Toast.makeText(this,"Objek ini belum dapat dipindahkan.",Toast.LENGTH_SHORT).show();return;}
+                        movingObjectWorld=worldId;movingHouse=house;movingSurface=object;
+                        Toast.makeText(this,house!=null?"Ketuk tile sudut kiri atas tapak rumah. Ketuk ikon tangan untuk batal.":"Ketuk tile tujuan. Ketuk ikon tangan untuk batal.",Toast.LENGTH_LONG).show();
+                    } else if(object!=null && object.type.equals("tree"))interactTree(object);
+                    else if(object!=null)showSellingPlaceholder(object);
+                    else if(portal!=null)walkToPortal(portal.id);
+                } catch(JSONException | ClassCastException error){Toast.makeText(this,"Objek tidak berubah; periksa data world dan tas.",Toast.LENGTH_LONG).show();}
+            }).setNegativeButton("Batal",null).show();
     }
     private void walkToGround(float x,float y) {
         PortalTravel.Tile target=skyView.groundTileAt(x,y);
@@ -615,7 +648,7 @@ public class HomeActivity extends Activity {
     private void renderBag(LinearLayout items,TextView notice) {
         items.removeAllViews();
         try {
-            JSONArray data=readBag();notice.setText(data.length()==0?"Tas masih kosong.":"");
+            JSONArray data=readBag(),objects=worldStore.objectBag();notice.setText(data.length()==0 && objects.length()==0?"Tas masih kosong.":"");
             for(int i=0;i<data.length();i++) {
                 JSONObject item=data.getJSONObject(i);String name=item.getString("name");int count=item.getInt("quantity");
                 LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
@@ -625,6 +658,11 @@ public class HomeActivity extends Activity {
                 minus.setContentDescription("Kurangi satu "+name);plus.setContentDescription("Tambah satu "+name);
                 minus.setOnClickListener(v->{if(changeBag(name,-1))renderBag(items,notice);});plus.setOnClickListener(v->{if(changeBag(name,1))renderBag(items,notice);});
                 row.addView(minus);row.addView(plus);items.addView(row);
+            }
+            if(objects.length()>0){TextView heading=new TextView(this);heading.setText("Objek di tas · penempatan belum tersedia");heading.setTextColor(Color.rgb(52,43,30));items.addView(heading);}
+            for(int i=0;i<objects.length();i++){
+                JSONObject entry=objects.getJSONObject(i),object=entry.getJSONObject("object");
+                TextView label=new TextView(this);label.setText(object.getString("type")+" · "+object.optString("species",object.optString("variant",""))+" ("+entry.getString("worldId")+")");label.setTextColor(Color.rgb(52,43,30));items.addView(label);
             }
         } catch (JSONException | ClassCastException error) {notice.setText("Data tas tidak dapat dibaca. Data lama tidak ditimpa.");}
     }
