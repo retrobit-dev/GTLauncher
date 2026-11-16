@@ -1,3 +1,7 @@
+# Peran karakter dan arah desain
+
+Karakter menggabungkan peran **farmer, builder, dan adventurer**. Untuk pekerjaan berikutnya, sesuaikan desain, ikon, animasi, dan fitur dengan gabungan peran ini serta gaya game yang sudah disetujui; ikuti arahan spesifik pengguna. Jangan menganggap setiap fitur harus mencakup ketiga peran sekaligus.
+
 # Aturan pembuatan animasi
 
 Aturan ini berlaku untuk animasi baru dan revisi animasi di aplikasi ini. Ikuti instruksi pengguna yang lebih spesifik jika ada.
