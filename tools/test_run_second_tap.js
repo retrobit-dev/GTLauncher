@@ -11,5 +11,10 @@ tap(4,1);tick(0);tick(200);assert.equal(draft.running,false);const before=draft.
 d.querySelector('[data-dock="hand"]').setAttribute('aria-pressed','true');w.dispatchEvent(new w.Event('gameplaytoolchange'));tap(4,1);tick(201);
 assert.equal(draft.running,true,'second tap engages running with tool selected');assert(Math.abs(draft.column-before)<.01,'no positional jump when switching speed');
 tick(1100);assert.equal(character.column,4,'running arrives before normal 3×650ms');assert.equal(writes,1);assert.equal(draft,null);
-character={...character,facing:'E'};d.querySelector('[data-dock="hand"]').setAttribute('aria-pressed','false');tap(6,1);tick(1200);tick(1300);tap(7,1);tick(1301);assert(draft.running);tick(2000);assert.equal(character.column,6,'first destination reached');tick(2001);assert(draft.running,'queued destination continues running');tick(2331);assert.equal(character.column,7);assert.equal(writes,3);
-dom.window.close();console.log('Second tap starts continuous running and queues new destination: OK');
+character={...character,facing:'E'};d.querySelector('[data-dock="hand"]').setAttribute('aria-pressed','false');
+tap(6,1);tick(1200);tick(1300);const oldPosition=draft.column;tap(2,1);tick(1301);
+assert(draft.running);assert.equal(draft.facing,'W','direction reverses on the next frame');assert(Math.abs(draft.column-oldPosition)<.01,'redirection preserves fractional position');
+tick(1350);assert(draft.column<oldPosition,'travels toward new target, not old destination');tick(2100);assert.equal(character.column,2,'arrives at new destination without visiting old one');assert.equal(writes,2);
+// Acceleration after one whole tile must not jump back to the original starting tile.
+character={...character,facing:'E'};tap(6,1);tick(2200);tick(2950);const late=draft.column;tap(6,1);tick(2951);assert(Math.abs(draft.column-late)<.01,'late second tap preserves current tile and progress');
+dom.window.close();console.log('Second tap redirects immediately, including reversal and late acceleration: OK');
