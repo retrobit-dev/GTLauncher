@@ -30,6 +30,16 @@ const old = {id:'old',name:'Home',description:'',color:'#a8c795',showCharacter:t
  w.close();
 }
 {
+ const tiles=Array(400).fill(1);tiles[3*20+4]=0;tiles[19*20+19]=5;
+ const home={...old,gridSize:20,tiles,characterColumn:9,characterRow:9,house:{column:0,row:0}};
+ const other={id:'other',name:'Kebun',description:'',color:'#a8c795',gridSize:20,tiles:Array(400).fill(1)};
+ const value={worlds:[home,other],activeId:'old'}, {w,d}=setup(value), result=w.worldManager.getActive();
+ assert.equal(result.gridSize,25);assert.equal(result.tiles.length,625);assert.equal(result.tiles[3*25+4],0);assert.equal(result.tiles[19*25+19],5);assert.equal(result.tiles[24*25+24],1);
+ assert.equal(result.characterColumn,9);assert.equal(result.characterRow,9);assert.deepEqual(JSON.parse(w.localStorage.getItem(key)).worlds[1],other);
+ const backup=Object.keys(w.localStorage).find(k=>k.startsWith('gtlauncher.home-before-25.'));assert.deepEqual(JSON.parse(w.localStorage.getItem(backup)),value);
+ w.close();
+}
+{
  const value={worlds:[{...old, roads:[{column:1,row:2}]}],activeId:'old'};const {w,d}=setup(value);
  assert.equal(d.getElementById('world-backup').hidden,false,'unsupported fields provide backup');
  d.getElementById('world-new').click();d.getElementById('world-name').value='Another';
