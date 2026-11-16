@@ -35,6 +35,11 @@
     const house=worlds.getHouse(), houseTarget=house?.visible && target.column>=house.column && target.column<house.column+3 && target.row>=house.row && target.row<house.row+3;
     const route=houseTarget?path.findBeside(world,character,house):path.find(world,character,target,house);
     if(!route){tell(houseTarget?'Jalan menuju rumah terhalang.':'Tile tujuan tidak dapat dicapai.');return;}
+    if(houseTarget && route.length===1){
+      const adjacent={column:Math.max(house.column,Math.min(house.column+2,character.column)),row:Math.max(house.row,Math.min(house.row+2,character.row))};
+      const facing=direction(character,adjacent);
+      if(facing!==character.facing){committing=true;let ok=false;try{ok=worlds.updateCharacter(world.id,{...character,facing});}finally{committing=false;}tell(ok?'Arah hadap berubah. Ketuk objek lagi untuk memilihnya.':'Arah hadap tidak tersimpan.');return;}
+    }
     if(route.length>1){
       const facing=direction(route[0],route[1]);
       if(character.facing!==facing){

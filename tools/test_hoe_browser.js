@@ -15,5 +15,10 @@ try{
  const head=await point(14,12,-10);await page.mouse.click(head.x,head.y);assert.match(await page.locator('#gameplay-movement-status').innerText(),/tanah pertanian belum tersedia/);
  await page.locator('[data-dock="shovel"]').click();assert.equal(await page.locator('[data-dock="shovel"]').getAttribute('aria-pressed'),'true');await tap(15,12);assert.equal((await page.evaluate(()=>worldManager.getCharacter())).column,15,'placeholder tool does not prevent movement');
  await page.locator('[data-dock="shovel"]').click();assert.equal(await page.locator('[data-dock="shovel"]').getAttribute('aria-pressed'),'false');await tap(16,12);assert.equal((await page.evaluate(()=>worldManager.getCharacter())).column,16,'movement also works without a tool');
+ await page.locator('[data-dock="hoe"]').click();
+ for(const [c,r,dir] of [[16,11,'N'],[15,11,'W'],[15,12,'S'],[16,12,'E']]) {
+   const before=await page.evaluate(()=>worldManager.getCharacter());await tap(c,r);let turned=await page.evaluate(()=>worldManager.getCharacter());assert.equal(turned.facing,dir,`turn ${dir}`);assert.equal(turned.column,before.column);assert.equal(turned.row,before.row);
+   await tap(c,r);const moved=await page.evaluate(()=>worldManager.getCharacter());assert.equal(moved.column,c,`walk ${dir} column`);assert.equal(moved.row,r,`walk ${dir} row`);
+ }
  assert.deepEqual(errors,[]);console.log('Browser: facing-first movement with hoe, other tools and no tool; empty-front fallback and character action: OK');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

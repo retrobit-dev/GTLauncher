@@ -527,7 +527,16 @@ public class HomeActivity extends Activity {
             if(world==null || !world.showCharacter)return;
             java.util.List<PortalTravel.Tile> route=PortalTravel.path(
                 new PortalTravel.Tile(world.characterColumn,world.characterRow),target,portalTerrain(world),world.gridSize());
-            if(route==null){Toast.makeText(this,"Jalan terhalang.",Toast.LENGTH_SHORT).show();return;}
+            if(route==null) {
+                if(world.tileExists(target.column,target.row) && Math.abs(target.column-world.characterColumn)+Math.abs(target.row-world.characterRow)==1) {
+                    String facing=GameplayTarget.direction(new PortalTravel.Tile(world.characterColumn,world.characterRow),target);
+                    if(!facing.equals(world.characterFacing)) {
+                        if(!worldStore.moveCharacter(world.id,world.characterColumn,world.characterRow,facing))throw new JSONException("Facing failed");
+                        applyActiveWorld();Toast.makeText(this,"Arah hadap berubah.",Toast.LENGTH_SHORT).show();return;
+                    }
+                }
+                Toast.makeText(this,"Jalan terhalang.",Toast.LENGTH_SHORT).show();return;
+            }
             if(route.size()>1) {
                 String facing=GameplayTarget.direction(route.get(0),route.get(1));
                 if(!facing.equals(world.characterFacing)) {
