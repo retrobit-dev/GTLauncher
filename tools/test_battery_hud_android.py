@@ -10,10 +10,10 @@ battery=hud.find(".//*[@"+ns+"id='@+id/hud_battery']")
 a,b=parent(time),parent(battery)
 stack=parent(a); assert stack is parent(b)
 assert list(stack)==[a,stack.find('View'),b]
-assert stack.get(ns+'layout_height')=='41dp' and stack.get(ns+'layout_marginTop')=='10dp'
+assert stack.get(ns+'layout_height')=='54dp' and stack.get(ns+'layout_marginTop')=='10dp'
 calendar=hud.find(".//*[@"+ns+"background='@drawable/bg_date_hud_calendar']")
-assert calendar.get(ns+'layout_height')=='51dp'
-assert 10+41==51
+assert calendar.get(ns+'layout_height')=='64dp'
+assert 10+54==64
 assert stack.find('View').get(ns+'layout_height')=='1dp'
 assert b.get(ns+'layout_marginTop') is None
 assert a.get(ns+'layout_weight')==b.get(ns+'layout_weight')=='1'

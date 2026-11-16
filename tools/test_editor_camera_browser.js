@@ -8,6 +8,18 @@ const {chromium} = require('playwright-core');
     const page = await browser.newPage({viewport:{width:800,height:600},hasTouch:true,reducedMotion:'reduce'});
     const errors=[]; page.on('pageerror', error=>errors.push(error.message));
     await page.goto(process.env.PREVIEW_URL || 'http://127.0.0.1:4173/', {waitUntil:'domcontentloaded'});
+    await page.evaluate(() => document.fonts.ready);
+    const hud = await page.evaluate(() => {
+      const rect = selector => { const r = document.querySelector(selector).getBoundingClientRect(); return {top:r.top,bottom:r.bottom,height:r.height}; };
+      const background = selector => getComputedStyle(document.querySelector(selector)).backgroundColor;
+      return {left:rect('.character-hud'),right:rect('.clock-hud'),calendar:rect('.hud-calendar'),
+        readouts:rect('.clock-readouts'),month:rect('#hud-month'),day:rect('#hud-day'),weekday:rect('#hud-weekday'),
+        portraitBackground:background('.character-hud-portrait'),statsBackground:background('.character-hud-stats'),clockBackground:background('.clock-readouts')};
+    });
+    assert(Math.abs(hud.left.top-hud.right.top)<1 && Math.abs(hud.left.height-hud.right.height)<1, 'HUDs have matching overall heights');
+    assert.equal(hud.portraitBackground,hud.clockBackground);assert.equal(hud.statsBackground,hud.clockBackground);
+    assert(Math.abs(hud.calendar.bottom-hud.readouts.bottom)<1);
+    assert(hud.month.bottom<hud.day.top && hud.day.bottom<hud.weekday.top && hud.weekday.bottom<hud.calendar.bottom, 'calendar text remains spaced and within panel');
     await page.locator('#mode-map-editor').click();
     await page.locator('#editor-pan').click();
     const overlay=page.locator('#editor-pan-surface'), box=await overlay.boundingBox();

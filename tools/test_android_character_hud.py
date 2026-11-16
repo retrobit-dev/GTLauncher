@@ -9,7 +9,8 @@ assert hud is not None and hud.get(a+'layout_gravity')=='top|left'
 assert hud.get(a+'visibility') not in ('gone','invisible')
 assert hud.get(a+'clickable')=='false' and hud.get(a+'focusable')=='false'
 assert len(hud.findall('.//TextView'))==4
-for t in hud.findall('.//TextView'): assert t.get(a+'text')=='100' and t.get(a+'fontFamily')=='@font/press_start_2p'
+for t in hud.findall('.//TextView'): assert t.get(a+'text')=='100' and t.get(a+'fontFamily')=='@font/press_start_2p' and t.get(a+'textColor')=='#342B1E'
+assert list(hud)[0].get(a+'background') == list(hud)[1].get(a+'background') == '@drawable/bg_date_hud_panel'
 for name in ['health','stamina','food','water']:
  assert len([v for v in hud.findall('.//View') if v.get(a+'background')=='@drawable/hud_stat_'+name])==10
  ET.parse(res/'drawable'/('hud_stat_icon_'+name+'.xml'))

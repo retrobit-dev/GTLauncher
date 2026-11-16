@@ -279,15 +279,15 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 @font-face { font-family: HudPixel; src: url('./assets/hud/press-start-2p.ttf') format('truetype'); font-display:swap; }
 .device-display { container-type:inline-size; }
  .character-hud { position:absolute; z-index:3; top:2%; left:3%; width:20.5%; height:10.5%; display:flex; gap:3%; pointer-events:none; }
-.character-hud-portrait, .character-hud-stats { background:#725a3bcc; border:2px solid #d2bb88; border-radius:.7cqw; box-shadow:inset 0 0 0 1px #6e502f, 0 1px 2px #1c211b77; }
+.character-hud-portrait, .character-hud-stats { background:#f5e1b0ef; border:2px solid #815a2e; border-radius:5px; box-shadow:inset 0 0 0 1px #e8c890; }
 .character-hud-portrait { width:33%; height:100%; object-fit:cover; object-position:center top; transform:scaleX(-1); image-rendering:pixelated; }
 .character-hud-stats { flex:1; display:flex; flex-direction:column; justify-content:space-around; padding:1.5% 2%; }
-.character-hud-stats div { display:flex; align-items:center; gap:2%; height:23%; color:#fff1cc; }
-.character-hud-stats small { font: .75cqw HudPixel,monospace; text-shadow:1px 1px #61492f; }
+.character-hud-stats div { display:flex; align-items:center; gap:2%; height:23%; color:#342b1e; }
+.character-hud-stats small { font: .75cqw HudPixel,monospace; }
 .stat-icon { width:10%; height:95%; flex:none; }
 .stat-bar { flex:1; height:55%; border:1px solid #594529; background:repeating-linear-gradient(90deg,transparent 0 8%,#4a3729 8% 10%),var(--bar); }
 .stat-bar.health { --bar:#c94e43; }.stat-bar.stamina { --bar:#e5af3c; }.stat-bar.food { --bar:#80aa42; }.stat-bar.water { --bar:#4c9dc1; }
-.clock-hud { position:absolute; z-index:3; top:2%; right:3%; width:auto; height:13.5%; display:flex; align-items:flex-end; pointer-events:none; color:#342b1e; font-family:HudPixel,monospace; }
+.clock-hud { position:absolute; z-index:3; top:2%; right:3%; width:auto; height:10.5%; display:flex; align-items:flex-end; pointer-events:none; color:#342b1e; font-family:HudPixel,monospace; }
 .clock-readouts { width:8.4cqw; flex:none; height:calc(85% - 1.4px); display:flex; flex-direction:column; min-width:0; background:#f5e1b0ef; border:2px solid #815a2e; border-radius:5px 0 0 5px; box-shadow:inset 0 0 0 1px #e8c890; }
 .hud-panel { flex:1; min-height:0; display:flex; align-items:center; gap:.35cqw; padding:2% .35cqw; font-size:1.1cqw; }
 .hud-panel + .hud-panel { border-top:1px solid #815a2e; }
