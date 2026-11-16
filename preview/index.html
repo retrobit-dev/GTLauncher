@@ -16,7 +16,7 @@
   <script src="./gameplay-path.js?v=101" defer></script>
   <script src="./gameplay-movement.js?v=17" defer></script>
   <script src="./season-estimate.js?v=1" defer></script>
-  <script src="./hud.js?v=6" defer></script>
+  <script src="./hud.js?v=7" defer></script>
 </head>
 <body>
   <main class="preview-stage" aria-label="Pratinjau GTLauncher">
@@ -37,7 +37,7 @@
           </div>
         </section>
         <section class="clock-hud" aria-label="Waktu, musim dan baterai">
-          <div class="clock-readouts"><span id="hud-season" class="visually-hidden">Musim belum diketahui</span><div class="hud-panel time-panel"><img id="hud-phase" src="assets/hud-day.svg" alt="Siang"><time id="hud-clock">--:--</time></div>
+          <div class="clock-readouts"><span id="hud-season" class="visually-hidden">Musim kemarau (default; data musim belum tersedia)</span><div class="hud-panel time-panel"><img id="hud-phase" src="assets/hud-day.svg" alt="Siang"><time id="hud-clock">--:--</time></div>
           <div class="hud-panel battery-panel"><svg id="hud-battery-icon" class="hud-battery-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="#6B4B27" d="M5 1h6v2h2v12H3V3h2z"/><path fill="#F5E1B0" d="M5 4h6v9H5z"/><path id="hud-battery-mark" fill="#8B8979" d="M6 5h4v2H8v2H7V7h2V6H6zm1 5h1v2H7z"/></svg><span id="hud-battery" aria-label="Status baterai tidak tersedia">--.--</span></div></div>
           <div class="hud-calendar"><span id="hud-month">--/--</span><strong id="hud-day">--</strong><span id="hud-weekday">---</span></div>
         </section>

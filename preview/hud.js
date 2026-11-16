@@ -4,18 +4,20 @@
   const phase = $('hud-phase'), season = $('hud-season'), battery = $('hud-battery');
   if (!phase || !season || !battery) return;
   const pad = n => String(n).padStart(2,'0');
-  let seasonKey = '', lastFetch = 0, requestId = 0, currentSeason = 'unknown';
-  // Gameplay reads the same validated estimate as the HUD; never infer a season from the month.
+  let seasonKey = '', lastFetch = 0, requestId = 0, currentSeason = 'dry', seasonEstimate = 'unknown';
+  // Gameplay defaults to dry when no valid estimate is available; retain the estimate separately.
   window.previewSeason = () => currentSeason;
+  window.previewSeasonInfo = () => ({season:currentSeason, estimate:seasonEstimate, isDefault:seasonEstimate==='unknown'});
   function showSeason(value) {
     const labels={wet:'Perkiraan musim hujan',dry:'Perkiraan musim kemarau',unknown:'Musim belum diketahui'};
-    currentSeason=Object.hasOwn(labels,value)?value:'unknown';
-    season.textContent=labels[currentSeason];
+    seasonEstimate=Object.hasOwn(labels,value)?value:'unknown';
+    currentSeason=seasonEstimate==='wet'?'wet':'dry';
+    season.textContent=seasonEstimate==='unknown'?'Musim kemarau (default; data musim belum tersedia)':labels[seasonEstimate];
     window.dispatchEvent(new Event('previewseasonchange'));
   }
   async function refreshSeason(loc,now) {
     if (!loc || !Number.isFinite(loc.latitude) || !Number.isFinite(loc.longitude)) {
-      if(seasonKey || currentSeason!=='unknown'){requestId++;seasonKey='';lastFetch=0;showSeason('unknown');}
+      if(seasonKey || seasonEstimate!=='unknown'){requestId++;seasonKey='';lastFetch=0;showSeason('unknown');}
       return;
     }
     const key=`${loc.latitude.toFixed(3)},${loc.longitude.toFixed(3)}`;
@@ -61,6 +63,7 @@
     phase.title=phase.alt;
     refreshSeason(window.previewHudLocation?.(),now);
   }
+  showSeason('unknown');
   updateClock();window.setInterval(updateClock,60000);
   window.addEventListener('hudweatherchange',updateClock);
   function updateBattery(info) {

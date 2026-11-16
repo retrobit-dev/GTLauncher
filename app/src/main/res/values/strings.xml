@@ -24,6 +24,7 @@
     <string name="hud_day">Siang</string>
     <string name="hud_night">Malam</string>
     <string name="hud_day_night_unknown">Waktu siang atau malam belum diketahui</string>
+    <string name="season_dry_default">Musim kemarau (default; data musim belum tersedia)</string>
     <string name="season_dry">Perkiraan musim kemarau</string>
     <string name="season_wet">Perkiraan musim hujan</string>
     <string name="season_fallback_suffix"> · lokasi cadangan Rembang, Jawa Tengah</string>

@@ -24,6 +24,10 @@ final class SeasonEstimate {
             return first.getDayOfMonth() == start && last.getDayOfMonth() == end;
         }
     }
+    // Game fallback, distinct from the rainfall estimate returned by classify().
+    static String gameplaySeason(String estimate) {
+        return "wet".equals(estimate) ? "wet" : "dry";
+    }
     static String fetch(double latitude, double longitude) throws Exception {
         LocalDate today=LocalDate.now(ZoneOffset.UTC);
         String url=String.format(Locale.US, "https://archive-api.open-meteo.com/v1/archive?latitude=%.5f&longitude=%.5f&start_date=%s&end_date=%s&daily=precipitation_sum&timezone=auto", latitude, longitude, today.minusDays(550), today.minusDays(7));

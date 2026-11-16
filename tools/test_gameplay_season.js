@@ -9,12 +9,12 @@ const root=path.join(__dirname,'../preview');
  w.fetch=()=>new Promise(resolve=>pending.push(resolve));
  let events=0;w.addEventListener('previewseasonchange',()=>events++);
  w.eval(fs.readFileSync(path.join(root,'hud.js'),'utf8'));
- assert.equal(w.previewSeason(),'unknown');
+ assert.equal(w.previewSeason(),'dry');assert.equal(w.previewSeasonInfo().isDefault,true);
  const time=[],rain=[];for(let i=-100;i<=-7;i++){time.push(new Date(Date.UTC(2026,10,7)+i*86400000).toISOString().slice(0,10));rain.push(6);}
  pending.shift()({ok:true,json:async()=>({daily:{time,precipitation_sum:rain}})});
- await new Promise(resolve=>setImmediate(resolve));assert.equal(w.previewSeason(),'wet');assert.match(w.document.getElementById('hud-season').textContent,/hujan/);assert(events>0);
- location={latitude:-7.1,longitude:110.4};interval();assert.equal(w.previewSeason(),'unknown');
- const stale=pending.shift();location=null;interval();assert.equal(w.previewSeason(),'unknown');stale({ok:true,json:async()=>({daily:{time,precipitation_sum:rain}})});
- await new Promise(resolve=>setImmediate(resolve));assert.equal(w.previewSeason(),'unknown','stale responses cannot restore an old location season');
- dom.window.close();console.log('Gameplay season exposes validated wet/dry/unknown and rejects stale location results: OK');
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(w.previewSeason(),'wet');assert.equal(w.previewSeasonInfo().isDefault,false);assert.match(w.document.getElementById('hud-season').textContent,/hujan/);assert(events>0);
+ location={latitude:-7.1,longitude:110.4};interval();assert.equal(w.previewSeason(),'dry');
+ const stale=pending.shift();location=null;interval();assert.equal(w.previewSeason(),'dry');stale({ok:true,json:async()=>({daily:{time,precipitation_sum:rain}})});
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(w.previewSeason(),'dry','stale responses cannot restore an old location season');
+ dom.window.close();console.log('Gameplay season exposes wet/dry with explicit default and rejects stale location results: OK');
 })().catch(e=>{console.error(e);process.exitCode=1});

@@ -162,8 +162,9 @@ public class HomeActivity extends Activity {
     private long seasonLastAttempt;
     private double seasonLatitude = Double.NaN, seasonLongitude = Double.NaN;
     private boolean seasonFallback;
-    // Shared with future gameplay; unknown on missing or stale rainfall data.
-    private String gameplaySeason = "unknown";
+    // Shared with future gameplay: dry is the default until rainfall identifies wet season.
+    private String gameplaySeason = "dry";
+    private boolean seasonIsDefault = true;
     private int treeRequestGeneration;
     private long treeLastAttempt;
     private double treeLatitude=Double.NaN,treeLongitude=Double.NaN;
@@ -1340,13 +1341,14 @@ public class HomeActivity extends Activity {
     }
 
     private void clearSeason() {
-        gameplaySeason="unknown";
+        gameplaySeason="dry";
+        seasonIsDefault=true;
         seasonRequestGeneration++;
         seasonLastAttempt = 0;
         seasonLatitude = seasonLongitude = Double.NaN;
         if (seasonIcon != null) {
-            seasonIcon.setImageResource(R.drawable.season_unknown);
-            seasonIcon.setContentDescription(getString(R.string.season_unknown));
+            seasonIcon.setImageResource(R.drawable.season_dry);
+            seasonIcon.setContentDescription(getString(R.string.season_dry_default));
         }
     }
 
@@ -1379,10 +1381,11 @@ public class HomeActivity extends Activity {
             final String value=result;
             runOnUiThread(() -> {
                 if (request!=seasonRequestGeneration || isFinishing() || isDestroyed() || (!fallback && !hasPreciseLocationPermission())) return;
-                gameplaySeason=value;
+                seasonIsDefault="unknown".equals(value);
+                gameplaySeason=SeasonEstimate.gameplaySeason(value);
                 if ("unknown".equals(value)) seasonLastAttempt=0;
-                int image="wet".equals(value)?R.drawable.season_wet:"dry".equals(value)?R.drawable.season_dry:R.drawable.season_unknown;
-                int label="wet".equals(value)?R.string.season_wet:"dry".equals(value)?R.string.season_dry:R.string.season_unknown;
+                int image="wet".equals(value)?R.drawable.season_wet:R.drawable.season_dry;
+                int label="wet".equals(value)?R.string.season_wet:"dry".equals(value)?R.string.season_dry:R.string.season_dry_default;
                 seasonIcon.setImageResource(image); seasonIcon.setContentDescription(getString(label) + (fallback ? getString(R.string.season_fallback_suffix) : getString(R.string.season_device_suffix)));
             });
         });

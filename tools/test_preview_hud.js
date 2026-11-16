@@ -14,7 +14,7 @@ assert.throws(()=>season.classify(rainfall(0),new Date('2026-12-01T12:00:00Z')))
  let altitude=-10,code=0,calls=0,interval;w.SeasonEstimate=season;w.previewHudWeatherCode=()=>code;w.previewHudLocation=()=>({latitude:-6.7,longitude:110.4});w.previewHudSunAltitude=()=>altitude;
  w.setInterval=cb=>{interval=cb};w.fetch=async()=>{calls++;return {ok:false}};
  w.eval(fs.readFileSync(path.join(root,'hud.js'),'utf8'));
- assert.equal(w.previewSeason(),'unknown');
+ assert.equal(w.previewSeason(),'dry');
  assert.equal(d.getElementById('hud-phase').alt,'Malam · cerah');assert.equal(d.getElementById('hud-battery').textContent,'--.--');
  altitude=10;interval();assert.equal(d.getElementById('hud-phase').alt,'Siang · cerah');assert.equal(calls,1,'season requests are throttled');
  for(const [c,name] of [[3,'cloud'],[63,'rain'],[73,'snow'],[95,'storm']]) {code=c;w.dispatchEvent(new w.Event('hudweatherchange'));assert(d.getElementById('hud-phase').getAttribute('src').includes(`hud-weather-day-${name}.svg`));assert(fs.existsSync(path.join(root,d.getElementById('hud-phase').getAttribute('src'))));}
@@ -40,7 +40,7 @@ assert.throws(()=>season.classify(rainfall(0),new Date('2026-12-01T12:00:00Z')))
  mockNow=new Date(2026,10,7,12).getTime();interval();assert.equal(calendar.dataset.weekend,'true','Saturday is a weekend');
  mockNow=new Date(2026,10,8,12).getTime();interval();assert.equal(calendar.dataset.weekend,'true','Sunday is a weekend');
  mockNow=new Date(2026,10,9,12).getTime();interval();assert.equal(calendar.dataset.weekend,'false','Monday reverts to weekday');
- await new Promise(resolve=>setImmediate(resolve));assert.equal(w.previewSeason(),'unknown');dom.window.close();
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(w.previewSeason(),'dry');dom.window.close();
  const other=new JSDOM(fs.readFileSync(path.join(root,'index.html'),'utf8'),{url:'https://test.invalid/',runScripts:'outside-only'}),v=other.window, doc=v.document;
  const listeners={},batteryInfo={level:1,charging:false,addEventListener:(name,fn)=>listeners[name]=fn};
  v.navigator.getBattery=()=>Promise.resolve(batteryInfo);v.setInterval=()=>{};v.fetch=async()=>({ok:false});v.SeasonEstimate=season;

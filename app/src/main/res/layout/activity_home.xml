@@ -137,8 +137,8 @@
                     android:id="@+id/hud_season_icon"
                     android:layout_width="14dp"
                     android:layout_height="14dp"
-                    android:contentDescription="@string/season_unknown"
-                    android:src="@drawable/season_unknown" />
+                    android:contentDescription="@string/season_dry_default"
+                    android:src="@drawable/season_dry" />
                 <TextClock
                     android:id="@+id/hud_time"
                     android:layout_width="0dp"
