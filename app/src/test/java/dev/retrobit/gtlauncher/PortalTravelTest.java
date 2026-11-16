@@ -13,7 +13,7 @@ public class PortalTravelTest {
         public boolean canStep(int c,int r,int x,int y) { return true; }
     };
     @Test public void hundredGridPathAndBounds() {
-        PortalTravel.Terrain clear=(c,r)->true;
+        PortalTravel.Terrain clear=new PortalTravel.Terrain() { public boolean canStand(int c,int r) { return true; } public boolean canStep(int c,int r,int nc,int nr) { return true; } };
         assertNotNull(PortalTravel.path(new PortalTravel.Tile(98,99),new PortalTravel.Tile(99,99),clear,100));
         assertNull(PortalTravel.path(new PortalTravel.Tile(98,99),new PortalTravel.Tile(100,99),clear,100));
     }
