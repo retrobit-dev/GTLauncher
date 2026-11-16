@@ -1906,11 +1906,11 @@
   function applyIslandCameraSettings() {
     islandCameraElevation = clamp(Number(islandElevationInput?.value ?? DEFAULT_ISLAND_CAMERA_ELEVATION),
       MIN_ISLAND_CAMERA_ELEVATION, MAX_ISLAND_CAMERA_ELEVATION);
-    editorZoom = clamp(Number(islandZoomInput?.value ?? 100) / 100, 0.1, 5);
+    editorZoom = clamp(Number(islandZoomInput?.value ?? 100) / 100, 0.1, 10);
     islandZoom = baseFitZoom() * editorZoom;
     rebuildIslandProjection();
     if (islandElevationOutput) islandElevationOutput.textContent = `${Math.round(islandCameraElevation)}°`;
-    if (islandZoomOutput) islandZoomOutput.textContent = `${Math.round(islandZoom * 100)}%`;
+    if (islandZoomOutput) islandZoomOutput.textContent = String(Math.round(editorZoom * 10) / 10);
     // The running animation loop paints the next frame; reduced-motion mode is event-driven.
     if (REDUCED_MOTION) drawFrame();
   }
@@ -2061,7 +2061,7 @@
     islandElevationOutput.textContent = `${DEFAULT_ISLAND_CAMERA_ELEVATION}°`;
   }
   if (islandZoomInput) islandZoomInput.value = '100';
-  if (islandZoomOutput) islandZoomOutput.textContent = '100%';
+  if (islandZoomOutput) islandZoomOutput.textContent = '1';
   if (islandZoomInput) islandZoomInput.addEventListener('input', applyIslandCameraSettings);
   if (islandCameraReset) {
     islandCameraReset.addEventListener('click', () => {
@@ -2188,7 +2188,7 @@
     },
     setCamera(zoom, panX, panY) {
       if (![zoom, panX, panY].every(Number.isFinite)) return false;
-      editorZoom = clamp(zoom, 0.1, 5);
+      editorZoom = clamp(zoom, 0.1, 10);
       cameraPanX = panX; cameraPanY = panY;
       islandZoom = baseFitZoom() * editorZoom;
       if (REDUCED_MOTION) drawFrame();

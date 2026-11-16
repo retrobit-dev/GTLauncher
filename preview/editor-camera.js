@@ -9,9 +9,9 @@
   let panning = false, drag = null, suppressClick = false, lastWorld = window.worldManager?.getActive()?.id;
   function update() {
     const {zoom} = scene.camera();
-    value.value = `${Math.round(zoom * 100)}%`;
+    value.value = String(Math.round(zoom * 10) / 10);
     value.textContent = value.value;
-    $('editor-zoom-in').disabled = zoom >= 5;
+    $('editor-zoom-in').disabled = zoom >= 10;
     $('editor-zoom-out').disabled = zoom <= 0.1;
     pan.setAttribute('aria-pressed', String(panning));
     const active = panning && stage.dataset.mode === 'editor';
