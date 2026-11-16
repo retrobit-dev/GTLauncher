@@ -1953,6 +1953,9 @@
     });
   }
 
+  // Clock uses the real device time and active location, never the weather demo time.
+  window.previewHudLocation = () => ({latitude: location.latitude, longitude: location.longitude});
+  window.previewHudSunAltitude = time => sunPosition(time, location.latitude, location.longitude).altitude;
   window.addEventListener('worldchange', () => {
     if (REDUCED_MOTION) drawFrame();
   });
