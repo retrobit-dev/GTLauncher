@@ -39,7 +39,7 @@
     $('world-export-copy-status').textContent = '';
     $('world-export-help').textContent = qr
       ? 'Jika unduhan tidak muncul, tekan dan tahan gambar untuk menyimpannya, atau ambil tangkapan layar seluruh QR. Gambar ini berisi data world.'
-      : previewOnly ? 'JSON ini hanya untuk cadangan dan impor preview; Android belum mendukung world 20×20 atau 25×25.'
+      : previewOnly ? 'JSON ini dapat diimpor di preview dan Android versi terbaru. Peta disimpan terpisah pada masing-masing perangkat.'
       : 'Tekan Unduh JSON. Jika unduhan diblokir, salin isi JSON di bawah dan simpan sebagai file .json. JSON dipakai untuk impor Android.';
     $('world-export-result').hidden = false;
     $('world-export-result').scrollIntoView?.({block: 'nearest'});
@@ -419,7 +419,7 @@
       }
     } else if ((action === 'export' || action === 'export-qr') && world) {
       if ([20,25].includes(world.gridSize)) {
-        if (action === 'export-qr') { announce('QR world ini belum tersedia; gunakan ekspor JSON khusus preview.'); return; }
+        if (action === 'export-qr') { announce('QR world ini belum tersedia; gunakan ekspor JSON.'); return; }
         const character = getCharacter(world);
         const snapshot = {...world, showCharacter: character.visible, characterColumn: character.column, characterRow: character.row,
           characterScale: character.scale, characterFacing: character.facing, house: getHouse(world)};
@@ -428,7 +428,7 @@
         const url = URL.createObjectURL(blob);
         const safeName = world.name.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'world';
         showExport(url, `gtlauncher-preview-${safeName}.json`, false, json, true);
-        announce('JSON world siap; hanya untuk preview, bukan Android.'); return;
+        announce('JSON world siap untuk preview dan Android versi terbaru.'); return;
       }
       // Stable world ID and the supported character object are portable to Android.
       if (!/^[a-zA-Z0-9_-]{1,128}$/.test(world.id) || world.id === 'base') {

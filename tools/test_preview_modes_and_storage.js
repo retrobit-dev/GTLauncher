@@ -50,7 +50,7 @@ const old = {id:'old',name:'Home',description:'',color:'#a8c795',showCharacter:t
  assert.equal(d.getElementById('edit-status').hidden,true,'Base World does not show an unsolicited warning');
  assert.equal(d.querySelector('.restore-notice'),null);
  assert.match(d.getElementById('world-feature-limits').textContent,/hanya tersedia di preview/);
- assert.match(d.getElementById('world-feature-limits').textContent,/Android masih belum tersedia/);
+ assert.match(d.getElementById('world-feature-limits').textContent,/diimpor pada Android versi terbaru/);
  assert.equal(d.getElementById('object-edit-button').getAttribute('aria-pressed'),'false');
  d.getElementById('mode-gameplay').click();assert.equal(d.getElementById('edit-status').hidden,true);w.close();
 }

@@ -36,7 +36,7 @@ d.getElementById('terrain-fill').click();d.getElementById('terrain-material').va
 d.getElementById('terrain-erase').click();tap(12,12);assert.equal(w.worldManager.getActive().tiles[312],1,'protected character tile cannot be removed');
 d.getElementById('terrain-fill').click();d.getElementById('terrain-material').value='2';tap(0,0);assert.equal(w.worldManager.getActive().tiles[0],2);assert.equal(w.worldManager.getActive().tiles[624],2,'fill covers connected region');assert.equal(w.worldManager.getActive().tiles[104],5,'fill preserves distinct material');
 assert.equal(w.worldManager.updateCharacter(world.id,{visible:true,column:24,row:24,scale:1,facing:'S'}),true,'20x20 object bounds');
-d.querySelector(`[data-action="export"][data-id="${world.id}"]`).click();assert.match(d.getElementById('world-message').textContent,/hanya untuk preview/);
+d.querySelector(`[data-action="export"][data-id="${world.id}"]`).click();assert.match(d.getElementById('world-message').textContent,/Android versi terbaru/);
 const exported=JSON.parse(d.getElementById('world-export-json').value);assert.equal(exported.format,'gtlauncher-preview-world');assert.equal(exported.version,2);assert.equal(exported.world.tiles[104],5);assert.equal(exported.world.gridSize,25);assert.equal(exported.world.characterColumn,24);assert.equal(exported.world.tiles.length,625);
 const exportedText=JSON.stringify(exported);
 const imported=setup();imported.w.FileReader=class {readAsText(file){this.result=file.contents;this.onload();}};
