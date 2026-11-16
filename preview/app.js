@@ -70,6 +70,7 @@
   let islandZoom = 9 / ISLAND_GRID_SIZE;
   let editorZoom = 1, cameraPanX = 0, cameraPanY = 0;
   let cameraMode = 'gameplay', savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
+  let gameplayFollowCentre = null;
   let cameraWorldId = window.worldManager?.getActive()?.id;
   function baseFitZoom() { return 9 / ISLAND_GRID_SIZE; }
   // Interior tile faces stay shallow; exposed perimeter faces extend through the grass band.
@@ -2033,11 +2034,13 @@
     const nextWorldId = window.worldManager?.getActive()?.id;
     if (nextWorldId !== cameraWorldId) {
       cameraWorldId = nextWorldId;
+      gameplayFollowCentre = null;
       savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
     }
     const nextSize = nextWorldId === 'base' ? 25 : (window.worldManager?.getActive()?.gridSize || 9);
     if (nextSize !== ISLAND_GRID_SIZE) {
       ISLAND_GRID_SIZE = nextSize;
+      gameplayFollowCentre = null;
       editorZoom = 1; cameraPanX = 0; cameraPanY = 0;
       islandZoom = baseFitZoom();
       savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
@@ -2076,9 +2079,17 @@
     islandZoom = baseFitZoom() * 2.5;
     const character = gameplayDraft || window.worldManager?.getCharacter();
     const target = character?.visible ? characterCentre(character) : {x: WIDTH / 2, y: islandCenterY};
+    // A small screen-space dead zone keeps short walks visible while the camera
+    // continues following the character over longer distances.
+    if (!gameplayFollowCentre || !character?.visible) gameplayFollowCentre = {...target};
+    else {
+      const marginX=28/islandZoom, marginY=16/islandZoom;
+      gameplayFollowCentre.x=clamp(gameplayFollowCentre.x, target.x-marginX, target.x+marginX);
+      gameplayFollowCentre.y=clamp(gameplayFollowCentre.y, target.y-marginY, target.y+marginY);
+    }
     const [anchorX, anchorY] = islandAnchor();
-    cameraPanX = WIDTH / 2 - anchorX - (target.x - anchorX) * islandZoom;
-    cameraPanY = HEIGHT * 0.56 - anchorY - (target.y - anchorY) * islandZoom;
+    cameraPanX = WIDTH / 2 - anchorX - (gameplayFollowCentre.x - anchorX) * islandZoom;
+    cameraPanY = HEIGHT * 0.56 - anchorY - (gameplayFollowCentre.y - anchorY) * islandZoom;
   }
   function setPreviewCameraMode(mode) {
     if (mode !== 'gameplay' && mode !== 'editor') return;
@@ -2086,6 +2097,7 @@
     if (mode === 'gameplay') {
       savedEditorCamera = {zoom: editorZoom, panX: cameraPanX, panY: cameraPanY};
       cameraMode = mode;
+      gameplayFollowCentre = null;
       applyGameplayCamera();
     } else {
       cameraMode = mode;
