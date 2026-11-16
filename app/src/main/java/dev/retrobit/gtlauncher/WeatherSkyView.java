@@ -551,7 +551,7 @@ public final class WeatherSkyView extends View {
         Bitmap sprite=(characterFacing.equals("N")||characterFacing.equals("W"))?mainCharacterBack:mainCharacter;
         float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f;
         float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f;
-        return opaqueAt(sprite,new RectF(x-6.75f*characterScale,y-25*characterScale,x+6.75f*characterScale,y),islandX(sx),islandY(sy),characterFacing.equals("N")||characterFacing.equals("E"));
+        return opaqueAt(sprite,new RectF(x-6.75f*characterScale,y-25*characterScale,x+6.75f*characterScale,y),islandX(sx),islandY(sy),characterFacing.equals("W")||characterFacing.equals("E"));
     }
     WorldStore.SurfaceObject sellingMarkerAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;float x=islandX(sx),y=islandY(sy);
@@ -677,7 +677,7 @@ public final class WeatherSkyView extends View {
         if(front && showCharacter) {
             float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f,width=13.5f*characterScale,height=25*characterScale;
             boolean back=characterFacing.equals("N")||characterFacing.equals("W");
-            if(fenceOverlaps(image,f,mirror,back?mainCharacterBack:mainCharacter,new RectF(x-width/2,y-height,x+width/2,y),characterFacing.equals("N")||characterFacing.equals("E")))return true;
+            if(fenceOverlaps(image,f,mirror,back?mainCharacterBack:mainCharacter,new RectF(x-width/2,y-height,x+width/2,y),characterFacing.equals("W")||characterFacing.equals("E")))return true;
         }
         for(WorldStore.SurfaceObject o:worldSurfaces) {
             if(o.type.equals("flower")) {
@@ -884,7 +884,7 @@ public final class WeatherSkyView extends View {
             float x = SCENE_WIDTH / 2.0f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2.0f;
             float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2.0f;
             drawObjectSilhouette(canvas, sprite, x, y, 13.5f * characterScale, 25 * characterScale, lightPoint,
-                    "N".equals(characterFacing) || "E".equals(characterFacing));
+                    "W".equals(characterFacing) || "E".equals(characterFacing));
         }
         // Faint contact diamonds stay attached to the ground anchors as objects move or scale.
         paint.setColor(Color.argb((int) (255 * 0.09), 12, 23, 40));
@@ -952,7 +952,7 @@ public final class WeatherSkyView extends View {
     }
     private void drawMainCharacter(Canvas canvas, double motionTime) {
         boolean back = "N".equals(characterFacing) || "W".equals(characterFacing);
-        boolean mirror = "N".equals(characterFacing) || "E".equals(characterFacing);
+        boolean mirror = "W".equals(characterFacing) || "E".equals(characterFacing);
         Bitmap sprite = back ? mainCharacterBack : mainCharacter;
         if (!showCharacter || sprite == null) return;
         float x = SCENE_WIDTH / 2.0f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2.0f;
