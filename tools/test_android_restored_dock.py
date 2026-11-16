@@ -10,7 +10,10 @@ for name in keys:
     node=ids['@+id/dock_tool_'+name]
     assert node.tag=='ImageButton' and node.get(ns+'src')=='@drawable/dock_tool_'+name
     assert ('belum tersedia' in node.get(ns+'contentDescription')) == (name != 'hand')
-    ET.parse(root/'app/src/main/res/drawable'/('dock_tool_'+name+'.xml'))
+    if name == 'hoe':
+        assert (root/'app/src/main/res/drawable-nodpi/dock_tool_hoe.png').read_bytes() == (root/'preview/assets/hud/tools/hoe-selected.png').read_bytes()
+    else:
+        ET.parse(root/'app/src/main/res/drawable'/('dock_tool_'+name+'.xml'))
 assert '@+id/dock_add_tab' in ids
 assert '@+id/dock_close' not in ids
 java=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
