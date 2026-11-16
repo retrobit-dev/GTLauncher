@@ -20,6 +20,8 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
   }
   await page.setViewportSize({width:1000,height:700});
   await page.locator('.home-dock [data-dock="hand"]').click();
+  assert.equal(await page.locator('.home-dock [data-dock="hand"]').getAttribute('aria-pressed'),'false');
+  await page.locator('.home-dock [data-dock="hand"]').click();
   assert.equal(await page.locator('.home-dock [data-dock="hand"]').getAttribute('aria-pressed'),'true');
   assert.equal(await page.locator('#dock-dialog').evaluate(e=>e.open),false,'hand selects interaction, not a placeholder dialog');
   console.log('Dock backgrounds and icons fit inside the dock at all tested widths; button works: OK');
