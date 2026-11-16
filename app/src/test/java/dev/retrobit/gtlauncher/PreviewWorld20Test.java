@@ -23,11 +23,20 @@ public class PreviewWorld20Test {
         JSONObject root=sample(), w=root.getJSONObject("world");
         w.getJSONArray("tiles").put(399,0).put(398,2).put(397,3).put(396,4).put(395,5);
         PreviewWorld20 parsed=PreviewWorld20.parse(root.toString());
-        assertEquals("home",parsed.id); assertEquals(5,parsed.tile(15,19)); assertFalse(parsed.canStand(17,19));
+        assertEquals("home",parsed.id); assertEquals(5,parsed.tile(15,19)); assertTrue(parsed.canStand(17,19));
         assertFalse(parsed.canStand(19,19)); assertTrue(parsed.canStand(18,19)); assertFalse(parsed.canStand(20,0));
         assertEquals(w.getJSONArray("tiles").toString(), new JSONObject(parsed.toJson()).getJSONObject("world").getJSONArray("tiles").toString());
         assertEquals(w.getJSONObject("house").toString(), new JSONObject(parsed.toJson()).getJSONObject("world").getJSONObject("house").toString());
         assertEquals(parsed.toJson(), PreviewWorld20.parse(parsed.toJson()).toJson());
+    }
+    @Test public void twentyFiveByTwentyFiveRoundTripAndBounds() throws Exception {
+        JSONObject root=sample(), w=root.getJSONObject("world");
+        JSONArray tiles=new JSONArray(); for(int i=0;i<625;i++) tiles.put(1);
+        tiles.put(624,3); w.put("gridSize",25).put("tiles",tiles).put("characterColumn",24).put("characterRow",24);
+        PreviewWorld20 parsed=PreviewWorld20.parse(root.toString());
+        assertEquals(25,parsed.size); assertEquals(3,parsed.tile(24,24)); assertTrue(parsed.canStand(24,24));
+        assertFalse(parsed.canStand(25,24)); assertEquals(parsed.toJson(),PreviewWorld20.parse(parsed.toJson()).toJson());
+        w.put("gridSize",24); rejected(root); w.put("gridSize",25); w.getJSONObject("house").put("column",23); rejected(root);
     }
     @Test public void rejectsUnknownOrMalformedData() throws Exception {
         JSONObject root=sample(); root.getJSONObject("world").put("objects",new JSONArray()); rejected(root);

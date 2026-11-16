@@ -8,25 +8,25 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-/** Strict, lossless reader for the preview's portable 20x20 format.
+/** Strict, lossless reader for the preview's portable 20x20 and 25x25 formats.
  * This is intentionally not connected to the importer until rendering and storage support it.
  */
 final class PreviewWorld20 {
-    static final int SIZE = 20;
+    final int size;
     private final String json;
     final String id;
     private final int[] tiles;
 
-    private PreviewWorld20(String json, String id, int[] tiles) {
-        this.json = json; this.id = id; this.tiles = tiles;
+    private PreviewWorld20(String json, String id, int size, int[] tiles) {
+        this.json = json; this.id = id; this.size = size; this.tiles = tiles;
     }
     int tile(int column, int row) {
-        if (column < 0 || row < 0 || column >= SIZE || row >= SIZE) throw new IndexOutOfBoundsException();
-        return tiles[row * SIZE + column];
+        if (column < 0 || row < 0 || column >= size || row >= size) throw new IndexOutOfBoundsException();
+        return tiles[row * size + column];
     }
     boolean canStand(int column, int row) {
-        if (column < 0 || row < 0 || column >= SIZE || row >= SIZE) return false;
-        int tile = tile(column, row); return tile != 0 && tile != 3;
+        if (column < 0 || row < 0 || column >= size || row >= size) return false;
+        int tile = tile(column, row); return tile != 0;
     }
     String toJson() { return json; }
     private static void keys(JSONObject object, String... allowed) throws JSONException {
@@ -67,9 +67,9 @@ final class PreviewWorld20 {
         String id=string(w,"id"), name=string(w,"name"), description=string(w,"description"), color=string(w,"color");
         if (!id.matches("[A-Za-z0-9_-]{1,128}") || id.equals("base") || name.trim().isEmpty() || name.length()>48
                 || description.length()>160 || !color.matches("#[0-9a-fA-F]{6}")) throw new JSONException("Invalid world fields");
-        if (integer(w,"gridSize",SIZE,SIZE)!=SIZE) throw new JSONException("Invalid grid");
-        JSONArray source=w.getJSONArray("tiles"); if (source.length()!=SIZE*SIZE) throw new JSONException("Invalid tiles");
-        int[] tiles=new int[SIZE*SIZE];
+        int size=integer(w,"gridSize",20,25); if (size != 20 && size != 25) throw new JSONException("Invalid grid");
+        JSONArray source=w.getJSONArray("tiles"); if (source.length()!=size*size) throw new JSONException("Invalid tiles");
+        int[] tiles=new int[size*size];
         for (int i=0;i<tiles.length;i++) {
             Object v=source.get(i);
             if (!(v instanceof Number)) throw new JSONException("Invalid tile");
@@ -77,17 +77,17 @@ final class PreviewWorld20 {
             if (!Double.isFinite(n) || n!=Math.rint(n) || n<0 || n>(version==1?1:5)) throw new JSONException("Invalid tile");
             tiles[i]=(int)n;
         }
-        bool(w,"showCharacter"); int c=integer(w,"characterColumn",0,19), r=integer(w,"characterRow",0,19);
+        bool(w,"showCharacter"); int c=integer(w,"characterColumn",0,size-1), r=integer(w,"characterRow",0,size-1);
         scale(w,"characterScale"); facing(w,"characterFacing");
-        if (tiles[r*SIZE+c]==0) throw new JSONException("Character on empty tile");
+        if (tiles[r*size+c]==0) throw new JSONException("Character on empty tile");
         Object house=w.get("house");
         if (house != JSONObject.NULL) {
             if (!(house instanceof JSONObject)) throw new JSONException("Invalid house");
             JSONObject h=(JSONObject)house; keys(h,"column","row","scale","facing","visible");
-            int hc=integer(h,"column",0,17), hr=integer(h,"row",0,17);
+            int hc=integer(h,"column",0,size-3), hr=integer(h,"row",0,size-3);
             if (h.has("scale")) scale(h,"scale"); if (h.has("facing")) facing(h,"facing"); if (h.has("visible")) bool(h,"visible");
-            for (int y=hr;y<hr+3;y++) for (int x=hc;x<hc+3;x++) if (tiles[y*SIZE+x]==0) throw new JSONException("House on empty tile");
+            for (int y=hr;y<hr+3;y++) for (int x=hc;x<hc+3;x++) if (tiles[y*size+x]==0) throw new JSONException("House on empty tile");
         }
-        return new PreviewWorld20(root.toString(),id,tiles);
+        return new PreviewWorld20(root.toString(),id,size,tiles);
     }
 }
