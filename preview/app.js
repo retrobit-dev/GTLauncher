@@ -46,8 +46,8 @@
   houseBackImage.src = './assets/house-back.png';
   const PLAYER_WIDTH = 13.5;
   const PLAYER_HEIGHT = 25;
-  // Base and new worlds are 100×100; older worlds retain their original geometry.
-  let ISLAND_GRID_SIZE = window.worldManager?.getActive()?.id === 'base' ? 100 : (window.worldManager?.getActive()?.gridSize || 9);
+  // Base and new worlds are 50×50; older worlds retain their original geometry.
+  let ISLAND_GRID_SIZE = window.worldManager?.getActive()?.id === 'base' ? 50 : (window.worldManager?.getActive()?.gridSize || 9);
   const ISLAND_TILE_WIDTH = 28;
   function columnLabelFor(column) { let n=column+1, label=''; while(n>0) { n--; label=String.fromCharCode(65+n%26)+label; n=Math.floor(n/26); } return label; }
   // Logical grid IDs are A1–I9: columns A–I left to right, rows 1–9 top to bottom.
@@ -2083,7 +2083,7 @@
       gameplayFollowCentre = null;
       savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
     }
-    const nextSize = nextWorldId === 'base' ? 100 : (window.worldManager?.getActive()?.gridSize || 9);
+    const nextSize = nextWorldId === 'base' ? 50 : (window.worldManager?.getActive()?.gridSize || 9);
     if (nextSize !== ISLAND_GRID_SIZE) {
       ISLAND_GRID_SIZE = nextSize;
       gameplayFollowCentre = null;

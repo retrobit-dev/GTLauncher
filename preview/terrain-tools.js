@@ -12,7 +12,7 @@
     tool=next; gesture=null;
     for (const [name, button] of Object.entries(buttons)) button.setAttribute('aria-pressed', String(name===tool));
     canvas.classList.toggle('is-terrain-editing',Boolean(tool));
-    status.textContent=tool ? 'Ketuk atau seret tile pada world 20×20, 25×25 atau 100×100.' : '';
+    status.textContent=tool ? 'Ketuk atau seret tile pada world 20×20, 25×25, 50×50 atau 100×100.' : '';
   }
   for (const [name,button] of Object.entries(buttons)) button.addEventListener('click',()=>{
     if (pan.getAttribute('aria-pressed')==='true') pan.click();
@@ -34,8 +34,8 @@
   }
   function apply(event) {
     const world=worlds.getActive();
-    if(world.id==='base'||![20,25,100].includes(world.gridSize)||!Array.isArray(world.tiles)) {
-      status.textContent='Buat atau buka world 20×20, 25×25 atau 100×100; Base dan world lama tidak diubah.';return;
+    if(world.id==='base'||![20,25,50,100].includes(world.gridSize)||!Array.isArray(world.tiles)) {
+      status.textContent='Buat atau buka world 20×20, 25×25, 50×50 atau 100×100; Base dan world lama tidak diubah.';return;
     }
     const point=scene.tileAt(scene.toLocal(event.clientX,event.clientY));
     if(!point) {status.textContent='Di luar area world.';return;}

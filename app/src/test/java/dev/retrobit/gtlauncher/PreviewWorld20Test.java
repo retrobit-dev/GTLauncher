@@ -38,6 +38,14 @@ public class PreviewWorld20Test {
         assertFalse(parsed.canStand(25,24)); assertEquals(parsed.toJson(),PreviewWorld20.parse(parsed.toJson()).toJson());
         w.put("gridSize",24); rejected(root); w.put("gridSize",25); w.getJSONObject("house").put("column",23); rejected(root);
     }
+    @Test public void fiftyByFiftyRoundTrip() throws Exception {
+        JSONObject root=sample(), w=root.getJSONObject("world");
+        JSONArray tiles=new JSONArray(); for(int i=0;i<2500;i++) tiles.put(1);
+        tiles.put(2499,3); w.put("gridSize",50).put("tiles",tiles).put("characterColumn",49).put("characterRow",49);
+        PreviewWorld20 parsed=PreviewWorld20.parse(root.toString());
+        assertEquals(50,parsed.size); assertEquals(3,parsed.tile(49,49)); assertFalse(parsed.canStand(50,49));
+        assertEquals(parsed.toJson(),PreviewWorld20.parse(parsed.toJson()).toJson());
+    }
     @Test public void hundredByHundredRoundTrip() throws Exception {
         JSONObject root=sample(), w=root.getJSONObject("world");
         JSONArray tiles=new JSONArray(); for(int i=0;i<10000;i++) tiles.put(1);

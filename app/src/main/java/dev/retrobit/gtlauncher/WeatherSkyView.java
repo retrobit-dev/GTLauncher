@@ -31,7 +31,7 @@ public final class WeatherSkyView extends View {
     private static final int RENDER_SCALE = 2;
     /** One pixel-art cell in scene units, matching the preview renderer. */
     private static final float RENDER_CELL = 1.0f / RENDER_SCALE;
-    private int ISLAND_GRID_SIZE = 100;
+    private int ISLAND_GRID_SIZE = 50;
     private static final int ISLAND_TILE_WIDTH = 28;
     private static final String ISLAND_COLUMN_LABELS = "ABCDEFGHIJKLMNOPQRSTUVWXY";
     // Logical grid IDs are A1–I9: columns A–I left to right, rows 1–9 top to bottom.
@@ -418,7 +418,7 @@ public final class WeatherSkyView extends View {
         return o.material.equals("banana")?treeBanana:o.material.equals("palm")?treeCoconut:o.material.equals("apple")?treeApple:o.material.equals("orange")?treeOrange:o.material.equals("pear")?treePear:o.material.equals("guava")?treeGuava:o.material.equals("starfruit")?treeStarfruit:treeMango;
     }
     void setWorldSurfaces(String worldId,java.util.List<WorldStore.SurfaceObject> objects) {
-        ISLAND_GRID_SIZE = worldId == null || "base".equals(worldId) ? 100 : 9;
+        ISLAND_GRID_SIZE = worldId == null || "base".equals(worldId) ? 50 : 9;
         ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
         ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2f;
         String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;}

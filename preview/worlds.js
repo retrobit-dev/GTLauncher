@@ -109,9 +109,9 @@
         if (!world || typeof world !== 'object' || Array.isArray(world) || Object.keys(world).some(k => !WORLD_KEYS.includes(k)) || typeof world.id !== 'string' || !world.id || world.id === 'base' || ids.has(world.id)
           || typeof world.name !== 'string' || !world.name.trim() || world.name.length > 48
           || typeof world.description !== 'string' || world.description.length > 160
-          || (world.gridSize !== undefined && ![20,25,100].includes(world.gridSize))
-          || ([20,25,100].includes(world.gridSize) && world.tiles === undefined)
-          || (world.tiles !== undefined && (![20,25,100].includes(world.gridSize) || !Array.isArray(world.tiles) || world.tiles.length !== world.gridSize * world.gridSize || world.tiles.some(t => !validTile(t))))
+          || (world.gridSize !== undefined && ![20,25,50,100].includes(world.gridSize))
+          || ([20,25,50,100].includes(world.gridSize) && world.tiles === undefined)
+          || (world.tiles !== undefined && (![20,25,50,100].includes(world.gridSize) || !Array.isArray(world.tiles) || world.tiles.length !== world.gridSize * world.gridSize || world.tiles.some(t => !validTile(t))))
           || (world.house !== undefined && !validHouse(world.house, world.gridSize || 9))
           || (world.showCharacter !== undefined && typeof world.showCharacter !== 'boolean')
           || (world.characterFacing !== undefined && !['N', 'E', 'S', 'W'].includes(world.characterFacing))
@@ -134,7 +134,7 @@
   // the original storage is kept before any write, including terrain holes.
   function upgradeHome25() {
     if (storageError || loadedRaw === null) return false;
-    const home = state.worlds.find(w => w.name.trim().toLocaleLowerCase() === 'home' && ![25,100].includes(w.gridSize));
+    const home = state.worlds.find(w => w.name.trim().toLocaleLowerCase() === 'home' && ![25,50,100].includes(w.gridSize));
     if (!home) return false;
     const oldSize = home.gridSize || 9, tiles = Array(625).fill(1);
     if (home.tiles) for (let r=0;r<oldSize;r++) for (let c=0;c<oldSize;c++) tiles[r*25+c]=home.tiles[r*oldSize+c];
@@ -207,7 +207,7 @@
     try { root = JSON.parse(text.replace(/^\uFEFF/, '')); } catch (_) { return fail(); }
     if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3].includes(root.version)) {
       const w = root.world;
-      if (!keys(w, WORLD_KEYS) || ![20,25,100].includes(w.gridSize) || !Array.isArray(w.tiles) || w.tiles.length !== w.gridSize * w.gridSize
+      if (!keys(w, WORLD_KEYS) || ![20,25,50,100].includes(w.gridSize) || !Array.isArray(w.tiles) || w.tiles.length !== w.gridSize * w.gridSize
         || w.tiles.some(t => !validTile(t) || (t > (root.version === 1 ? 1 : root.version === 2 ? 5 : 6))) || typeof w.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(w.id) || w.id === 'base'
         || typeof w.name !== 'string' || !w.name.trim() || w.name.length > 48 || typeof w.description !== 'string' || w.description.length > 160
         || typeof w.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(w.color)
@@ -318,7 +318,7 @@
   function render() {
     const active = activeWorld();
     activeLabel.textContent = storageError ? `World: ${displayName(active)} · Data bermasalah` : `World: ${displayName(active)}`;
-    $('world-backup').hidden = !storageError && !state.worlds.some(w => [20,25,100].includes(w.gridSize));
+    $('world-backup').hidden = !storageError && !state.worlds.some(w => [20,25,50,100].includes(w.gridSize));
     try { $('world-backup-home').hidden = !Object.keys(localStorage).some(key => key.startsWith(HOME_BACKUP_PREFIX)); }
     catch (_) { $('world-backup-home').hidden = true; }
     $('world-create-home').hidden = Boolean(storageError) || state.worlds.some(w => w.name.trim().toLocaleLowerCase() === 'home');
@@ -416,11 +416,11 @@
       announce('Home sudah ada atau penyimpanan perlu diperiksa. Data tidak diubah.'); return;
     }
     const id = globalThis.crypto?.randomUUID?.() || `world-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const home = {id, name: 'Home', description: '', color: '#a8c795', gridSize: 100, tiles: Array(10000).fill(1),
-      showCharacter: true, characterColumn: 49, characterRow: 49, characterScale: 1,
+    const home = {id, name: 'Home', description: '', color: '#a8c795', gridSize: 50, tiles: Array(2500).fill(1),
+      showCharacter: true, characterColumn: 24, characterRow: 24, characterScale: 1,
       characterFacing: 'S', house: {column: 0, row: 0}};
     if (commit({worlds: [...state.worlds, home], activeId: id})) {
-      hideEditor(); announce('Home 100×100 dibuat dan dibuka. Karakter di AX50; rumah di A1–C3.');
+      hideEditor(); announce('Home 50×50 dibuat dan dibuka. Karakter di Y25; rumah di A1–C3.');
     }
   });
   $('world-cancel').addEventListener('click', () => { hideEditor(); announce(''); });
@@ -448,7 +448,7 @@
         (same || other)?.focus();
       }
     } else if ((action === 'export' || action === 'export-qr') && world) {
-      if ([20,25,100].includes(world.gridSize)) {
+      if ([20,25,50,100].includes(world.gridSize)) {
         if (action === 'export-qr') { announce('QR world ini belum tersedia; gunakan ekspor JSON.'); return; }
         const character = getCharacter(world);
         const snapshot = {...world, showCharacter: character.visible, characterColumn: character.column, characterRow: character.row,
@@ -518,7 +518,7 @@
     if (editingId && !state.worlds.some(world => world.id === editingId)) { announce('World tidak ditemukan.'); return; }
     const id = editingId || (globalThis.crypto?.randomUUID?.() || `world-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     const existing = state.worlds.find(item => item.id === id);
-    const world = {...existing, ...(!existing ? {gridSize: 100, tiles: Array(10000).fill(1), characterColumn: 49, characterRow: 49} : {}), id, name, description, color, showCharacter: $('world-character').checked,
+    const world = {...existing, ...(!existing ? {gridSize: 50, tiles: Array(2500).fill(1), characterColumn: 24, characterRow: 24} : {}), id, name, description, color, showCharacter: $('world-character').checked,
       house: existing ? (existing.house ?? null) : (name.toLocaleLowerCase() === 'home' ? {column: 0, row: 0} : null)};
     const worlds = editingId ? state.worlds.map(item => item.id === id ? world : item) : [...state.worlds, world];
     const next = {worlds, activeId: editingId ? state.activeId : id};
@@ -533,7 +533,7 @@
   });
   function updateTiles(id, tiles) {
     const world = activeWorld();
-    if (id === 'base' || world.id !== id || ![20,25,100].includes(world.gridSize) || !Array.isArray(tiles)
+    if (id === 'base' || world.id !== id || ![20,25,50,100].includes(world.gridSize) || !Array.isArray(tiles)
       || tiles.length !== world.gridSize * world.gridSize || tiles.some(t => !validTile(t))) return false;
     const character = getCharacter(world), house = getHouse(world);
     if (!tiles[character.row * world.gridSize + character.column]) return false;
@@ -552,7 +552,7 @@
   }
   function tillTile(id, column, row) {
     const world=activeWorld(), character=getCharacter(world), house=getHouse(world), size=world.gridSize;
-    if(id==='base' || world.id!==id || ![20,25,100].includes(size) || !world.tiles || !character.visible
+    if(id==='base' || world.id!==id || ![20,25,50,100].includes(size) || !world.tiles || !character.visible
       || !Number.isInteger(column) || !Number.isInteger(row) || column<0 || row<0 || column>=size || row>=size
       || Math.abs(character.column-column)+Math.abs(character.row-row)!==1
       || (house?.visible && column>=house.column && column<house.column+3 && row>=house.row && row<house.row+3)
