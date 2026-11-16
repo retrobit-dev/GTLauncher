@@ -296,6 +296,20 @@ public final class WeatherSkyView extends View {
         invalidate();return Math.max(0,Math.round((1-progress)*duration));
     }
     private float stepProgress() { return characterStepping ? CharacterGait.progress(SystemClock.uptimeMillis()-stepStarted,stepDuration) : 1f; }
+    float groundStepProgress() { return stepProgress(); }
+    int redirectCharacterStep(boolean reverse,int duration,int total) {
+        float progress=stepProgress();
+        if(reverse) {
+            int oldColumn=characterColumn,oldRow=characterRow;
+            characterColumn=stepFromColumn;characterRow=stepFromRow;
+            stepFromColumn=oldColumn;stepFromRow=oldRow;
+            characterFacing=characterColumn>stepFromColumn?"E":characterColumn<stepFromColumn?"W":characterRow>stepFromRow?"S":"N";
+            progress=1-progress;
+        }
+        stepIndex=1;stepCount=total;stepDuration=duration;
+        stepStarted=SystemClock.uptimeMillis()-Math.round(progress*duration);
+        invalidate();return Math.max(0,Math.round((1-progress)*duration));
+    }
     private float visualColumn() { return characterStepping ? stepFromColumn+(characterColumn-stepFromColumn)*stepProgress() : characterColumn; }
     private float visualRow() { return characterStepping ? stepFromRow+(characterRow-stepFromRow)*stepProgress() : characterRow; }
     void animateCharacterStep(int fromColumn,int fromRow,int toColumn,int toRow,float scale,String facing,int index,int total,int duration) {
