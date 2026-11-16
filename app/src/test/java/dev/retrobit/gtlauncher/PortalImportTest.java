@@ -214,6 +214,32 @@ public class PortalImportTest {
         w.put("unsupported",true); try {WorldStore.parseExport(new org.json.JSONObject().put("format","gtlauncher-preview-world").put("version",2).put("world",w).toString());fail("unknown data");} catch(JSONException expected) {}
     }
 
+    @Test public void handActionsPreserveObjectsAndCommitPickupWithBag() throws Exception {
+        String bush="{\"type\":\"bush\",\"column\":1,\"row\":1,\"variant\":\"tiered\"}";
+        String character="{\"type\":\"character\",\"column\":2,\"row\":1,\"scale\":1,\"facing\":\"W\"}";
+        String house="{\"type\":\"house\",\"column\":4,\"row\":4,\"scale\":1,\"facing\":\"S\",\"visible\":true}";
+        SharedPreferences preferences=prefs();WorldStore store=new WorldStore(preferences);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(world(bush+","+character+","+house))));
+        WorldStore.World old=store.activeWorld();WorldStore.SurfaceObject plant=old.surfaces.get(0);
+        assertFalse(store.moveSelectedObject("home",null,plant,2,1));assertFalse(store.moveSelectedObject("home",null,plant,5,5));
+        assertTrue(store.moveSelectedObject("home",null,plant,1,3));assertFalse(store.takeSelectedObject("home",plant));
+        WorldStore.SurfaceObject moved=store.activeWorld().surfaces.get(0);assertEquals(1,moved.column);assertEquals(3,moved.row);assertEquals("tiered",moved.material);
+        WorldStore.House h=store.activeWorld().houses.get(0);assertFalse(store.moveSelectedObject("home",h,null,0,0));assertTrue(store.moveSelectedObject("home",h,null,5,0));
+        assertEquals(5,store.activeWorld().houses.get(0).column);assertFalse(store.moveSelectedObject("home",h,null,0,5));
+        preferences.edit().putString("object_bag_v1","invalid").commit();String original=preferences.getString("worlds_v1",null);
+        try{store.takeSelectedObject("home",moved);fail("invalid bag must not remove object");}catch(JSONException expected){}assertEquals(original,preferences.getString("worlds_v1",null));
+        preferences.edit().putString("object_bag_v1","[]").commit();assertTrue(store.takeSelectedObject("home",moved));assertEquals(0,store.activeWorld().surfaces.size());
+        assertEquals("tiered",store.objectBag().getJSONObject(0).getJSONObject("object").getString("variant"));assertEquals("home",store.objectBag().getJSONObject(0).getString("worldId"));
+        assertFalse(store.takeSelectedObject("home",moved));assertEquals(1,store.objectBag().length());
+    }
+    @Test public void portableHouseMovePreservesTerrainAndRejectsCollision() throws Exception {
+        org.json.JSONArray tiles=new org.json.JSONArray();for(int i=0;i<625;i++)tiles.put(1);tiles.put(20*25+20,3);
+        org.json.JSONObject house=new org.json.JSONObject().put("column",0).put("row",0).put("visible",true).put("scale",1).put("facing","S");
+        org.json.JSONObject w=new org.json.JSONObject().put("id","home").put("name","Home").put("description","").put("color","#a8c795").put("gridSize",25).put("tiles",tiles).put("house",house).put("showCharacter",true).put("characterColumn",12).put("characterRow",12).put("characterScale",1).put("characterFacing","S");
+        WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(new org.json.JSONObject().put("format","gtlauncher-preview-world").put("version",2).put("world",w).toString())));
+        WorldStore.House old=store.activeWorld().houses.get(0);assertFalse(store.moveSelectedObject("home",old,null,11,11));assertFalse(store.moveSelectedObject("home",old,null,19,19));
+        assertTrue(store.moveSelectedObject("home",old,null,15,15));assertEquals(15,store.activeWorld().houses.get(0).column);assertEquals(3,store.activeWorld().previewData.tile(20,20));assertFalse(store.moveSelectedObject("home",old,null,6,6));
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {

@@ -15,6 +15,7 @@ import java.util.UUID;
 final class WorldStore {
     private static final String WORLDS_KEY = "worlds_v1";
     private static final String ACTIVE_KEY = "active_world_v1";
+    private static final String OBJECT_BAG_KEY = "object_bag_v1";
     static final String BASE_ID = "base";
     private final SharedPreferences prefs;
     private final InventoryStore inventory;
@@ -501,6 +502,79 @@ final class WorldStore {
             return saveWorlds(worlds,worldId);
         }}
         return false;
+    }
+    /** Only objects without coordinate-keyed storage, harvest history or portal links are portable. */
+    static boolean portableSmall(SurfaceObject object) {
+        return object!=null && (object.type.equals("flower") || object.type.equals("bush") || object.type.equals("sunflower"));
+    }
+    JSONArray objectBag() throws JSONException {
+        JSONArray bag=new JSONArray(prefs.getString(OBJECT_BAG_KEY,"[]"));
+        if(bag.length()>200)throw new JSONException("Object bag full or invalid");
+        for(int i=0;i<bag.length();i++) {
+            JSONObject entry=bag.getJSONObject(i);requireOnlyKeys(entry,"worldId","object");
+            String id=requiredString(entry,"worldId");if(!id.matches("[A-Za-z0-9_-]{1,128}") || id.equals(BASE_ID))throw new JSONException("Invalid object bag world");
+            JSONObject object=entry.getJSONObject("object");
+            JSONObject probe=new JSONObject().put("id",id).put("name","Bag validation").put("description","").put("color","#a8c795").put("objects",new JSONArray().put(object));
+            World parsed=parseWorld(probe,id,31);
+            if(parsed.surfaces.size()!=1 || !portableSmall(parsed.surfaces.get(0)))throw new JSONException("Unsupported object in bag");
+        }
+        return bag;
+    }
+    private static boolean sameHouse(House a,House b) {
+        return a!=null && b!=null && a.column==b.column && a.row==b.row && a.visible==b.visible && a.scale==b.scale
+                && a.opacity==b.opacity && java.util.Objects.equals(a.id,b.id) && java.util.Objects.equals(a.design,b.design) && a.facing.equals(b.facing);
+    }
+    /** Move a house or portable small object without rebuilding unrelated stored records. */
+    boolean moveSelectedObject(String worldId,House expectedHouse,SurfaceObject expectedSurface,int column,int row) throws JSONException {
+        if(!worldId.equals(activeId()) || (expectedHouse==null)==(expectedSurface==null))return false;
+        World world=activeWorld();if(world==null)return false;
+        House actualHouse=null;SurfaceObject actualSurface=null;
+        if(expectedHouse!=null) {for(House h:world.houses)if(sameHouse(h,expectedHouse)){actualHouse=h;break;}if(actualHouse==null || !actualHouse.visible)return false;}
+        else {if(!portableSmall(expectedSurface))return false;for(SurfaceObject o:world.surfaces)if(o.raw.equals(expectedSurface.raw)){actualSurface=o;break;}if(actualSurface==null)return false;}
+        int width=actualHouse==null?1:HouseFootprint.of(actualHouse.design).columns,height=actualHouse==null?1:HouseFootprint.of(actualHouse.design).rows;
+        if(column<0 || row<0 || column+width>world.gridSize() || row+height>world.gridSize())return false;
+        for(int y=row;y<row+height;y++)for(int x=column;x<column+width;x++) {
+            if(!world.tileExists(x,y) || (world.previewData!=null && world.previewData.tile(x,y)==3)
+                || (world.showCharacter && world.characterColumn==x && world.characterRow==y))return false;
+            for(House h:world.houses)if(h!=actualHouse && h.covers(x,y))return false;
+            for(SurfaceObject o:world.surfaces) {
+                if(o==actualSurface)continue;
+                int size=o.type.equals("tree") && !o.material.equals("banana") && !o.material.equals("palm")?2:1;
+                if(x>=o.column && x<o.column+size && y>=o.row && y<o.row+size)return false;
+            }
+            for(PortalTravel.Portal portal:world.portals)if(portal.tile.column==x && portal.tile.row==y)return false;
+        }
+        JSONArray all=new JSONArray(prefs.getString(WORLDS_KEY,"[]"));JSONObject stored=null;
+        for(int i=0;i<all.length();i++)if(worldId.equals(all.getJSONObject(i).optString("id"))){stored=all.getJSONObject(i);break;}
+        if(stored==null)return false;
+        if(world.previewData!=null) {
+            if(actualHouse==null)return false;
+            JSONObject root=new JSONObject(world.previewData.toJson());JSONObject h=root.getJSONObject("world").getJSONObject("house");h.put("column",column);h.put("row",row);
+            stored.put("previewExport",PreviewWorld20.parse(root.toString()).toJson());
+        } else {
+            JSONArray objects=stored.getJSONArray("objects");boolean changed=false;
+            for(int i=0;i<objects.length();i++) {
+                JSONObject o=objects.getJSONObject(i);
+                if((actualHouse!=null && o.optString("type").equals("house") && o.optInt("column",-1)==actualHouse.column && o.optInt("row",-1)==actualHouse.row && java.util.Objects.equals(o.optString("id",null),actualHouse.id))
+                   || (actualSurface!=null && o.toString().equals(actualSurface.raw))) {o.put("column",column);o.put("row",row);changed=true;break;}
+            }
+            if(!changed)return false;parseWorld(stored,worldId,storedVersion(stored));
+        }
+        return prefs.edit().putString(WORLDS_KEY,all.toString()).commit();
+    }
+    /** World removal and bag addition share one preferences commit, so neither half can be lost. */
+    boolean takeSelectedObject(String worldId,SurfaceObject expected) throws JSONException {
+        if(!worldId.equals(activeId()) || !portableSmall(expected))return false;
+        World world=activeWorld();if(world==null || world.previewData!=null)return false;
+        boolean exists=false;for(SurfaceObject o:world.surfaces)if(o.raw.equals(expected.raw)){exists=true;break;}if(!exists)return false;
+        JSONArray bag=objectBag();if(bag.length()>=200)throw new JSONException("Object bag full");
+        JSONArray all=new JSONArray(prefs.getString(WORLDS_KEY,"[]"));JSONObject stored=null;
+        for(int i=0;i<all.length();i++)if(worldId.equals(all.getJSONObject(i).optString("id"))){stored=all.getJSONObject(i);break;}
+        if(stored==null)return false;JSONArray objects=stored.getJSONArray("objects");boolean removed=false;
+        for(int i=0;i<objects.length();i++)if(objects.getJSONObject(i).toString().equals(expected.raw)){objects.remove(i);removed=true;break;}
+        if(!removed)return false;parseWorld(stored,worldId,storedVersion(stored));
+        bag.put(new JSONObject().put("worldId",worldId).put("object",new JSONObject(expected.raw)));
+        return prefs.edit().putString(WORLDS_KEY,all.toString()).putString(OBJECT_BAG_KEY,bag.toString()).commit();
     }
     boolean tillTile(String worldId,int column,int row) throws JSONException {
         if(!worldId.equals(activeId())) return false;
