@@ -1720,7 +1720,7 @@
     const {tiles,next}=gameplayRoute, character=gameplayDraft || window.worldManager?.getCharacter();
     const remaining=tiles.slice(Math.max(1,next));if(!remaining.length)return;
     const start=characterCentre(character || tiles[0]);
-    ctx.save();applyIslandTransform();ctx.lineJoin='round';ctx.lineCap='round';
+    ctx.save();applyIslandTransform();ctx.lineJoin='round';ctx.lineCap='butt';ctx.setLineDash([2.5,2]);
     ctx.strokeStyle='#000';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(start.x,start.y);
     for(const tile of remaining){const p=characterCentre(tile);ctx.lineTo(p.x,p.y);}ctx.stroke();
     const p=characterCentre(remaining[remaining.length-1]),hw=ISLAND_TILE_WIDTH/2-1,hh=islandTileHeight/2-.5;

@@ -968,13 +968,14 @@ public final class WeatherSkyView extends View {
         if(!gameplayMode || !showCharacter || gameplayRoute.size()<2 || routeNext>=gameplayRoute.size())return;
         Path path=new Path();path.moveTo(routeX(visualColumn(),visualRow()),routeY(visualColumn(),visualRow()));
         for(int i=routeNext;i<gameplayRoute.size();i++){PortalTravel.Tile tile=gameplayRoute.get(i);path.lineTo(routeX(tile.column,tile.row),routeY(tile.column,tile.row));}
-        paint.setStyle(Paint.Style.STROKE);paint.setStrokeCap(Paint.Cap.ROUND);paint.setStrokeJoin(Paint.Join.ROUND);
+        paint.setStyle(Paint.Style.STROKE);paint.setStrokeCap(Paint.Cap.BUTT);paint.setStrokeJoin(Paint.Join.ROUND);
+        paint.setPathEffect(new android.graphics.DashPathEffect(new float[]{2.5f,2f},0));
         paint.setColor(Color.BLACK);paint.setStrokeWidth(.5f);canvas.drawPath(path,paint);
         paint.setStyle(Paint.Style.FILL);
         PortalTravel.Tile end=gameplayRoute.get(gameplayRoute.size()-1);float x=routeX(end.column,end.row),y=routeY(end.column,end.row),hw=ISLAND_TILE_WIDTH/2f-1,hh=ISLAND_TILE_HEIGHT/2f-.5f;
         Path diamond=new Path();diamond.moveTo(x,y-hh);diamond.lineTo(x+hw,y);diamond.lineTo(x,y+hh);diamond.lineTo(x-hw,y);diamond.close();
         paint.setStyle(Paint.Style.STROKE);paint.setColor(Color.BLACK);paint.setStrokeWidth(1.5f);canvas.drawPath(diamond,paint);
-        paint.setStyle(Paint.Style.FILL);paint.setStrokeCap(Paint.Cap.BUTT);
+        paint.setPathEffect(null);paint.setStyle(Paint.Style.FILL);paint.setStrokeCap(Paint.Cap.BUTT);
     }
     private void drawHoeTarget(Canvas canvas) {
         if(!gameplayMode || !hoeSelected || !showCharacter)return;
