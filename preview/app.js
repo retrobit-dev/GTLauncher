@@ -1583,7 +1583,7 @@
     drawProjectedCloudShadows(clouds, lightAltitude, lightHourAngle, cloudCover, code, true);
   }
 
-  let editingDraft = null, editingHouseDraft = null, gameplayDraft = null;
+  let editingDraft = null, editingHouseDraft = null, gameplayDraft = null, gameplayRoute = null;
   let editingSelected = false, editingHouseSelected = false;
   function characterCentre(character) {
     return {x: WIDTH / 2 + (character.column - character.row) * ISLAND_TILE_WIDTH / 2,
@@ -1673,6 +1673,20 @@
     ctx.restore();
   }
 
+  function drawGameplayRoute() {
+    if(cameraMode!=='gameplay' || !gameplayRoute || gameplayRoute.tiles.length<2)return;
+    const {tiles,next}=gameplayRoute, character=gameplayDraft || window.worldManager?.getCharacter();
+    const remaining=tiles.slice(Math.max(1,next));if(!remaining.length)return;
+    const start=characterCentre(character || tiles[0]);
+    ctx.save();applyIslandTransform();ctx.lineJoin='round';ctx.lineCap='round';
+    ctx.strokeStyle='rgba(40,61,48,.65)';ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(start.x,start.y);
+    for(const tile of remaining){const p=characterCentre(tile);ctx.lineTo(p.x,p.y);}ctx.stroke();
+    ctx.strokeStyle='#fff2a6';ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(start.x,start.y);
+    for(const tile of remaining){const p=characterCentre(tile);ctx.lineTo(p.x,p.y);}ctx.stroke();
+    for(const tile of remaining.slice(0,-1)){const p=characterCentre(tile);ctx.fillStyle='#fff2a6';ctx.beginPath();ctx.arc(p.x,p.y,1.25,0,Math.PI*2);ctx.fill();}
+    const p=characterCentre(remaining[remaining.length-1]),hw=ISLAND_TILE_WIDTH/2-1,hh=islandTileHeight/2-.5;
+    ctx.beginPath();ctx.moveTo(p.x,p.y-hh);ctx.lineTo(p.x+hw,p.y);ctx.lineTo(p.x,p.y+hh);ctx.lineTo(p.x-hw,p.y);ctx.closePath();ctx.fillStyle='rgba(255,217,92,.22)';ctx.fill();ctx.strokeStyle='#ffdb6a';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+  }
   function drawHoeTarget() {
     if(cameraMode !== 'gameplay' || !document.querySelector('[data-dock="hoe"][aria-pressed="true"], [data-dock="hand"][aria-pressed="true"]'))return;
     const world=window.worldManager?.getActive(), character=gameplayDraft || window.worldManager?.getCharacter();
@@ -1954,6 +1968,7 @@
     drawFloatingIsland(sun.altitude, sun.azimuth, sun.hourAngleDegrees,
       sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates);
     drawSurfaceObjectShadows(shadowLight, sceneWeather.cloudCover, sceneWeather.weatherCode);
+    drawGameplayRoute();
     drawHouse();
     drawHoeTarget();
     drawMainCharacter(motionTime);
@@ -2166,6 +2181,10 @@
   window.sceneEditing = Object.freeze({
     camera() { return {zoom: editorZoom, panX: cameraPanX, panY: cameraPanY}; },
     setMode: setPreviewCameraMode,
+    setGameplayRoute(route, next=1) {
+      gameplayRoute = route ? {tiles:route.map(tile=>({column:tile.column,row:tile.row})),next} : null;
+      if (REDUCED_MOTION) drawFrame();
+    },
     setGameplayDraft(draft) {
       gameplayDraft = draft;
       if (cameraMode === 'gameplay') applyGameplayCamera();

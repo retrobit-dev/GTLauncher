@@ -7,7 +7,7 @@
   let gesture=null, walk=null, queuedTarget=null, generation=0, committing=false;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function tell(text){status.textContent=text;status.hidden=!text;}
-  function cancel() { generation++; walk=null;queuedTarget=null;scene.setGameplayDraft(null); }
+  function cancel() { generation++; walk=null;queuedTarget=null;scene.setGameplayRoute?.(null);scene.setGameplayDraft(null); }
   function step(timestamp,token) {
     if(token!==generation||!walk)return;
     if(stage.dataset.mode!=='gameplay'||worlds.getActive().id!==walk.id){cancel();return;}
@@ -23,6 +23,7 @@
       if(next){move(next);return;}
       tell(walkMessage || `Tiba di ${'ABCDEFGHIJKLMNOPQRSTUVWXY'[end.column]}${end.row+1}.`);return;
     }
+    if(walk.routeIndex!==index){walk.routeIndex=index;scene.setGameplayRoute?.(walk.route,index);}
     const a=walk.route[index-1],b=walk.route[index],t=Math.max(0,Math.min(1,elapsed/walk.durations[index-1]));
     scene.setGameplayDraft({...walk.character,column:a.column+(b.column-a.column)*t,row:a.row+(b.row-a.row)*t,facing:direction(a,b)});
     window.requestAnimationFrame(next=>step(next,token));
@@ -34,7 +35,7 @@
     if(world.id==='base'||!character.visible){tell('Buka atau buat world dengan karakter melalui tombol World.');return;}
     const house=worlds.getHouse(), houseTarget=house?.visible && target.column>=house.column && target.column<house.column+3 && target.row>=house.row && target.row<house.row+3;
     const route=houseTarget?path.findBeside(world,character,house):path.find(world,character,target,house);
-    if(!route){tell(houseTarget?'Jalan menuju rumah terhalang.':'Tile tujuan tidak dapat dicapai.');return;}
+    if(!route){scene.setGameplayRoute?.(null);tell(houseTarget?'Jalan menuju rumah terhalang.':'Tile tujuan tidak dapat dicapai.');return;}
     if(houseTarget && route.length===1){
       const adjacent={column:Math.max(house.column,Math.min(house.column+2,character.column)),row:Math.max(house.row,Math.min(house.row+2,character.row))};
       const facing=direction(character,adjacent);
@@ -44,7 +45,7 @@
       const facing=direction(route[0],route[1]);
       if(character.facing!==facing){
         committing=true;let ok=false;try{ok=worlds.updateCharacter(world.id,{...character,facing});}finally{committing=false;}
-        tell(ok?'Arah hadap berubah. Ketuk tujuan lagi untuk bergerak.':'Arah hadap tidak tersimpan.');return;
+        scene.setGameplayRoute?.(ok?route:null);tell(ok?'Arah hadap berubah. Ketuk tujuan lagi untuk bergerak.':'Arah hadap tidak tersimpan.');return;
       }
     }
     const end=route[route.length-1], completion=houseTarget?'Di dekat rumah. Interaksi rumah belum tersedia.':'';
@@ -57,7 +58,8 @@
       try{ok=worlds.updateCharacter(world.id,{...character,...route[total],facing:direction(previous,route[total])});}finally{committing=false;}
       tell(ok?(completion || `Tiba di ${'ABCDEFGHIJKLMNOPQRSTUVWXY'[end.column]}${end.row+1}.`):'Posisi tidak tersimpan; periksa penyimpanan browser.');return;
     }
-    walk={id:world.id,character,route,message:completion,started:null,durations:route.slice(1).map((_,i)=>total>3&&i>0&&i<total-1?180:300)};
+    scene.setGameplayRoute?.(route,1);
+    walk={id:world.id,character,route,message:completion,routeIndex:1,started:null,durations:route.slice(1).map((_,i)=>total>3&&i>0&&i<total-1?180:300)};
     const token=++generation;window.requestAnimationFrame(t=>step(t,token));
   }
   canvas.addEventListener('pointerdown',event=>{
@@ -77,6 +79,7 @@
     const hitFront=tile && tile.column===front.column && tile.row===front.row;
     const hitCharacter=!hitFront && !hitHouse && scene.hit?.(local,character);
     if(selected && (hitCharacter || ((hitFront || hitHouse) && selected==='hand' && frontHouse))) {
+      scene.setGameplayRoute?.(null);
       if(selected==='hand')tell(frontHouse?'Rumah dipilih. Interaksi rumah belum tersedia.':'Tidak ada objek di depan karakter.');
       else if(selected==='hoe')tell('Blok tanah pertanian belum tersedia; tidak ada tile yang diubah.');
       else tell('Fungsi alat ini belum tersedia.');
