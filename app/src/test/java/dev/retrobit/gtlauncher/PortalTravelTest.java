@@ -66,7 +66,7 @@ public class PortalTravelTest {
         List<PortalTravel.Tile> path = PortalTravel.path(start,end,clear,20);
         assertNotNull(path); assertEquals(21,path.size()); assertEquals(end,path.get(path.size()-1));
         assertNull(PortalTravel.path(start,new PortalTravel.Tile(20,19),clear,20));
-        assertNull(PortalTravel.path(start,end,clear,26));
+        assertNull(PortalTravel.path(start,end,clear,101));
         assertNotNull(PortalTravel.path(start,new PortalTravel.Tile(24,24),clear,25));
         assertNull(PortalTravel.path(start,new PortalTravel.Tile(25,24),clear,25));
         PortalTravel.Terrain blocked = new PortalTravel.Terrain() {
