@@ -37,7 +37,7 @@
       committing=true;let ok=false;try{ok=worlds.updateCharacter(walk.id,character);}finally{committing=false;}
       const next=queuedTarget,walkMessage=walk.message; cancel();
       if(!ok){tell('Posisi tidak tersimpan; periksa penyimpanan browser.');return;}
-      if(next){move(next);return;}
+      if(next){move(next,true);return;}
       tell(walkMessage || `Tiba di ${columnLabel(end.column)}${end.row+1}.`);return;
     }
     if(walk.routeIndex!==index){walk.routeIndex=index;scene.setGameplayRoute?.(walk.route,index);}
@@ -46,7 +46,7 @@
     window.requestAnimationFrame(next=>step(next,token));
   }
   function direction(a,b){return b.column>a.column?'E':b.column<a.column?'W':b.row>a.row?'S':'N';}
-  function move(target) {
+  function move(target,continueRunning=false) {
     if(walk){
       const end=walk.route[walk.route.length-1];
       if(target.column!==end.column || target.row!==end.row) queuedTarget=target;
@@ -58,12 +58,12 @@
     const house=worlds.getHouse(), houseTarget=house?.visible && target.column>=house.column && target.column<house.column+3 && target.row>=house.row && target.row<house.row+3;
     const route=houseTarget?path.findBeside(world,character,house):path.find(world,character,target,house);
     if(!route){scene.setGameplayRoute?.(null);tell(houseTarget?'Jalan menuju rumah terhalang.':'Tile tujuan tidak dapat dicapai.');return;}
-    if(toolSelected && houseTarget && route.length===1){
+    if(!continueRunning && toolSelected && houseTarget && route.length===1){
       const adjacent={column:Math.max(house.column,Math.min(house.column+2,character.column)),row:Math.max(house.row,Math.min(house.row+2,character.row))};
       const facing=direction(character,adjacent);
       if(facing!==character.facing){committing=true;let ok=false;try{ok=worlds.updateCharacter(world.id,{...character,facing});}finally{committing=false;}tell(ok?'Arah hadap berubah. Ketuk objek lagi untuk memilihnya.':'Arah hadap tidak tersimpan.');return;}
     }
-    if(toolSelected && route.length>1){
+    if(!continueRunning && toolSelected && route.length>1){
       const facing=direction(route[0],route[1]);
       if(character.facing!==facing){
         committing=true;let ok=false;try{ok=worlds.updateCharacter(world.id,{...character,facing});}finally{committing=false;}
@@ -73,7 +73,7 @@
     const end=route[route.length-1], completion=houseTarget?'Di dekat rumah. Interaksi rumah belum tersedia.':'';
     cancel();
     if(route.length===1){tell(completion || 'Karakter sudah berada di tile ini.');return;}
-    tell(houseTarget?'Berjalan mendekati rumah…':`Berjalan ke ${columnLabel(end.column)}${end.row+1}…`);
+    tell(continueRunning?'Berlari menuju tujuan berikutnya…':houseTarget?'Berjalan mendekati rumah…':`Berjalan ke ${columnLabel(end.column)}${end.row+1}…`);
     const total=route.length-1;
     if(reduced){
       const previous=route[total-1];committing=true;let ok=false;
@@ -81,7 +81,7 @@
       tell(ok?(completion || `Tiba di ${columnLabel(end.column)}${end.row+1}.`):'Posisi tidak tersimpan; periksa penyimpanan browser.');return;
     }
     scene.setGameplayRoute?.(route,1);
-    walk={id:world.id,character,route,message:completion,routeIndex:1,started:null,running:false,runRequested:false,durations:route.slice(1).map(()=>650)};
+    walk={id:world.id,character,route,message:completion,routeIndex:1,started:null,running:continueRunning,runRequested:false,durations:route.slice(1).map(()=>continueRunning?330:650)};
     const token=++generation;window.requestAnimationFrame(t=>step(t,token));
   }
   canvas.addEventListener('pointerdown',event=>{
