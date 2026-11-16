@@ -29,6 +29,17 @@ const {chromium} = require('playwright-core');
     await page.locator('#mode-map-editor').click();
     const side = await page.evaluate(()=>{const frame=document.querySelector('.device-frame').getBoundingClientRect(),tools=document.querySelector('.terrain-tools').getBoundingClientRect();return {frameRight:frame.right,toolsLeft:tools.left};});
     assert(side.toolsLeft>side.frameRight,'tile editor is outside on the right');
+    const layout=await page.evaluate(()=>{
+      const rect=s=>document.querySelector(s).getBoundingClientRect(), frame=rect('.device-frame'), label=rect('#weather-mode-label'), object=rect('#object-library-button'), tile=rect('#terrain-draw');
+      const iconSelectors=['#world-button','#weather-cycle-button','#object-library-button','#terrain-draw','#terrain-erase','#terrain-pick','#terrain-fill','#editor-pan','#editor-fit',...Array.from(document.querySelectorAll('.home-dock button')).map((_,i)=>`.home-dock button:nth-child(${i+1})`)];
+      const errors=iconSelectors.map(s=>{const button=document.querySelector(s), icon=button.querySelector('svg,img'), b=button.getBoundingClientRect(),i=icon.getBoundingClientRect();return {s,dx:(i.left+i.right-b.left-b.right)/2,dy:(i.top+i.bottom-b.top-b.bottom)/2};}).filter(x=>Math.abs(x.dx)>1 || Math.abs(x.dy)>1);
+      return {frameWidth:frame.width,labelWidth:label.width,objectBottom:object.bottom,tileTop:tile.top,errors};
+    });
+    assert(layout.objectBottom<=layout.tileTop,'object catalog sits above tile tools');
+    assert(Math.abs(layout.labelWidth-layout.frameWidth)<1,'weather label spans tablet width');
+    assert.deepEqual(layout.errors,[],'visible button icons are centered');
+    await page.locator('#object-library-button').click();assert(await page.locator('#object-library-dialog').evaluate(e=>e.open),'object catalog opens');await page.locator('#object-library-close').click();
+
     await page.locator('#editor-pan').click();
     const overlay=page.locator('#editor-pan-surface'), box=await overlay.boundingBox();
     assert(box && box.width>0 && box.height>0);

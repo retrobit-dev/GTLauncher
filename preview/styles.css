@@ -367,3 +367,19 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 
 /* Prevent touch scrolling from cancelling gameplay taps on the canvas. */
 .preview-stage[data-mode="gameplay"] .sky-canvas { touch-action: none; }
+
+/* The object catalog leads the editor's right-hand tile tools. */
+.editor-right-controls #object-library-button { flex:none; width:30px; height:30px; min-height:30px; padding:5px; }
+.editor-right-controls #object-library-button svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+/* Center icon boxes independently of browser button baselines and default line height. */
+.world-topbar .world-button, .preview-controls #weather-cycle-button,
+.preview-controls .icon-action:not([hidden]), .editor-right-controls #object-library-button,
+.editor-camera-controls button, .terrain-tools button, .rotate-controls button,
+.history-controls .object-history-button, .home-dock button, .world-close {
+  display:grid; place-items:center; line-height:1;
+}
+.world-topbar .world-button svg, .preview-controls button svg,
+.editor-right-controls button svg, .editor-camera-controls button svg, .home-dock button img { display:block; }
+/* The label can use the whole tablet width while staying below its button. */
+.weather-preview-control { width:100%; min-width:0; }
+.weather-mode-label { width:100%; max-width:none; overflow-wrap:anywhere; }
