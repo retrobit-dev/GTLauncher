@@ -4,7 +4,15 @@
   const stage=document.querySelector('.preview-stage'),canvas=document.getElementById('sky-canvas');
   const status=document.getElementById('gameplay-movement-status'),scene=window.sceneEditing,worlds=window.worldManager,path=window.GameplayPath;
   if(!stage||!canvas||!status||!scene?.setGameplayDraft||!worlds?.updateCharacter||!path)return;
-  let gesture=null, walk=null, queuedTarget=null, generation=0, committing=false;
+  let gesture=null, walk=null, queuedTarget=null, generation=0, committing=false, movingHouse=null, selectedHouse=null;
+  const objectDialog=document.getElementById('hand-object-dialog');
+  function clearObjectSelection(){movingHouse=null;selectedHouse=null;if(objectDialog?.open)objectDialog.close();}
+  if(objectDialog){
+    document.getElementById('hand-object-move').addEventListener('click',()=>{movingHouse=selectedHouse;objectDialog.close();tell('Ketuk tile untuk sudut kiri atas rumah 3×3.');});
+    document.getElementById('hand-object-cancel').addEventListener('click',()=>{clearObjectSelection();tell('Pemindahan dibatalkan.');});
+    document.getElementById('hand-object-close').addEventListener('click',()=>{clearObjectSelection();tell('Pemindahan dibatalkan.');});
+    objectDialog.addEventListener('cancel',()=>{movingHouse=null;selectedHouse=null;});
+  }
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function tell(text){status.textContent=text;status.hidden=!text;}
   function cancel() { generation++; walk=null;queuedTarget=null;scene.setGameplayRoute?.(null);scene.setGameplayDraft(null); }
@@ -72,6 +80,12 @@
     const start=gesture;gesture=null;
     if(stage.dataset.mode!=='gameplay'||Math.hypot(event.clientX-start.x,event.clientY-start.y)>8)return;
     const local=scene.toLocal(event.clientX,event.clientY), house=worlds.getHouse(), character=worlds.getCharacter();
+    if(movingHouse){
+      const target=scene.tileAt(local);if(!target){tell('Pilih tile di dalam world.');return;}
+      committing=true;let ok=false;try{ok=worlds.moveHouse?.(movingHouse.id,movingHouse.house,target.column,target.row)===true;}finally{committing=false;}
+      if(ok){movingHouse=null;selectedHouse=null;tell('Rumah berhasil dipindahkan.');}
+      else tell('Rumah tidak dapat ditempatkan di sini. Periksa tapak, air, karakter, atau perubahan world.');return;
+    }
     const selected=document.querySelector('.home-dock [data-dock][aria-pressed="true"]')?.dataset.dock;
     const offset={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[character.facing]||[0,0];
     const front={column:character.column+offset[0],row:character.row+offset[1]};
@@ -81,7 +95,10 @@
     const hitCharacter=!hitFront && !hitHouse && scene.hit?.(local,character);
     if(selected && (hitCharacter || ((hitFront || hitHouse) && selected==='hand' && frontHouse))) {
       scene.setGameplayRoute?.(null);
-      if(selected==='hand')tell(frontHouse?'Rumah dipilih. Interaksi rumah belum tersedia.':'Tidak ada objek di depan karakter.');
+      if(selected==='hand') {
+        if(frontHouse && objectDialog){cancel();selectedHouse={id:worlds.getActive().id,house:{...house}};objectDialog.showModal();tell('Rumah dipilih.');}
+        else tell(frontHouse?'Rumah dipilih. Interaksi rumah belum tersedia.':'Tidak ada objek di depan karakter.');
+      }
       else if(selected==='hoe')tell('Blok tanah pertanian belum tersedia; tidak ada tile yang diubah.');
       else tell('Fungsi alat ini belum tersedia.');
       return;
@@ -91,7 +108,7 @@
     if(target)move(target);
   });
   canvas.addEventListener('pointercancel',()=>{gesture=null;});
-  document.getElementById('mode-map-editor').addEventListener('click',()=>{gesture=null;cancel();tell('');});
-  window.addEventListener('gameplaytoolchange',()=>{gesture=null;cancel();tell('');});
-  window.addEventListener('worldchange',()=>{if(!committing){gesture=null;cancel();tell('');}});
+  document.getElementById('mode-map-editor').addEventListener('click',()=>{gesture=null;clearObjectSelection();cancel();tell('');});
+  window.addEventListener('gameplaytoolchange',()=>{gesture=null;clearObjectSelection();cancel();tell('');});
+  window.addEventListener('worldchange',()=>{if(!committing){gesture=null;clearObjectSelection();cancel();tell('');}});
 })();

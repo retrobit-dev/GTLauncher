@@ -540,6 +540,16 @@
     if (house) for (let r = house.row; r < house.row + 3; r++) for (let c = house.column; c < house.column + 3; c++) if (!tiles[r * world.gridSize + c] || tiles[r * world.gridSize + c] === 3) return false;
     return commit({...state, worlds: state.worlds.map(w => w.id === id ? {...w, tiles: tiles.slice()} : w)});
   }
+  function moveHouse(id, original, column, row) {
+    const world=activeWorld(), house=getHouse(world), character=getCharacter(world), size=world.gridSize || 9;
+    if(id==='base' || world.id!==id || !house?.visible || !original || JSON.stringify(house)!==JSON.stringify(original)
+       || !Number.isInteger(column) || !Number.isInteger(row) || column<0 || row<0 || column+3>size || row+3>size)return false;
+    for(let r=row;r<row+3;r++)for(let c=column;c<column+3;c++) {
+      if(character.visible && character.column===c && character.row===r)return false;
+      if(world.tiles && (!world.tiles[r*size+c] || world.tiles[r*size+c]===3))return false;
+    }
+    return updateHouse(id,{...house,column,row});
+  }
   function tillTile(id, column, row) {
     const world=activeWorld(), character=getCharacter(world), house=getHouse(world), size=world.gridSize;
     if(id==='base' || world.id!==id || ![20,25].includes(size) || !world.tiles || !character.visible
@@ -550,7 +560,7 @@
     const tiles=world.tiles.slice();tiles[row*size+column]=6;
     return updateTiles(id,tiles);
   }
-  window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, updateTiles, tillTile});
+  window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, updateTiles, tillTile});
   render();
   if (homeUpgraded) announce('Home diperbarui menjadi 25×25. Cadangan sebelum perubahan tersedia untuk diunduh.');
   else if (storageError) announce(storageError);
