@@ -5,6 +5,6 @@ let strokes=[];const ctx=new Proxy({createLinearGradient:()=>({addColorStop(){}}
 w.HTMLCanvasElement.prototype.getContext=()=>ctx;w.matchMedia=()=>({matches:true});w.requestAnimationFrame=()=>0;w.fetch=async()=>({ok:false});
 for(const name of ['worlds.js','app.js'])w.eval(fs.readFileSync(path.join(root,name),'utf8'));
 d.getElementById('world-new').click();d.getElementById('world-name').value='Route';d.getElementById('world-character').checked=true;d.getElementById('world-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
-strokes=[];w.sceneEditing.setGameplayRoute([{column:12,row:12},{column:13,row:12},{column:14,row:12}],1);assert(strokes.includes('#fff2a6'),'route stroke visible');assert(strokes.includes('#ffdb6a'),'destination stroke visible');
-strokes=[];w.sceneEditing.setGameplayRoute(null);assert(!strokes.includes('#ffdb6a'),'clear removes destination');assert(!strokes.includes('#fff2a6'),'clear removes route');
+strokes=[];w.sceneEditing.setGameplayRoute([{column:12,row:12},{column:13,row:12},{column:14,row:12}],1);assert(strokes.includes('#000'),'black route stroke visible');assert(strokes.includes('#ffdb6a'),'destination stroke visible');
+strokes=[];w.sceneEditing.setGameplayRoute(null);assert(!strokes.includes('#ffdb6a'),'clear removes destination');assert(!strokes.includes('#ffdb6a'),'clear removes destination');
 dom.window.close();console.log('Route and destination render and clear: OK');

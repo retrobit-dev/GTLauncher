@@ -895,12 +895,6 @@ public final class WeatherSkyView extends View {
             int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-Math.max(0,house.opacity))/100f));
             drawObjectContact(canvas,x,y,70*scale*(wide?7f/6:1),ISLAND_TILE_HEIGHT*2.5f*scale);paint.setAlpha(originalAlpha);
         }
-        paint.setColor(Color.argb(56,12,23,40));
-        if (showCharacter && sprite != null) {
-            float x = SCENE_WIDTH / 2.0f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2.0f;
-            float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2.0f;
-            drawObjectContact(canvas, x, y, 13.5f * characterScale, 5 * characterScale);
-        }
         canvas.restoreToCount(save);
     }
 
@@ -936,10 +930,8 @@ public final class WeatherSkyView extends View {
         Path path=new Path();path.moveTo(routeX(visualColumn(),visualRow()),routeY(visualColumn(),visualRow()));
         for(int i=routeNext;i<gameplayRoute.size();i++){PortalTravel.Tile tile=gameplayRoute.get(i);path.lineTo(routeX(tile.column,tile.row),routeY(tile.column,tile.row));}
         paint.setStyle(Paint.Style.STROKE);paint.setStrokeCap(Paint.Cap.ROUND);paint.setStrokeJoin(Paint.Join.ROUND);
-        paint.setColor(Color.argb(166,40,61,48));paint.setStrokeWidth(2.6f);canvas.drawPath(path,paint);
-        paint.setColor(Color.rgb(255,242,166));paint.setStrokeWidth(1.1f);canvas.drawPath(path,paint);
+        paint.setColor(Color.BLACK);paint.setStrokeWidth(.5f);canvas.drawPath(path,paint);
         paint.setStyle(Paint.Style.FILL);
-        for(int i=routeNext;i<gameplayRoute.size()-1;i++){PortalTravel.Tile tile=gameplayRoute.get(i);canvas.drawCircle(routeX(tile.column,tile.row),routeY(tile.column,tile.row),1.25f,paint);}
         PortalTravel.Tile end=gameplayRoute.get(gameplayRoute.size()-1);float x=routeX(end.column,end.row),y=routeY(end.column,end.row),hw=ISLAND_TILE_WIDTH/2f-1,hh=ISLAND_TILE_HEIGHT/2f-.5f;
         Path diamond=new Path();diamond.moveTo(x,y-hh);diamond.lineTo(x+hw,y);diamond.lineTo(x,y+hh);diamond.lineTo(x-hw,y);diamond.close();
         paint.setColor(Color.argb(56,255,217,92));canvas.drawPath(diamond,paint);
@@ -966,7 +958,10 @@ public final class WeatherSkyView extends View {
         float x = SCENE_WIDTH / 2.0f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2.0f;
         float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f
                 + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2.0f;
+        y+=.5f*characterScale;
         float width = 13.5f * characterScale;
+        paint.setStyle(Paint.Style.FILL);paint.setColor(Color.argb(97,12,23,30));
+        canvas.drawOval(new RectF(x-4.6f*characterScale,y-1.25f*characterScale,x+4.6f*characterScale,y+.35f*characterScale),paint);
         float phase = characterStepping ? (float)Math.sin(CharacterGait.phase(stepIndex,stepProgress())) : 0f;
         float runBlend = characterStepping ? CharacterGait.runBlend(stepIndex,stepCount,stepProgress()) : 0f;
         float idle = characterStepping ? 0f : (Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5f : 0.0f);

@@ -1679,11 +1679,8 @@
     const remaining=tiles.slice(Math.max(1,next));if(!remaining.length)return;
     const start=characterCentre(character || tiles[0]);
     ctx.save();applyIslandTransform();ctx.lineJoin='round';ctx.lineCap='round';
-    ctx.strokeStyle='rgba(40,61,48,.65)';ctx.lineWidth=2.6;ctx.beginPath();ctx.moveTo(start.x,start.y);
+    ctx.strokeStyle='#000';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(start.x,start.y);
     for(const tile of remaining){const p=characterCentre(tile);ctx.lineTo(p.x,p.y);}ctx.stroke();
-    ctx.strokeStyle='#fff2a6';ctx.lineWidth=1.1;ctx.beginPath();ctx.moveTo(start.x,start.y);
-    for(const tile of remaining){const p=characterCentre(tile);ctx.lineTo(p.x,p.y);}ctx.stroke();
-    for(const tile of remaining.slice(0,-1)){const p=characterCentre(tile);ctx.fillStyle='#fff2a6';ctx.beginPath();ctx.arc(p.x,p.y,1.25,0,Math.PI*2);ctx.fill();}
     const p=characterCentre(remaining[remaining.length-1]),hw=ISLAND_TILE_WIDTH/2-1,hh=islandTileHeight/2-.5;
     ctx.beginPath();ctx.moveTo(p.x,p.y-hh);ctx.lineTo(p.x+hw,p.y);ctx.lineTo(p.x,p.y+hh);ctx.lineTo(p.x-hw,p.y);ctx.closePath();ctx.fillStyle='rgba(255,217,92,.22)';ctx.fill();ctx.strokeStyle='#ffdb6a';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
   }
@@ -1707,7 +1704,7 @@
     const mirror = character.facing === 'N' || character.facing === 'E';
     const sprite = back ? playerBackImage : playerImage;
     if (!sprite.complete || !sprite.naturalWidth) return;
-    const {x, y} = characterCentre(character);
+    const anchor = characterCentre(character), x=anchor.x, y=anchor.y + .5 * character.scale;
     const width = PLAYER_WIDTH * character.scale;
     // Breathing changes height only, never the ground anchor. With reduced motion time is zero.
     const idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5 : 0;
@@ -1717,7 +1714,7 @@
     ctx.save();
     applyIslandTransform();
     // A small contact shadow anchors the feet even when the projected sun shadow falls away.
-    ctx.fillStyle='rgba(12,23,40,.22)';ctx.beginPath();ctx.ellipse(x,y,4.5*character.scale,1.35*character.scale,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(12,23,30,.38)';ctx.beginPath();ctx.ellipse(x,y-.45*character.scale,4.6*character.scale,.8*character.scale,0,0,Math.PI*2);ctx.fill();
     ctx.imageSmoothingEnabled = false;
     if (mirror) {
       ctx.save();
