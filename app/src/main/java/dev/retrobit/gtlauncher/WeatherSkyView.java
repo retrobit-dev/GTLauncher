@@ -964,8 +964,7 @@ public final class WeatherSkyView extends View {
         paint.setStyle(Paint.Style.FILL);
         PortalTravel.Tile end=gameplayRoute.get(gameplayRoute.size()-1);float x=routeX(end.column,end.row),y=routeY(end.column,end.row),hw=ISLAND_TILE_WIDTH/2f-1,hh=ISLAND_TILE_HEIGHT/2f-.5f;
         Path diamond=new Path();diamond.moveTo(x,y-hh);diamond.lineTo(x+hw,y);diamond.lineTo(x,y+hh);diamond.lineTo(x-hw,y);diamond.close();
-        paint.setColor(Color.argb(56,255,217,92));canvas.drawPath(diamond,paint);
-        paint.setStyle(Paint.Style.STROKE);paint.setColor(Color.rgb(255,219,106));paint.setStrokeWidth(1.5f);canvas.drawPath(diamond,paint);
+        paint.setStyle(Paint.Style.STROKE);paint.setColor(Color.BLACK);paint.setStrokeWidth(.5f);canvas.drawPath(diamond,paint);
         paint.setStyle(Paint.Style.FILL);paint.setStrokeCap(Paint.Cap.BUTT);
     }
     private void drawHoeTarget(Canvas canvas) {

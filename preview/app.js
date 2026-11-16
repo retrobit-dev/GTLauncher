@@ -1691,7 +1691,7 @@
     ctx.strokeStyle='#000';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(start.x,start.y);
     for(const tile of remaining){const p=characterCentre(tile);ctx.lineTo(p.x,p.y);}ctx.stroke();
     const p=characterCentre(remaining[remaining.length-1]),hw=ISLAND_TILE_WIDTH/2-1,hh=islandTileHeight/2-.5;
-    ctx.beginPath();ctx.moveTo(p.x,p.y-hh);ctx.lineTo(p.x+hw,p.y);ctx.lineTo(p.x,p.y+hh);ctx.lineTo(p.x-hw,p.y);ctx.closePath();ctx.fillStyle='rgba(255,217,92,.22)';ctx.fill();ctx.strokeStyle='#ffdb6a';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();
+    ctx.beginPath();ctx.moveTo(p.x,p.y-hh);ctx.lineTo(p.x+hw,p.y);ctx.lineTo(p.x,p.y+hh);ctx.lineTo(p.x-hw,p.y);ctx.closePath();ctx.strokeStyle='#000';ctx.lineWidth=.5;ctx.stroke();ctx.restore();
   }
   function drawHoeTarget() {
     if(cameraMode !== 'gameplay' || !document.querySelector('[data-dock="hoe"][aria-pressed="true"], [data-dock="hand"][aria-pressed="true"]'))return;
