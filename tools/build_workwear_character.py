@@ -4,7 +4,7 @@ from collections import deque
 from pathlib import Path
 from PIL import Image
 ROOT=Path(__file__).resolve().parents[1]
-for view,source,dest in [('front','outfit-simple-concept.png','main-character.png'),('back','outfit-back-source.png','main-character-back.png')]:
+for view,source,dest in [('front','outfit-simple-concept.png','main-character.png'),('back','outfit-back-angled-source.png','main-character-back.png')]:
     image=Image.open(ROOT/'preview/assets/character-redraw'/source).convert('RGBA')
     w,h=image.size; pix=image.load(); bg=pix[0,0][:3]; seen=bytearray(w*h); q=deque()
     def visit(x,y):
