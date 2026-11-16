@@ -541,10 +541,10 @@ public class HomeActivity extends Activity {
                 String facing=GameplayTarget.direction(route.get(0),route.get(1));
                 if(!facing.equals(world.characterFacing)) {
                     if(!worldStore.moveCharacter(world.id,world.characterColumn,world.characterRow,facing))throw new JSONException("Facing failed");
-                    applyActiveWorld();Toast.makeText(this,"Arah hadap berubah. Ketuk tujuan lagi untuk bergerak.",Toast.LENGTH_SHORT).show();return;
+                    applyActiveWorld();skyView.setGameplayRoute(route,1);Toast.makeText(this,"Arah hadap berubah. Ketuk tujuan lagi untuk bergerak.",Toast.LENGTH_SHORT).show();return;
                 }
             }
-            int generation=++portalWalkGeneration; skyView.setPortalWalkActive(true);
+            int generation=++portalWalkGeneration; skyView.setPortalWalkActive(true);skyView.setGameplayRoute(route,1);
             walkGroundStep(world,route,1,generation,world.characterFacing);
         } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }
@@ -557,6 +557,7 @@ public class HomeActivity extends Activity {
             } catch(JSONException e){skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Posisi tidak dapat disimpan.",Toast.LENGTH_SHORT).show();}
             return;
         }
+        skyView.setGameplayRoute(route,index);
         PortalTravel.Tile previous=route.get(index-1),next=route.get(index);
         String direction=next.column>previous.column?"E":next.column<previous.column?"W":next.row>previous.row?"S":"N";
         int duration=android.animation.ValueAnimator.areAnimatorsEnabled()
@@ -790,14 +791,14 @@ public class HomeActivity extends Activity {
             if(route==null){Toast.makeText(this,"Jalan menuju rumah terhalang.",Toast.LENGTH_SHORT).show();return;}
             String message="Di dekat rumah. Interaksi rumah belum tersedia.";
             if(route.size()==1){Toast.makeText(this,message,Toast.LENGTH_SHORT).show();return;}
-            int generation=++portalWalkGeneration;skyView.setPortalWalkActive(true);walkNearObjectStep(world,route,1,generation,world.characterFacing,message);
+            int generation=++portalWalkGeneration;skyView.setPortalWalkActive(true);skyView.setGameplayRoute(route,1);walkNearObjectStep(world,route,1,generation,world.characterFacing,message);
         } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }
     private void walkNearObject(WorldStore.World world,WorldStore.SurfaceObject object,int width,int height,String prompt) {
         PortalTravel.Terrain terrain=portalTerrain(world);PortalTravel.Tile start=new PortalTravel.Tile(world.characterColumn,world.characterRow);
         java.util.List<PortalTravel.Tile> route=PortalTravel.pathBeside(start,object.column,object.row,width,height,terrain,world.gridSize());
         if(route==null){Toast.makeText(this,"Jalan menuju objek terhalang.",Toast.LENGTH_SHORT).show();return;}
-        int generation=++portalWalkGeneration;skyView.setPortalWalkActive(true);walkNearObjectStep(world,route,1,generation,world.characterFacing,prompt);
+        int generation=++portalWalkGeneration;skyView.setPortalWalkActive(true);skyView.setGameplayRoute(route,1);walkNearObjectStep(world,route,1,generation,world.characterFacing,prompt);
     }
     private void walkNearObjectStep(WorldStore.World world,java.util.List<PortalTravel.Tile> route,int index,int generation,String facing,String prompt) {
         if(generation!=portalWalkGeneration || isFinishing() || isDestroyed() || !world.id.equals(worldStore.activeId()))return;
@@ -805,6 +806,7 @@ public class HomeActivity extends Activity {
             try{PortalTravel.Tile end=route.get(route.size()-1);if(!worldStore.moveCharacter(world.id,end.column,end.row,facing))throw new JSONException("Move failed");skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,prompt,Toast.LENGTH_SHORT).show();}
             catch(JSONException e){skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Karakter tidak dapat dipindahkan.",Toast.LENGTH_SHORT).show();}return;
         }
+        skyView.setGameplayRoute(route,index);
         PortalTravel.Tile previous=route.get(index-1),next=route.get(index);String direction=next.column>previous.column?"E":next.column<previous.column?"W":next.row>previous.row?"S":"N";
         int duration=android.animation.ValueAnimator.areAnimatorsEnabled()
                 ? CharacterGait.durationMillis(index,route.size()-1) : 1;
@@ -824,7 +826,7 @@ public class HomeActivity extends Activity {
             java.util.List<PortalTravel.Tile> route=PortalTravel.pathToPortal(new PortalTravel.Tile(source.characterColumn,source.characterRow),from,portalTerrain(source));
             if(route==null) {Toast.makeText(this,"Jalan ke depan portal terhalang.",Toast.LENGTH_SHORT).show();return;}
             final int generation=++portalWalkGeneration;
-            skyView.setPortalWalkActive(true);
+            skyView.setPortalWalkActive(true);skyView.setGameplayRoute(route,1);
             walkPortalStep(source,chosen,destination,route,1,generation,source.characterFacing);
         } catch(JSONException e) {Toast.makeText(this,"Data portal tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }
@@ -840,6 +842,7 @@ public class HomeActivity extends Activity {
             } catch(JSONException e) {skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Karakter tidak dapat dipindahkan.",Toast.LENGTH_SHORT).show();}
             return;
         }
+        skyView.setGameplayRoute(route,index);
         PortalTravel.Tile previous=route.get(index-1), next=route.get(index);
         String direction=next.column>previous.column ? "E" : next.column<previous.column ? "W" : next.row>previous.row ? "S" : "N";
         int duration=android.animation.ValueAnimator.areAnimatorsEnabled()

@@ -767,7 +767,13 @@ public final class WeatherSkyView extends View {
         float y=Math.max(0,Math.min(SCENE_HEIGHT-height,g.top-height+2));
         return new RectF(x,y,x+width,y+height);
     }
-    void setPortalWalkActive(boolean walking) { portalWalkActive=walking; if (!walking) characterStepping=false; invalidate(); }
+    private java.util.List<PortalTravel.Tile> gameplayRoute = java.util.Collections.emptyList();
+    private int routeNext = 1;
+    void setGameplayRoute(java.util.List<PortalTravel.Tile> route,int next) {
+        gameplayRoute=route==null?java.util.Collections.emptyList():new java.util.ArrayList<>(route);
+        routeNext=Math.max(1,next);invalidate();
+    }
+    void setPortalWalkActive(boolean walking) { portalWalkActive=walking; if (!walking) { characterStepping=false;setGameplayRoute(null,1); } invalidate(); }
     boolean portalMarkerVisible(PortalTravel.Portal portal) {
         return !portalWalkActive && showCharacter && characterColumn==portal.tile.column && characterRow==portal.tile.row && portal.edge.equals(characterFacing);
     }
@@ -923,6 +929,23 @@ public final class WeatherSkyView extends View {
         paint.setAlpha(255);
     }
 
+    private float routeX(float column,float row){return SCENE_WIDTH/2f+(column-row)*ISLAND_TILE_WIDTH/2f;}
+    private float routeY(float column,float row){return ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(column+row)*ISLAND_TILE_HEIGHT/2f;}
+    private void drawGameplayRoute(Canvas canvas) {
+        if(!gameplayMode || !showCharacter || gameplayRoute.size()<2 || routeNext>=gameplayRoute.size())return;
+        Path path=new Path();path.moveTo(routeX(visualColumn(),visualRow()),routeY(visualColumn(),visualRow()));
+        for(int i=routeNext;i<gameplayRoute.size();i++){PortalTravel.Tile tile=gameplayRoute.get(i);path.lineTo(routeX(tile.column,tile.row),routeY(tile.column,tile.row));}
+        paint.setStyle(Paint.Style.STROKE);paint.setStrokeCap(Paint.Cap.ROUND);paint.setStrokeJoin(Paint.Join.ROUND);
+        paint.setColor(Color.argb(166,40,61,48));paint.setStrokeWidth(2.6f);canvas.drawPath(path,paint);
+        paint.setColor(Color.rgb(255,242,166));paint.setStrokeWidth(1.1f);canvas.drawPath(path,paint);
+        paint.setStyle(Paint.Style.FILL);
+        for(int i=routeNext;i<gameplayRoute.size()-1;i++){PortalTravel.Tile tile=gameplayRoute.get(i);canvas.drawCircle(routeX(tile.column,tile.row),routeY(tile.column,tile.row),1.25f,paint);}
+        PortalTravel.Tile end=gameplayRoute.get(gameplayRoute.size()-1);float x=routeX(end.column,end.row),y=routeY(end.column,end.row),hw=ISLAND_TILE_WIDTH/2f-1,hh=ISLAND_TILE_HEIGHT/2f-.5f;
+        Path diamond=new Path();diamond.moveTo(x,y-hh);diamond.lineTo(x+hw,y);diamond.lineTo(x,y+hh);diamond.lineTo(x-hw,y);diamond.close();
+        paint.setColor(Color.argb(56,255,217,92));canvas.drawPath(diamond,paint);
+        paint.setStyle(Paint.Style.STROKE);paint.setColor(Color.rgb(255,219,106));paint.setStrokeWidth(1.5f);canvas.drawPath(diamond,paint);
+        paint.setStyle(Paint.Style.FILL);paint.setStrokeCap(Paint.Cap.BUTT);
+    }
     private void drawHoeTarget(Canvas canvas) {
         if(!gameplayMode || !hoeSelected || !showCharacter)return;
         int column=Math.round(visualColumn()),row=Math.round(visualRow());
@@ -1065,6 +1088,7 @@ public final class WeatherSkyView extends View {
                 sun.hourAngleDegrees, cloudCover, code, moon, cloudStates, sun);
         drawDecorativeFlowers(scene);
         drawRoads(scene);
+        drawGameplayRoute(scene);
         drawSurfaceObjectShadows(scene, shadowLight, cloudCover, code);
         drawHouses(scene,false);
         drawFences(scene, false);
