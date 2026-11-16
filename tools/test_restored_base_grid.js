@@ -7,10 +7,10 @@ const ctx=new Proxy({}, {get:(target,key)=>key in target?target[key]:()=>{},set:
 const canvas={getContext:()=>ctx,addEventListener(){},getBoundingClientRect:()=>({left:0,top:0,width:320,height:200})};
 let active={id:'base'},worldChanges=[],writes=0;
 const window={matchMedia:()=>({matches:false}),requestAnimationFrame(){},setInterval(){},addEventListener:(name,cb)=>{if(name==='worldchange')worldChanges.push(cb)},worldManager:{getActive:()=>active,getCharacter:()=>({visible:false}),updateCharacter:()=>{writes++}}};
-const sandbox={window,console,document:{getElementById:id=>id==='sky-canvas'?canvas:null,createElement:()=>canvas},navigator:{},performance:{now:()=>0},Image:function(){},Date,Map,fetch:async()=>({ok:false})};
+const sandbox={window,console,document:{getElementById:id=>id==='sky-canvas'?canvas:null,createElement:()=>({getContext:()=>ctx})},navigator:{},performance:{now:()=>0},Image:function(){},Date,Map,fetch:async()=>({ok:false})};
 vm.createContext(sandbox);vm.runInContext(src,sandbox);
 assert.equal(canvas.width,2560);assert.equal(canvas.height,1600);
-let grid=window.inspectGrid();assert.equal(grid.size,20);assert.equal(grid.tiles.length,400);assert.equal(grid.zoom,9/20*5,'gameplay is 5x default editor');
+let grid=window.inspectGrid();assert.equal(grid.size,20);assert.equal(grid.tiles.length,400);assert.equal(grid.zoom,9/20*2.5,'gameplay is 2.5x default editor');
 window.sceneEditing.setMode('editor');grid=window.inspectGrid();assert.equal(grid.zoom,9/20);
 assert(grid.tiles.some(t=>t.coordinate==='A1'));assert(grid.tiles.some(t=>t.coordinate==='T20'));
 assert.equal(new Set(grid.tiles.map(t=>t.coordinate)).size,400);
@@ -25,7 +25,7 @@ const screenX=160+(tile.x-160)*zoom+960, screenY=anchor+(tile.y-anchor)*zoom-600
 const local=camera.toLocal(screenX,screenY);
 assert(Math.abs(local.x-tile.x)<1e-8 && Math.abs(local.y-tile.y)<1e-8,'camera inverse handles zoom and three viewport pan');
 assert.equal(camera.setCamera(NaN,0,0),false);assert.equal(camera.camera().zoom,1.4);
-camera.setCamera(6,7,8);assert.equal(camera.camera().zoom,5);camera.setMode('gameplay');assert.equal(window.inspectGrid().zoom,9/20*5);camera.setMode('editor');assert.equal(camera.camera().zoom,5);assert.equal(camera.camera().panX,7);camera.setCamera(0,0,0);assert.equal(camera.camera().zoom,.1);
+camera.setCamera(6,7,8);assert.equal(camera.camera().zoom,5);camera.setMode('gameplay');assert.equal(window.inspectGrid().zoom,9/20*2.5);camera.setMode('editor');assert.equal(camera.camera().zoom,5);assert.equal(camera.camera().panX,7);camera.setCamera(0,0,0);assert.equal(camera.camera().zoom,.1);
 active={id:'legacy'};worldChanges.forEach(f=>f());grid=window.inspectGrid();assert.equal(grid.size,9);assert.equal(grid.zoom,1);assert.equal(grid.tiles.length,81);assert(grid.tiles.some(t=>t.coordinate==='I9'));
 active={id:'base'};worldChanges.forEach(f=>f());assert.equal(window.inspectGrid().tiles.length,400);assert.equal(writes,0,'switching render geometry never writes world data');
 const java=fs.readFileSync(path.join(__dirname,'../app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java'),'utf8');assert(java.includes('worldId == null || "base".equals(worldId) ? 20 : 9'));

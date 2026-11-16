@@ -1,6 +1,8 @@
 (() => {
   const canvas = document.getElementById('sky-canvas');
-  const ctx = canvas?.getContext('2d', { alpha: false });
+  const displayCtx = canvas?.getContext('2d', { alpha: false });
+  const renderCanvas = document.createElement('canvas');
+  const ctx = renderCanvas.getContext('2d', { alpha: false });
   const weatherModeButton = document.getElementById('weather-cycle-button');
   const weatherModeLabel = document.getElementById('weather-mode-label');
   const islandElevationInput = document.getElementById('island-camera-elevation');
@@ -8,18 +10,23 @@
   const islandZoomInput = document.getElementById('island-camera-zoom');
   const islandZoomOutput = document.getElementById('island-camera-zoom-value');
   const islandCameraReset = document.getElementById('island-camera-reset');
-  if (!canvas || !ctx) return;
+  if (!canvas || !ctx || !displayCtx) return;
 
   const WIDTH = 320;
   const HEIGHT = 200;
   // Preserve the existing pixel-art grid while rendering to the MatePad Mini display resolution.
   const RENDER_SCALE = 2;
   const BACKING_SCALE = 8;
+  // Draw the expensive scene at half the device resolution, then upscale once.
+  const SCENE_RENDER_SCALE = 4;
   const RENDER_CELL = 1 / RENDER_SCALE;
   canvas.width = WIDTH * BACKING_SCALE;
   canvas.height = HEIGHT * BACKING_SCALE;
+  renderCanvas.width = WIDTH * SCENE_RENDER_SCALE;
+  renderCanvas.height = HEIGHT * SCENE_RENDER_SCALE;
   ctx.imageSmoothingEnabled = false;
-  ctx.scale(BACKING_SCALE, BACKING_SCALE);
+  ctx.scale(SCENE_RENDER_SCALE, SCENE_RENDER_SCALE);
+  displayCtx.imageSmoothingEnabled = false;
   // Reference-derived stationary front view; a single logical character shared by worlds.
   // The per-world visibility flag is currently a preview-only setting.
   const grassDetailImage = new Image();
@@ -1859,6 +1866,18 @@
     if (REDUCED_MOTION) drawFrame();
   }
 
+  // Limit expensive canvas repaints, and keep only one animation loop even after manual redraws.
+  let framePending = false, lastAnimatedFrame = -Infinity;
+  function scheduleFrame() {
+    if (REDUCED_MOTION || framePending) return;
+    framePending = true;
+    window.requestAnimationFrame(timestamp => {
+      framePending = false;
+      if (timestamp - lastAnimatedFrame < 1000 / 8) { scheduleFrame(); return; }
+      lastAnimatedFrame = timestamp;
+      drawFrame();
+    });
+  }
   function drawFrame() {
     const now = Date.now();
     const skyNow = getSceneTimestamp(now);
@@ -1904,7 +1923,8 @@
     // shadow still showed on the grass. Edge clamping already keeps every sprite in frame.
     // Foreground cloud sprites are hidden as well.
     drawPrecipitation(sceneWeather);
-    if (!REDUCED_MOTION) window.requestAnimationFrame(drawFrame);
+    displayCtx.drawImage(renderCanvas, 0, 0, canvas.width, canvas.height);
+    scheduleFrame();
   }
 
   function getDeviceLocation() {
@@ -2046,10 +2066,10 @@
     }, true);
   }
 
-  // Gameplay uses five times the editor's default fit scale, independent of its camera controls.
+  // Gameplay uses 2.5 times the editor's default fit scale, independent of its camera controls.
   function applyGameplayCamera() {
     editorZoom = 1;
-    islandZoom = baseFitZoom() * 5;
+    islandZoom = baseFitZoom() * 2.5;
     const character = window.worldManager?.getCharacter();
     const target = character?.visible ? characterCentre(character) : {x: WIDTH / 2, y: islandCenterY};
     const [anchorX, anchorY] = islandAnchor();
