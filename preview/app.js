@@ -34,10 +34,10 @@
   grassDetailImage.src = './assets/island-grass-detail.png';
   const playerImage = new Image();
   playerImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
-  playerImage.src = './assets/main-character.png?v=backpack-1';
+  playerImage.src = './assets/main-character.png?v=backpack-2';
   const playerBackImage = new Image();
   playerBackImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
-  playerBackImage.src = './assets/main-character-back.png?v=backpack-1';
+  playerBackImage.src = './assets/main-character-back.png?v=backpack-2';
   const houseImage = new Image();
   houseImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
   houseImage.src = './assets/house.png';
