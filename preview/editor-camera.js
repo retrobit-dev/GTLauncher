@@ -11,7 +11,7 @@
     const {zoom} = scene.camera();
     value.value = `${Math.round(zoom * 100)}%`;
     value.textContent = value.value;
-    $('editor-zoom-in').disabled = zoom >= 2;
+    $('editor-zoom-in').disabled = zoom >= 5;
     $('editor-zoom-out').disabled = zoom <= 0.1;
     pan.setAttribute('aria-pressed', String(panning));
     canvas.classList.toggle('is-panning', panning && stage.dataset.mode === 'editor');

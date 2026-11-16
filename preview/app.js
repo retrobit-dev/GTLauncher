@@ -12,13 +12,14 @@
 
   const WIDTH = 320;
   const HEIGHT = 200;
-  // The 2x backing store keeps half-scene-unit pixel clusters crisp.
+  // Preserve the existing pixel-art grid while rendering to the MatePad Mini display resolution.
   const RENDER_SCALE = 2;
+  const BACKING_SCALE = 8;
   const RENDER_CELL = 1 / RENDER_SCALE;
-  canvas.width = WIDTH * RENDER_SCALE;
-  canvas.height = HEIGHT * RENDER_SCALE;
+  canvas.width = WIDTH * BACKING_SCALE;
+  canvas.height = HEIGHT * BACKING_SCALE;
   ctx.imageSmoothingEnabled = false;
-  ctx.scale(RENDER_SCALE, RENDER_SCALE);
+  ctx.scale(BACKING_SCALE, BACKING_SCALE);
   // Reference-derived stationary front view; a single logical character shared by worlds.
   // The per-world visibility flag is currently a preview-only setting.
   const grassDetailImage = new Image();
@@ -1823,7 +1824,7 @@
   function applyIslandCameraSettings() {
     islandCameraElevation = clamp(Number(islandElevationInput?.value ?? DEFAULT_ISLAND_CAMERA_ELEVATION),
       MIN_ISLAND_CAMERA_ELEVATION, MAX_ISLAND_CAMERA_ELEVATION);
-    editorZoom = clamp(Number(islandZoomInput?.value ?? 100) / 100, 0.1, 2);
+    editorZoom = clamp(Number(islandZoomInput?.value ?? 100) / 100, 0.1, 5);
     islandZoom = baseFitZoom() * editorZoom;
     rebuildIslandProjection();
     if (islandElevationOutput) islandElevationOutput.textContent = `${Math.round(islandCameraElevation)}°`;
@@ -2018,7 +2019,7 @@
     camera() { return {zoom: editorZoom, panX: cameraPanX, panY: cameraPanY}; },
     setCamera(zoom, panX, panY) {
       if (![zoom, panX, panY].every(Number.isFinite)) return false;
-      editorZoom = clamp(zoom, 0.1, 2);
+      editorZoom = clamp(zoom, 0.1, 5);
       cameraPanX = panX; cameraPanY = panY;
       islandZoom = baseFitZoom() * editorZoom;
       if (REDUCED_MOTION) drawFrame();

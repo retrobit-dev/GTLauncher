@@ -190,6 +190,8 @@ body {
 .edit-status { color: #805315; font-size: 12px; font-weight: 700; }
 #object-select-button[hidden], #object-select-house[hidden], #object-details-button[hidden], .edit-status[hidden] { display: none; }
 .sky-canvas.is-editing { touch-action: none; cursor: crosshair; }
+.sky-canvas.is-panning { touch-action: none; cursor: grab; }
+.sky-canvas.is-panning:active { cursor: grabbing; }
 
 .object-history-button:disabled { opacity: .38; cursor: not-allowed; }
 .object-history-button:not(:disabled) { background: #e2eadf; color: #314f3b; }
