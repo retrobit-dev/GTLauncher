@@ -529,7 +529,7 @@ public class HomeActivity extends Activity {
     private void showHandObjectMenu(String worldId,WorldStore.House house,WorldStore.SurfaceObject object,PortalTravel.Portal portal) {
         boolean small=WorldStore.portableSmall(object),movable=house!=null || small;
         java.util.List<String> actions=new java.util.ArrayList<>();
-        actions.add(small?"Ambil ke tas":"Ambil — tidak tersedia");
+        actions.add(small?"Ambil ke tas (belum bisa ditaruh kembali)":"Ambil — tidak tersedia");
         actions.add(movable?"Pindahkan":"Pindahkan — tidak tersedia");
         if(object!=null && object.type.equals("tree"))actions.add("Panen pohon");
         else if(object!=null && (object.type.equals("storage-box") || object.type.equals("selling-box")))actions.add("Buka box");
@@ -540,8 +540,14 @@ public class HomeActivity extends Activity {
                 try {
                     if(which==0) {
                         if(!small){Toast.makeText(this,"Objek ini tidak dapat diambil.",Toast.LENGTH_SHORT).show();return;}
-                        if(!worldStore.takeSelectedObject(worldId,object))throw new JSONException("Object changed");
-                        applyActiveWorld();Toast.makeText(this,"Objek masuk ke tas.",Toast.LENGTH_SHORT).show();
+                        new AlertDialog.Builder(this).setTitle("Ambil objek?")
+                            .setMessage("Objek akan disimpan di tas perangkat ini. Menaruh kembali objek dari tas belum tersedia.")
+                            .setPositiveButton("Ambil",(confirm,button)->{
+                                try {
+                                    if(!worldStore.takeSelectedObject(worldId,object))throw new JSONException("Object changed");
+                                    applyActiveWorld();Toast.makeText(this,"Objek masuk ke tas.",Toast.LENGTH_SHORT).show();
+                                } catch(JSONException | ClassCastException error){Toast.makeText(this,"Objek tidak berubah; periksa data world dan tas.",Toast.LENGTH_LONG).show();}
+                            }).setNegativeButton("Batal",null).show();
                     } else if(which==1) {
                         if(!movable){Toast.makeText(this,"Objek ini belum dapat dipindahkan.",Toast.LENGTH_SHORT).show();return;}
                         movingObjectWorld=worldId;movingHouse=house;movingSurface=object;
