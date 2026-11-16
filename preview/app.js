@@ -73,7 +73,7 @@
   let islandZoom = 9 / ISLAND_GRID_SIZE;
   let editorZoom = 1, cameraPanX = 0, cameraPanY = 0;
   let cameraMode = 'gameplay', savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
-  let gameplayFollowCentre = null;
+  let gameplayFollowCentre = null, gameplayFollowTime = null, gameplayCameraMoving = false;
   let cameraWorldId = window.worldManager?.getActive()?.id;
   function baseFitZoom() { return 9 / ISLAND_GRID_SIZE; }
   // Interior tile faces stay shallow; exposed perimeter faces extend through the grass band.
@@ -1925,12 +1925,13 @@
     framePending = true;
     window.requestAnimationFrame(timestamp => {
       framePending = false;
-      if (timestamp - lastAnimatedFrame < 1000 / 8) { scheduleFrame(); return; }
+      if (timestamp - lastAnimatedFrame < 1000 / (gameplayDraft || gameplayCameraMoving ? 30 : 8)) { scheduleFrame(); return; }
       lastAnimatedFrame = timestamp;
       drawFrame();
     });
   }
   function drawFrame() {
+    if (cameraMode === 'gameplay') applyGameplayCamera();
     const now = Date.now();
     const skyNow = getSceneTimestamp(now);
     const sceneWeather = getSceneWeather();
@@ -2083,13 +2084,13 @@
     const nextWorldId = window.worldManager?.getActive()?.id;
     if (nextWorldId !== cameraWorldId) {
       cameraWorldId = nextWorldId;
-      gameplayFollowCentre = null;
+      gameplayFollowCentre = null; gameplayFollowTime = null; gameplayCameraMoving = false;
       savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
     }
     const nextSize = nextWorldId === 'base' ? 50 : (window.worldManager?.getActive()?.gridSize || 9);
     if (nextSize !== ISLAND_GRID_SIZE) {
       ISLAND_GRID_SIZE = nextSize;
-      gameplayFollowCentre = null;
+      gameplayFollowCentre = null; gameplayFollowTime = null; gameplayCameraMoving = false;
       editorZoom = 1; cameraPanX = 0; cameraPanY = 0;
       islandZoom = baseFitZoom();
       savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
@@ -2128,13 +2129,19 @@
     islandZoom = baseFitZoom() * 12.5;
     const character = gameplayDraft || window.worldManager?.getCharacter();
     const target = character?.visible ? characterCentre(character) : {x: WIDTH / 2, y: islandCenterY};
-    // A small screen-space dead zone keeps short walks visible while the camera
-    // continues following the character over longer distances.
-    if (!gameplayFollowCentre || !character?.visible) gameplayFollowCentre = {...target};
-    else {
+    // Ease toward the closest point of the dead zone, independently of frame rate.
+    const now=performance.now(), dt=gameplayFollowTime===null?0:clamp((now-gameplayFollowTime)/1000,0,.1);
+    gameplayFollowTime=now;
+    if (!gameplayFollowCentre || !character?.visible || Math.hypot(target.x-gameplayFollowCentre.x,target.y-gameplayFollowCentre.y)>ISLAND_TILE_WIDTH*6) {
+      gameplayFollowCentre={...target};gameplayCameraMoving=false;
+    } else {
       const marginX=28/islandZoom, marginY=16/islandZoom;
-      gameplayFollowCentre.x=clamp(gameplayFollowCentre.x, target.x-marginX, target.x+marginX);
-      gameplayFollowCentre.y=clamp(gameplayFollowCentre.y, target.y-marginY, target.y+marginY);
+      const desiredX=clamp(gameplayFollowCentre.x,target.x-marginX,target.x+marginX);
+      const desiredY=clamp(gameplayFollowCentre.y,target.y-marginY,target.y+marginY);
+      const factor=REDUCED_MOTION?1:1-Math.exp(-dt/.16);
+      gameplayFollowCentre.x+=(desiredX-gameplayFollowCentre.x)*factor;
+      gameplayFollowCentre.y+=(desiredY-gameplayFollowCentre.y)*factor;
+      gameplayCameraMoving=Math.hypot(desiredX-gameplayFollowCentre.x,desiredY-gameplayFollowCentre.y)>.01;
     }
     const [anchorX, anchorY] = islandAnchor();
     cameraPanX = WIDTH / 2 - anchorX - (gameplayFollowCentre.x - anchorX) * islandZoom;
@@ -2146,7 +2153,7 @@
     if (mode === 'gameplay') {
       savedEditorCamera = {zoom: editorZoom, panX: cameraPanX, panY: cameraPanY};
       cameraMode = mode;
-      gameplayFollowCentre = null;
+      gameplayFollowCentre = null; gameplayFollowTime = null; gameplayCameraMoving = false;
       applyGameplayCamera();
     } else {
       cameraMode = mode;
