@@ -1,10 +1,10 @@
 # Peran karakter dan arah desain
 
-Karakter menggabungkan peran **farmer, builder, adventurer, dan peternak**. Untuk pekerjaan berikutnya, sesuaikan desain, ikon, animasi, dan fitur dengan gabungan peran ini serta gaya game yang sudah disetujui; ikuti arahan spesifik pengguna. Jangan menganggap setiap fitur harus mencakup ketiga peran sekaligus.
+Karakter menggabungkan peran **farmer, builder, adventurer, peternak, dan fisherman**. Untuk pekerjaan berikutnya, sesuaikan desain, ikon, animasi, dan fitur dengan gabungan peran ini serta gaya game yang sudah disetujui; ikuti arahan spesifik pengguna. Jangan menganggap setiap fitur harus mencakup ketiga peran sekaligus.
 
 # Aturan pembuatan ikon dock
 
-Gunakan gaya pixel art yang selaras dengan karakter dan konsep glove terpilih (`preview/assets/character-redraw/glove-pixel-concept.png`): siluet jelas pada ukuran dock, bentuk dan warna bersahaja, detail yang terbaca tanpa berlebihan, serta sesuai peran farmer, builder, adventurer dan peternak. Jadikan referensi visual pengguna sebagai acuan saat relevan. Tawarkan konsep terlebih dahulu bila diminta; jangan mengganti ikon lain tanpa permintaan. Untuk ikon yang disetujui, siapkan latar transparan dan ukuran dock yang sesuai, terapkan secara konsisten di preview dan Android tanpa mengubah fungsinya, lalu uji keterbacaan, tata letak dan interaksi. Simpan sumber dan cadangan sebelum mengganti aset; jelaskan jika belum diuji pada perangkat fisik.
+Gunakan gaya pixel art yang selaras dengan karakter dan konsep glove terpilih (`preview/assets/character-redraw/glove-pixel-concept.png`): siluet jelas pada ukuran dock, bentuk dan warna bersahaja, detail yang terbaca tanpa berlebihan, serta sesuai peran farmer, builder, adventurer, peternak dan fisherman. Jadikan referensi visual pengguna sebagai acuan saat relevan. Tawarkan konsep terlebih dahulu bila diminta; jangan mengganti ikon lain tanpa permintaan. Untuk ikon yang disetujui, siapkan latar transparan dan ukuran dock yang sesuai, terapkan secara konsisten di preview dan Android tanpa mengubah fungsinya, lalu uji keterbacaan, tata letak dan interaksi. Simpan sumber dan cadangan sebelum mengganti aset; jelaskan jika belum diuji pada perangkat fisik.
 
 # Aturan pembuatan animasi
 
