@@ -10,14 +10,14 @@ const window={matchMedia:()=>({matches:false}),requestAnimationFrame(){},setInte
 const sandbox={window,console,document:{getElementById:id=>id==='sky-canvas'?canvas:null,createElement:()=>({getContext:()=>ctx})},navigator:{},performance:{now:()=>0},Image:function(){},Date,Map,fetch:async()=>({ok:false})};
 vm.createContext(sandbox);vm.runInContext(src,sandbox);
 assert.equal(canvas.width,2560);assert.equal(canvas.height,1600);
-let grid=window.inspectGrid();assert.equal(grid.size,50);assert.equal(grid.tiles.length,2500);assert.equal(grid.zoom,9/50*10,'gameplay is 10x default editor');
-window.sceneEditing.setMode('editor');grid=window.inspectGrid();assert.equal(grid.zoom,9/50);
+let grid=window.inspectGrid();assert.equal(grid.size,50);assert.equal(grid.tiles.length,2500);assert.equal(grid.zoom,9/50*7.5,'gameplay is 7.5x editor base scale');
+window.sceneEditing.setMode('editor');grid=window.inspectGrid();assert.equal(grid.zoom,9/50*7.5);
 assert(grid.tiles.some(t=>t.coordinate==='A1'));assert(grid.tiles.some(t=>t.coordinate==='AX50'));
 assert.equal(new Set(grid.tiles.map(t=>t.coordinate)).size,2500);
 const counts=[0,0,0,0];for(const tile of grid.tiles)counts[grid.variant(tile.column,tile.row)]++;assert(counts[0]>750 && counts[0]<1750);assert(counts.slice(1).every(n=>n>0));
 const first=grid.tiles.find(t=>t.coordinate==='A1'),last=grid.tiles.find(t=>t.coordinate==='AX50');
 assert.equal(first.column,0);assert.equal(first.row,0);assert.equal(last.column,49);assert.equal(last.row,49);
-assert(Math.abs((50*28)*grid.zoom-252)<1e-9,'Base fits legacy preview width');
+assert.equal(window.sceneEditing.camera().zoom,7.5,'editor starts at 7.5');
 const camera=window.sceneEditing;
 assert.equal(camera.setCamera(1.4,960,-600),true);
 const tile=grid.tiles.find(t=>t.coordinate==='J10'),anchor=182,zoom=.18*1.4;
@@ -25,8 +25,8 @@ const screenX=160+(tile.x-160)*zoom+960, screenY=anchor+(tile.y-anchor)*zoom-600
 const local=camera.toLocal(screenX,screenY);
 assert(Math.abs(local.x-tile.x)<1e-8 && Math.abs(local.y-tile.y)<1e-8,'camera inverse handles zoom and three viewport pan');
 assert.equal(camera.setCamera(NaN,0,0),false);assert.equal(camera.camera().zoom,1.4);
-camera.setCamera(21,7,8);assert.equal(camera.camera().zoom,20);camera.setMode('gameplay');assert.equal(window.inspectGrid().zoom,9/50*10);camera.setMode('editor');assert.equal(camera.camera().zoom,20);assert.equal(camera.camera().panX,7);camera.setCamera(0,0,0);assert.equal(camera.camera().zoom,.5);
-active={id:'legacy'};worldChanges.forEach(f=>f());grid=window.inspectGrid();assert.equal(grid.size,9);assert.equal(grid.zoom,1);assert.equal(grid.tiles.length,81);assert(grid.tiles.some(t=>t.coordinate==='I9'));
+camera.setCamera(21,7,8);assert.equal(camera.camera().zoom,20);camera.setMode('gameplay');assert.equal(window.inspectGrid().zoom,9/50*7.5);camera.setMode('editor');assert.equal(camera.camera().zoom,20);assert.equal(camera.camera().panX,7);camera.setCamera(0,0,0);assert.equal(camera.camera().zoom,.5);
+active={id:'legacy'};worldChanges.forEach(f=>f());grid=window.inspectGrid();assert.equal(grid.size,9);assert.equal(grid.zoom,7.5);assert.equal(grid.tiles.length,81);assert(grid.tiles.some(t=>t.coordinate==='I9'));
 active={id:'base'};worldChanges.forEach(f=>f());assert.equal(window.inspectGrid().tiles.length,2500);assert.equal(writes,0,'switching render geometry never writes world data');
 const java=fs.readFileSync(path.join(__dirname,'../app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java'),'utf8');assert(java.includes('worldId == null || "base".equals(worldId) ? 50 : 9'));
 console.log('Base World A1–AX50, legacy A1–I9, fit and world-data isolation: OK; Android grid logic present');

@@ -20,8 +20,8 @@ public class IslandProjectionTest {
    }
   }
  }
- @Test public void gameplayCameraUsesTenTimesEditorZoomAndInverts() {
-  assertEquals(10f,IslandProjection.modeZoom(true),0);assertEquals(1f,IslandProjection.modeZoom(false),0);assertEquals(50f,IslandProjection.renderZoom(true),0);assertEquals(5f,IslandProjection.renderZoom(false),0);
+ @Test public void gameplayCameraUsesSevenPointFiveTimesEditorZoomAndInverts() {
+  assertEquals(7.5f,IslandProjection.modeZoom(true),0);assertEquals(1f,IslandProjection.modeZoom(false),0);assertEquals(37.5f,IslandProjection.renderZoom(true),0);assertEquals(5f,IslandProjection.renderZoom(false),0);
   for(float width:new float[]{640,960,2560}) for(float source:new float[]{90,160,230}) {
    float scale=IslandProjection.scale(width,320)*IslandProjection.renderZoom(true);
    float destination=160;
@@ -29,7 +29,7 @@ public class IslandProjectionTest {
     float screen=(destination+(value-source)*scale)*width/320;
     assertEquals(value,IslandProjection.inverse(screen,width,320,source,destination,IslandProjection.renderZoom(true)),0.001f);
    }
-   assertEquals(1600f,28*scale*width/320,0.001f);
+   assertEquals(1200f,28*scale*width/320,0.001f);
   }
  }
 }

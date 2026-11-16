@@ -9,7 +9,7 @@ w.matchMedia=()=>({matches:false});w.requestAnimationFrame=()=>0;w.fetch=async()
 const canvas=d.getElementById('sky-canvas'),surface=d.getElementById('editor-pan-surface');
 canvas.getBoundingClientRect=()=>({left:0,top:0,width:640,height:400});surface.setPointerCapture=()=>{};
 for(const name of ['worlds.js','object-editor.js','app.js','preview-modes.js','editor-camera.js'])w.eval(fs.readFileSync(path.join(root,name),'utf8'));
-d.getElementById('mode-map-editor').click();const before=w.sceneEditing.toLocal(320,200);d.getElementById('editor-pan').click();
+d.getElementById('mode-map-editor').click();assert.equal(w.sceneEditing.camera().zoom,7.5);assert.equal(d.getElementById('editor-zoom-value').textContent,'7.5');const before=w.sceneEditing.toLocal(320,200);d.getElementById('editor-pan').click();
 assert.equal(surface.hidden,false);
 function pointer(type,x,y){const e=new w.MouseEvent(type,{bubbles:true,cancelable:true,clientX:x,clientY:y,button:0});Object.defineProperties(e,{pointerId:{value:1},pointerType:{value:'touch'}});surface.dispatchEvent(e);}
 pointer('pointerdown',10,20);pointer('pointermove',210,120);pointer('pointerup',210,120);
@@ -26,4 +26,5 @@ const screenX=(160+(tile.x-160)*camera.renderZoom+camera.panX)*2,screenY=(182+(t
 const inverse=w.sceneEditing.toLocal(screenX,screenY);assert(Math.abs(inverse.x-tile.x)<1e-7 && Math.abs(inverse.y-tile.y)<1e-7,'20x keeps pointer coordinates aligned');
 d.getElementById('mode-gameplay').click();assert.equal(surface.hidden,true);
 d.getElementById('mode-map-editor').click();assert.equal(w.sceneEditing.camera().panX,140);assert.equal(w.sceneEditing.camera().panY,70);assert.equal(w.sceneEditing.camera().zoom,20);assert.equal(d.getElementById('editor-zoom-value').textContent,'20');
+d.getElementById('editor-fit').click();assert.equal(w.sceneEditing.camera().zoom,7.5);assert.equal(d.getElementById('editor-zoom-value').textContent,'7.5');
 dom.window.close();console.log('Integrated editor touch pan and mode switching: OK');

@@ -71,8 +71,8 @@
     * Math.sin(islandCameraElevation * Math.PI / 180);
   // Fit the larger locked Base in the existing preview viewport; legacy worlds retain their scale.
   let islandZoom = 9 / ISLAND_GRID_SIZE;
-  let editorZoom = 1, cameraPanX = 0, cameraPanY = 0;
-  let cameraMode = 'gameplay', savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
+  let editorZoom = 7.5, cameraPanX = 0, cameraPanY = 0;
+  let cameraMode = 'gameplay', savedEditorCamera = {zoom: 7.5, panX: 0, panY: 0};
   let gameplayFollowCentre = null, gameplayFollowTime = null, gameplayCameraMoving = false;
   let cameraWorldId = window.worldManager?.getActive()?.id;
   function baseFitZoom() { return 9 / ISLAND_GRID_SIZE; }
@@ -1909,7 +1909,7 @@
   function applyIslandCameraSettings() {
     islandCameraElevation = clamp(Number(islandElevationInput?.value ?? DEFAULT_ISLAND_CAMERA_ELEVATION),
       MIN_ISLAND_CAMERA_ELEVATION, MAX_ISLAND_CAMERA_ELEVATION);
-    editorZoom = clamp(Number(islandZoomInput?.value ?? 100) / 100, 0.5, 20);
+    editorZoom = clamp(Number(islandZoomInput?.value ?? 750) / 100, 0.5, 20);
     islandZoom = baseFitZoom() * editorZoom;
     rebuildIslandProjection();
     if (islandElevationOutput) islandElevationOutput.textContent = `${Math.round(islandCameraElevation)}°`;
@@ -2064,13 +2064,13 @@
   if (islandElevationOutput) {
     islandElevationOutput.textContent = `${DEFAULT_ISLAND_CAMERA_ELEVATION}°`;
   }
-  if (islandZoomInput) islandZoomInput.value = '100';
-  if (islandZoomOutput) islandZoomOutput.textContent = '1';
+  if (islandZoomInput) islandZoomInput.value = '750';
+  if (islandZoomOutput) islandZoomOutput.textContent = '7.5';
   if (islandZoomInput) islandZoomInput.addEventListener('input', applyIslandCameraSettings);
   if (islandCameraReset) {
     islandCameraReset.addEventListener('click', () => {
       if (islandElevationInput) islandElevationInput.value = String(DEFAULT_ISLAND_CAMERA_ELEVATION);
-      if (islandZoomInput) islandZoomInput.value = '100';
+      if (islandZoomInput) islandZoomInput.value = '750';
       applyIslandCameraSettings();
     });
   }
@@ -2085,15 +2085,15 @@
     if (nextWorldId !== cameraWorldId) {
       cameraWorldId = nextWorldId;
       gameplayFollowCentre = null; gameplayFollowTime = null; gameplayCameraMoving = false;
-      savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
+      savedEditorCamera = {zoom: 7.5, panX: 0, panY: 0};
     }
     const nextSize = nextWorldId === 'base' ? 50 : (window.worldManager?.getActive()?.gridSize || 9);
     if (nextSize !== ISLAND_GRID_SIZE) {
       ISLAND_GRID_SIZE = nextSize;
       gameplayFollowCentre = null; gameplayFollowTime = null; gameplayCameraMoving = false;
-      editorZoom = 1; cameraPanX = 0; cameraPanY = 0;
-      islandZoom = baseFitZoom();
-      savedEditorCamera = {zoom: 1, panX: 0, panY: 0};
+      editorZoom = 7.5; cameraPanX = 0; cameraPanY = 0;
+      islandZoom = baseFitZoom() * editorZoom;
+      savedEditorCamera = {zoom: 7.5, panX: 0, panY: 0};
       rebuildIslandProjection();
     }
     if (cameraMode === 'gameplay') applyGameplayCamera();
@@ -2123,10 +2123,10 @@
     }, true);
   }
 
-  // Gameplay uses 10 times the editor's default fit scale, independent of its camera controls.
+  // Gameplay uses 7.5 times the editor's default fit scale, independent of its camera controls.
   function applyGameplayCamera() {
     editorZoom = 1;
-    islandZoom = baseFitZoom() * 10;
+    islandZoom = baseFitZoom() * 7.5;
     const character = gameplayDraft || window.worldManager?.getCharacter();
     const target = character?.visible ? characterCentre(character) : {x: WIDTH / 2, y: islandCenterY};
     // Ease toward the closest point of the dead zone, independently of frame rate.
