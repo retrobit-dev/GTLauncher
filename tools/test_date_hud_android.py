@@ -21,7 +21,7 @@ assert 'drawerScreen.setVisibility(View.VISIBLE)' in drawer
 assert 'homeDateHud.setVisibility(View.GONE)' not in drawer
 print('Android date HUD XML and drawer integration OK (static only)')
 
-assert calendar.get(ns+'layout_width') == '48dp' and calendar.get(ns+'layout_height') == '56dp'
+assert calendar.get(ns+'layout_width') == '48dp' and calendar.get(ns+'layout_height') == '51dp'
 time=hud.find(".//*[@"+ns+"id='@+id/hud_time']")
 panel=next(el for el in hud.iter() if time in list(el))
 assert panel.get(ns+'layout_width')=='85dp' and panel.get(ns+'layout_height')=='0dp' and panel.get(ns+'layout_weight')=='1'
@@ -47,3 +47,7 @@ for file, color in [('bg_date_hud_calendar.xml','#94BD2B'),('bg_date_hud_calenda
     assert header.get(ns+'left') == header.get(ns+'right') == header.get(ns+'top') == '2dp'
     assert header.get(ns+'height') == '8dp'
     assert header.find('shape/solid').get(ns+'color') == color
+
+# Calendar header ends at 2dp + 8dp; the adjacent readout starts there and ends with the calendar.
+stack=next(el for el in hud.iter() if panel in list(el))
+assert stack.get(ns+'layout_marginTop') == '10dp' and stack.get(ns+'layout_height') == '41dp'

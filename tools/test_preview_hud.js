@@ -48,3 +48,7 @@ assert.throws(()=>season.classify(rainfall(0),new Date('2026-12-01T12:00:00Z')))
  batteryInfo.level=NaN;listeners.levelchange();assert.equal(doc.getElementById('hud-battery').textContent,'--.--');other.window.close();
  console.log('HUD phase, clock, two-decimal battery states, season validation, dock and assets: OK');
 })().catch(error=>{console.error(error);process.exitCode=1});
+
+const css = require('node:fs').readFileSync(require('node:path').join(__dirname,'../preview/styles.css'),'utf8');
+assert.match(css,/\.clock-readouts\s*\{[^}]*height:calc\(85% - 1\.4px\)/);
+assert.match(css,/\.hud-calendar::before\s*\{[^}]*height:15%/);
