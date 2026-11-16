@@ -4,13 +4,20 @@
   const phase = $('hud-phase'), season = $('hud-season'), battery = $('hud-battery');
   if (!phase || !season || !battery) return;
   const pad = n => String(n).padStart(2,'0');
-  let seasonKey = '', lastFetch = 0, requestId = 0;
+  let seasonKey = '', lastFetch = 0, requestId = 0, currentSeason = 'unknown';
+  // Gameplay reads the same validated estimate as the HUD; never infer a season from the month.
+  window.previewSeason = () => currentSeason;
   function showSeason(value) {
     const labels={wet:'Perkiraan musim hujan',dry:'Perkiraan musim kemarau',unknown:'Musim belum diketahui'};
-    season.textContent=labels[value];
+    currentSeason=Object.hasOwn(labels,value)?value:'unknown';
+    season.textContent=labels[currentSeason];
+    window.dispatchEvent(new Event('previewseasonchange'));
   }
   async function refreshSeason(loc,now) {
-    if (!loc || !Number.isFinite(loc.latitude) || !Number.isFinite(loc.longitude)) return;
+    if (!loc || !Number.isFinite(loc.latitude) || !Number.isFinite(loc.longitude)) {
+      if(seasonKey || currentSeason!=='unknown'){requestId++;seasonKey='';lastFetch=0;showSeason('unknown');}
+      return;
+    }
     const key=`${loc.latitude.toFixed(3)},${loc.longitude.toFixed(3)}`;
     if (key===seasonKey && now.getTime()-lastFetch<12*60*60*1000) return;
     if(key!==seasonKey) showSeason('unknown');
@@ -23,7 +30,7 @@
       if(!response.ok)throw Error('Rainfall unavailable');
       const result=window.SeasonEstimate.classify(await response.json(),now);
       if(id===requestId)showSeason(result);
-    } catch (_) { if(id===requestId)showSeason('unknown'); }
+    } catch (_) { if(id===requestId){lastFetch=0;showSeason('unknown');} }
   }
   function weatherKind(code) {
     if (!Number.isInteger(code)) return 'unknown';

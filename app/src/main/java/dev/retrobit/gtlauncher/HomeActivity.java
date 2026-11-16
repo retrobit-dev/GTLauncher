@@ -162,6 +162,8 @@ public class HomeActivity extends Activity {
     private long seasonLastAttempt;
     private double seasonLatitude = Double.NaN, seasonLongitude = Double.NaN;
     private boolean seasonFallback;
+    // Shared with future gameplay; unknown on missing or stale rainfall data.
+    private String gameplaySeason = "unknown";
     private int treeRequestGeneration;
     private long treeLastAttempt;
     private double treeLatitude=Double.NaN,treeLongitude=Double.NaN;
@@ -1338,6 +1340,7 @@ public class HomeActivity extends Activity {
     }
 
     private void clearSeason() {
+        gameplaySeason="unknown";
         seasonRequestGeneration++;
         seasonLastAttempt = 0;
         seasonLatitude = seasonLongitude = Double.NaN;
@@ -1376,6 +1379,7 @@ public class HomeActivity extends Activity {
             final String value=result;
             runOnUiThread(() -> {
                 if (request!=seasonRequestGeneration || isFinishing() || isDestroyed() || (!fallback && !hasPreciseLocationPermission())) return;
+                gameplaySeason=value;
                 if ("unknown".equals(value)) seasonLastAttempt=0;
                 int image="wet".equals(value)?R.drawable.season_wet:"dry".equals(value)?R.drawable.season_dry:R.drawable.season_unknown;
                 int label="wet".equals(value)?R.string.season_wet:"dry".equals(value)?R.string.season_dry:R.string.season_unknown;
