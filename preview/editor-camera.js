@@ -6,7 +6,7 @@
   const pan = $('editor-pan'), value = $('editor-zoom-value'), surface = $('editor-pan-surface');
   const scene = window.sceneEditing;
   if (!stage || !canvas || !pan || !value || !surface || !scene?.camera || !scene?.setCamera) return;
-  let panning = false, drag = null, lastWorld = window.worldManager?.getActive()?.id;
+  let panning = false, drag = null, suppressClick = false, lastWorld = window.worldManager?.getActive()?.id;
   function update() {
     const {zoom} = scene.camera();
     value.value = `${Math.round(zoom * 100)}%`;
@@ -21,10 +21,12 @@
   function reset() { scene.setCamera(1, 0, 0); update(); }
   function changeZoom(amount) {
     const c = scene.camera();
-    const zoom = Math.round((c.zoom + amount) * 10) / 10;
-    scene.setCamera(zoom, c.panX, c.panY); update();
+    scene.setCamera(Math.round((c.zoom + amount) * 10) / 10, c.panX, c.panY); update();
   }
-  pan.addEventListener('click', () => { panning = !panning; drag = null; update(); });
+  pan.addEventListener('click', event => {
+    if (suppressClick) { suppressClick = false; event.preventDefault(); return; }
+    panning = !panning; drag = null; update();
+  });
   $('editor-zoom-in').addEventListener('click', () => changeZoom(0.1));
   $('editor-zoom-out').addEventListener('click', () => changeZoom(-0.1));
   $('editor-fit').addEventListener('click', reset);
@@ -34,28 +36,32 @@
     const id = window.worldManager?.getActive()?.id;
     if (id !== lastWorld) { lastWorld = id; drag = null; if (stage.dataset.mode === 'editor') reset(); else update(); }
   });
-  surface.addEventListener('pointerdown', event => {
-    if (stage.dataset.mode !== 'editor' || !panning || drag || (event.pointerType === 'mouse' && event.button !== 0)) return;
+  function begin(event, fromButton) {
+    if (stage.dataset.mode !== 'editor' || (!fromButton && !panning) || drag || (event.pointerType === 'mouse' && event.button !== 0)) return;
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    const camera = scene.camera();
-    drag = {id:event.pointerId, x:event.clientX, y:event.clientY, camera, width:rect.width, height:rect.height};
-    try { surface.setPointerCapture(event.pointerId); } catch (_) { /* pointer capture may be unavailable */ }
-    event.preventDefault(); event.stopImmediatePropagation();
-  }, true);
-  surface.addEventListener('pointermove', event => {
+    drag = {id:event.pointerId, x:event.clientX, y:event.clientY, camera:scene.camera(), width:rect.width, height:rect.height, fromButton, moved:false};
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch (_) { /* global listeners handle capture failures */ }
+    if (!fromButton) event.preventDefault();
+    event.stopPropagation();
+  }
+  surface.addEventListener('pointerdown', event => begin(event, false));
+  pan.addEventListener('pointerdown', event => begin(event, true));
+  // Listen globally as a fallback when pointer capture is unavailable or the finger leaves the screen.
+  window.addEventListener('pointermove', event => {
     if (!drag || drag.id !== event.pointerId) return;
-    const dx = (event.clientX-drag.x) * 320 / drag.width;
-    const dy = (event.clientY-drag.y) * 200 / drag.height;
-    scene.setCamera(drag.camera.zoom, drag.camera.panX+dx, drag.camera.panY+dy);
-    event.preventDefault(); event.stopImmediatePropagation();
-  }, true);
+    const dx = event.clientX-drag.x, dy = event.clientY-drag.y;
+    if (!drag.moved && Math.hypot(dx,dy) < 3) return;
+    drag.moved = true;
+    scene.setCamera(drag.camera.zoom, drag.camera.panX+dx*320/drag.width, drag.camera.panY+dy*200/drag.height);
+    event.preventDefault(); event.stopPropagation();
+  }, {capture:true, passive:false});
   function end(event) {
     if (!drag || drag.id !== event.pointerId) return;
-    drag = null; event.preventDefault(); event.stopImmediatePropagation();
+    if (drag.fromButton && drag.moved) { suppressClick = true; setTimeout(() => { suppressClick = false; }, 0); }
+    drag = null;
   }
-  surface.addEventListener('pointerup', end, true);
-  surface.addEventListener('pointercancel', end, true);
-  surface.addEventListener('lostpointercapture', event => { if (drag && drag.id === event.pointerId) drag = null; });
+  window.addEventListener('pointerup', end, true);
+  window.addEventListener('pointercancel', end, true);
   update();
 })();

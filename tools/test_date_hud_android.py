@@ -21,13 +21,13 @@ assert 'drawerScreen.setVisibility(View.VISIBLE)' in drawer
 assert 'homeDateHud.setVisibility(View.GONE)' not in drawer
 print('Android date HUD XML and drawer integration OK (static only)')
 
-assert calendar.get(ns+'layout_width') == calendar.get(ns+'layout_height') == '48dp'
+assert calendar.get(ns+'layout_width') == '48dp' and calendar.get(ns+'layout_height') == '56dp'
 time=hud.find(".//*[@"+ns+"id='@+id/hud_time']")
 panel=next(el for el in hud.iter() if time in list(el))
 assert panel.get(ns+'layout_width')=='85dp' and panel.get(ns+'layout_height')=='0dp' and panel.get(ns+'layout_weight')=='1'
 assert hud.find(".//*[@"+ns+"id='@+id/hud_season_icon']") is not None
 
-assert clocks[2].get(ns+'layout_marginTop') == clocks[3].get(ns+'layout_marginTop') == '4dp'
+assert clocks[2].get(ns+'layout_marginTop') == clocks[3].get(ns+'layout_marginTop') == '6dp'
 
 assert 'updateSeason(FALLBACK_LATITUDE, FALLBACK_LONGITUDE, true);' in activity
 assert 'updateSeason(currentLatitude, currentLongitude, false);' in activity
