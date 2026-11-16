@@ -174,6 +174,11 @@ public class HomeActivity extends Activity {
     private WorldStore.SurfaceObject movingSurface;
     private WorldStore worldStore;
     private int portalWalkGeneration;
+    private boolean groundActive, groundRunning;
+    private int groundGeneration;
+    private java.util.List<PortalTravel.Tile> groundRoute;
+    private PortalTravel.Tile queuedGroundTarget;
+    private Runnable groundCallback;
     private SensorManager sensorManager;
     private Sensor rotationSensor;
     private WeatherSnapshot currentWeather;
@@ -277,9 +282,11 @@ public class HomeActivity extends Activity {
         setMapMode(true);
         homeScreen.setOnTouchListener((view, event) -> {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                portalWalkGeneration++;
-                skyView.setPortalWalkActive(false);
-                applyActiveWorld(); // Restore the last saved position if a walk was interrupted.
+                if(!groundActive || groundGeneration!=portalWalkGeneration) {
+                    portalWalkGeneration++;
+                    skyView.setPortalWalkActive(false);
+                    applyActiveWorld(); // Preserve existing cancellation for non-ground interactions.
+                }
                 swipeStartX = event.getX();
                 swipeStartY = event.getY();
                 return true;
@@ -497,6 +504,10 @@ public class HomeActivity extends Activity {
         try {
             WorldStore.World world=worldStore.activeWorld();if(world==null || !world.showCharacter)return;
             PortalTravel.Tile target=skyView.groundTileAt(x,y),front=GameplayTarget.front(world.characterColumn,world.characterRow,world.characterFacing);
+            if(groundActive && groundGeneration==portalWalkGeneration) {
+                if(target!=null) requestGroundRun(world,target);
+                return;
+            }
             if(movingObjectWorld!=null) {
                 if(!movingObjectWorld.equals(world.id)){movingObjectWorld=null;movingHouse=null;movingSurface=null;Toast.makeText(this,"World berubah; pemindahan dibatalkan.",Toast.LENGTH_SHORT).show();return;}
                 if(target==null){Toast.makeText(this,"Pilih tile di dalam world.",Toast.LENGTH_SHORT).show();return;}
@@ -592,29 +603,58 @@ public class HomeActivity extends Activity {
                     applyActiveWorld();skyView.setGameplayRoute(route,1);Toast.makeText(this,"Arah hadap berubah. Ketuk tujuan lagi untuk bergerak.",Toast.LENGTH_SHORT).show();return;
                 }
             }
-            int generation=++portalWalkGeneration; skyView.setPortalWalkActive(true);skyView.setGameplayRoute(route,1);
-            walkGroundStep(world,route,1,generation,world.characterFacing);
+            beginGroundRoute(world,route,false);
         } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }
+    private void beginGroundRoute(WorldStore.World world,java.util.List<PortalTravel.Tile> route,boolean running) {
+        int generation=++portalWalkGeneration;
+        groundActive=true;groundRunning=running;groundGeneration=generation;groundRoute=route;queuedGroundTarget=null;
+        skyView.setPortalWalkActive(true);skyView.setCharacterRunning(running);skyView.setGameplayRoute(route,1);
+        walkGroundStep(world,route,1,generation,world.characterFacing);
+    }
+    private void requestGroundRun(WorldStore.World world,PortalTravel.Tile target) {
+        if(!groundActive || groundGeneration!=portalWalkGeneration)return;
+        PortalTravel.Tile end=groundRoute.get(groundRoute.size()-1);
+        if(!end.equals(target)) {
+            // Only queue a reachable destination; never destroy or replace the active route.
+            if(PortalTravel.path(end,target,portalTerrain(world),world.gridSize())!=null) queuedGroundTarget=target;
+        }
+        if(!groundRunning) {
+            groundRunning=true;skyView.setCharacterRunning(true);
+            int remaining=skyView.accelerateCharacterStep(330);
+            if(groundCallback!=null) {mainHandler.removeCallbacks(groundCallback);mainHandler.postDelayed(groundCallback,remaining);}
+        }
+        Toast.makeText(this,queuedGroundTarget==null?"Berlari menuju tujuan.":"Berlari; tujuan berikutnya disimpan.",Toast.LENGTH_SHORT).show();
+    }
     private void walkGroundStep(WorldStore.World world,java.util.List<PortalTravel.Tile> route,int index,int generation,String facing) {
-        if(generation!=portalWalkGeneration)return;
+        if(generation!=portalWalkGeneration || !groundActive)return;
         if(index>=route.size()) {
+            PortalTravel.Tile pending=queuedGroundTarget;boolean continueRunning=groundRunning;groundActive=false;groundCallback=null;
             try {PortalTravel.Tile end=route.get(route.size()-1);
                 if(!worldStore.moveCharacter(world.id,end.column,end.row,facing)) throw new JSONException("Move failed");
                 skyView.setPortalWalkActive(false);applyActiveWorld();
+                if(pending!=null) {
+                    WorldStore.World current=worldStore.activeWorld();
+                    if(current!=null && current.id.equals(world.id)) {
+                        java.util.List<PortalTravel.Tile> next=PortalTravel.path(end,pending,portalTerrain(current),current.gridSize());
+                        if(next!=null && next.size()>1)beginGroundRoute(current,next,continueRunning);
+                    }
+                }
             } catch(JSONException e){skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Posisi tidak dapat disimpan.",Toast.LENGTH_SHORT).show();}
             return;
         }
         skyView.setGameplayRoute(route,index);
         PortalTravel.Tile previous=route.get(index-1),next=route.get(index);
         String direction=next.column>previous.column?"E":next.column<previous.column?"W":next.row>previous.row?"S":"N";
-        int duration=android.animation.ValueAnimator.areAnimatorsEnabled()
-                ? CharacterGait.durationMillis(index,route.size()-1) : 1;
+        int duration=android.animation.ValueAnimator.areAnimatorsEnabled() ? (groundRunning?330:650) : 1;
         skyView.animateCharacterStep(previous.column,previous.row,next.column,next.row,(float)world.characterScale,direction,index,route.size()-1,duration);
-        mainHandler.postDelayed(()->walkGroundStep(world,route,index+1,generation,direction),duration);
+        groundCallback=()->walkGroundStep(world,route,index+1,generation,direction);
+        mainHandler.postDelayed(groundCallback,duration);
     }
 
     private void applyActiveWorld() {
+        groundActive=false;groundRunning=false;queuedGroundTarget=null;
+        if(groundCallback!=null){mainHandler.removeCallbacks(groundCallback);groundCallback=null;}
         portalWalkGeneration++;
         skyView.setPortalWalkActive(false);
         try {

@@ -268,7 +268,7 @@ public final class WeatherSkyView extends View {
     private double plantMotionSeconds;
     private Integer worldIslandTint;
     private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
-    private final Bitmap[] walkFront=new Bitmap[12], walkBack=new Bitmap[12];
+    private final Bitmap[] walkFront=new Bitmap[12], walkBack=new Bitmap[12], runFront=new Bitmap[12], runBack=new Bitmap[12];
     private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron;
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
     private Bitmap treeDormant,treeBananaFruitless,treeCoconutFruitless;
@@ -287,7 +287,14 @@ public final class WeatherSkyView extends View {
     private int characterColumn = 4, characterRow = 4;
     private int stepFromColumn, stepFromRow, stepIndex, stepCount, stepDuration;
     private long stepStarted;
-    private boolean characterStepping;
+    private boolean characterStepping, characterRunning;
+    void setCharacterRunning(boolean running) { characterRunning=running; invalidate(); }
+    int accelerateCharacterStep(int duration) {
+        if(!characterStepping)return 0;
+        float progress=stepProgress();stepDuration=duration;
+        stepStarted=SystemClock.uptimeMillis()-Math.round(progress*duration);
+        invalidate();return Math.max(0,Math.round((1-progress)*duration));
+    }
     private float stepProgress() { return characterStepping ? CharacterGait.progress(SystemClock.uptimeMillis()-stepStarted,stepDuration) : 1f; }
     private float visualColumn() { return characterStepping ? stepFromColumn+(characterColumn-stepFromColumn)*stepProgress() : characterColumn; }
     private float visualRow() { return characterStepping ? stepFromRow+(characterRow-stepFromRow)*stepProgress() : characterRow; }
@@ -336,6 +343,8 @@ public final class WeatherSkyView extends View {
         int[] frontFrames={R.drawable.character_walk_front_00, R.drawable.character_walk_front_01, R.drawable.character_walk_front_02, R.drawable.character_walk_front_03, R.drawable.character_walk_front_04, R.drawable.character_walk_front_05, R.drawable.character_walk_front_06, R.drawable.character_walk_front_07, R.drawable.character_walk_front_08, R.drawable.character_walk_front_09, R.drawable.character_walk_front_10, R.drawable.character_walk_front_11};
         int[] backFrames={R.drawable.character_walk_back_00, R.drawable.character_walk_back_01, R.drawable.character_walk_back_02, R.drawable.character_walk_back_03, R.drawable.character_walk_back_04, R.drawable.character_walk_back_05, R.drawable.character_walk_back_06, R.drawable.character_walk_back_07, R.drawable.character_walk_back_08, R.drawable.character_walk_back_09, R.drawable.character_walk_back_10, R.drawable.character_walk_back_11};
         for(int i=0;i<12;i++) {walkFront[i]=BitmapFactory.decodeResource(getResources(),frontFrames[i]);walkBack[i]=BitmapFactory.decodeResource(getResources(),backFrames[i]);}
+        int[] runFrontFrames={R.drawable.character_run_front_00, R.drawable.character_run_front_01, R.drawable.character_run_front_02, R.drawable.character_run_front_03, R.drawable.character_run_front_04, R.drawable.character_run_front_05, R.drawable.character_run_front_06, R.drawable.character_run_front_07, R.drawable.character_run_front_08, R.drawable.character_run_front_09, R.drawable.character_run_front_10, R.drawable.character_run_front_11},runBackFrames={R.drawable.character_run_back_00, R.drawable.character_run_back_01, R.drawable.character_run_back_02, R.drawable.character_run_back_03, R.drawable.character_run_back_04, R.drawable.character_run_back_05, R.drawable.character_run_back_06, R.drawable.character_run_back_07, R.drawable.character_run_back_08, R.drawable.character_run_back_09, R.drawable.character_run_back_10, R.drawable.character_run_back_11};
+        for(int i=0;i<12;i++) {runFront[i]=BitmapFactory.decodeResource(getResources(),runFrontFrames[i]);runBack[i]=BitmapFactory.decodeResource(getResources(),runBackFrames[i]);}
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_redesign);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.house_redesign_back);
         houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_back);
@@ -780,7 +789,7 @@ public final class WeatherSkyView extends View {
         gameplayRoute=route==null?java.util.Collections.emptyList():new java.util.ArrayList<>(route);
         routeNext=Math.max(1,next);invalidate();
     }
-    void setPortalWalkActive(boolean walking) { portalWalkActive=walking; if (!walking) { characterStepping=false;setGameplayRoute(null,1); } invalidate(); }
+    void setPortalWalkActive(boolean walking) { portalWalkActive=walking; if (!walking) { characterStepping=false;characterRunning=false;setGameplayRoute(null,1); } invalidate(); }
     boolean portalMarkerVisible(PortalTravel.Portal portal) {
         return !portalWalkActive && showCharacter && characterColumn==portal.tile.column && characterRow==portal.tile.row && portal.edge.equals(characterFacing);
     }
@@ -980,7 +989,7 @@ public final class WeatherSkyView extends View {
         // Render whole gait frames, rather than cutting sleeves or shoes from the sprite.
         if (characterStepping && animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled()) {
             int frame=(int)Math.floor((stepIndex-1+stepProgress())*12)%12;
-            Bitmap walking=(back ? walkBack : walkFront)[frame];
+            Bitmap walking=characterRunning ? (back ? runBack : runFront)[frame] : (back ? walkBack : walkFront)[frame];
             if(walking!=null) sprite=walking;
         }
         canvas.drawBitmap(sprite, null, new RectF(x - width / 2, y - height, x + width / 2, y), paint);
