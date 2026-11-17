@@ -20,7 +20,8 @@ assert.deepEqual(JSON.parse(w.localStorage.getItem('gtlauncher.worlds.v1')).worl
 assert.equal(d.getElementById('tile-remove'),null,'old right-side tile controls remain removed');
 assert.equal(d.getElementById('terrain-draw').closest('.device-frame'),null,'terrain tools are outside the tablet');
 assert(d.getElementById('terrain-draw').closest('.editor-right-controls'));
-assert.equal(d.getElementById('grass-block-preview').hidden,false);
+assert.equal(d.getElementById('grass-block-preview').hidden,false);assert.equal(d.getElementById('dirt-block-preview').hidden,true);
+d.getElementById('terrain-material').value='2';d.getElementById('terrain-material').dispatchEvent(new w.Event('change'));assert.equal(d.getElementById('dirt-block-preview').hidden,false);assert.equal(d.getElementById('grass-block-preview').hidden,true);
 d.getElementById('terrain-material').value='4';d.getElementById('terrain-material').dispatchEvent(new w.Event('change'));assert.equal(d.getElementById('grass-block-preview').hidden,true);
 d.getElementById('terrain-material').value='1';d.getElementById('terrain-material').dispatchEvent(new w.Event('change'));assert.equal(d.getElementById('grass-block-preview').hidden,false);assert(d.getElementById('terrain-draw').closest('.device-wrap'));
 const tiles=world.tiles.slice();tiles[204]=0;assert.equal(w.worldManager.updateTiles(world.id,tiles),true);

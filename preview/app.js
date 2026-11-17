@@ -1136,6 +1136,7 @@
     const lightTile = tile.variant === 0;
     const terrain = {2:'#ae8b68', 3:'#5e9eb4', 4:'#929995', 5:'#dac695', 6:'#805e43'};
     const fill = material === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
+      : material === 2 ? blendColor(palette.soilLight, '#d49d65', 0.4)
       : blendColor(terrain[material] || terrain[2], palette.grassDark, 0.12);
     const halfWidth = ISLAND_TILE_WIDTH / 2 - 0.05;
     const halfHeight = islandTileHeight / 2 - 0.025;

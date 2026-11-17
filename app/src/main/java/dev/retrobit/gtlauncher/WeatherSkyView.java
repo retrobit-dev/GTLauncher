@@ -1461,7 +1461,7 @@ public final class WeatherSkyView extends View {
             if(material==1) drawGrassTile(canvas,x,y,(column+row)%2==0,column,row,palette,sunlight);
             else {
                 int[] colors={0,0,0xffae8b68,0xff5e9eb4,0xff929995,0xffdac695,0xff805e43};
-                int fill=blend(colors[material],palette.grassDark,0.12);
+                int fill=material==2 ? blend(palette.soilLight,0xffd49d65,0.4) : blend(colors[material],palette.grassDark,0.12);
                 drawGrassTileSide(canvas,x,y,hw,hh,1.4f,ISLAND_TILE_SIDE_DEPTH,fill,true);
                 drawGrassTileSide(canvas,x,y,hw,hh,1.4f,ISLAND_TILE_SIDE_DEPTH,fill,false);
                 drawSunlitIslandDiamond(canvas,x,y,hw-0.05f,hh-0.025f,1.4f,fill,sunlight);
