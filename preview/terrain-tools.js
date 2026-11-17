@@ -5,7 +5,7 @@
   const stage=document.querySelector('.preview-stage'), canvas=document.getElementById('sky-canvas');
   const material=document.getElementById('terrain-material'), status=document.getElementById('terrain-status');
   const pan=document.getElementById('editor-pan'), scene=window.sceneEditing, worlds=window.worldManager;
-  const blockPreviews={'1':document.getElementById('grass-block-preview'),'2':document.getElementById('dirt-block-preview')};
+  const blockPreviews={'1':document.getElementById('grass-block-preview'),'2':document.getElementById('dirt-block-preview'),'3':document.getElementById('water-block-preview')};
   function updateBlockPreview() { for(const [value,element] of Object.entries(blockPreviews)) if(element) element.hidden=material.value!==value; }
   material?.addEventListener('change',updateBlockPreview);
   updateBlockPreview();

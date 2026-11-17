@@ -1,0 +1,9 @@
+from pathlib import Path
+root=Path(__file__).resolve().parents[1]
+s=(root/'app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java').read_text()
+portable=s[s.index('private void drawPortableTerrain'):s.index('private void drawIslandShadow')]
+assert '0xff75cbd0' in portable
+assert 'canvas.saveLayerAlpha' in portable and '163,Canvas.ALL_SAVE_FLAG' in portable
+assert 'blend(palette.soilLight,0xffdac695,0.45)' in portable
+assert 'paint.setColor(0x80d8faf1)' in portable and 'canvas.restore()' in portable
+print('Android flat water tint, translucent layer and ripple wiring: static checks OK')

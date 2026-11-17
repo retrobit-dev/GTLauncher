@@ -1136,7 +1136,7 @@
 
   function drawGrassTile(tile, palette, sunlight, material = 1, raised = false) {
     const lightTile = tile.variant === 0;
-    const terrain = {2:'#ae8b68', 3:'#5e9eb4', 4:'#929995', 5:'#dac695', 6:'#805e43'};
+    const terrain = {2:'#ae8b68', 3:'#75cbd0', 4:'#929995', 5:'#dac695', 6:'#805e43'};
     const fill = material === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
       : material === 2 ? blendColor(palette.soilLight, '#d49d65', 0.4)
       : blendColor(terrain[material] || terrain[2], palette.grassDark, 0.12);
@@ -1145,6 +1145,13 @@
     const cornerRadius = 1.4;
     const leftPerimeterFace = tile.row === ISLAND_GRID_SIZE - 1;
     const rightPerimeterFace = tile.column === ISLAND_GRID_SIZE - 1;
+    // A flat water tile sits over a riverbed; raised water blends over the block
+    // beneath (and the surrounding scene) instead of painting an opaque cap.
+    if (material === 3) {
+      if (!raised) drawSunlitIslandDiamond(tile.x,tile.y,halfWidth,halfHeight,cornerRadius,
+        blendColor(palette.soilLight,'#dac695',0.45),sunlight);
+      ctx.save();ctx.globalAlpha *= 0.64;
+    }
     const leftSideDepth = raised ? BLOCK_HEIGHT : leftPerimeterFace ? ISLAND_GRASS_BAND_DEPTH : ISLAND_TILE_SIDE_DEPTH;
     const rightSideDepth = raised ? BLOCK_HEIGHT : rightPerimeterFace ? ISLAND_GRASS_BAND_DEPTH : ISLAND_TILE_SIDE_DEPTH;
     drawGrassTileSide(tile.x, tile.y,
@@ -1159,6 +1166,18 @@
     // Each top stays solid; direct sunlight adds only a uniform, subtle color lift.
     drawSunlitIslandDiamond(tile.x, tile.y, halfWidth, halfHeight,
       cornerRadius, fill, sunlight);
+    if (material === 3) {
+      ctx.restore();
+      // Quiet, fixed ripples remain legible without flickering at high zoom.
+      ctx.save();ctx.globalAlpha *= 0.50;ctx.strokeStyle='#d8faf1';ctx.lineWidth=0.55;
+      ctx.lineCap='round';
+      for (const [dx,dy] of [[-0.35,-0.2],[0.20,0.13]]) {
+        const x=tile.x+halfWidth*dx,y=tile.y+halfHeight*dy;
+        ctx.beginPath();ctx.moveTo(x-halfWidth*0.17,y);ctx.lineTo(x-halfWidth*0.05,y-halfHeight*0.07);
+        ctx.lineTo(x+halfWidth*0.06,y);ctx.lineTo(x+halfWidth*0.17,y-halfHeight*0.07);ctx.stroke();
+      }
+      ctx.restore();
+    }
     if (material === 6) {
       ctx.save();ctx.strokeStyle='rgba(62,38,24,.55)';ctx.lineWidth=.75;
       for (const offset of [-.42,0,.42]) {

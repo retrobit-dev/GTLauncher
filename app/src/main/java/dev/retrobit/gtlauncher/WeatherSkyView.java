@@ -1460,11 +1460,28 @@ public final class WeatherSkyView extends View {
                 drawSmoothIslandQuad(canvas,x,y+hh,x+hw,y,x+hw,y+ISLAND_DEPTH,x,y+hh+ISLAND_DEPTH,palette.soilDark,palette.soilDark,0,0f);
             if(material==1) drawGrassTile(canvas,x,y,(column+row)%2==0,column,row,palette,sunlight);
             else {
-                int[] colors={0,0,0xffae8b68,0xff5e9eb4,0xff929995,0xffdac695,0xff805e43};
+                int[] colors={0,0,0xffae8b68,0xff75cbd0,0xff929995,0xffdac695,0xff805e43};
                 int fill=material==2 ? blend(palette.soilLight,0xffd49d65,0.4) : blend(colors[material],palette.grassDark,0.12);
+                if (material==3) {
+                    // Flat portable worlds have a riverbed under translucent water.
+                    drawSunlitIslandDiamond(canvas,x,y,hw-0.05f,hh-0.025f,1.4f,
+                            blend(palette.soilLight,0xffdac695,0.45),sunlight);
+                    canvas.saveLayerAlpha(x-hw-2,y-hh-2,x+hw+2,y+hh+ISLAND_TILE_SIDE_DEPTH+2,163,Canvas.ALL_SAVE_FLAG);
+                }
                 drawGrassTileSide(canvas,x,y,hw,hh,1.4f,ISLAND_TILE_SIDE_DEPTH,fill,true);
                 drawGrassTileSide(canvas,x,y,hw,hh,1.4f,ISLAND_TILE_SIDE_DEPTH,fill,false);
                 drawSunlitIslandDiamond(canvas,x,y,hw-0.05f,hh-0.025f,1.4f,fill,sunlight);
+                if (material==3) {
+                    canvas.restore();
+                    paint.setColor(0x80d8faf1); paint.setStrokeWidth(.55f); paint.setStyle(Paint.Style.STROKE);
+                    for (float[] offset : new float[][]{{-.35f,-.2f},{.20f,.13f}}) {
+                        float rx=x+hw*offset[0], ry=y+hh*offset[1];
+                        canvas.drawLine(rx-hw*.17f,ry,rx-hw*.05f,ry-hh*.07f,paint);
+                        canvas.drawLine(rx-hw*.05f,ry-hh*.07f,rx+hw*.06f,ry,paint);
+                        canvas.drawLine(rx+hw*.06f,ry,rx+hw*.17f,ry-hh*.07f,paint);
+                    }
+                    paint.setStyle(Paint.Style.FILL);
+                }
                 if(material==6) {
                     paint.setColor(0xff523b2d);paint.setStrokeWidth(.75f);paint.setStyle(Paint.Style.STROKE);
                     for(float offset:new float[]{-.42f,0f,.42f}) canvas.drawLine(x-hw*(1-Math.abs(offset)),y+hh*offset,x+hw*(1-Math.abs(offset)),y+hh*offset,paint);
