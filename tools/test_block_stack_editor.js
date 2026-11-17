@@ -27,7 +27,7 @@ d.getElementById('object-redo').click();assert.deepEqual(stack(4,4),[1,2]);asser
 d.getElementById('terrain-draw').click();d.getElementById('terrain-material').value='4';tap(4,4);assert.deepEqual(stack(4,4),[1,4]);
 d.getElementById('terrain-erase').click();tap(4,4);assert.deepEqual(stack(4,4),[1]);
 d.getElementById('object-undo').click();assert.deepEqual(stack(4,4),[1,4]);
-d.getElementById('terrain-pick').click();d.getElementById('terrain-material').value='1';tap(4,4);assert.equal(d.getElementById('terrain-material').value,'4');
+d.getElementById('terrain-pick').click();d.getElementById('terrain-material').value='1';tap(4,4);assert.equal(d.getElementById('terrain-material').value,'4');assert.equal(d.getElementById('block-picker-value').textContent,'Batu','eyedropper updates visible picker');assert.equal(d.querySelector('[data-block-value="4"]').getAttribute('aria-selected'),'true');
 // Out-of-band stack changes invalidate history even when the top material is unchanged.
 const world=w.worldManager.getActive(),changed=world.blockStacks.map(x=>x.slice());changed[8*50+8][0]=3;
 assert(w.worldManager.updateBlockStacks(world.id,changed));assert(d.getElementById('object-undo').disabled);

@@ -27,7 +27,7 @@ const {chromium}=require('playwright-core');
   });
   assert(target,'a visible, unoccupied grid cell is available');
   const value=()=>page.evaluate(i=>worldManager.getActive().tiles[i],target.index);
-  const paint=async(name,material)=>{if(material!==undefined)await page.locator('#terrain-material').selectOption(String(material));await page.locator('#terrain-'+name).click();await page.mouse.click(target.x,target.y);};
+  const paint=async(name,material)=>{if(material!==undefined){await page.locator('#block-picker-trigger').click();await page.locator(`[data-block-value=\"${String(material)}\"]`).click();}await page.locator('#terrain-'+name).click();await page.mouse.click(target.x,target.y);};
   await paint('draw',2);assert.equal(await value(),2,'replace grass with dirt');
   assert(await page.locator('#dirt-block-preview').isVisible(),'selected dirt concept is shown');
   assert.equal(await page.locator('#grass-block-preview').isVisible(),false,'grass thumbnail hides');

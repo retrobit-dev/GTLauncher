@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#e2e4e1">
   <title>GTLauncher — Live Weather Preview</title>
-  <link rel="stylesheet" href="./styles.css?v=live-sky-56">
+  <link rel="stylesheet" href="./styles.css?v=live-sky-57">
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./worlds.js?v=31" defer></script>
   <script src="./object-editor.js?v=11" defer></script>
   <script src="./app.js?v=sky-216" defer></script>
   <script src="./preview-modes.js?v=2" defer></script>
   <script src="./editor-camera.js?v=7" defer></script>
-  <script src="./terrain-tools.js?v=106" defer></script>
+  <script src="./terrain-tools.js?v=107" defer></script>
   <script src="./gameplay-path.js?v=102" defer></script>
   <script src="./gameplay-movement.js?v=19" defer></script>
   <script src="./season-estimate.js?v=1" defer></script>
@@ -69,9 +69,21 @@
       <button id="terrain-erase" type="button" aria-label="Hapus block" title="Hapus block" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15 14 5l6 6-9 9H7zM7 20h13M7 12l5 5"/></svg></button>
       <button id="terrain-pick" type="button" aria-label="Ambil jenis block" title="Ambil jenis block" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 17 9-9M13 6l5 5m-1-8 4 4-3 3-4-4zM7 17l-3 4 4-1 2-2"/></svg></button>
       <button id="terrain-fill" type="button" aria-label="Isi area block" title="Isi area block" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13 12 5l8 8-8 7zM8 9l8 8M14 4 9 2M20 18v3"/></svg></button>
-      <label for="terrain-material">Block</label><select id="terrain-material" aria-label="Jenis block"><option value="1">Rumput</option><option value="2">Tanah</option><option value="3">Air</option><option value="4">Batu</option><option value="5">Pasir</option></select><img class="block-preview" id="grass-block-preview" src="assets/hud/grass-block.png" alt="Desain block Rumput" width="42" height="42"><img class="block-preview" id="dirt-block-preview" src="assets/hud/dirt-block.png" alt="Desain block Tanah" width="42" height="42" hidden>
-      <img class="block-preview" id="water-block-preview" src="assets/hud/water-block.png" alt="Desain block Air" width="42" height="42" hidden>
-      <img class="block-preview" id="stone-block-preview" src="assets/hud/stone-block.png" alt="Desain block Batu" width="42" height="42" hidden>
+      <div class="block-picker" id="block-picker">
+        <span class="block-picker-label" id="block-picker-label">Block</span>
+        <select id="terrain-material" aria-label="Jenis block" hidden><option value="1">Rumput</option><option value="2">Tanah</option><option value="3">Air</option><option value="4">Batu</option><option value="5">Pasir</option></select>
+        <button id="block-picker-trigger" class="block-picker-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="block-picker-list" aria-labelledby="block-picker-label block-picker-value">
+          <span class="block-picker-icon"><img class="block-preview" id="grass-block-preview" src="assets/hud/grass-block.png" alt="" width="32" height="32"><img class="block-preview" id="dirt-block-preview" src="assets/hud/dirt-block.png" alt="" width="32" height="32" hidden><img class="block-preview" id="water-block-preview" src="assets/hud/water-block.png" alt="" width="32" height="32" hidden><img class="block-preview" id="stone-block-preview" src="assets/hud/stone-block.png" alt="" width="32" height="32" hidden><img class="block-preview" id="sand-block-preview" src="assets/hud/sand-block.svg" alt="" width="32" height="32" hidden></span>
+          <span id="block-picker-value" class="block-picker-value">Rumput</span><span class="block-picker-arrow" aria-hidden="true">⌄</span>
+        </button>
+        <div id="block-picker-list" class="block-picker-list" role="listbox" aria-label="Jenis block" hidden>
+          <button type="button" role="option" class="block-picker-option" data-block-value="1" aria-selected="true"><img src="assets/hud/grass-block.png" alt=""><span>Rumput</span><span class="block-picker-check" aria-hidden="true">✓</span></button>
+          <button type="button" role="option" class="block-picker-option" data-block-value="2" aria-selected="false"><img src="assets/hud/dirt-block.png" alt=""><span>Tanah</span><span class="block-picker-check" aria-hidden="true">✓</span></button>
+          <button type="button" role="option" class="block-picker-option" data-block-value="3" aria-selected="false"><img src="assets/hud/water-block.png" alt=""><span>Air</span><span class="block-picker-check" aria-hidden="true">✓</span></button>
+          <button type="button" role="option" class="block-picker-option" data-block-value="4" aria-selected="false"><img src="assets/hud/stone-block.png" alt=""><span>Batu</span><span class="block-picker-check" aria-hidden="true">✓</span></button>
+          <button type="button" role="option" class="block-picker-option" data-block-value="5" aria-selected="false"><img src="assets/hud/sand-block.svg" alt=""><span>Pasir</span><span class="block-picker-check" aria-hidden="true">✓</span></button>
+        </div>
+      </div>
       <span id="terrain-status" role="status" aria-live="polite"></span>
     </nav>
     <aside id="rotate-controls" class="rotate-controls" aria-label="Putar arah objek" hidden>

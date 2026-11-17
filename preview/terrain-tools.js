@@ -5,9 +5,35 @@
   const stage=document.querySelector('.preview-stage'), canvas=document.getElementById('sky-canvas');
   const material=document.getElementById('terrain-material'), status=document.getElementById('terrain-status');
   const pan=document.getElementById('editor-pan'), scene=window.sceneEditing, worlds=window.worldManager;
-  const blockPreviews={'1':document.getElementById('grass-block-preview'),'2':document.getElementById('dirt-block-preview'),'3':document.getElementById('water-block-preview'),'4':document.getElementById('stone-block-preview')};
-  function updateBlockPreview() { for(const [value,element] of Object.entries(blockPreviews)) if(element) element.hidden=material.value!==value; }
+  const blockPreviews={'1':document.getElementById('grass-block-preview'),'2':document.getElementById('dirt-block-preview'),'3':document.getElementById('water-block-preview'),'4':document.getElementById('stone-block-preview'),'5':document.getElementById('sand-block-preview')};
+  const picker=document.getElementById('block-picker'), trigger=document.getElementById('block-picker-trigger');
+  const pickerList=document.getElementById('block-picker-list'), pickerValue=document.getElementById('block-picker-value');
+  const options=pickerList ? [...pickerList.querySelectorAll('[role="option"]')] : [];
+  function updateBlockPreview() {
+    for(const [value,element] of Object.entries(blockPreviews)) if(element) element.hidden=material.value!==value;
+    if(pickerValue) pickerValue.textContent=material.selectedOptions[0]?.textContent || '';
+    for(const option of options) option.setAttribute('aria-selected',String(option.dataset.blockValue===material.value));
+  }
+  function closePicker(focus=false) {if(!pickerList || !trigger)return;pickerList.hidden=true;trigger.setAttribute('aria-expanded','false');if(focus)trigger.focus();}
+  function openPicker() {
+    if(!pickerList || !trigger)return;pickerList.hidden=false;trigger.setAttribute('aria-expanded','true');
+    (options.find(option=>option.dataset.blockValue===material.value)||options[0])?.focus({preventScroll:true});
+    // Keep the list reachable in the toolbar's scroll area on short screens.
+    const panel=picker.closest('.editor-right-controls');if(panel) panel.scrollTop=Math.max(0,pickerList.offsetTop+picker.offsetTop+pickerList.offsetHeight-panel.clientHeight);
+  }
   material?.addEventListener('change',updateBlockPreview);
+  trigger?.addEventListener('click',()=>pickerList.hidden?openPicker():closePicker());
+  trigger?.addEventListener('keydown',event=>{if((event.key==='ArrowDown'||event.key==='ArrowUp') && pickerList.hidden){event.preventDefault();openPicker();}});
+  for(const option of options) option.addEventListener('click',()=>{material.value=option.dataset.blockValue;material.dispatchEvent(new Event('change',{bubbles:true}));closePicker(true);});
+  pickerList?.addEventListener('keydown',event=>{
+    if(event.key==='Escape'){event.preventDefault();closePicker(true);return;}
+    if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;
+    event.preventDefault();const current=options.indexOf(document.activeElement);
+    const index=event.key==='Home'?0:event.key==='End'?options.length-1:(current+(event.key==='ArrowDown'?1:-1)+options.length)%options.length;
+    options[index]?.focus();
+  });
+  document.addEventListener('pointerdown',event=>{if(picker && !picker.contains(event.target))closePicker();},true);
+  document.getElementById('mode-gameplay')?.addEventListener('click',()=>closePicker());
   updateBlockPreview();
   const buttons=Object.fromEntries(['draw','add','erase','pick','fill'].map(name=>[name,document.getElementById('terrain-'+name)]));
   if (!stage || !canvas || !material || !status || !pan || !scene?.tileAt || !worlds?.updateTiles || Object.values(buttons).some(x=>!x)) return;
