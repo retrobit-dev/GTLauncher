@@ -490,6 +490,10 @@ public final class WeatherSkyView extends View {
         return factor*PlantMotion.sway(animationEnabled,weather.windSpeedKmh,weather.windDirectionDegrees,
                 headingDegrees,plantMotionSeconds,o.column,o.row,o.type,o.material);
     }
+    private double orangeTreeSway(WorldStore.SurfaceObject o) {
+        double speed=weather==null?4:weather.windSpeedKmh,direction=weather==null?90:weather.windDirectionDegrees;
+        return OrangeTreeMotion.sway(animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled(),speed,direction,headingDegrees,plantMotionSeconds,o.column,o.row);
+    }
     private void drawSurfaceSprites(Canvas canvas,boolean front) {
         for(WorldStore.SurfaceObject o:worldSurfaces) {
             if(o.type.equals("road") || o.type.equals("fence") || o.type.equals("flower")) continue;
@@ -509,7 +513,10 @@ public final class WeatherSkyView extends View {
             int alpha=Math.round(255*(100-Math.max(0,o.opacity))/100f);
             paint.setColor(Color.argb(Math.round(35*alpha/255f),12,23,40));paint.setStyle(Paint.Style.FILL);canvas.drawOval(new RectF(g.centerX()-g.width()*.3f,g.bottom-1,g.centerX()+g.width()*.3f,g.bottom+1),paint);
             paint.setColor(Color.WHITE);paint.setAlpha(alpha);paint.setFilterBitmap(true);int saved=canvas.save();
-            if(o.type.equals("sunflower") || o.type.equals("tree") || o.type.equals("bush")) {
+            if(o.type.equals("tree") && o.material.equals("orange")) {
+                double sway=orangeTreeSway(o);
+                canvas.translate(g.centerX(),g.bottom);canvas.skew((float)(-sway/g.height()),0);canvas.translate(-g.centerX(),-g.bottom);
+            } else if(o.type.equals("sunflower") || o.type.equals("tree") || o.type.equals("bush")) {
                 double sway=plantSway(o,1.0);
                 canvas.rotate((float)Math.toDegrees(Math.atan2(sway,g.height())),g.centerX(),g.bottom);
             }
@@ -605,7 +612,13 @@ public final class WeatherSkyView extends View {
     }
     WorldStore.SurfaceObject treeAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;float x=islandX(sx),y=islandY(sy);
-        for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if(o.type.equals("tree") && opaqueAt(surfaceImage(o),surfaceSpriteBounds(o),x,y,false))return o;}return null;
+        for(int i=worldSurfaces.size()-1;i>=0;i--) {
+            WorldStore.SurfaceObject o=worldSurfaces.get(i);if(!o.type.equals("tree"))continue;
+            RectF bounds=surfaceSpriteBounds(o);float hitX=x;
+            if(o.material.equals("orange"))hitX+=(y-bounds.bottom)*(float)(orangeTreeSway(o)/bounds.height());
+            if(opaqueAt(surfaceImage(o),bounds,hitX,y,false))return o;
+        }
+        return null;
     }
     WorldStore.House houseAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;

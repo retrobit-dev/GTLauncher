@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),motion=require('../preview/orange-tree-motion');
+const f=(time,speed=4,enabled=true,direction=90)=>motion.sway(enabled,speed,direction,0,time,12,7);
+assert.notEqual(f(0),f(1),'wind moves the canopy and attached fruit');
+assert.equal(f(1,0),0,'no wind means no sway');assert.equal(f(1,4,false),0,'reduced motion freezes the tree');
+assert(Math.abs(f(1,10))>Math.abs(f(1,2)),'stronger wind moves more');
+for(let t=0;t<100;t+=.1)assert(Math.abs(f(t,200))<=4.5,'motion remains bounded');
+assert(motion.offset(f(1),0,60)===0,'root is fixed');
+assert.notEqual(motion.offset(f(1),60,60),0,'crown moves');
+const a=f(1,4,true,90),b=f(1,4,true,270);assert.equal(a,-b,'wind direction reverses movement');
+console.log('Orange canopy and fruit sway, wind response, reduced motion and fixed root: OK');

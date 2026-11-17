@@ -1879,18 +1879,23 @@
     return characterCentre({column:tree.column+.5,row:tree.row+.5,blockHeight:surfaceHeight(tree.column,tree.row)});
   }
   let editingTreeSelection=null;
+  let orangeTreeMotionState={time:0,speed:0,direction:90,heading:0};
+  function orangeTreeSway(tree) {
+    const m=orangeTreeMotionState;
+    return window.OrangeTreeMotion?.sway(!REDUCED_MOTION,m.speed,m.direction,m.heading,m.time,tree.column,tree.row) || 0;
+  }
   function drawOrangeTree(tree,motionTime,sceneWeather) {
     if(!orangeTreeImage.complete || !orangeTreeImage.naturalWidth)return;
     const centre=orangeTreeAnchor(tree);
     const bottom=centre.y, width=ORANGE_TREE_WIDTH,height=ORANGE_TREE_HEIGHT;
-    const speed=Math.max(0,Math.min(30,sceneWeather.windSpeed||0));
-    const sway=REDUCED_MOTION ? 0 : Math.sin(motionTime*.9+(tree.column*7+tree.row*11)) * speed*.0012;
-    ctx.save();applyIslandTransform();ctx.translate(centre.x,bottom);ctx.rotate(sway);
+    orangeTreeMotionState={time:motionTime,speed:sceneWeather.windSpeed,direction:sceneWeather.windDirection,heading:headingDegrees};
+    const sway=orangeTreeSway(tree);
+    ctx.save();applyIslandTransform();ctx.translate(centre.x,bottom);ctx.transform(1,0,-sway/height,1,0,0);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
     ctx.drawImage(orangeTreeImage,-width/2,-height,width,height);ctx.restore();
     if(editingTreeSelection && tree.column===editingTreeSelection.column && tree.row===editingTreeSelection.row) {
-      ctx.save();applyIslandTransform();ctx.strokeStyle='#fff4a8';ctx.lineWidth=1;ctx.strokeRect(centre.x-width/2-2,bottom-height-2,width+4,height+4);ctx.restore();
+      ctx.save();applyIslandTransform();ctx.strokeStyle='#fff4a8';ctx.lineWidth=1;ctx.strokeRect(centre.x-width/2-6.5,bottom-height-2,width+13,height+4);ctx.restore();
     }
   }
 
@@ -2523,7 +2528,8 @@
         const trees=window.worldManager?.getActive()?.orangeTrees || [];
         for(let i=trees.length-1;i>=0;i--) {
           const tree=trees[i], centre=orangeTreeAnchor(tree),bottom=centre.y;
-          let u=(point.x-centre.x+ORANGE_TREE_WIDTH/2)/ORANGE_TREE_WIDTH,v=(point.y-(bottom-ORANGE_TREE_HEIGHT))/ORANGE_TREE_HEIGHT;
+          const x=point.x-centre.x+(point.y-bottom)*orangeTreeSway(tree)/ORANGE_TREE_HEIGHT;
+          let u=(x+ORANGE_TREE_WIDTH/2)/ORANGE_TREE_WIDTH,v=(point.y-(bottom-ORANGE_TREE_HEIGHT))/ORANGE_TREE_HEIGHT;
           if(u<0||u>=1||v<0||v>=1)continue;
           if(tree.facing==='W'||tree.facing==='E')u=1-u;
           if(data[(Math.min(127,Math.floor(v*128))*128+Math.min(127,Math.floor(u*128)))*4+3]>32)return i;
