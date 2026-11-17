@@ -8,11 +8,14 @@ hud=layout.find(".//*[@"+a+"id='@+id/home_character_hud']")
 assert hud is not None and hud.get(a+'layout_gravity')=='top|left'
 assert hud.get(a+'visibility') not in ('gone','invisible')
 assert hud.get(a+'clickable')=='false' and hud.get(a+'focusable')=='false'
-assert len(hud.findall('.//TextView'))==4
-for t in hud.findall('.//TextView'): assert t.get(a+'text')=='100' and t.get(a+'fontFamily')=='@font/press_start_2p' and t.get(a+'textColor')=='#342B1E'
+texts=hud.findall('.//TextView')
+assert [t.get(a+'text') for t in texts] == ['HEALTH','100','STAMINA','100','FOOD','100','DRINK','100']
+for t in texts: assert t.get(a+'fontFamily')=='@font/press_start_2p' and t.get(a+'textColor')=='#342B1E'
 top,needs=list(hud)
 portrait_view,vitals=list(top)
-assert portrait_view.get(a+'background') == vitals.get(a+'background') == needs.get(a+'background') == '@drawable/bg_date_hud_panel'
+assert portrait_view.get(a+'background') == '@drawable/status_frame'
+assert all(row.get(a+'background') == '@drawable/status_frame' for row in list(vitals)+list(needs))
+assert (res/'drawable-xhdpi/status_frame.9.png').exists()
 assert [row.get(a+'contentDescription').split(':')[0] for row in vitals] == ['Health','Stamina']
 assert [row.get(a+'contentDescription').split(':')[0] for row in needs] == ['Makanan','Air']
 for name in ['health','stamina','food','water']:

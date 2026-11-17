@@ -28,14 +28,14 @@
         <span class="camera-punch-hole" aria-hidden="true"></span>
 
         <section class="character-hud" aria-label="Status karakter sementara">
-          <img class="character-hud-portrait" src="assets/character-hud-current.png?v=1" alt="Potret karakter">
+          <div class="character-hud-portrait"><img src="assets/character-hud-current.png?v=1" alt="Potret karakter"></div>
           <div class="character-hud-stats character-hud-vitals" aria-label="Health dan stamina masing-masing 100 dari 100; nilai sementara">
-            <div><svg class="stat-icon" viewBox="0 0 12 12" aria-hidden="true"><path fill="#b73d38" d="M1 2h4v1h2V2h4v5H10v1H9v1H8v1H7v1H5v-1H4V9H3V8H2V7H1z"/></svg><span class="stat-bar health"></span><small>100</small></div>
-            <div><svg class="stat-icon" viewBox="0 0 12 12" aria-hidden="true"><path fill="#e1a52e" d="M6 0h4L7 4h3L3 12l1-5H2z"/></svg><span class="stat-bar stamina"></span><small>100</small></div>
+            <div><svg class="stat-icon" viewBox="0 0 12 12" aria-hidden="true"><path fill="#b73d38" d="M1 2h4v1h2V2h4v5H10v1H9v1H8v1H7v1H5v-1H4V9H3V8H2V7H1z"/></svg><span class="stat-info"><span class="stat-label">HEALTH</span><span class="stat-bar health"><small>100/100</small></span></span></div>
+            <div><svg class="stat-icon" viewBox="0 0 12 12" aria-hidden="true"><path fill="#e1a52e" d="M6 0h4L7 4h3L3 12l1-5H2z"/></svg><span class="stat-info"><span class="stat-label">STAMINA</span><span class="stat-bar stamina"><small>100/100</small></span></span></div>
           </div>
           <div class="character-hud-stats character-hud-needs" aria-label="Makanan dan air masing-masing 100 dari 100; nilai sementara">
-            <div><svg class="stat-icon" viewBox="0 0 12 12" aria-hidden="true"><path fill="#d57a2e" d="M6 2V0h2v2H7v1h3v1h1v5h-1v2H8v1H4v-1H2V9H1V4h1V3h3V2z"/></svg><span class="stat-bar food"></span><small>100</small></div>
-            <div><svg class="stat-icon" viewBox="0 0 12 12" aria-hidden="true"><path fill="#438cb1" d="M5 0h2v2h1v2h1v2h1v3H9v2H7v1H5v-1H3V9H2V6h1V4h1V2h1z"/></svg><span class="stat-bar water"></span><small>100</small></div>
+            <div><svg class="stat-icon" viewBox="0 0 12 12" aria-hidden="true"><path fill="#d57a2e" d="M6 2V0h2v2H7v1h3v1h1v5h-1v2H8v1H4v-1H2V9H1V4h1V3h3V2z"/></svg><span class="stat-info"><span class="stat-label">FOOD</span><span class="stat-bar food"><small>100/100</small></span></span></div>
+            <div><svg class="stat-icon" viewBox="0 0 12 12" aria-hidden="true"><path fill="#438cb1" d="M5 0h2v2h1v2h1v2h1v3H9v2H7v1H5v-1H3V9H2V6h1V4h1V2h1z"/></svg><span class="stat-info"><span class="stat-label">DRINK</span><span class="stat-bar water"><small>100/100</small></span></span></div>
           </div>
         </section>
         <section class="clock-hud" aria-label="Waktu, musim dan baterai">
