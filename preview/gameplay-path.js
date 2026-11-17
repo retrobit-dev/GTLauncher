@@ -13,7 +13,8 @@
     const height=p=>stacks ? stacks[keyOf(p)].length : (!world.tiles || world.tiles[keyOf(p)]!==0 ? 1 : 0);
     const inHouse=p=>house?.visible && p.column>=house.column && p.column<house.column+3 && p.row>=house.row && p.row<house.row+3;
     const escaping=inside(start) && inHouse(start);
-    const pass=p=>inside(p) && height(p)>0 && (!world.tiles || world.tiles[p.row*size+p.column]!==0) && (!inHouse(p) || escaping);
+    const inTree=p=>(world?.orangeTrees||[]).some(t=>p.column>=t.column && p.column<t.column+2 && p.row>=t.row && p.row<t.row+2);
+    const pass=p=>inside(p) && !inTree(p) && height(p)>0 && (!world.tiles || world.tiles[p.row*size+p.column]!==0) && (!inHouse(p) || escaping);
     // Older worlds may have a house placed on top of the character. Let the
     // character leave that starting tile, but never enter an occupied destination.
     const startOnTile=inside(start) && height(start)>0 && (!world.tiles || world.tiles[keyOf(start)]!==0);

@@ -19,12 +19,14 @@
     libraryList.replaceChildren();
     const houseButton=$('catalog-place-house'), exists=Boolean(window.worldManager.getHouse());
     houseButton.disabled=world.id==='base' || exists || !Array.isArray(world.tiles);
+    $('catalog-place-orange').disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-house-status').textContent=world.id==='base' ? 'Base World terkunci. Buka world buatan untuk menempatkan rumah.' : exists ? 'World ini sudah memiliki rumah player. Pindahkan rumah yang ada bila diperlukan.' : !Array.isArray(world.tiles) ? 'World lama ini tidak mendukung penempatan rumah.' : 'Pilih tombol, lalu ketuk sudut pertama tapak pada peta.';
     const objects = [];
     const character = window.worldManager.getCharacter();
     if (character.visible) objects.push(`Karakter · ${columnLabel(character.column)}${character.row + 1}`);
     const house = window.worldManager.getHouse?.();
     if (house) objects.push(`Rumah player · ${columnLabel(house.column)}${house.row + 1}–${columnLabel(house.column + 2)}${house.row + 3}${house.visible ? '' : ' (tersembunyi)'}`);
+    for(const tree of world.orangeTrees||[]) objects.push(`Pohon jeruk · ${columnLabel(tree.column)}${tree.row+1}–${columnLabel(tree.column+1)}${tree.row+2}`);
     if (!objects.length) objects.push('Belum ada objek yang ditampilkan.');
     for (const label of objects) {
       const row = document.createElement('div');
@@ -47,20 +49,34 @@
   // History is local to a world and this browser tab; reopening Edit keeps it until reload.
   const histories = new Map();
   const HISTORY_LIMIT = 50;
-  let placingHouse=false, placementWorld=null, placementPointer=null;
+  let placingHouse=false, placingOrange=false, placementWorld=null, placementPointer=null;
   $('catalog-place-house').addEventListener('click', () => {
     if($('catalog-place-house').disabled || !editing) return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {
       const button=$(id); if(button?.getAttribute('aria-pressed')==='true') button.click();
     }
     selected=false; draft=null; refresh(); syncControls();
-    placingHouse=true; placementWorld=window.worldManager.getActive().id; libraryDialog.close();
+    placingOrange=false; placingHouse=true; placementWorld=window.worldManager.getActive().id; libraryDialog.close();
     tell('EDITING · Ketuk tile untuk sudut pertama rumah player 3×3. Escape untuk batal.');
   });
+  $('catalog-place-orange').addEventListener('click',()=>{
+    if($('catalog-place-orange').disabled || !editing) return;
+    for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
+    selected=false;draft=null;refresh();syncControls();placingHouse=false;placingOrange=true;placementWorld=window.worldManager.getActive().id;libraryDialog.close();
+    tell('EDITING · Ketuk sudut pertama pohon jeruk 2×2. Escape untuk batal.');
+  });
   canvas.addEventListener('pointerdown', event => {
-    if(!placingHouse || !editing || event.button!==0) return;
+    if((!placingHouse && !placingOrange) || !editing || event.button!==0) return;
     event.preventDefault(); event.stopImmediatePropagation(); placementPointer=event.pointerId;
     const tile=scene()?.tileAt(scene().toLocal(event.clientX,event.clientY));
+    if(placingOrange) {
+      const before=window.worldManager.getActive().orangeTrees||[];
+      applyingHistory=true;let saved=false;
+      try {if(tile)saved=window.worldManager.replaceOrangeTrees(placementWorld,before,[...before,tile]);} finally {applyingHistory=false;}
+      if(!saved) {tell('EDITING · Pilih area 2×2 rata tanpa air, lubang, rumah, pohon, atau player.');return;}
+      placingOrange=false;placementWorld=null;history.undo.push({type:'orangeTrees',value:before.map(t=>({...t}))});
+      if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();syncControls();tell('EDITING · Pohon jeruk ditempatkan.');return;
+    }
     const house=tile && {column:tile.column,row:tile.row,scale:1,facing:'S',visible:true};
     applyingHistory=true;
     let saved=false;
@@ -87,9 +103,9 @@
     return obj ? {...obj} : null;
   }
   function blocks(world) { return world.blockStacks ? world.blockStacks.map(x=>x.slice()) : world.tiles?.map(t=>t?[t]:[]) ?? null; }
-  function snapshot() { return {character: current('character'), house: current('house'), blocks: blocks(window.worldManager.getActive())}; }
+  function snapshot() { return {character: current('character'), house: current('house'), trees:(window.worldManager.getActive().orangeTrees||[]).map(t=>({...t})), blocks: blocks(window.worldManager.getActive())}; }
   function sameBlocks(a,b) { return a===b || (Array.isArray(a) && Array.isArray(b) && a.length===b.length && a.every((v,i)=>v.length===b[i].length && v.every((t,j)=>t===b[i][j]))); }
-  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house) && sameBlocks(a.blocks,b.blocks); }
+  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house) && JSON.stringify(a.trees)===JSON.stringify(b.trees) && sameBlocks(a.blocks,b.blocks); }
   function ensureHistory(id) {
     const state = snapshot();
     let item = histories.get(id);
@@ -116,6 +132,12 @@
   function stepHistory(from, to, label) {
     if (!editing || !history || pendingTerrain || pointers.size || dialog.open || !from.length) return;
     const next = from[from.length - 1];
+    if(next.type==='orangeTrees') {
+      const before=(window.worldManager.getActive().orangeTrees||[]).map(t=>({...t}));
+      applyingHistory=true;let saved;try {saved=window.worldManager.replaceOrangeTrees(worldId,before,next.value);}finally{applyingHistory=false;}
+      if(!saved){tell('EDITING · Riwayat pohon tidak dapat diterapkan; periksa tapak.');return;}
+      from.pop();to.push({type:'orangeTrees',value:before});history.last=snapshot();draft=null;refresh();syncControls();tell(`EDITING · ${label}: pohon jeruk.`);return;
+    }
     if (next.type === 'housePlacement') {
       const before=current('house');
       applyingHistory=true; let saved;
@@ -189,7 +211,7 @@
   }
   function finishEditing() {
     if(pendingTerrain) window.editorBlockHistory.end();
-    placingHouse=false; placementWorld=null; pendingTerrain = null; editing = false; selected = false; worldId = null; draft = null; history = null;
+    placingHouse=false; placingOrange=false; placementWorld=null; pendingTerrain = null; editing = false; selected = false; worldId = null; draft = null; history = null;
     pointers.clear(); dragOffset = null; pinch = null; suppressDrag = false;
     scene()?.update(null, false); syncControls();
   }
@@ -337,7 +359,7 @@
     }
   });
   document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && placingHouse) { event.preventDefault(); placingHouse=false; placementWorld=null; tell('EDITING · Penempatan rumah dibatalkan.'); return; }
+    if (event.key === 'Escape' && (placingHouse || placingOrange)) { event.preventDefault(); placingHouse=false; placingOrange=false; placementWorld=null; tell('EDITING · Penempatan objek dibatalkan.'); return; }
     if (event.key === 'Escape' && editing && !dialog.open) { finishEditing(); return; }
     const tag = event.target?.tagName?.toLowerCase();
     if (!editing || dialog.open || !(event.ctrlKey || event.metaKey) || event.altKey

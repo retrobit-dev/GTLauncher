@@ -43,10 +43,13 @@
     Array.from({length:12},(_,i)=>{const image=new Image();image.src=`./assets/character-${mode}/${side}-${String(i).padStart(2,'0')}.png?v=short-stocky-1`;return image;})]))]));
   const houseImage = new Image();
   houseImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
-  houseImage.src = './assets/player-house.png';
+  houseImage.src = './assets/simple-house.png';
   const houseBackImage = new Image();
   houseBackImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
-  houseBackImage.src = './assets/player-house-back.png';
+  houseBackImage.src = './assets/simple-house-back.png';
+  const orangeTreeImage = new Image();
+  orangeTreeImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
+  orangeTreeImage.src = './assets/orange-tree.png';
   const PLAYER_WIDTH = 13.5;
   const PLAYER_HEIGHT = 25;
   // Base and new worlds are 50×50; older worlds retain their original geometry.
@@ -1821,6 +1824,10 @@
       shadows.push({anchor: {x: centre.x, y: centre.y + 1.25 * islandTileHeight * house.scale},
         width: 70 * house.scale, depth: islandTileHeight * 2.5 * house.scale, height: 67 * house.scale});
     }
+    for(const tree of world.orangeTrees||[]) {
+      const centre=characterCentre({column:tree.column+.5,row:tree.row+.5,blockHeight:surfaceHeight(tree.column,tree.row)});
+      shadows.push({anchor:{x:centre.x,y:centre.y+islandTileHeight*.55},width:42,depth:islandTileHeight*1.6,height:60});
+    }
     if (!shadows.length) return;
     const lightPoint = sunPlanePosition(light.hourAngleDegrees);
     ctx.save(); applyIslandTransform(); clipIslandSurface();
@@ -1857,6 +1864,17 @@
       ctx.strokeRect(centre.x - width / 2 - 2, bottom - height - 2, width + 4, height + 4);
     }
     ctx.restore();
+  }
+
+  function drawOrangeTree(tree,motionTime,sceneWeather) {
+    if(!orangeTreeImage.complete || !orangeTreeImage.naturalWidth)return;
+    const ground=surfaceHeight(tree.column,tree.row);
+    const centre=characterCentre({column:tree.column+.5,row:tree.row+.5,blockHeight:ground});
+    const bottom=centre.y+islandTileHeight*.55, width=48,height=60;
+    const speed=Math.max(0,Math.min(30,sceneWeather.windSpeed||0));
+    const sway=REDUCED_MOTION ? 0 : Math.sin(motionTime*.9+(tree.column*7+tree.row*11)) * speed*.0012;
+    ctx.save();applyIslandTransform();ctx.translate(centre.x,bottom);ctx.rotate(sway);
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(orangeTreeImage,-width/2,-height,width,height);ctx.restore();
   }
 
   function drawGameplayRoute() {
@@ -2213,9 +2231,13 @@
     drawSurfaceObjectShadows(shadowLight, sceneWeather.cloudCover, sceneWeather.weatherCode);
     drawCharacterProjectedShadow(shadowLight, sceneWeather.cloudCover);
     drawGameplayRoute();
-    drawHouse();
     drawHoeTarget();
-    drawMainCharacter(motionTime);
+    const visibleHouse=editingHouseDraft || window.worldManager?.getHouse?.();
+    const visiblePlayer=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
+    const sceneObjects=(window.worldManager?.getActive()?.orangeTrees||[]).map(tree=>({depth:tree.column+tree.row+1,draw:()=>drawOrangeTree(tree,motionTime,sceneWeather)}));
+    if(visibleHouse?.visible)sceneObjects.push({depth:visibleHouse.column+visibleHouse.row+2,draw:drawHouse});
+    if(visiblePlayer?.visible)sceneObjects.push({depth:visiblePlayer.column+visiblePlayer.row,draw:()=>drawMainCharacter(motionTime)});
+    sceneObjects.sort((a,b)=>a.depth-b.depth);for(const object of sceneObjects)object.draw();
     // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
     // cloud can hang below the horizon line, and clipping it there hid the cloud while its
     // shadow still showed on the grass. Edge clamping already keeps every sprite in frame.

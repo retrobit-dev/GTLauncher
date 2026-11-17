@@ -5,3 +5,7 @@ Konsep rumah awal terpilih disimpan di `preview/assets/character-redraw/house-re
 Pada Map Editor preview, buka **Objek → Katalog objek → Rumah player → Tempatkan rumah**, lalu ketuk tile untuk sudut pertama tapak 3×3. Satu world buatan dapat memiliki satu rumah player; Base World tetap terkunci. Area harus berada di dalam world, rata, tanpa air atau lubang dan tidak ditempati player. Escape membatalkan; penempatan mendukung undo/redo dalam sesi editor. Rumah yang sudah ada memakai tampilan baru tanpa mengubah posisi, arah, skala, atau data terrain. Pemindahan dan interaksi tangan menggunakan sistem rumah sebelumnya; rumah tidak dapat diambil ke tas. Daftar katalog objek lain belum tersedia.
 
 Peta preview dan Android tetap tersimpan terpisah. Penempatan melalui katalog hanya tersedia di preview, bukan editor native Android. Android memakai sprite baru untuk rumah standar tetapi build dan perangkat Android belum diverifikasi; world bertingkat JSON v4 preview belum didukung Android.
+
+## Desain sederhana
+
+Rumah standar kini menggunakan konsep `house-player-simple-concept.png`, dengan interpretasi belakang terpisah dan pintu yang lebih tinggi dari player pada skala bawaan. Aset dan konsep rumah sebelumnya tetap disimpan. Aset Android rumah standar juga diperbarui, tetapi belum dibangun atau diuji pada perangkat. Desain wide lama belum didesain ulang; fitur upgrade belum tersedia.
