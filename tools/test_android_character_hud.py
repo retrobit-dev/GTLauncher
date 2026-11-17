@@ -8,9 +8,7 @@ hud=layout.find(".//*[@"+a+"id='@+id/home_character_hud']")
 assert hud is not None and hud.get(a+'layout_gravity')=='top|left'
 assert hud.get(a+'visibility') not in ('gone','invisible')
 assert hud.get(a+'clickable')=='false' and hud.get(a+'focusable')=='false'
-texts=hud.findall('.//TextView')
-assert [t.get(a+'text') for t in texts] == ['100','100','100','100']
-for t in texts: assert t.get(a+'fontFamily')=='@font/press_start_2p' and t.get(a+'textColor')=='#342B1E'
+assert not hud.findall('.//TextView')
 portrait_view,stats=list(hud)
 assert portrait_view.get(a+'background') == '@drawable/status_frame'
 assert hud.get(a+'layout_height') == portrait_view.get(a+'layout_height') == '48dp'
@@ -18,11 +16,12 @@ assert stats.get(a+'layout_height') == 'match_parent'
 assert all(row.get(a+'background') == '@drawable/status_frame' for row in stats)
 assert (res/'drawable-xhdpi/status_frame.9.png').exists()
 assert [row.get(a+'contentDescription').split(':')[0] for row in stats] == ['Health','Stamina','Makanan','Air']
-assert all(row.get(a+'layout_width') == 'match_parent' and row.get(a+'layout_weight') == '1' for row in stats)
-assert ET.parse(res/'drawable/hud_stat_stamina.xml').getroot().find('solid').get(a+'color').lower() == '#e1a52e'
-for name in ['health','stamina','food','water']:
- assert len([v for v in hud.findall('.//View') if v.get(a+'background')=='@drawable/hud_stat_'+name])==10
+assert all(row.get(a+'layout_width') == 'match_parent' and row.get(a+'layout_weight') == '1' and '20 poin' in row.get(a+'contentDescription') for row in stats)
+for row,name in zip(stats,['health','stamina','food','water']):
+ icons=row.findall('ImageView')
+ assert len(icons)==5 and all(icon.get(a+'src')=='@drawable/hud_stat_icon_'+name for icon in icons)
  ET.parse(res/'drawable'/('hud_stat_icon_'+name+'.xml'))
+assert ET.parse(res/'drawable/hud_stat_icon_food.xml').getroot().find('path').get(a+'fillColor').lower() == '#6d9134'
 import struct
 portrait=(res/'drawable-nodpi/character_hud_current.png').read_bytes()
 assert portrait==(root/'preview/assets/character-hud-current.png').read_bytes()
