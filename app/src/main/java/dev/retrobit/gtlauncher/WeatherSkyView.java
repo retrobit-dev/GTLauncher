@@ -511,7 +511,9 @@ public final class WeatherSkyView extends View {
             }
             if(image==null)continue;RectF g=surfaceSpriteBounds(o);
             int alpha=Math.round(255*(100-Math.max(0,o.opacity))/100f);
-            paint.setColor(Color.argb(Math.round(35*alpha/255f),12,23,40));paint.setStyle(Paint.Style.FILL);canvas.drawOval(new RectF(g.centerX()-g.width()*.3f,g.bottom-1,g.centerX()+g.width()*.3f,g.bottom+1),paint);
+            if(!(o.type.equals("tree") && o.material.equals("orange"))) {
+                paint.setColor(Color.argb(Math.round(35*alpha/255f),12,23,40));paint.setStyle(Paint.Style.FILL);canvas.drawOval(new RectF(g.centerX()-g.width()*.3f,g.bottom-1,g.centerX()+g.width()*.3f,g.bottom+1),paint);
+            }
             paint.setColor(Color.WHITE);paint.setAlpha(alpha);paint.setFilterBitmap(true);int saved=canvas.save();
             if(o.type.equals("tree") && o.material.equals("orange")) {
                 double sway=orangeTreeSway(o);
@@ -932,6 +934,22 @@ public final class WeatherSkyView extends View {
             int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-Math.max(0,house.opacity))/100f));
             drawObjectSilhouette(canvas,image,x,y,70*scale*(wide?7f/6:1),(wide?100:74)*scale,lightPoint,"N".equals(house.facing)||"E".equals(house.facing));
             paint.setAlpha(originalAlpha);
+        }
+        // Project the current orange-tree bitmap's alpha, including its wind deformation.
+        for(WorldStore.SurfaceObject tree:worldSurfaces) if(tree.type.equals("tree") && tree.material.equals("orange")) {
+            Bitmap treeSprite=treeImage(tree);if(treeSprite==null)continue;
+            RectF g=surfaceSpriteBounds(tree);float height=g.height(),width=g.width();
+            float h=Math.min(height,LANGIT_MATAHARI_LIFT*.8f),ratio=h/(LANGIT_MATAHARI_LIFT-h);
+            float dx=(float)clamp((g.centerX()-lightPoint[0])*ratio,-height*1.5,height*1.5);
+            float dy=(float)clamp((g.bottom-lightPoint[1]-LANGIT_MATAHARI_LIFT)*ratio,-height*.9,height*.9);
+            if(Math.abs(dy)<height*.2f)dy=dy<0?-height*.2f:height*.2f;
+            float sway=(float)orangeTreeSway(tree);
+            Matrix transform=new Matrix();transform.setValues(new float[]{1,-(dx+sway)/height,g.centerX()-width/2+dx+sway,0,-dy/height,g.bottom+dy,0,0,1});
+            int saveTree=canvas.save(),originalAlpha=paint.getAlpha();canvas.concat(transform);
+            paint.setAlpha(Math.round(originalAlpha*(100-Math.max(0,tree.opacity))/100f));
+            paint.setColorFilter(OBJECT_SHADOW_FILTER);paint.setFilterBitmap(true);
+            canvas.drawBitmap(treeSprite,null,new RectF(0,0,width,height),paint);
+            paint.setColorFilter(null);paint.setAlpha(originalAlpha);canvas.restoreToCount(saveTree);
         }
         Bitmap sprite = currentCharacterSprite();
         if (showCharacter && sprite != null && light.altitudeDegrees > 0 && visualWaterDepth() <= 0) {

@@ -1826,11 +1826,8 @@
       shadows.push({anchor: {x: centre.x, y: centre.y + 1.5 * islandTileHeight * house.scale},
         width: 84 * house.scale, depth: islandTileHeight * 3 * house.scale, height: 85 * house.scale});
     }
-    for(const tree of world.orangeTrees||[]) {
-      const centre=orangeTreeAnchor(tree);
-      shadows.push({anchor:centre,width:42,depth:islandTileHeight*1.6,height:60});
-    }
-    if (!shadows.length) return;
+    const trees=world.orangeTrees||[];
+    if (!shadows.length && !trees.length) return;
     const lightPoint = sunPlanePosition(light.hourAngleDegrees);
     ctx.save(); applyIslandTransform(); clipIslandSurface();
     // Object shadows remain legible even under overcast conditions or virtual moonlight.
@@ -1842,6 +1839,22 @@
       ctx.beginPath(); ctx.moveTo(points[0][0], points[0][1]);
       for (const [x, y] of points.slice(1)) ctx.lineTo(x, y);
       ctx.closePath(); ctx.fill();
+    }
+    // The projected alpha preserves branches and canopy, including mirroring and wind sway.
+    if(trees.length && orangeTreeImage.complete && orangeTreeImage.naturalWidth && window.TreeShadow) {
+      let mask=characterShadowMasks.get(orangeTreeImage);
+      if(!mask) {
+        mask=document.createElement('canvas');mask.width=orangeTreeImage.naturalWidth;mask.height=orangeTreeImage.naturalHeight;
+        const m=mask.getContext('2d');m.drawImage(orangeTreeImage,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);
+        characterShadowMasks.set(orangeTreeImage,mask);
+      }
+      ctx.globalAlpha=opacity;ctx.imageSmoothingEnabled=true;
+      for(const tree of trees) {
+        const anchor=orangeTreeAnchor(tree), projection=window.TreeShadow.projection(anchor,lightPoint,ORANGE_TREE_WIDTH,ORANGE_TREE_HEIGHT,LANGIT_MATAHARI_LIFT,orangeTreeSway(tree));
+        ctx.save();ctx.translate(anchor.x,anchor.y);ctx.transform(1,0,projection.shear,projection.vertical,0,0);
+        if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
+        ctx.drawImage(mask,-ORANGE_TREE_WIDTH/2,-ORANGE_TREE_HEIGHT,ORANGE_TREE_WIDTH,ORANGE_TREE_HEIGHT);ctx.restore();
+      }
     }
     ctx.restore();
   }
@@ -1888,7 +1901,6 @@
     if(!orangeTreeImage.complete || !orangeTreeImage.naturalWidth)return;
     const centre=orangeTreeAnchor(tree);
     const bottom=centre.y, width=ORANGE_TREE_WIDTH,height=ORANGE_TREE_HEIGHT;
-    orangeTreeMotionState={time:motionTime,speed:sceneWeather.windSpeed,direction:sceneWeather.windDirection,heading:headingDegrees};
     const sway=orangeTreeSway(tree);
     ctx.save();applyIslandTransform();ctx.translate(centre.x,bottom);ctx.transform(1,0,-sway/height,1,0,0);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
@@ -2232,6 +2244,7 @@
     const sceneWeather = getSceneWeather();
     const time = (performance.now() - animationStart) / 1000;
     const motionTime = REDUCED_MOTION ? 0 : time;
+    orangeTreeMotionState={time:motionTime,speed:sceneWeather.windSpeed,direction:sceneWeather.windDirection,heading:headingDegrees};
     const sun = sunPosition(skyNow, location.latitude, location.longitude);
     const moonNow = moonPosition(skyNow, location.latitude, location.longitude,
       sun.eclipticLongitude);
