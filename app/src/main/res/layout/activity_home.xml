@@ -41,7 +41,7 @@
     <HorizontalScrollView android:id="@+id/home_dock_scroll" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="12dp" android:scrollbars="none">
       <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical">
         <LinearLayout android:layout_width="wrap_content" android:layout_height="24dp" android:orientation="horizontal">
-          <ImageView android:id="@+id/dock_tools_tab" android:layout_width="40dp" android:layout_height="match_parent" android:padding="3dp" android:src="@drawable/dock_tools_tab" android:scaleType="fitCenter" android:contentDescription="Tools" android:background="@drawable/bg_date_hud_panel" />
+          <TextView android:id="@+id/dock_tools_tab" android:layout_width="40dp" android:layout_height="match_parent" android:gravity="center" android:text="Tools" android:textSize="8sp" android:textColor="#513C2D" android:contentDescription="Tools" android:background="@drawable/bg_date_hud_panel" />
           <Button android:id="@+id/dock_add_tab" android:layout_width="40dp" android:layout_height="match_parent" android:minHeight="0dp" android:minWidth="0dp" android:padding="0dp" android:text="+" android:contentDescription="Tambah tab dock — belum tersedia" android:background="@drawable/bg_date_hud_panel" />
         </LinearLayout>
         <LinearLayout android:layout_width="wrap_content" android:layout_height="40.5dp" android:orientation="horizontal">

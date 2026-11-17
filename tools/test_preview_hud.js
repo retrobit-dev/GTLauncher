@@ -27,7 +27,7 @@ assert.throws(()=>season.classify(rainfall(0),new Date('2026-12-01T12:00:00Z')))
  for(const img of d.querySelectorAll('.character-hud img, .home-dock img'))assert(fs.existsSync(path.join(root,img.getAttribute('src').split('?')[0])));
  assert.equal(d.querySelectorAll('.character-hud-stats > div').length,4);
  assert.equal(d.querySelectorAll('.home-dock button').length,11);
- assert.equal(d.querySelector('.dock-tab.selected').getAttribute('aria-label'),'Tools');assert(d.querySelector('.dock-tab.selected img'));assert.equal(d.querySelector('.dock-tab.selected').textContent,'');
+ assert.equal(d.querySelector('.dock-tab.selected').getAttribute('aria-label'),'Tools');assert.equal(d.querySelector('.dock-tab.selected').textContent,'Tools');assert.equal(d.querySelector('.dock-tab.selected img'),null);
  assert(!d.querySelector('[data-dock="close"]'),'no close icon in dock');
  const hoe=d.querySelector('[data-dock="hoe"]');hoe.click();assert.equal(hoe.getAttribute('aria-pressed'),'true');assert.equal(hand.getAttribute('aria-pressed'),'false');assert(!dialog.open);hoe.click();assert.equal(hoe.getAttribute('aria-pressed'),'false');assert.equal(hand.getAttribute('aria-pressed'),'false');hoe.click();hand.click();assert.equal(hoe.getAttribute('aria-pressed'),'false');
  d.querySelector('[data-dock="add"]').click();assert(dialog.open);assert.match(d.getElementById('dock-message').textContent,/belum dipulihkan/);
