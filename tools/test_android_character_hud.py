@@ -9,10 +9,12 @@ assert hud is not None and hud.get(a+'layout_gravity')=='top|left'
 assert hud.get(a+'visibility') not in ('gone','invisible')
 assert hud.get(a+'clickable')=='false' and hud.get(a+'focusable')=='false'
 texts=hud.findall('.//TextView')
-assert [t.get(a+'text') for t in texts] == ['HEALTH','100','STAMINA','100','FOOD','100','DRINK','100']
+assert [t.get(a+'text') for t in texts] == ['100','100','100','100']
 for t in texts: assert t.get(a+'fontFamily')=='@font/press_start_2p' and t.get(a+'textColor')=='#342B1E'
 portrait_view,stats=list(hud)
 assert portrait_view.get(a+'background') == '@drawable/status_frame'
+assert hud.get(a+'layout_height') == portrait_view.get(a+'layout_height') == '48dp'
+assert stats.get(a+'layout_height') == 'match_parent'
 assert all(row.get(a+'background') == '@drawable/status_frame' for row in stats)
 assert (res/'drawable-xhdpi/status_frame.9.png').exists()
 assert [row.get(a+'contentDescription').split(':')[0] for row in stats] == ['Health','Stamina','Makanan','Air']
