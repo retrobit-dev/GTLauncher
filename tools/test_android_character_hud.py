@@ -10,7 +10,11 @@ assert hud.get(a+'visibility') not in ('gone','invisible')
 assert hud.get(a+'clickable')=='false' and hud.get(a+'focusable')=='false'
 assert len(hud.findall('.//TextView'))==4
 for t in hud.findall('.//TextView'): assert t.get(a+'text')=='100' and t.get(a+'fontFamily')=='@font/press_start_2p' and t.get(a+'textColor')=='#342B1E'
-assert list(hud)[0].get(a+'background') == list(hud)[1].get(a+'background') == '@drawable/bg_date_hud_panel'
+top,needs=list(hud)
+portrait_view,vitals=list(top)
+assert portrait_view.get(a+'background') == vitals.get(a+'background') == needs.get(a+'background') == '@drawable/bg_date_hud_panel'
+assert [row.get(a+'contentDescription').split(':')[0] for row in vitals] == ['Health','Stamina']
+assert [row.get(a+'contentDescription').split(':')[0] for row in needs] == ['Makanan','Air']
 for name in ['health','stamina','food','water']:
  assert len([v for v in hud.findall('.//View') if v.get(a+'background')=='@drawable/hud_stat_'+name])==10
  ET.parse(res/'drawable'/('hud_stat_icon_'+name+'.xml'))
@@ -18,7 +22,7 @@ import struct
 portrait=(res/'drawable-nodpi/character_hud_current.png').read_bytes()
 assert portrait==(root/'preview/assets/character-hud-current.png').read_bytes()
 assert portrait[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',portrait[16:24])==(512,512) and portrait[25]==6
-assert list(hud)[0].get(a+'src')=='@drawable/character_hud_current'
+assert portrait_view.get(a+'src')=='@drawable/character_hud_current'
 assert 'character-hud-current.png' in (root/'preview/index.html').read_text()
 activity=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
 assert 'home_character_hud' not in activity # No world switch hides the launcher HUD.
