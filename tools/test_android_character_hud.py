@@ -13,7 +13,7 @@ portrait_view,stats=list(hud)
 assert portrait_view.get(a+'background') == '@drawable/status_frame'
 assert hud.get(a+'layout_height') == portrait_view.get(a+'layout_height') == '48dp'
 assert stats.get(a+'layout_height') == 'match_parent'
-assert all(row.get(a+'background') == '@drawable/status_frame' for row in stats)
+assert all(row.get(a+'background') is None for row in stats)
 assert (res/'drawable-xhdpi/status_frame.9.png').exists()
 assert [row.get(a+'contentDescription').split(':')[0] for row in stats] == ['Health','Stamina','Makanan','Air']
 assert all(row.get(a+'layout_width') == 'match_parent' and row.get(a+'layout_weight') == '1' and '20 poin' in row.get(a+'contentDescription') for row in stats)
