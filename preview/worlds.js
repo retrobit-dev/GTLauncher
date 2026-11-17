@@ -18,7 +18,15 @@
   let storageError = '';
   let loadedRaw = null;
   const validTile = t => Number.isInteger(t) && t >= 0 && t <= 6;
-  const WORLD_KEYS = ['id','name','description','color','showCharacter','characterColumn','characterRow','characterScale','characterFacing','house','gridSize','tiles'];
+  const WORLD_KEYS = ['id','name','description','color','showCharacter','characterColumn','characterRow','characterScale','characterFacing','house','gridSize','tiles','blockStacks'];
+  // The top block mirrors tiles for legacy flat-world consumers. A missing
+  // stack layer means every non-empty tile has one block; no migration is needed.
+  function validStacks(stacks, tiles, size) {
+    return Array.isArray(stacks) && Array.isArray(tiles) && stacks.length === size * size &&
+      stacks.every((stack,i) => Array.isArray(stack) && stack.length <= 32 &&
+        stack.every(t => Number.isInteger(t) && t >= 1 && t <= 6) &&
+        (stack.length ? stack[stack.length-1] : 0) === tiles[i]);
+  }
   let exportUrl = null;
   let exportFile = null;
   function showExport(url, filename, qr, json = '', previewOnly = false) {
@@ -112,6 +120,7 @@
           || (world.gridSize !== undefined && ![20,25,50,100].includes(world.gridSize))
           || ([20,25,50,100].includes(world.gridSize) && world.tiles === undefined)
           || (world.tiles !== undefined && (![20,25,50,100].includes(world.gridSize) || !Array.isArray(world.tiles) || world.tiles.length !== world.gridSize * world.gridSize || world.tiles.some(t => !validTile(t))))
+          || (world.blockStacks !== undefined && !validStacks(world.blockStacks, world.tiles, world.gridSize))
           || (world.house !== undefined && !validHouse(world.house, world.gridSize || 9))
           || (world.showCharacter !== undefined && typeof world.showCharacter !== 'boolean')
           || (world.characterFacing !== undefined && !['N', 'E', 'S', 'W'].includes(world.characterFacing))
@@ -135,7 +144,7 @@
   function upgradeHome25() {
     if (storageError || loadedRaw === null) return false;
     const home = state.worlds.find(w => w.name.trim().toLocaleLowerCase() === 'home' && ![25,50,100].includes(w.gridSize));
-    if (!home) return false;
+    if (!home || home.blockStacks) return false;
     const oldSize = home.gridSize || 9, tiles = Array(625).fill(1);
     if (home.tiles) for (let r=0;r<oldSize;r++) for (let c=0;c<oldSize;c++) tiles[r*25+c]=home.tiles[r*oldSize+c];
     try {
@@ -208,7 +217,8 @@
     if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3].includes(root.version)) {
       const w = root.world;
       if (!keys(w, WORLD_KEYS) || ![20,25,50,100].includes(w.gridSize) || !Array.isArray(w.tiles) || w.tiles.length !== w.gridSize * w.gridSize
-        || w.tiles.some(t => !validTile(t) || (t > (root.version === 1 ? 1 : root.version === 2 ? 5 : 6))) || typeof w.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(w.id) || w.id === 'base'
+        || w.tiles.some(t => !validTile(t) || (t > (root.version === 1 ? 1 : root.version === 2 ? 5 : 6)))
+        || w.blockStacks !== undefined || typeof w.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(w.id) || w.id === 'base'
         || typeof w.name !== 'string' || !w.name.trim() || w.name.length > 48 || typeof w.description !== 'string' || w.description.length > 160
         || typeof w.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(w.color)
         || typeof w.showCharacter !== 'boolean' || !Number.isInteger(w.characterColumn) || w.characterColumn < 0 || w.characterColumn >= w.gridSize
@@ -449,6 +459,7 @@
       }
     } else if ((action === 'export' || action === 'export-qr') && world) {
       if ([20,25,50,100].includes(world.gridSize)) {
+        if (world.blockStacks) { announce('Ekspor block bertingkat belum tersedia; data world tidak diubah.'); return; }
         if (action === 'export-qr') { announce('QR world ini belum tersedia; gunakan ekspor JSON.'); return; }
         const character = getCharacter(world);
         const snapshot = {...world, showCharacter: character.visible, characterColumn: character.column, characterRow: character.row,
@@ -535,10 +546,27 @@
     const world = activeWorld();
     if (id === 'base' || world.id !== id || ![20,25,50,100].includes(world.gridSize) || !Array.isArray(tiles)
       || tiles.length !== world.gridSize * world.gridSize || tiles.some(t => !validTile(t))) return false;
+    // Legacy single-layer edits must never flatten a saved stack.
+    if (world.blockStacks && tiles.some((t,i) => t !== world.tiles[i])) return false;
     const character = getCharacter(world), house = getHouse(world);
     if (!tiles[character.row * world.gridSize + character.column]) return false;
     if (house) for (let r = house.row; r < house.row + 3; r++) for (let c = house.column; c < house.column + 3; c++) if (!tiles[r * world.gridSize + c] || tiles[r * world.gridSize + c] === 3) return false;
     return commit({...state, worlds: state.worlds.map(w => w.id === id ? {...w, tiles: tiles.slice()} : w)});
+  }
+  function updateBlockStacks(id, stacks) {
+    const world = activeWorld(), size = world.gridSize;
+    if (id === 'base' || world.id !== id || ![20,25,50,100].includes(size) || !Array.isArray(stacks)) return false;
+    const tiles = stacks.map(stack => Array.isArray(stack) && stack.length ? stack[stack.length-1] : 0);
+    if (!validStacks(stacks, tiles, size)) return false;
+    const character = getCharacter(world), house = getHouse(world);
+    const oldHeight = i => world.blockStacks ? world.blockStacks[i].length : (world.tiles[i] ? 1 : 0);
+    const characterIndex = character.row * size + character.column;
+    if (!tiles[characterIndex] || stacks[characterIndex].length !== oldHeight(characterIndex)) return false;
+    if (house) for (let r=house.row; r<house.row+3; r++) for(let c=house.column; c<house.column+3; c++) {
+      const i=r*size+c;
+      if (!tiles[i] || tiles[i]===3 || stacks[i].length!==oldHeight(i)) return false;
+    }
+    return commit({...state, worlds: state.worlds.map(w => w.id === id ? {...w, tiles, blockStacks: stacks.map(stack=>stack.slice())} : w)});
   }
   function moveHouse(id, original, column, row) {
     const world=activeWorld(), house=getHouse(world), character=getCharacter(world), size=world.gridSize || 9;
@@ -560,7 +588,7 @@
     const tiles=world.tiles.slice();tiles[row*size+column]=6;
     return updateTiles(id,tiles);
   }
-  window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, updateTiles, tillTile});
+  window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, updateTiles, updateBlockStacks, tillTile});
   render();
   if (homeUpgraded) announce('Home diperbarui menjadi 25×25. Cadangan sebelum perubahan tersedia untuk diunduh.');
   else if (storageError) announce(storageError);
