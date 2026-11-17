@@ -1156,13 +1156,26 @@
   }
   function drawWaterTopBanks(tile,halfWidth,halfHeight,palette,world) {
     const x=tile.x,y=tile.y,hw=halfWidth,hh=halfHeight;
-    const edges={left:[[x-hw,y],[x,y+hh]],right:[[x,y+hh],[x+hw,y]],
-      backLeft:[[x,y-hh],[x-hw,y]],backRight:[[x+hw,y],[x,y-hh]]};
-    const borders=waterTopBorders(tile.column,tile.row,world), inset=.13;
-    for(const [name,[a,b]] of Object.entries(edges)) {
-      if(!borders[name]) continue;
-      const inside=p=>[p[0]+(x-p[0])*inset,p[1]+(y-p[1])*inset];
-      drawSmoothIslandPolygon([a,b,inside(b),inside(a)],palette.soilLight,palette.soilDark);
+    const vertices=[[x,y-hh],[x+hw,y],[x,y+hh],[x-hw,y]];
+    const names=['backRight','right','left','backLeft'];
+    const borders=waterTopBorders(tile.column,tile.row,world),inset=.13;
+    // Constant perpendicular-in-grid offsets make neighbouring segments line
+    // up at shared vertices instead of tapering independently to each tile.
+    const offsets=[[-hw*inset,hh*inset],[-hw*inset,-hh*inset],
+      [hw*inset,-hh*inset],[hw*inset,hh*inset]];
+    const color=blendColor(palette.soilLight,palette.soilDark,.22);
+    const add=(v,d)=>[v[0]+d[0],v[1]+d[1]];
+    for(let i=0;i<4;i++) {
+      if(!borders[names[i]]) continue;
+      const a=vertices[i],b=vertices[(i+1)%4],d=offsets[i];
+      drawSmoothIslandPolygon([a,b,add(b,d),add(a,d)],color,color);
+      // Fill the corner only when both adjoining edges are closed; openings to
+      // water and waterfalls remain open all the way to the corner.
+      const next=(i+1)%4;
+      if(borders[names[next]]) {
+        const e=offsets[next];
+        drawSmoothIslandPolygon([b,add(b,d),add(add(b,d),e),add(b,e)],color,color);
+      }
     }
   }
   // A fall exists only between neighbouring exposed water surfaces, and is

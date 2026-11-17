@@ -28,6 +28,13 @@ const {chromium}=require('playwright-core');
   borders=await page.evaluate(t=>sceneEditing.waterBorders(t.column,t.row,1),target);assert.deepEqual(borders,{left:true,right:false},'water next to water has no shared bank');
   topBorders=await page.evaluate(t=>sceneEditing.waterTopBorders(t.column,t.row),target);assert.equal(topBorders.right,false,'adjacent water opens upper rim');
   const joined=await sidePixel();assert.notDeepEqual(joined,exposed,'actual outer wall disappears when adjacent water connects');
+  // The two rear rim segments meet at their shared vertex; sample either side
+  // of that vertex inside the earthen strip to catch tapered gaps/seams.
+  const seam=await page.evaluate(t=>{const canvas=document.querySelector('#sky-canvas'),r=canvas.getBoundingClientRect(),o=sceneEditing.toLocal(r.left,r.top),z=sceneEditing.camera().renderZoom,n=sceneEditing.centre(t),hw=14,hh=28*Math.sin(25*Math.PI/180)/2;
+    const pixels=(x,y)=>[...canvas.getContext('2d').getImageData(Math.round((x-o.x)*z/320*canvas.width),Math.round((y-o.y)*z/200*canvas.height),1,1).data];
+    const x=n.x+hw-hw*.065,y=n.y+hh*.065;
+    return [pixels(x-1,y-hh/14),pixels(x+1,y+hh/14)];},target);
+  assert(seam.every(c=>c[0]>c[2] && c[1]>c[2]),'both sides of the rim join retain the warm soil color');
   await page.evaluate(t=>{const w=worldManager.getActive(),s=w.blockStacks.map(x=>x.slice());s[t.row*w.gridSize+t.column].pop();if(!worldManager.updateBlockStacks(w.id,s))throw Error('neighbor removal failed')},neighbor);
   borders=await page.evaluate(t=>sceneEditing.waterBorders(t.column,t.row,1),target);assert.deepEqual(borders,{left:true,right:true},'bank returns when water is removed');
   topBorders=await page.evaluate(t=>sceneEditing.waterTopBorders(t.column,t.row),target);assert.equal(topBorders.right,true,'upper rim returns');

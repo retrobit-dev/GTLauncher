@@ -1470,11 +1470,23 @@ public final class WeatherSkyView extends View {
         drawSmoothIslandLine(canvas, centerX, bottomY, rightX, middleY, topRim, 0.60f);
     }
 
-    private void drawWaterTopBank(Canvas canvas, float x, float y, float ax, float ay,
-                                  float bx, float by, IslandPalette palette) {
+    private void drawWaterTopBanks(Canvas canvas, float x, float y, float hw, float hh,
+                                   boolean[] borders, IslandPalette palette) {
         float inset=.13f;
-        drawSmoothIslandQuad(canvas,ax,ay,bx,by,bx+(x-bx)*inset,by+(y-by)*inset,
-                ax+(x-ax)*inset,ay+(y-ay)*inset,palette.soilLight,palette.soilDark,0,0f);
+        float[][] v={{x,y-hh},{x+hw,y},{x,y+hh},{x-hw,y}};
+        float[][] d={{-hw*inset,hh*inset},{-hw*inset,-hh*inset},
+                {hw*inset,-hh*inset},{hw*inset,hh*inset}};
+        int color=blend(palette.soilLight,palette.soilDark,.22);
+        for(int i=0;i<4;i++) {
+            if (!borders[i]) continue;
+            int next=(i+1)%4;
+            float ax=v[i][0],ay=v[i][1],bx=v[next][0],by=v[next][1],dx=d[i][0],dy=d[i][1];
+            drawSmoothIslandQuad(canvas,ax,ay,bx,by,bx+dx,by+dy,ax+dx,ay+dy,color,color,0,0f);
+            if (borders[next]) {
+                float ex=d[next][0],ey=d[next][1];
+                drawSmoothIslandQuad(canvas,bx,by,bx+dx,by+dy,bx+dx+ex,by+dy+ey,bx+ex,by+ey,color,color,0,0f);
+            }
+        }
     }
     private boolean waterAt(int column,int row) {
         return column>=0 && row>=0 && column<ISLAND_GRID_SIZE && row<ISLAND_GRID_SIZE
@@ -1513,10 +1525,8 @@ public final class WeatherSkyView extends View {
                     // Solid exposed soil walls frame the water; shared water edges stay open.
                     if (!leftWater) drawGrassTileSide(canvas,x,y,hw,hh,0,ISLAND_TILE_SIDE_DEPTH,palette.soilLight,true);
                     if (!rightWater) drawGrassTileSide(canvas,x,y,hw,hh,0,ISLAND_TILE_SIDE_DEPTH,palette.soilLight,false);
-                    if (!leftWater) drawWaterTopBank(canvas,x,y,x-hw,y,x,y+hh,palette);
-                    if (!rightWater) drawWaterTopBank(canvas,x,y,x,y+hh,x+hw,y,palette);
-                    if (!waterAt(column-1,row)) drawWaterTopBank(canvas,x,y,x,y-hh,x-hw,y,palette);
-                    if (!waterAt(column,row-1)) drawWaterTopBank(canvas,x,y,x+hw,y,x,y-hh,palette);
+                    drawWaterTopBanks(canvas,x,y,hw,hh,new boolean[]{!waterAt(column,row-1),!rightWater,
+                            !leftWater,!waterAt(column-1,row)},palette);
                     paint.setColor(0x80d8faf1); paint.setStrokeWidth(.55f); paint.setStyle(Paint.Style.STROKE);
                     for (float[] offset : new float[][]{{-.35f,-.2f},{.20f,.13f}}) {
                         float rx=x+hw*offset[0], ry=y+hh*offset[1];
