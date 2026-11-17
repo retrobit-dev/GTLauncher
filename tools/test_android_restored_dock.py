@@ -5,7 +5,7 @@ ns = '{http://schemas.android.com/apk/res/android}'
 layout = ET.parse(root/'app/src/main/res/layout/activity_home.xml').getroot()
 ids = {n.get(ns+'id'):n for n in layout.iter() if n.get(ns+'id')}
 assert ids['@+id/home_dock_scroll'].tag == 'HorizontalScrollView'
-assert ids['@+id/home_dock_scroll'].get(ns+'alpha') == '0.75'
+assert ids['@+id/home_dock_scroll'].get(ns+'alpha') == '0.85'
 assert all(node.get(ns+'alpha') is None for node in ids['@+id/home_dock_scroll'].iter() if node is not ids['@+id/home_dock_scroll'])
 keys = ('hand','hoe','shovel','water','sickle','axe','pickaxe','fishing')
 for name in keys:

@@ -6,7 +6,7 @@ layout=ET.parse(root/'app/src/main/res/layout/activity_home.xml').getroot()
 hud=layout.find(".//*[@"+ns+"id='@+id/home_date_hud']")
 assert hud is not None and hud.get(ns+'layout_gravity') == 'top|right'
 assert hud.get(ns+'clickable') == hud.get(ns+'focusable') == 'false'
-assert hud.get(ns+'alpha') == '0.75'
+assert hud.get(ns+'alpha') == '0.85'
 assert all(node.get(ns+'alpha') is None for node in hud.iter() if node is not hud)
 clocks=hud.findall('.//TextClock');assert len(clocks)==4
 for c in clocks:

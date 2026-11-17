@@ -16,7 +16,7 @@
         android:importantForAccessibility="yes" />
 
     <!-- Launcher status is present in every world, including worlds without a character. -->
-    <LinearLayout android:id="@+id/home_character_hud" android:alpha="0.75" android:layout_width="170dp" android:layout_height="48dp" android:background="@drawable/character_status_frame" android:padding="0dp" android:layout_gravity="top|left" android:layout_marginTop="18dp" android:layout_marginLeft="20dp" android:orientation="horizontal" android:clickable="false" android:focusable="false">
+    <LinearLayout android:id="@+id/home_character_hud" android:alpha="0.85" android:layout_width="170dp" android:layout_height="48dp" android:background="@drawable/character_status_frame" android:padding="0dp" android:layout_gravity="top|left" android:layout_marginTop="18dp" android:layout_marginLeft="20dp" android:orientation="horizontal" android:clickable="false" android:focusable="false">
         <ImageView android:layout_width="48dp" android:layout_height="48dp" android:padding="4dp" android:src="@drawable/character_hud_current" android:scaleType="fitCenter" android:scaleX="-1" android:contentDescription="Potret karakter utama" />
         <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:layout_marginTop="2dp" android:layout_marginEnd="2dp" android:layout_marginBottom="2dp" android:background="@drawable/bg_hud_status_rows" android:orientation="vertical">
           <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:gravity="center_vertical" android:contentDescription="Health: 100 dari 100, sementara">
@@ -35,7 +35,7 @@
     </LinearLayout>
 
     <!-- Tools are visual placeholders until their gameplay actions are restored. -->
-    <HorizontalScrollView android:id="@+id/home_dock_scroll" android:alpha="0.75" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="12dp" android:scrollbars="none">
+    <HorizontalScrollView android:id="@+id/home_dock_scroll" android:alpha="0.85" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="12dp" android:scrollbars="none">
       <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical">
         <LinearLayout android:layout_width="wrap_content" android:layout_height="24dp" android:orientation="horizontal">
           <TextView android:id="@+id/dock_tools_tab" android:layout_width="40dp" android:layout_height="match_parent" android:gravity="center" android:text="Tools" android:textSize="9sp" android:textStyle="bold" android:textColor="#342B1E" android:contentDescription="Tools" android:background="@drawable/bg_date_hud_panel" />
@@ -93,7 +93,7 @@
     <!-- Non-interactive device clock and estimated season. -->
     <LinearLayout
         android:id="@+id/home_date_hud"
-        android:alpha="0.75"
+        android:alpha="0.85"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|right"

@@ -7,7 +7,7 @@ const {chromium} = require('playwright-core');
   const page = await browser.newPage({viewport:{width:1000,height:700},reducedMotion:'reduce'});
   await page.goto(process.env.PREVIEW_URL||'http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
   for (const selector of ['.character-hud','.clock-hud','.home-dock-shell']) {
-   assert.equal(await page.locator(selector).evaluate(e=>getComputedStyle(e).opacity),'0.75',`${selector} is 25% transparent`);
+   assert.equal(await page.locator(selector).evaluate(e=>getComputedStyle(e).opacity),'0.85',`${selector} is 15% transparent`);
    assert(await page.locator(selector).evaluate(e=>[...e.querySelectorAll('*')].every(child=>getComputedStyle(child).opacity==='1')),`${selector} children do not compound opacity`);
   }
   for(const width of [1000,800,400,280]) {
