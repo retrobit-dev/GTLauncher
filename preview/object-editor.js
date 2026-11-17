@@ -44,6 +44,7 @@
     const row = document.createElement('option'); row.value = i; row.textContent = String(i + 1); rows.append(row);
   }
   let editing = false, selected = false, selectedType = 'character', worldId = null, draft = null;
+  let selectedTreeIndex=null, selectingObject=false, movingObject=false, objectPointer=null;
   let dragOffset = null, pinch = null, suppressDrag = false;
   const pointers = new Map();
   // History is local to a world and this browser tab; reopening Edit keeps it until reload.
@@ -55,14 +56,14 @@
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {
       const button=$(id); if(button?.getAttribute('aria-pressed')==='true') button.click();
     }
-    selected=false; draft=null; refresh(); syncControls();
+    selected=false; selectingObject=false; movingObject=false; draft=null; refresh(); syncControls();
     placingOrange=false; placingHouse=true; placementWorld=window.worldManager.getActive().id; libraryDialog.close();
     tell('EDITING · Ketuk tile untuk sudut pertama rumah player 3×3. Escape untuk batal.');
   });
   $('catalog-place-orange').addEventListener('click',()=>{
     if($('catalog-place-orange').disabled || !editing) return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-    selected=false;draft=null;refresh();syncControls();placingHouse=false;placingOrange=true;placementWorld=window.worldManager.getActive().id;libraryDialog.close();
+    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingOrange=true;placementWorld=window.worldManager.getActive().id;libraryDialog.close();
     tell('EDITING · Ketuk sudut pertama pohon jeruk 2×2. Escape untuk batal.');
   });
   canvas.addEventListener('pointerdown', event => {
@@ -99,7 +100,7 @@
       && a.scale === b.scale && a.facing === b.facing;
   }
   function current(type = selectedType) {
-    const obj = type === 'house' ? window.worldManager.getHouse() : window.worldManager.getCharacter();
+    const obj = type === 'house' ? window.worldManager.getHouse() : type==='tree' ? window.worldManager.getActive().orangeTrees?.[selectedTreeIndex] : window.worldManager.getCharacter();
     return obj ? {...obj} : null;
   }
   function blocks(world) { return world.blockStacks ? world.blockStacks.map(x=>x.slice()) : world.tiles?.map(t=>t?[t]:[]) ?? null; }
@@ -136,7 +137,7 @@
       const before=(window.worldManager.getActive().orangeTrees||[]).map(t=>({...t}));
       applyingHistory=true;let saved;try {saved=window.worldManager.replaceOrangeTrees(worldId,before,next.value);}finally{applyingHistory=false;}
       if(!saved){tell('EDITING · Riwayat pohon tidak dapat diterapkan; periksa tapak.');return;}
-      from.pop();to.push({type:'orangeTrees',value:before});history.last=snapshot();draft=null;refresh();syncControls();tell(`EDITING · ${label}: pohon jeruk.`);return;
+      from.pop();to.push({type:'orangeTrees',value:before});history.last=snapshot();draft=null;selected=false;selectedTreeIndex=null;movingObject=false;refresh();syncControls();tell(`EDITING · ${label}: pohon jeruk.`);return;
     }
     if (next.type === 'housePlacement') {
       const before=current('house');
@@ -199,21 +200,25 @@
     editButton.setAttribute('aria-pressed', String(editing));
     canvas.classList.toggle('is-editing', editing);
     status.hidden = !editing;
-    detailsButton.hidden = !editing || !selected;
+    detailsButton.hidden = !editing || !selected || selectedType==='tree';
     selectButton.hidden = !editing || (selected && selectedType === 'character') || !window.worldManager.getCharacter().visible;
     selectHouse.hidden = !editing || (selected && selectedType === 'house') || !window.worldManager.getHouse();
     undoButton.disabled = !editing || !history || !history.undo.length || pointers.size > 0 || Boolean(pendingTerrain);
     redoButton.disabled = !editing || !history || !history.redo.length || pointers.size > 0 || Boolean(pendingTerrain);
-    rotateControls.hidden = !editing || !selected;
-    rotateLeft.disabled = pointers.size > 0;
-    rotateRight.disabled = pointers.size > 0;
+    rotateControls.hidden = !editing;
+    rotateLeft.disabled = !selected || pointers.size > 0;
+    rotateRight.disabled = !selected || pointers.size > 0;
+    $('object-tool-select').setAttribute('aria-pressed',String(selectingObject));
+    $('object-tool-move').disabled=!editing || !selected;
+    $('object-tool-move').setAttribute('aria-pressed',String(movingObject));
+    $('object-tool-delete').disabled=!editing || !selected || selectedType==='character';
     $('rotate-direction').textContent = directionNames[(draft || current() || {}).facing] || 'Selatan';
   }
   function finishEditing() {
     if(pendingTerrain) window.editorBlockHistory.end();
-    placingHouse=false; placingOrange=false; placementWorld=null; pendingTerrain = null; editing = false; selected = false; worldId = null; draft = null; history = null;
+    selectingObject=false;movingObject=false;selectedTreeIndex=null;placingHouse=false; placingOrange=false; placementWorld=null; pendingTerrain = null; editing = false; selected = false; worldId = null; draft = null; history = null;
     pointers.clear(); dragOffset = null; pinch = null; suppressDrag = false;
-    scene()?.update(null, false); syncControls();
+    scene()?.update(null, false); scene()?.setSelectedTree?.(null); syncControls();
   }
   editButton.addEventListener('click', () => {
     if (editing) { finishEditing(); return; }
@@ -229,6 +234,12 @@
   redoButton.addEventListener('click', () => stepHistory(history?.redo, history?.undo, 'Redo'));
   function rotate(step) {
     if (!editing || !selected || pointers.size || dialog.open) return;
+    if(selectedType==='tree') {
+      const trees=window.worldManager.getActive().orangeTrees||[], tree=trees[selectedTreeIndex];if(!tree)return;
+      const next=trees.map((t,i)=>i===selectedTreeIndex?{...t,facing:directions[(directions.indexOf(t.facing||'S')+step+4)%4]}:{...t});
+      if(saveTrees(trees,next)) {refresh();syncControls();tell('EDITING · Arah pohon diperbarui.');}
+      return;
+    }
     const config = current();
     config.facing = directions[(directions.indexOf(config.facing) + step + 4) % 4];
     if (recordEdit(config)) {
@@ -284,8 +295,75 @@
   });
   function position(event) { return {x: event.clientX, y: event.clientY}; }
   function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
-  function refresh() { scene()?.update(draft, editing && selected, selectedType); }
+  function refresh() { scene()?.update(draft, editing && selected && selectedType!=='tree', selectedType);scene()?.setSelectedTree?.(editing && selected && selectedType==='tree' ? current('tree') : null); }
   function cancelGesture() { pointers.clear(); pinch = null; dragOffset = null; suppressDrag = false; draft = null; refresh(); syncControls(); }
+  function deactivateTerrain() {
+    for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
+    placingHouse=false;placingOrange=false;placementWorld=null;
+  }
+  function saveTrees(before,next) {
+    applyingHistory=true;let saved;
+    try {saved=window.worldManager.replaceOrangeTrees(worldId,before,next);}finally{applyingHistory=false;}
+    if(saved){history.undo.push({type:'orangeTrees',value:before.map(t=>({...t}))});if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();}
+    return saved;
+  }
+  $('object-tool-select').addEventListener('click',()=>{
+    if(!editing)return;deactivateTerrain();selectingObject=!selectingObject;movingObject=false;syncControls();tell(selectingObject?'EDITING · Ketuk objek untuk memilih.':'EDITING · Pilih objek dinonaktifkan.');
+  });
+  $('object-tool-move').addEventListener('click',()=>{
+    if(!editing || !selected)return;deactivateTerrain();selectingObject=false;movingObject=!movingObject;syncControls();
+    tell(movingObject?'EDITING · Ketuk tile tujuan untuk objek. Escape untuk batal.':'EDITING · Pindahkan dibatalkan.');
+  });
+  $('object-tool-delete').addEventListener('click',()=>{
+    if(!editing || !selected || selectedType==='character' || !window.confirm('Hapus objek yang dipilih dari world?'))return;
+    let saved=false;
+    if(selectedType==='tree') {
+      const before=window.worldManager.getActive().orangeTrees||[];saved=saveTrees(before,before.filter((_,i)=>i!==selectedTreeIndex));
+    } else if(selectedType==='house') {
+      const before=current('house');applyingHistory=true;try{saved=window.worldManager.replacePlayerHouse(worldId,before,null);}finally{applyingHistory=false;}
+      if(saved){history.undo.push({type:'housePlacement',value:before});history.redo.length=0;history.last=snapshot();}
+    }
+    if(saved){selected=false;selectedTreeIndex=null;movingObject=false;draft=null;refresh();syncControls();tell('EDITING · Objek dihapus. Undo untuk memulihkan.');}
+    else tell('EDITING · Objek tidak dapat dihapus.');
+  });
+  // Capture object tools before terrain, pan, and the older drag interaction.
+  canvas.addEventListener('pointerdown',event=>{
+    if(!editing || event.button!==0 || placingHouse || placingOrange)return;
+    const local=scene()?.toLocal(event.clientX,event.clientY);if(!local)return;
+    const terrainActive=!!document.querySelector('.terrain-tools button[aria-pressed="true"]');
+    const directTree=!terrainActive && $('editor-pan').getAttribute('aria-pressed')!=='true' ? (scene()?.orangeTreeAt?.(local) ?? null) : null;
+    if(!selectingObject && !movingObject && directTree===null)return;
+    event.preventDefault();event.stopImmediatePropagation();objectPointer=event.pointerId;
+    if(movingObject) {
+      const tile=scene().tileAt(local);if(!tile){tell('EDITING · Pilih tile di dalam world.');return;}
+      let saved=false;
+      if(selectedType==='tree') {
+        const before=window.worldManager.getActive().orangeTrees||[];
+        const next=before.map((t,i)=>i===selectedTreeIndex?{...t,...tile}:{...t});saved=saveTrees(before,next);
+      } else if(selectedType==='house') {
+        const before=current('house');applyingHistory=true;try{saved=window.worldManager.moveHouse(worldId,before,tile.column,tile.row);}finally{applyingHistory=false;}
+        if(saved){history.undo.push({type:'house',value:before});history.redo.length=0;history.last=snapshot();}
+      } else {
+        const before=current('character'),house=window.worldManager.getHouse();
+        if(!(house?.visible && tile.column>=house.column && tile.column<house.column+3 && tile.row>=house.row && tile.row<house.row+3))saved=recordEdit({...before,...tile});
+      }
+      if(saved){movingObject=false;refresh();syncControls();tell('EDITING · Objek dipindahkan.');}
+      else tell('EDITING · Tujuan tidak valid atau terhalang; objek tidak dipindahkan.');
+      return;
+    }
+    const player=window.worldManager.getCharacter(), house=window.worldManager.getHouse();
+    if(scene().hit(local,player)) {selectedType='character';selectedTreeIndex=null;selected=true;}
+    else if(directTree!==null && directTree!==undefined) {selectedType='tree';selectedTreeIndex=directTree;selected=true;}
+    else if(house && scene().houseAt(local,house)) {selectedType='house';selectedTreeIndex=null;selected=true;}
+    else {selected=false;selectedTreeIndex=null;}
+    draft=null;refresh();syncControls();tell(selected?'EDITING · Objek dipilih.':'EDITING · Tidak ada objek di titik ini.');
+  },true);
+  for(const type of ['pointerup','pointercancel'])canvas.addEventListener(type,event=>{
+    if(objectPointer!==null && objectPointer===event.pointerId){event.preventDefault();event.stopImmediatePropagation();objectPointer=null;}
+  },true);
+  for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) $(id)?.addEventListener('click',()=>{
+    selectingObject=false;movingObject=false;syncControls();
+  });
   canvas.addEventListener('pointerdown', event => {
     if (!editing || !scene()) return;
     event.preventDefault();
@@ -353,12 +431,14 @@
       // Other tabs or world settings may change this character; don't undo over newer data.
       pendingTerrain = null; cancelGesture();
       history = ensureHistory(worldId);
-      selected = Boolean(current()?.visible) && selected;
+      selected = selectedType==='tree' ? false : Boolean(current()?.visible) && selected;
+      if(!selected)selectedTreeIndex=null;movingObject=false;
       refresh(); syncControls();
       tell('EDITING · Objek berubah di luar editor; riwayat disetel ulang.');
     }
   });
   document.addEventListener('keydown', event => {
+    if (event.key==='Escape' && (movingObject || selectingObject)) {event.preventDefault();movingObject=false;selectingObject=false;syncControls();tell('EDITING · Alat objek dibatalkan.');return;}
     if (event.key === 'Escape' && (placingHouse || placingOrange)) { event.preventDefault(); placingHouse=false; placingOrange=false; placementWorld=null; tell('EDITING · Penempatan objek dibatalkan.'); return; }
     if (event.key === 'Escape' && editing && !dialog.open) { finishEditing(); return; }
     const tag = event.target?.tagName?.toLowerCase();

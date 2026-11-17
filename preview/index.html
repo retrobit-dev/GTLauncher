@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#e2e4e1">
   <title>GTLauncher — Live Weather Preview</title>
-  <link rel="stylesheet" href="./styles.css?v=live-sky-58">
+  <link rel="stylesheet" href="./styles.css?v=live-sky-59">
   <script src="./vendor/qrcode.js" defer></script>
-  <script src="./worlds.js?v=33" defer></script>
-  <script src="./object-editor.js?v=13" defer></script>
+  <script src="./worlds.js?v=34" defer></script>
+  <script src="./object-editor.js?v=14" defer></script>
   <script src="./pond-life.js?v=1" defer></script>
-  <script src="./app.js?v=sky-219" defer></script>
+  <script src="./app.js?v=sky-220" defer></script>
   <script src="./preview-modes.js?v=2" defer></script>
   <script src="./editor-camera.js?v=7" defer></script>
   <script src="./terrain-tools.js?v=107" defer></script>
@@ -61,6 +61,15 @@
           <button id="editor-pan" type="button" aria-label="Geser peta" title="Geser peta: aktifkan lalu seret layar" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></button>
           <button id="editor-zoom-in" type="button" aria-label="Perbesar peta" title="Perbesar">+</button><output id="editor-zoom-value" aria-live="polite">7.5</output><button id="editor-zoom-out" type="button" aria-label="Perkecil peta" title="Perkecil">−</button>
           <button id="editor-fit" type="button" aria-label="Atur ulang kamera" title="Atur ulang kamera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
+          <span class="object-tools-divider" aria-hidden="true"></span>
+          <button id="object-tool-select" type="button" aria-label="Pilih objek" title="Pilih objek" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l13 10-6 1-3 6z"/></svg></button>
+          <button id="object-tool-move" type="button" aria-label="Pindahkan objek" title="Pindahkan objek" aria-pressed="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></button>
+          <div id="rotate-controls" class="object-rotate-controls" aria-label="Putar arah objek">
+            <button id="rotate-left" type="button" aria-label="Putar objek ke kiri" title="Putar objek ke kiri">↶</button>
+            <span id="rotate-direction" class="visually-hidden" aria-live="polite">Selatan</span>
+            <button id="rotate-right" type="button" aria-label="Putar objek ke kanan" title="Putar objek ke kanan">↷</button>
+          </div>
+          <button id="object-tool-delete" type="button" aria-label="Hapus objek" title="Hapus objek" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 4h6M6 7l1 13h10l1-13M10 10v7m4-7v7"/></svg></button>
         </nav>
     <div class="editor-right-controls">
       <button id="object-library-button" class="weather-cycle-button" type="button" aria-haspopup="dialog" aria-controls="object-library-dialog" aria-label="Objek" title="Objek"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10"/></svg></button>
@@ -87,11 +96,7 @@
       </div>
       <span id="terrain-status" role="status" aria-live="polite"></span>
     </nav>
-    <aside id="rotate-controls" class="rotate-controls" aria-label="Putar arah objek" hidden>
-      <button id="rotate-left" type="button" aria-label="Putar ke kiri" title="Putar ke kiri">↶</button>
-      <span id="rotate-direction" aria-live="polite">Selatan</span>
-      <button id="rotate-right" type="button" aria-label="Putar ke kanan" title="Putar ke kanan">↷</button>
-    </aside>
+
     </div></div>
     <p id="gameplay-movement-status" class="movement-status" role="status" aria-live="polite" hidden></p>
     <section class="preview-controls" aria-label="Kontrol suasana preview">
