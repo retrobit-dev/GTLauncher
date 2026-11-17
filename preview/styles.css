@@ -278,7 +278,7 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .device-display { container-type:inline-size; }
  .character-hud { position:absolute; z-index:3; top:2%; left:3%; width:20.5%; height:10.5%; display:flex; gap:3%; pointer-events:none; }
 .character-hud-portrait, .character-hud-stats { background:#f5e1b0ef; border:2px solid #815a2e; border-radius:5px; box-shadow:inset 0 0 0 1px #e8c890; }
-.character-hud-portrait { width:33%; height:100%; object-fit:cover; object-position:center top; transform:scaleX(-1); image-rendering:pixelated; }
+.character-hud-portrait { width:33%; height:100%; object-fit:contain; object-position:center; transform:scaleX(-1); image-rendering:pixelated; }
 .character-hud-stats { flex:1; display:flex; flex-direction:column; justify-content:space-around; padding:1.5% 2%; }
 .character-hud-stats div { display:flex; align-items:center; gap:2%; height:23%; color:#342b1e; }
 .character-hud-stats small { font: .75cqw HudPixel,monospace; }

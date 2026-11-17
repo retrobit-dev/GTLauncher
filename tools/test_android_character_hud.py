@@ -14,7 +14,12 @@ assert list(hud)[0].get(a+'background') == list(hud)[1].get(a+'background') == '
 for name in ['health','stamina','food','water']:
  assert len([v for v in hud.findall('.//View') if v.get(a+'background')=='@drawable/hud_stat_'+name])==10
  ET.parse(res/'drawable'/('hud_stat_icon_'+name+'.xml'))
-assert (res/'drawable-nodpi/character_hud_portrait.png').exists()
+import struct
+portrait=(res/'drawable-nodpi/character_hud_current.png').read_bytes()
+assert portrait==(root/'preview/assets/character-hud-current.png').read_bytes()
+assert portrait[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',portrait[16:24])==(512,512) and portrait[25]==6
+assert list(hud)[0].get(a+'src')=='@drawable/character_hud_current'
+assert 'character-hud-current.png' in (root/'preview/index.html').read_text()
 activity=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
 assert 'home_character_hud' not in activity # No world switch hides the launcher HUD.
 print('Android character HUD is present independent of selected world: XML static checks OK')
