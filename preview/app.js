@@ -1899,6 +1899,18 @@
     }
   }
 
+  function orangeDropPosition(tree) {
+    const p=orangeTreeAnchor(tree);return {x:p.x+6,y:p.y+1};
+  }
+  function drawOrangeDrop(tree) {
+    const world=window.worldManager?.getActive(),now=Date.now();
+    if(!window.OrangeDrops?.available(world,tree,now))return;
+    const p=orangeDropPosition(tree), progress=window.OrangeDrops.falling(now,REDUCED_MOTION);
+    const y=p.y-(1-progress*progress)*ORANGE_TREE_HEIGHT*.58;
+    ctx.save();applyIslandTransform();ctx.fillStyle='#b76a25';ctx.fillRect(p.x-1.5,y-1,3,3);
+    ctx.fillStyle='#eb9c35';ctx.fillRect(p.x-1,y-1.3,2,2);ctx.fillStyle='#668043';ctx.fillRect(p.x-.3,y-2.1,1.4,.7);ctx.restore();
+  }
+
   function drawGameplayRoute() {
     if(cameraMode!=='gameplay' || !gameplayRoute || gameplayRoute.tiles.length<2)return;
     const {tiles,next}=gameplayRoute, character=gameplayDraft || window.worldManager?.getCharacter();
@@ -2208,7 +2220,7 @@
     framePending = true;
     window.requestAnimationFrame(timestamp => {
       framePending = false;
-      if (timestamp - lastAnimatedFrame < 1000 / (gameplayDraft || gameplayCameraMoving ? 30 : 8)) { scheduleFrame(); return; }
+      if (timestamp - lastAnimatedFrame < 1000 / (gameplayDraft || gameplayCameraMoving || window.worldManager?.getActive()?.orangeTrees?.length ? 30 : 8)) { scheduleFrame(); return; }
       lastAnimatedFrame = timestamp;
       drawFrame();
     });
@@ -2256,7 +2268,7 @@
     drawHoeTarget();
     const visibleHouse=editingHouseDraft || window.worldManager?.getHouse?.();
     const visiblePlayer=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
-    const sceneObjects=(window.worldManager?.getActive()?.orangeTrees||[]).map(tree=>({depth:tree.column+tree.row+1,draw:()=>drawOrangeTree(tree,motionTime,sceneWeather)}));
+    const sceneObjects=(window.worldManager?.getActive()?.orangeTrees||[]).map(tree=>({depth:tree.column+tree.row+1,draw:()=>{drawOrangeTree(tree,motionTime,sceneWeather);drawOrangeDrop(tree);}}));
     if(visibleHouse?.visible)sceneObjects.push({depth:visibleHouse.column+visibleHouse.row+2,draw:drawHouse});
     if(visiblePlayer?.visible)sceneObjects.push({depth:visiblePlayer.column+visiblePlayer.row,draw:()=>drawMainCharacter(motionTime)});
     sceneObjects.sort((a,b)=>a.depth-b.depth);for(const object of sceneObjects)object.draw();
@@ -2368,6 +2380,7 @@
   window.previewHudSunAltitude = time => sunPosition(time, location.latitude, location.longitude).altitude;
   window.previewHudWeatherCode = () => lastFetch ? weather.weatherCode : null;
   window.addEventListener('gameplaytoolchange',()=>{if(REDUCED_MOTION)drawFrame();});
+  window.addEventListener('orangefruitupdate',()=>{if(REDUCED_MOTION)drawFrame();});
   window.addEventListener('worldchange', () => {
     const nextWorldId = window.worldManager?.getActive()?.id, previousWorldId = cameraWorldId;
     if (nextWorldId !== cameraWorldId) {
@@ -2520,6 +2533,16 @@
     houseAt,
     setSelectedTree(tree) {editingTreeSelection=tree ? {...tree} : null;if(REDUCED_MOTION)drawFrame();},
     orangeTreeAnchor,
+    orangeDropPosition,
+    orangeDropAt(point) {
+      const world=window.worldManager?.getActive(),now=Date.now();
+      if(!window.OrangeDrops || window.OrangeDrops.falling(now,REDUCED_MOTION)<1)return null;
+      const trees=world?.orangeTrees||[];
+      for(let i=trees.length-1;i>=0;i--) {const tree=trees[i],p=orangeDropPosition(tree);
+        if(window.OrangeDrops.available(world,tree,now) && Math.abs(point.x-p.x)<=4 && Math.abs(point.y-p.y)<=4)return {...tree};
+      }
+      return null;
+    },
     orangeTreeAt(point) {
       if(!orangeTreeImage.complete || !orangeTreeImage.naturalWidth)return null;
       let data=houseHitCache.get(orangeTreeImage);

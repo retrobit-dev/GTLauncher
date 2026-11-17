@@ -6,9 +6,9 @@
     const bearing=((Number.isFinite(direction)?direction:90)+180-(Number.isFinite(heading)?heading:0))*Math.PI/180;
     const projection=Math.sin(bearing)+.25*Math.cos(bearing);
     const sign=projection<0?-1:1;
-    const amplitude=Math.min(4.5,speed*.4);
+    const amplitude=Math.min(2.8,speed*.26);
     const phase=column*1.73+row*2.31;
-    return sign*amplitude*(.16+.84*Math.sin(time*1.1+phase));
+    return sign*amplitude*(.16+.84*Math.sin(time*.72+phase));
   }
   // The ground stays fixed; displacement grows linearly toward the top.
   function offset(sway,heightAboveGround,totalHeight) {return sway*heightAboveGround/totalHeight;}

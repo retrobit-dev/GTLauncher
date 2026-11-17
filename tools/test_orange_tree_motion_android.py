@@ -6,5 +6,5 @@ motion=(root/'app/src/main/java/dev/retrobit/gtlauncher/OrangeTreeMotion.java').
 assert 'OrangeTreeMotion.sway(animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled()' in view
 assert 'canvas.skew((float)(-sway/g.height()),0)' in view
 assert 'hitX+=(y-bounds.bottom)*(float)(orangeTreeSway(o)/bounds.height())' in view
-assert 'speed<=0' in motion and 'Math.min(4.5,speed*.4)' in motion
+assert 'speed<=0' in motion and 'Math.min(2.8,speed*.26)' in motion
 print('Android orange tree motion, reduced motion and hit-test wiring: static checks OK')

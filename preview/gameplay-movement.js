@@ -121,6 +121,32 @@
     const offset={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[character.facing]||[0,0];
     const front={column:character.column+offset[0],row:character.row+offset[1]};
     const hitHouse=scene.houseAt?.(local,house), tile=scene.tileAt(local);
+    const fruit=selected==='hand' ? scene.orangeDropAt?.(local) : null;
+    if(fruit && !walk && window.OrangeDrops) {
+      const world=worlds.getActive();
+      const adjacentColumn=Math.max(fruit.column,Math.min(fruit.column+1,character.column));
+      const adjacentRow=Math.max(fruit.row,Math.min(fruit.row+1,character.row));
+      const distance=Math.abs(character.column-adjacentColumn)+Math.abs(character.row-adjacentRow);
+      if(distance!==1) {
+        let best=null;
+        for(let row=fruit.row-1;row<=fruit.row+2;row++)for(let column=fruit.column-1;column<=fruit.column+2;column++) {
+          const dx=Math.max(fruit.column-column,0,column-(fruit.column+1)),dy=Math.max(fruit.row-row,0,row-(fruit.row+1));
+          if(dx+dy!==1)continue;
+          const route=path.find(world,character,{column,row},house);
+          if(route && (!best || route.length<best.length))best=route;
+        }
+        if(!best){tell('Jeruk tidak dapat dijangkau.');return;}
+        move(best[best.length-1]);return;
+      }
+      const facing=direction(character,{column:adjacentColumn,row:adjacentRow});
+      if(facing!==character.facing) {
+        committing=true;let ok=false;try{ok=worlds.updateCharacter(world.id,{...character,facing});}finally{committing=false;}
+        tell(ok?'Menghadap pohon. Ketuk jeruk lagi untuk mengambil.':'Arah hadap tidak tersimpan.');return;
+      }
+      const stamp=Date.now();
+      window.OrangeDrops.collect(world.id,fruit,stamp).then(result=>tell(result.message));
+      return;
+    }
     // A second tap on any tile while moving requests a run, even with a tool selected.
     if(walk && tile){move(tile);return;}
     const frontHouse=house?.visible && front.column>=house.column && front.column<house.column+3 && front.row>=house.row && front.row<house.row+3;
