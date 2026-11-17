@@ -1827,8 +1827,8 @@
         width: 84 * house.scale, depth: islandTileHeight * 3 * house.scale, height: 85 * house.scale});
     }
     for(const tree of world.orangeTrees||[]) {
-      const centre=characterCentre({column:tree.column+.5,row:tree.row+.5,blockHeight:surfaceHeight(tree.column,tree.row)});
-      shadows.push({anchor:{x:centre.x,y:centre.y+islandTileHeight*.55},width:42,depth:islandTileHeight*1.6,height:60});
+      const centre=orangeTreeAnchor(tree);
+      shadows.push({anchor:centre,width:42,depth:islandTileHeight*1.6,height:60});
     }
     if (!shadows.length) return;
     const lightPoint = sunPlanePosition(light.hourAngleDegrees);
@@ -1874,12 +1874,15 @@
     }
   }
 
+  // 2×2 footprint center, shared by rendering, hit testing and shadows.
+  function orangeTreeAnchor(tree) {
+    return characterCentre({column:tree.column+.5,row:tree.row+.5,blockHeight:surfaceHeight(tree.column,tree.row)});
+  }
   let editingTreeSelection=null;
   function drawOrangeTree(tree,motionTime,sceneWeather) {
     if(!orangeTreeImage.complete || !orangeTreeImage.naturalWidth)return;
-    const ground=surfaceHeight(tree.column,tree.row);
-    const centre=characterCentre({column:tree.column+.5,row:tree.row+.5,blockHeight:ground});
-    const bottom=centre.y+islandTileHeight*.55, width=ORANGE_TREE_WIDTH,height=ORANGE_TREE_HEIGHT;
+    const centre=orangeTreeAnchor(tree);
+    const bottom=centre.y, width=ORANGE_TREE_WIDTH,height=ORANGE_TREE_HEIGHT;
     const speed=Math.max(0,Math.min(30,sceneWeather.windSpeed||0));
     const sway=REDUCED_MOTION ? 0 : Math.sin(motionTime*.9+(tree.column*7+tree.row*11)) * speed*.0012;
     ctx.save();applyIslandTransform();ctx.translate(centre.x,bottom);ctx.rotate(sway);
@@ -2511,6 +2514,7 @@
     waterFalls,
     houseAt,
     setSelectedTree(tree) {editingTreeSelection=tree ? {...tree} : null;if(REDUCED_MOTION)drawFrame();},
+    orangeTreeAnchor,
     orangeTreeAt(point) {
       if(!orangeTreeImage.complete || !orangeTreeImage.naturalWidth)return null;
       let data=houseHitCache.get(orangeTreeImage);
@@ -2518,7 +2522,7 @@
         if(!data){const c=document.createElement('canvas');c.width=128;c.height=128;const h=c.getContext('2d',{willReadFrequently:true});h.drawImage(orangeTreeImage,0,0,128,128);data=h.getImageData(0,0,128,128).data;houseHitCache.set(orangeTreeImage,data);}
         const trees=window.worldManager?.getActive()?.orangeTrees || [];
         for(let i=trees.length-1;i>=0;i--) {
-          const tree=trees[i], centre=characterCentre({column:tree.column+.5,row:tree.row+.5,blockHeight:surfaceHeight(tree.column,tree.row)}),bottom=centre.y+islandTileHeight*.55;
+          const tree=trees[i], centre=orangeTreeAnchor(tree),bottom=centre.y;
           let u=(point.x-centre.x+ORANGE_TREE_WIDTH/2)/ORANGE_TREE_WIDTH,v=(point.y-(bottom-ORANGE_TREE_HEIGHT))/ORANGE_TREE_HEIGHT;
           if(u<0||u>=1||v<0||v>=1)continue;
           if(tree.facing==='W'||tree.facing==='E')u=1-u;

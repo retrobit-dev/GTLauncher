@@ -477,7 +477,7 @@ public final class WeatherSkyView extends View {
         float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
         float width,height,bottom;
         switch(o.type) {
-            case "tree": boolean small=o.material.equals("banana") || o.material.equals("palm");width=small?24:(o.material.equals("orange") && "ripe".equals(treeStage(o.material)) && !isHarvested(o)?60f*512f/490f:48);height=small?30:60;bottom=y+ISLAND_TILE_HEIGHT*(small?.275f:1.05f);break;
+            case "tree": boolean small=o.material.equals("banana") || o.material.equals("palm");width=small?24:(o.material.equals("orange") && "ripe".equals(treeStage(o.material)) && !isHarvested(o)?60f*512f/490f:48);height=small?30:60;bottom=y+ISLAND_TILE_HEIGHT*(small?.275f:o.material.equals("orange")?.5f:1.05f);break;
             case "sunflower": width=15;height=23;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
             case "bush": width=o.material.equals("wild-grass")?28f:18.5f;height=o.material.equals("wild-grass")?14f:14.5f;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
             case "mailbox": width=13;height=30;bottom=y+ISLAND_TILE_HEIGHT*.15f;break;

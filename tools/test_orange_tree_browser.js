@@ -13,6 +13,10 @@ assert.equal(await page.evaluate(()=>{const w=worldManager.getActive(),t=w.tiles
 assert.equal(await page.evaluate(()=>GameplayPath.find(worldManager.getActive(),worldManager.getCharacter(),{column:26,row:27},null)),null,'tree blocks player');
 await page.locator('#object-undo').click();assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees||[]),[]);await page.locator('#object-redo').click();assert.equal((await page.evaluate(()=>worldManager.getActive().orangeTrees)).length,1);
 await page.locator('#object-library-button').click();assert.match(await page.locator('#object-library-list').innerText(),/Pohon jeruk/);await page.locator('#object-library-close').click();
+const anchorCheck=async()=>page.evaluate(()=>{const t=worldManager.getActive().orangeTrees[0],a=sceneEditing.orangeTreeAnchor(t),points=[[0,0],[1,0],[0,1],[1,1]].map(([dx,dy])=>sceneEditing.centre({column:t.column+dx,row:t.row+dy}));return {a,x:points.reduce((v,p)=>v+p.x,0)/4,y:points.reduce((v,p)=>v+p.y,0)/4}});
+let centre=await anchorCheck();assert(Math.abs(centre.a.x-centre.x)<1e-6 && Math.abs(centre.a.y-centre.y)<1e-6,'root anchor is at the 2x2 center');
+await page.evaluate(()=>{const w=worldManager.getActive(),t=w.orangeTrees[0],stacks=w.tiles.map(v=>v?[v]:[]);for(let r=t.row;r<t.row+2;r++)for(let c=t.column;c<t.column+2;c++)stacks[r*w.gridSize+c].push(1);if(!worldManager.updateBlockStacks(w.id,stacks))throw Error('cannot raise tree area')});
+let raised=await anchorCheck();assert(Math.abs(raised.a.x-raised.x)<1e-6 && Math.abs(raised.a.y-raised.y)<1e-6);assert.equal(raised.a.y,centre.a.y-8,'raised tree remains grounded');
 if(process.env.SAVE_SCREENSHOT)await page.screenshot({path:'orange-tree-inspect.png'});
 await page.reload({waitUntil:'domcontentloaded'});assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees),[{column:26,row:27}]);
 await page.locator('#world-button').click();await page.locator('button[data-action="export"][data-id="orchard"]').click();const payload=JSON.parse(await page.locator('#world-export-json').inputValue());assert.equal(payload.version,5);assert.equal(payload.world.orangeTrees.length,1);
