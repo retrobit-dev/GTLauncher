@@ -21,6 +21,8 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
    for(const {button,icon} of result.buttons){assert(within(button,result.inner),`slot background overflows dock at ${width}px`);assert(within(icon,button),`icon overflows slot at ${width}px`);}
   }
   await page.setViewportSize({width:1000,height:700});
+  await page.evaluate(()=>document.fonts.ready);
+  assert(await page.locator('.dock-tab').evaluateAll(tabs=>tabs.every(tab=>Number(getComputedStyle(tab).fontWeight)>=700 && tab.scrollWidth<=tab.clientWidth)), 'bold tab labels fit their slots');
   assert.equal(await page.locator('.home-dock [aria-pressed="true"]').count(),0,'no tool selected initially');
   await page.locator('.home-dock [data-dock="hand"]').click();
   assert.equal(await page.locator('.home-dock [data-dock="hand"]').getAttribute('aria-pressed'),'true');

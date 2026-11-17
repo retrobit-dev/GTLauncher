@@ -30,6 +30,10 @@ assert settings[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',settings[16:24
 tab=ids['@+id/dock_tools_tab']
 assert tab.tag=='TextView' and tab.get(ns+'text')=='Tools' and tab.get(ns+'contentDescription')=='Tools'
 assert tab.get(ns+'layout_width') == ids['@+id/dock_tool_hand'].get(ns+'layout_width')
+assert tab.get(ns+'textStyle') == ids['@+id/dock_add_tab'].get(ns+'textStyle') == 'bold'
+route=(root/'app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java').read_text().split('private void drawGameplayRoute(Canvas canvas)',1)[1].split('private void drawHoeTarget',1)[0]
+assert route.count('setStrokeWidth(')==1 and 'setStrokeWidth(.5f)' in route
+assert 'canvas.drawPath(path,paint)' in route and 'canvas.drawPath(diamond,paint)' in route
 selected=ET.parse(root/'app/src/main/res/drawable/bg_dock_hand.xml').getroot()[0]
 assert selected.find('shape/solid').get(ns+'color')=='#FFF3A6'
 assert selected.find('shape/stroke').get(ns+'color')=='#17130E'
