@@ -27,9 +27,9 @@
             <ImageView android:layout_width="15dp" android:layout_height="match_parent" android:padding="1dp" android:src="@drawable/status_icon_stamina" android:scaleType="fitCenter" android:importantForAccessibility="no" />
             <View android:layout_width="0dp" android:layout_height="12dp" android:layout_weight="1" android:layout_marginStart="3dp" android:background="@drawable/status_bar_stamina" android:importantForAccessibility="no" />
           </LinearLayout>
-          <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:gravity="center_vertical" android:contentDescription="Air: 100 dari 100, sementara">
-            <ImageView android:layout_width="15dp" android:layout_height="match_parent" android:padding="1dp" android:src="@drawable/status_icon_water" android:scaleType="fitCenter" android:importantForAccessibility="no" />
-            <View android:layout_width="0dp" android:layout_height="12dp" android:layout_weight="1" android:layout_marginStart="3dp" android:background="@drawable/status_bar_water" android:importantForAccessibility="no" />
+          <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:gravity="center_vertical" android:contentDescription="Makanan: 100 dari 100, sementara">
+            <ImageView android:layout_width="15dp" android:layout_height="match_parent" android:padding="1dp" android:src="@drawable/status_icon_food" android:scaleType="fitCenter" android:importantForAccessibility="no" />
+            <View android:layout_width="0dp" android:layout_height="12dp" android:layout_weight="1" android:layout_marginStart="3dp" android:background="@drawable/status_bar_food" android:importantForAccessibility="no" />
           </LinearLayout>
         </LinearLayout>
     </LinearLayout>
