@@ -23,6 +23,10 @@ for name in keys:
         assert png[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',png[16:24])==(512,512) and png[25]==6
     else:
         ET.parse(root/'app/src/main/res/drawable'/('dock_tool_'+name+'.xml'))
+import struct
+settings=(root/'app/src/main/res/drawable-nodpi/dock_settings.png').read_bytes()
+assert settings==(root/'preview/assets/hud/dock_settings.png').read_bytes()
+assert settings[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',settings[16:24])==(512,512) and settings[25]==6
 assert '@+id/dock_add_tab' in ids
 assert '@+id/dock_close' not in ids
 java=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
