@@ -1470,6 +1470,16 @@ public final class WeatherSkyView extends View {
         drawSmoothIslandLine(canvas, centerX, bottomY, rightX, middleY, topRim, 0.60f);
     }
 
+    private void drawWaterTopBank(Canvas canvas, float x, float y, float ax, float ay,
+                                  float bx, float by, IslandPalette palette) {
+        float inset=.13f;
+        drawSmoothIslandQuad(canvas,ax,ay,bx,by,bx+(x-bx)*inset,by+(y-by)*inset,
+                ax+(x-ax)*inset,ay+(y-ay)*inset,palette.soilLight,palette.soilDark,0,0f);
+    }
+    private boolean waterAt(int column,int row) {
+        return column>=0 && row>=0 && column<ISLAND_GRID_SIZE && row<ISLAND_GRID_SIZE
+                && worldTerrain.tile(column,row)==3;
+    }
     private void drawPortableTerrain(Canvas canvas, IslandPalette palette, IslandSunlight sunlight) {
         for(int diagonal=0;diagonal<ISLAND_GRID_SIZE*2-1;diagonal++) for(int row=0;row<ISLAND_GRID_SIZE;row++) {
             int column=diagonal-row;
@@ -1503,6 +1513,10 @@ public final class WeatherSkyView extends View {
                     // Solid exposed soil walls frame the water; shared water edges stay open.
                     if (!leftWater) drawGrassTileSide(canvas,x,y,hw,hh,0,ISLAND_TILE_SIDE_DEPTH,palette.soilLight,true);
                     if (!rightWater) drawGrassTileSide(canvas,x,y,hw,hh,0,ISLAND_TILE_SIDE_DEPTH,palette.soilLight,false);
+                    if (!leftWater) drawWaterTopBank(canvas,x,y,x-hw,y,x,y+hh,palette);
+                    if (!rightWater) drawWaterTopBank(canvas,x,y,x,y+hh,x+hw,y,palette);
+                    if (!waterAt(column-1,row)) drawWaterTopBank(canvas,x,y,x,y-hh,x-hw,y,palette);
+                    if (!waterAt(column,row-1)) drawWaterTopBank(canvas,x,y,x+hw,y,x,y-hh,palette);
                     paint.setColor(0x80d8faf1); paint.setStrokeWidth(.55f); paint.setStyle(Paint.Style.STROKE);
                     for (float[] offset : new float[][]{{-.35f,-.2f},{.20f,.13f}}) {
                         float rx=x+hw*offset[0], ry=y+hh*offset[1];

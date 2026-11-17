@@ -13,6 +13,7 @@ const {chromium}=require('playwright-core');
   const stack=()=>page.evaluate(t=>{const w=worldManager.getActive(),i=t.row*w.gridSize+t.column;return w.blockStacks?.[i] || [w.tiles[i]]},target);
   await page.locator('#terrain-material').selectOption('3');assert(await page.locator('#water-block-preview').isVisible());assert(!(await page.locator('#grass-block-preview').isVisible()));
   await page.locator('#terrain-add').click();await click();assert.deepEqual(await stack(),[1,3]);
+  let topBorders=await page.evaluate(t=>sceneEditing.waterTopBorders(t.column,t.row),target);assert.deepEqual(topBorders,{left:true,right:true,backLeft:true,backRight:true},'isolated water has a four-sided upper rim');
   let borders=await page.evaluate(t=>sceneEditing.waterBorders(t.column,t.row,1),target);assert.deepEqual(borders,{left:true,right:true},'exposed water has two banks');
   const checks=await page.evaluate(()=>{
     const w={gridSize:3,tiles:Array(9).fill(1),blockStacks:Array.from({length:9},()=>[1])};
@@ -25,9 +26,11 @@ const {chromium}=require('playwright-core');
   const neighbor={column:target.column+1,row:target.row};
   await page.evaluate(t=>{const w=worldManager.getActive(),s=w.blockStacks.map(x=>x.slice());s[t.row*w.gridSize+t.column].push(3);if(!worldManager.updateBlockStacks(w.id,s))throw Error('neighbor update failed')},neighbor);
   borders=await page.evaluate(t=>sceneEditing.waterBorders(t.column,t.row,1),target);assert.deepEqual(borders,{left:true,right:false},'water next to water has no shared bank');
+  topBorders=await page.evaluate(t=>sceneEditing.waterTopBorders(t.column,t.row),target);assert.equal(topBorders.right,false,'adjacent water opens upper rim');
   const joined=await sidePixel();assert.notDeepEqual(joined,exposed,'actual outer wall disappears when adjacent water connects');
   await page.evaluate(t=>{const w=worldManager.getActive(),s=w.blockStacks.map(x=>x.slice());s[t.row*w.gridSize+t.column].pop();if(!worldManager.updateBlockStacks(w.id,s))throw Error('neighbor removal failed')},neighbor);
   borders=await page.evaluate(t=>sceneEditing.waterBorders(t.column,t.row,1),target);assert.deepEqual(borders,{left:true,right:true},'bank returns when water is removed');
+  topBorders=await page.evaluate(t=>sceneEditing.waterTopBorders(t.column,t.row),target);assert.equal(topBorders.right,true,'upper rim returns');
   // The out-of-band edits deliberately invalidate history; create a new step.
   await page.locator('#terrain-add').click();await page.locator('#terrain-add').click();await click();
   await page.locator('#object-undo').click();assert.deepEqual(await stack(),[1,3]);await page.locator('#object-redo').click();assert.deepEqual(await stack(),[1,3,3]);await page.locator('#object-undo').click();assert.deepEqual(await stack(),[1,3]);

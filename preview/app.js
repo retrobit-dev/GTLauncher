@@ -1146,6 +1146,25 @@
     }
     return {left:!isWater(column,row+1),right:!isWater(column+1,row)};
   }
+  // The upper rim follows exposed water surfaces, including rear edges. A
+  // neighbouring water surface at any height leaves a passage for a waterfall.
+  function waterTopBorders(column,row,world=window.worldManager?.getActive()) {
+    const size=world?.gridSize,tiles=world?.tiles;
+    const isWater=(c,r)=>Number.isInteger(size) && c>=0 && r>=0 && c<size && r<size && tiles?.[r*size+c]===3;
+    return {left:!isWater(column,row+1),right:!isWater(column+1,row),
+      backLeft:!isWater(column-1,row),backRight:!isWater(column,row-1)};
+  }
+  function drawWaterTopBanks(tile,halfWidth,halfHeight,palette,world) {
+    const x=tile.x,y=tile.y,hw=halfWidth,hh=halfHeight;
+    const edges={left:[[x-hw,y],[x,y+hh]],right:[[x,y+hh],[x+hw,y]],
+      backLeft:[[x,y-hh],[x-hw,y]],backRight:[[x+hw,y],[x,y-hh]]};
+    const borders=waterTopBorders(tile.column,tile.row,world), inset=.13;
+    for(const [name,[a,b]] of Object.entries(edges)) {
+      if(!borders[name]) continue;
+      const inside=p=>[p[0]+(x-p[0])*inset,p[1]+(y-p[1])*inset];
+      drawSmoothIslandPolygon([a,b,inside(b),inside(a)],palette.soilLight,palette.soilDark);
+    }
+  }
   // A fall exists only between neighbouring exposed water surfaces, and is
   // visual: it never creates, moves or consumes terrain blocks.
   function waterFalls(column,row,world=window.worldManager?.getActive()) {
@@ -1228,6 +1247,7 @@
       // water and waterfalls leave the shared side open.
       if(borders.left) drawGrassTileSide(tile.x,tile.y,halfWidth,halfHeight,0,leftSideDepth,palette.soilLight,true);
       if(borders.right) drawGrassTileSide(tile.x,tile.y,halfWidth,halfHeight,0,rightSideDepth,palette.soilLight,false);
+      if(!world?.blockStacks || level===top) drawWaterTopBanks(tile,halfWidth,halfHeight,palette,world);
       // Quiet, fixed ripples remain legible without flickering at high zoom.
       ctx.save();ctx.globalAlpha *= 0.50;ctx.strokeStyle='#d8faf1';ctx.lineWidth=0.55;
       ctx.lineCap='round';
@@ -2394,6 +2414,7 @@
     surfaceHeight,
     waterDepth,
     waterBorders,
+    waterTopBorders,
     waterFalls,
     houseAt,
     centreHouse(house) { return characterCentre({column: house.column + 1, row: house.row + 1}); },

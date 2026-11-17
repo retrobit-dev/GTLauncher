@@ -11,6 +11,8 @@ const {chromium}=require('playwright-core');
   const set=async(c,r,s)=>page.evaluate(({c,r,s})=>{const w=worldManager.getActive(),a=w.blockStacks ? w.blockStacks.map(x=>x.slice()) : w.tiles.map(x=>x?[x]:[]);a[r*w.gridSize+c]=s;if(!worldManager.updateBlockStacks(w.id,a))throw Error('save failed')},{c,r,s});
   await set(t.column,t.row,[1,1,3]);await set(t.column+1,t.row,[3]);await set(t.column,t.row+1,[3]);await set(t.column-1,t.row,[3]);await set(t.column,t.row-1,[3]);
   assert.deepEqual(await page.evaluate(p=>sceneEditing.waterFalls(p.column,p.row),t),{left:2,right:2,backLeft:2,backRight:2},'all four downhill water neighbours produce falls');
+  assert.deepEqual(await page.evaluate(p=>sceneEditing.waterTopBorders(p.column,p.row),t),{left:false,right:false,backLeft:false,backRight:false},'waterfall openings do not get blocked by the upper rim');
+  assert.equal((await page.evaluate(p=>sceneEditing.waterTopBorders(p.column+1,p.row),t)).backLeft,false,'lower surface is open toward the upper water too');
   await set(t.column+1,t.row,[1,3]);assert.equal((await page.evaluate(p=>sceneEditing.waterFalls(p.column,p.row),t)).right,1,'drop follows actual height');
   await set(t.column+1,t.row,[1,1,3]);assert(!('right' in await page.evaluate(p=>sceneEditing.waterFalls(p.column,p.row),t)),'level water joins without a waterfall');
   await set(t.column+1,t.row,[1,1,1]);assert(!('right' in await page.evaluate(p=>sceneEditing.waterFalls(p.column,p.row),t)),'no fall onto non-water');
