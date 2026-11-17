@@ -33,7 +33,7 @@ const {chromium}=require('playwright-core');
   assert.equal(await page.locator('#grass-block-preview').isVisible(),false,'grass thumbnail hides');
   assert.match(await page.locator('#terrain-status').textContent(),/block diganti/);
   await paint('erase');assert.equal(await value(),0,'erase creates an empty grid cell');
-  await paint('draw',2);assert.equal(await value(),2,'add dirt to empty grid cell');
+  await paint('add',2);assert.equal(await value(),2,'add dirt to empty grid cell');
   assert.match(await page.locator('#terrain-status').textContent(),/block ditambahkan/);
   await page.locator('#mode-gameplay').click();assert.equal(await value(),2,'gameplay reads the dirt block');
   assert(await page.evaluate(({column,row})=>{const w=worldManager.getActive(),p={column,row};return GameplayPath.find(w,p,p,null)!==null;},target),'dirt is walkable');

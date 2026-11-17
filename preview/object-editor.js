@@ -44,7 +44,7 @@
   // History is local to a world and this browser tab; reopening Edit keeps it until reload.
   const histories = new Map();
   const HISTORY_LIMIT = 50;
-  let history = null, applyingHistory = false;
+  let history = null, applyingHistory = false, pendingTerrain = null;
   function same(a, b) {
     if (!a || !b) return a === b;
     return a.visible === b.visible && a.column === b.column && a.row === b.row
@@ -54,8 +54,9 @@
     const obj = type === 'house' ? window.worldManager.getHouse() : window.worldManager.getCharacter();
     return obj ? {...obj} : null;
   }
-  function snapshot() { return {character: current('character'), house: current('house')}; }
-  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house); }
+  function snapshot() { const tiles=window.worldManager.getActive().tiles; return {character: current('character'), house: current('house'), tiles: Array.isArray(tiles) ? tiles.slice() : null}; }
+  function sameTiles(a,b) { return a===b || (Array.isArray(a) && Array.isArray(b) && a.length===b.length && a.every((v,i)=>v===b[i])); }
+  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house) && sameTiles(a.tiles,b.tiles); }
   function ensureHistory(id) {
     const state = snapshot();
     let item = histories.get(id);
@@ -80,8 +81,20 @@
     history.redo.length = 0; history.last = snapshot(); syncControls(); return true;
   }
   function stepHistory(from, to, label) {
-    if (!editing || !history || pointers.size || dialog.open || !from.length) return;
-    const next = from[from.length - 1], before = current(next.type);
+    if (!editing || !history || pendingTerrain || pointers.size || dialog.open || !from.length) return;
+    const next = from[from.length - 1];
+    if (next.type === 'tiles') {
+      const before=window.worldManager.getActive().tiles?.slice();
+      if (!before) return;
+      applyingHistory=true;
+      let saved;
+      try { saved=window.worldManager.updateTiles(worldId,next.value); } finally { applyingHistory=false; }
+      if (!saved) { tell('EDITING · Riwayat block tidak dapat disimpan.'); return; }
+      from.pop();to.push({type:'tiles',value:before});
+      if(to.length>HISTORY_LIMIT)to.shift();
+      history.last=snapshot();draft=null;refresh();syncControls();tell(`EDITING · ${label}: perubahan block.`);return;
+    }
+    const before = current(next.type);
     if (!before || !saveWithoutRecording(next.value, next.type)) { tell('EDITING · Riwayat tidak dapat disimpan.'); return; }
     from.pop(); to.push({type: next.type, value: before});
     if (to.length > HISTORY_LIMIT) to.shift();
@@ -89,6 +102,31 @@
     refresh(); syncControls();
     tell(`EDITING · ${label}: ${selectedType === 'house' ? 'Rumah' : 'Karakter'} ${columnLabel(next.value.column)}${next.value.row + 1}, skala ${Math.round(next.value.scale * 100)}%.`);
   }
+  // A drag is one undo step, even though cells are safely saved as the pointer moves.
+  window.editorBlockHistory=Object.freeze({
+    begin() {
+      if (!editing && document.querySelector('.preview-stage')?.dataset.mode==='editor') editButton.click();
+      const world=window.worldManager.getActive();
+      if (!editing || !history || world.id!==worldId || !Array.isArray(world.tiles) || pointers.size || dialog.open) return false;
+      pendingTerrain={id:worldId,before:world.tiles.slice(),changed:false};syncControls();return true;
+    },
+    update(id,tiles) {
+      if (!pendingTerrain || pendingTerrain.id!==id || id!==worldId || !history) return false;
+      applyingHistory=true;let saved;
+      try { saved=window.worldManager.updateTiles(id,tiles); } finally { applyingHistory=false; }
+      if(saved) { pendingTerrain.changed=true;history.last=snapshot(); }
+      return saved;
+    },
+    end() {
+      const pending=pendingTerrain;pendingTerrain=null;
+      if (pending?.changed && editing && history && pending.id===worldId && window.worldManager.getActive().id===worldId && !sameTiles(pending.before,window.worldManager.getActive().tiles)) {
+        history.undo.push({type:'tiles',value:pending.before});
+        if(history.undo.length>HISTORY_LIMIT)history.undo.shift();
+        history.redo.length=0;history.last=snapshot();
+      }
+      syncControls();
+    }
+  });
   const scene = () => window.sceneEditing;
   const tell = text => { status.textContent = text; };
   function syncScale() { $('object-scale-value').textContent = `${$('object-scale').value}%`; }
@@ -100,15 +138,16 @@
     detailsButton.hidden = !editing || !selected;
     selectButton.hidden = !editing || (selected && selectedType === 'character') || !window.worldManager.getCharacter().visible;
     selectHouse.hidden = !editing || (selected && selectedType === 'house') || !window.worldManager.getHouse();
-    undoButton.disabled = !editing || !history || !history.undo.length || pointers.size > 0;
-    redoButton.disabled = !editing || !history || !history.redo.length || pointers.size > 0;
+    undoButton.disabled = !editing || !history || !history.undo.length || pointers.size > 0 || Boolean(pendingTerrain);
+    redoButton.disabled = !editing || !history || !history.redo.length || pointers.size > 0 || Boolean(pendingTerrain);
     rotateControls.hidden = !editing || !selected;
     rotateLeft.disabled = pointers.size > 0;
     rotateRight.disabled = pointers.size > 0;
     $('rotate-direction').textContent = directionNames[(draft || current() || {}).facing] || 'Selatan';
   }
   function finishEditing() {
-    editing = false; selected = false; worldId = null; draft = null; history = null;
+    if(pendingTerrain) window.editorBlockHistory.end();
+    pendingTerrain = null; editing = false; selected = false; worldId = null; draft = null; history = null;
     pointers.clear(); dragOffset = null; pinch = null; suppressDrag = false;
     scene()?.update(null, false); syncControls();
   }
@@ -248,7 +287,7 @@
       if (dialog.open) dialog.close(); finishEditing();
     } else if (editing && !applyingHistory && history && !sameSnapshot(history.last, snapshot())) {
       // Other tabs or world settings may change this character; don't undo over newer data.
-      cancelGesture();
+      pendingTerrain = null; cancelGesture();
       history = ensureHistory(worldId);
       selected = Boolean(current()?.visible) && selected;
       refresh(); syncControls();

@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#e2e4e1">
   <title>GTLauncher — Live Weather Preview</title>
-  <link rel="stylesheet" href="./styles.css?v=live-sky-55">
+  <link rel="stylesheet" href="./styles.css?v=live-sky-56">
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./worlds.js?v=29" defer></script>
-  <script src="./object-editor.js?v=9" defer></script>
+  <script src="./object-editor.js?v=10" defer></script>
   <script src="./app.js?v=sky-207" defer></script>
   <script src="./preview-modes.js?v=2" defer></script>
   <script src="./editor-camera.js?v=7" defer></script>
-  <script src="./terrain-tools.js?v=102" defer></script>
+  <script src="./terrain-tools.js?v=103" defer></script>
   <script src="./gameplay-path.js?v=101" defer></script>
   <script src="./gameplay-movement.js?v=17" defer></script>
   <script src="./season-estimate.js?v=1" defer></script>
@@ -20,8 +20,8 @@
 </head>
 <body>
   <main class="preview-stage" aria-label="Pratinjau GTLauncher">
-    <div class="world-topbar"><nav class="mode-tabs" aria-label="Mode preview"><button id="mode-gameplay" type="button" aria-pressed="true">Gameplay</button><button id="mode-map-editor" type="button" aria-pressed="false">Map Editor</button></nav><button id="world-button" class="weather-cycle-button world-button" type="button" aria-haspopup="dialog" aria-controls="world-dialog" aria-label="World" title="World"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-3 3-3 15 0 18M12 3c3 3 3 15 0 18"/></svg></button><span id="active-world-label" class="active-world-label" aria-live="polite">World: Base World</span><div class="history-controls" aria-label="Riwayat edit"><button id="object-undo" class="world-secondary object-history-button" type="button" disabled aria-label="Urungkan perubahan objek" title="Undo">↶</button><button id="object-redo" class="world-secondary object-history-button" type="button" disabled aria-label="Ulangi perubahan objek" title="Redo">↷</button></div></div>
-    <div class="device-wrap"><div class="device-frame" aria-label="Huawei MatePad Mini dalam orientasi lanskap">
+    <div class="world-topbar"><nav class="mode-tabs" aria-label="Mode preview"><button id="mode-gameplay" type="button" aria-pressed="true">Gameplay</button><button id="mode-map-editor" type="button" aria-pressed="false">Map Editor</button></nav><button id="world-button" class="weather-cycle-button world-button" type="button" aria-haspopup="dialog" aria-controls="world-dialog" aria-label="World" title="World"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-3 3-3 15 0 18M12 3c3 3 3 15 0 18"/></svg></button><span id="active-world-label" class="active-world-label" aria-live="polite">World: Base World</span></div>
+    <div class="device-wrap"><div class="device-frame" aria-label="Huawei MatePad Mini dalam orientasi lanskap"><div class="history-controls" aria-label="Riwayat edit"><button id="object-undo" class="world-secondary object-history-button" type="button" disabled aria-label="Urungkan perubahan editor" title="Undo">↶</button><button id="object-redo" class="world-secondary object-history-button" type="button" disabled aria-label="Ulangi perubahan editor" title="Redo">↷</button></div>
       <div class="device-display" aria-label="Homescreen GTLauncher dengan langit dan pulau terapung pixel art yang mengikuti cuaca">
         <canvas id="sky-canvas" class="sky-canvas" aria-label="Langit pixel art dan pulau terapung dengan pencahayaan adaptif serta efek cuaca"></canvas>
         <div id="editor-pan-surface" class="editor-pan-surface" hidden aria-label="Seret untuk menggeser peta"></div>
@@ -64,7 +64,8 @@
     <div class="editor-right-controls">
       <button id="object-library-button" class="weather-cycle-button" type="button" aria-haspopup="dialog" aria-controls="object-library-dialog" aria-label="Objek" title="Objek"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10"/></svg></button>
     <nav class="terrain-tools" aria-label="Alat block preview">
-      <button id="terrain-draw" type="button" aria-label="Gambar block: tambah atau ganti" title="Gambar block: tambah atau ganti" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 17 10-10 3 3-10 10-4 1zM13 8l3-3 3 3-3 3"/></svg></button>
+      <button id="terrain-draw" type="button" aria-label="Ganti block" title="Ganti block yang sudah ada" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 17 10-10 3 3-10 10-4 1zM13 8l3-3 3 3-3 3"/></svg></button>
+      <button id="terrain-add" type="button" aria-label="Tambah block" title="Tambah block pada sel kosong" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l7-4 7 4-7 4-7-4zM3 8v8l7 4 7-4v-4M10 12v8M19 3v8M15 7h8"/></svg></button>
       <button id="terrain-erase" type="button" aria-label="Hapus block" title="Hapus block" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15 14 5l6 6-9 9H7zM7 20h13M7 12l5 5"/></svg></button>
       <button id="terrain-pick" type="button" aria-label="Ambil jenis block" title="Ambil jenis block" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 17 9-9M13 6l5 5m-1-8 4 4-3 3-4-4zM7 17l-3 4 4-1 2-2"/></svg></button>
       <button id="terrain-fill" type="button" aria-label="Isi area block" title="Isi area block" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13 12 5l8 8-8 7zM8 9l8 8M14 4 9 2M20 18v3"/></svg></button>

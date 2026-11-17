@@ -230,7 +230,8 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 
 /* History stays at the upper-right of the tablet, with accessible icon-only buttons. */
 .world-topbar .active-world-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.history-controls { margin-left: auto; flex: 0 0 auto; display: flex; gap: 5px; }
+.history-controls { position:absolute; z-index:8; right:0; top:-32px; display:flex; gap:5px; }
+.preview-stage[data-mode="editor"] .device-wrap { margin-top:32px; }
 .history-controls .object-history-button { width: 36px; min-height: 36px; padding: 0; font-size: 21px; line-height: 1; }
 
 .world-backup { margin: 0 25px 20px; }

@@ -32,14 +32,15 @@ d.getElementById('mode-map-editor').click();
 const canvas=d.getElementById('sky-canvas');canvas.setPointerCapture=()=>{};
 function pointer(type,column,row) {const p=w.sceneEditing.centre({column,row});const cam=w.sceneEditing.camera();const x=160+(p.x-160)*cam.renderZoom+cam.panX,y=182+(p.y-182)*cam.renderZoom+cam.panY;const e=new w.MouseEvent(type,{bubbles:true,cancelable:true,clientX:x*2,clientY:y*2,button:0});Object.defineProperties(e,{pointerId:{value:4},pointerType:{value:'touch'}});canvas.dispatchEvent(e);}
 function tap(c,r){pointer('pointerdown',c,r);pointer('pointerup',c,r);}
-d.getElementById('terrain-material').value='1';d.getElementById('terrain-draw').click();tap(4,4);assert.equal(w.worldManager.getActive().tiles[204],1,'add grass to an empty cell');
+d.getElementById('terrain-material').value='1';d.getElementById('terrain-add').click();tap(4,4);assert.equal(w.worldManager.getActive().tiles[204],1,'add grass to an empty cell');
 assert.match(d.getElementById('terrain-status').textContent,/block ditambahkan/);
+d.getElementById('terrain-draw').click();
 d.getElementById('terrain-material').value='4';tap(4,4);assert.equal(w.worldManager.getActive().tiles[204],4,'replace grass with another block');
 d.getElementById('terrain-material').value='1';tap(4,4);assert.equal(w.worldManager.getActive().tiles[204],1,'replace existing block with grass');
 assert.match(d.getElementById('terrain-status').textContent,/block diganti/);
 d.getElementById('terrain-material').value='4';tap(4,4);assert.equal(w.worldManager.getActive().tiles[204],4,'replacement preserves coordinates');
 d.getElementById('terrain-erase').click();tap(4,4);assert.equal(w.worldManager.getActive().tiles[204],0,'erase tile');
-d.getElementById('terrain-draw').click();d.getElementById('terrain-material').value='3';tap(4,4);assert.equal(w.worldManager.getActive().tiles[204],3);
+d.getElementById('terrain-add').click();d.getElementById('terrain-material').value='3';tap(4,4);assert.equal(w.worldManager.getActive().tiles[204],3);
 d.getElementById('terrain-pick').click();d.getElementById('terrain-material').value='1';tap(4,4);assert.equal(d.getElementById('terrain-material').value,'3','eyedropper selects water');
 d.getElementById('terrain-fill').click();d.getElementById('terrain-material').value='5';tap(4,4);assert.equal(w.worldManager.getActive().tiles[204],5);assert.equal(w.worldManager.getActive().tiles[205],1,'fill limited to contiguous matching material');
 d.getElementById('terrain-erase').click();tap(24,24);assert.equal(w.worldManager.getActive().tiles[1224],1,'protected character tile cannot be removed');

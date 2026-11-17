@@ -9,14 +9,15 @@
   function updateBlockPreview() { for(const [value,element] of Object.entries(blockPreviews)) if(element) element.hidden=material.value!==value; }
   material?.addEventListener('change',updateBlockPreview);
   updateBlockPreview();
-  const buttons=Object.fromEntries(['draw','erase','pick','fill'].map(name=>[name,document.getElementById('terrain-'+name)]));
+  const buttons=Object.fromEntries(['draw','add','erase','pick','fill'].map(name=>[name,document.getElementById('terrain-'+name)]));
   if (!stage || !canvas || !material || !status || !pan || !scene?.tileAt || !worlds?.updateTiles || Object.values(buttons).some(x=>!x)) return;
   let tool=null, gesture=null, lastWorld=worlds.getActive().id;
   function select(next) {
+    if(gesture && window.editorBlockHistory) window.editorBlockHistory.end();
     tool=next; gesture=null;
     for (const [name, button] of Object.entries(buttons)) button.setAttribute('aria-pressed', String(name===tool));
     canvas.classList.toggle('is-terrain-editing',Boolean(tool));
-    const hint={draw:'Ketuk atau seret untuk menambah atau mengganti block di dalam grid.',erase:'Ketuk atau seret untuk menghapus block.',pick:'Ketuk block untuk mengambil jenisnya.',fill:'Ketuk untuk mengisi area block yang tersambung.'};
+    const hint={draw:'Ketuk atau seret untuk mengganti block yang sudah ada.',add:'Ketuk atau seret untuk menambah block pada sel kosong di dalam grid.',erase:'Ketuk atau seret untuk menghapus block.',pick:'Ketuk block untuk mengambil jenisnya.',fill:'Ketuk untuk mengisi area block yang tersambung.'};
     status.textContent=tool ? hint[tool] : '';
   }
   for (const [name,button] of Object.entries(buttons)) button.addEventListener('click',()=>{
@@ -52,17 +53,20 @@
       if(previous===0){status.textContent='Tidak ada block untuk diambil.';return;}
       material.value=String(previous);updateBlockPreview();status.textContent='Jenis block diambil.';return;
     }
+    if(tool==='draw' && previous===0) {status.textContent='Sel kosong. Gunakan Tambah block.';return;}
+    if(tool==='add' && previous!==0) {status.textContent='Sel sudah berisi block. Gunakan Ganti block.';return;}
     const next=world.tiles.slice();
     if(tool==='fill') fill(next,index,value,world.gridSize);
     else next[index]=tool==='erase'?0:value;
     if(next.every((v,i)=>v===world.tiles[i])) return;
-    status.textContent=worlds.updateTiles(world.id,next)
+    status.textContent=(window.editorBlockHistory ? window.editorBlockHistory.update(world.id,next) : worlds.updateTiles(world.id,next))
       ? `${columnLabel(point.column)}${point.row+1}: ${tool==='erase' ? 'block dihapus' : previous===0 ? 'block ditambahkan' : 'block diganti'}.`
       : 'Tidak disimpan: block digunakan karakter/rumah atau penyimpanan bermasalah.';
   }
   canvas.addEventListener('pointerdown',event=>{
     if(stage.dataset.mode!=='editor'||!tool||gesture||(event.pointerType==='mouse'&&event.button!==0))return;
     event.preventDefault();event.stopImmediatePropagation();
+    if(window.editorBlockHistory && tool!=='pick' && !window.editorBlockHistory.begin()) { status.textContent='Tidak dapat mengubah block pada world ini.';return; }
     gesture={id:event.pointerId,last:-1};
     try{canvas.setPointerCapture(event.pointerId);}catch(_){}
     apply(event);
@@ -70,9 +74,9 @@
   window.addEventListener('pointermove',event=>{
     if(!gesture||gesture.id!==event.pointerId)return;
     event.preventDefault();event.stopPropagation();
-    if(tool==='draw'||tool==='erase')apply(event);
+    if(tool==='draw'||tool==='add'||tool==='erase')apply(event);
   },{capture:true,passive:false});
-  function end(event){if(gesture&&gesture.id===event.pointerId)gesture=null;}
+  function end(event){if(gesture&&gesture.id===event.pointerId){if(tool!=='pick')window.editorBlockHistory?.end();gesture=null;}}
   window.addEventListener('pointerup',end,true);window.addEventListener('pointercancel',end,true);
   canvas.addEventListener('lostpointercapture',end);
 })();
