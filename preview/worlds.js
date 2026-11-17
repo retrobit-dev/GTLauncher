@@ -184,9 +184,16 @@
     return {column: house.column, row: house.row, scale: house.scale ?? 1,
       facing: house.facing ?? 'S', visible: house.visible ?? true};
   }
+  function levelHouse(world, house) {
+    if (!house || !world.blockStacks) return true;
+    const size=world.gridSize, level=world.blockStacks[house.row*size+house.column]?.length;
+    for(let r=house.row;r<house.row+3;r++) for(let c=house.column;c<house.column+3;c++)
+      if(world.blockStacks[r*size+c]?.length!==level) return false;
+    return Boolean(level);
+  }
   function updateHouse(id, house) {
     if (id === 'base' || activeWorld().id !== id || !state.worlds.some(w => w.id === id && w.house)
-      || !house || !validHouse(house, activeWorld().gridSize || 9) || (activeWorld().tiles && Array.from({length: 9}, (_, i) => activeWorld().tiles[(house.row + Math.floor(i / 3)) * activeWorld().gridSize + house.column + i % 3]).some(t => !t)) || typeof house.visible !== 'boolean'
+      || !house || !validHouse(house, activeWorld().gridSize || 9) || !levelHouse(activeWorld(),house) || (activeWorld().tiles && Array.from({length: 9}, (_, i) => activeWorld().tiles[(house.row + Math.floor(i / 3)) * activeWorld().gridSize + house.column + i % 3]).some(t => !t)) || typeof house.visible !== 'boolean'
       || typeof house.scale !== 'number' || !['N','E','S','W'].includes(house.facing)) return false;
     return commit({...state, worlds: state.worlds.map(w => w.id === id ? {...w, house: {...house}} : w)});
   }
@@ -214,11 +221,12 @@
     const keys = (value, allowed) => record(value) && Object.keys(value).every(key => allowed.includes(key));
     let root;
     try { root = JSON.parse(text.replace(/^\uFEFF/, '')); } catch (_) { return fail(); }
-    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3].includes(root.version)) {
+    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3, 4].includes(root.version)) {
       const w = root.world;
       if (!keys(w, WORLD_KEYS) || ![20,25,50,100].includes(w.gridSize) || !Array.isArray(w.tiles) || w.tiles.length !== w.gridSize * w.gridSize
         || w.tiles.some(t => !validTile(t) || (t > (root.version === 1 ? 1 : root.version === 2 ? 5 : 6)))
-        || w.blockStacks !== undefined || typeof w.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(w.id) || w.id === 'base'
+        || (root.version < 4 && w.blockStacks !== undefined)
+        || (root.version === 4 && !validStacks(w.blockStacks, w.tiles, w.gridSize)) || typeof w.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(w.id) || w.id === 'base'
         || typeof w.name !== 'string' || !w.name.trim() || w.name.length > 48 || typeof w.description !== 'string' || w.description.length > 160
         || typeof w.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(w.color)
         || typeof w.showCharacter !== 'boolean' || !Number.isInteger(w.characterColumn) || w.characterColumn < 0 || w.characterColumn >= w.gridSize
@@ -227,6 +235,7 @@
         || !['N','E','S','W'].includes(w.characterFacing) || !validHouse(w.house,w.gridSize)
         || !w.tiles[w.characterRow*w.gridSize+w.characterColumn]) return fail();
       if (w.house) for (let r=w.house.row;r<w.house.row+3;r++) for (let c=w.house.column;c<w.house.column+3;c++) if (!w.tiles[r*w.gridSize+c]) return fail();
+      if (!levelHouse(w,w.house)) return fail();
       return {version: 32, world: {...w, tiles: w.tiles.slice(), house: w.house ? {...w.house} : null}};
     }
     if (!keys(root, ['format', 'version', 'world']) || root.format !== 'gtlauncher-world'
@@ -307,7 +316,7 @@
     event.target.value = ''; cancelImport();
     if (!file) return;
     if (storageError) { announce(storageError); return; }
-    if (file.size > 256 * 1024) { announce('Berkas terlalu besar (maksimal 256 KiB).'); return; }
+    if (file.size > 8 * 1024 * 1024) { announce('Berkas terlalu besar (maksimal 8 MiB).'); return; }
     const reader = new FileReader();
     reader.onload = () => {
       if (generation !== importGeneration) return;
@@ -459,17 +468,17 @@
       }
     } else if ((action === 'export' || action === 'export-qr') && world) {
       if ([20,25,50,100].includes(world.gridSize)) {
-        if (world.blockStacks) { announce('Ekspor block bertingkat belum tersedia; data world tidak diubah.'); return; }
         if (action === 'export-qr') { announce('QR world ini belum tersedia; gunakan ekspor JSON.'); return; }
         const character = getCharacter(world);
         const snapshot = {...world, showCharacter: character.visible, characterColumn: character.column, characterRow: character.row,
           characterScale: character.scale, characterFacing: character.facing, house: getHouse(world)};
-        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.tiles.some(t => t === 6) ? 3 : snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
+        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.blockStacks ? 4 : snapshot.tiles.some(t => t === 6) ? 3 : snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
         const blob = new Blob([json], {type:'application/json'});
         const url = URL.createObjectURL(blob);
         const safeName = world.name.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'world';
         showExport(url, `gtlauncher-preview-${safeName}.json`, false, json, true);
-        announce('JSON world siap untuk preview dan Android versi terbaru.'); return;
+        if(snapshot.blockStacks) $('world-export-help').textContent = 'JSON versi 4 ini hanya dapat diimpor di preview; Android belum mendukung block bertingkat.';
+        announce(snapshot.blockStacks ? 'JSON block bertingkat siap untuk preview; Android belum mendukung format ini.' : 'JSON world siap untuk preview dan Android versi terbaru.'); return;
       }
       // Stable world ID and the supported character object are portable to Android.
       if (!/^[a-zA-Z0-9_-]{1,128}$/.test(world.id) || world.id === 'base') {
@@ -566,7 +575,14 @@
       const i=r*size+c;
       if (!tiles[i] || tiles[i]===3 || stacks[i].length!==oldHeight(i)) return false;
     }
-    return commit({...state, worlds: state.worlds.map(w => w.id === id ? {...w, tiles, blockStacks: stacks.map(stack=>stack.slice())} : w)});
+    const hasElevation=stacks.some(stack=>stack.length>1);
+    return commit({...state, worlds: state.worlds.map(w => {
+      if (w.id!==id) return w;
+      const next={...w,tiles};
+      if(hasElevation) next.blockStacks=stacks.map(stack=>stack.slice());
+      else delete next.blockStacks;
+      return next;
+    })});
   }
   function moveHouse(id, original, column, row) {
     const world=activeWorld(), house=getHouse(world), character=getCharacter(world), size=world.gridSize || 9;
@@ -585,7 +601,9 @@
       || Math.abs(character.column-column)+Math.abs(character.row-row)!==1
       || (house?.visible && column>=house.column && column<house.column+3 && row>=house.row && row<house.row+3)
       || ![1,2].includes(world.tiles[row*size+column])) return false;
-    const tiles=world.tiles.slice();tiles[row*size+column]=6;
+    const index=row*size+column;
+    if (world.blockStacks) { const stacks=world.blockStacks.map(x=>x.slice());stacks[index][stacks[index].length-1]=6;return updateBlockStacks(id,stacks); }
+    const tiles=world.tiles.slice();tiles[index]=6;
     return updateTiles(id,tiles);
   }
   window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, updateTiles, updateBlockStacks, tillTile});

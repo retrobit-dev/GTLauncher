@@ -17,7 +17,7 @@
     tool=next; gesture=null;
     for (const [name, button] of Object.entries(buttons)) button.setAttribute('aria-pressed', String(name===tool));
     canvas.classList.toggle('is-terrain-editing',Boolean(tool));
-    const hint={draw:'Ketuk atau seret untuk mengganti block yang sudah ada.',add:'Ketuk atau seret untuk menambah block pada sel kosong di dalam grid.',erase:'Ketuk atau seret untuk menghapus block.',pick:'Ketuk block untuk mengambil jenisnya.',fill:'Ketuk untuk mengisi area block yang tersambung.'};
+    const hint={draw:'Ketuk atau seret untuk mengganti block yang sudah ada.',add:'Ketuk atau seret untuk menambah block di atas block atau pada sel kosong.',erase:'Ketuk atau seret untuk menghapus block paling atas.',pick:'Ketuk block untuk mengambil jenisnya.',fill:'Ketuk untuk mengisi area block yang tersambung.'};
     status.textContent=tool ? hint[tool] : '';
   }
   for (const [name,button] of Object.entries(buttons)) button.addEventListener('click',()=>{
@@ -27,17 +27,6 @@
   pan.addEventListener('click',()=>{if(pan.getAttribute('aria-pressed')==='true') select(null);});
   document.getElementById('mode-gameplay').addEventListener('click',()=>select(null));
   window.addEventListener('worldchange',()=>{const id=worlds.getActive().id;if(id!==lastWorld){lastWorld=id;select(null);}});
-  function fill(tiles,start,value,size) {
-    const target=tiles[start];if(target===value)return;
-    const queue=[start];tiles[start]=value;
-    for(let i=0;i<queue.length;i++) {
-      const at=queue[i],x=at%size,y=Math.floor(at/size);
-      for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
-        const nx=x+dx,ny=y+dy;if(nx<0||nx>=size||ny<0||ny>=size)continue;
-        const n=ny*size+nx;if(tiles[n]===target){tiles[n]=value;queue.push(n);}
-      }
-    }
-  }
   function apply(event) {
     const world=worlds.getActive();
     if(world.id==='base'||![20,25,50,100].includes(world.gridSize)||!Array.isArray(world.tiles)) {
@@ -46,28 +35,47 @@
     const point=scene.tileAt(scene.toLocal(event.clientX,event.clientY));
     if(!point) {status.textContent='Di luar area world.';return;}
     const index=point.row*world.gridSize+point.column;
-    if(gesture && gesture.last===index) return;
-    if(gesture) gesture.last=index;
+    if(gesture && gesture.visited.has(index)) return;
+    if(gesture) gesture.visited.add(index);
     const previous=world.tiles[index], value=Number(material.value);
     if(tool==='pick') {
       if(previous===0){status.textContent='Tidak ada block untuk diambil.';return;}
       material.value=String(previous);updateBlockPreview();status.textContent='Jenis block diambil.';return;
     }
     if(tool==='draw' && previous===0) {status.textContent='Sel kosong. Gunakan Tambah block.';return;}
-    if(tool==='add' && previous!==0) {status.textContent='Sel sudah berisi block. Gunakan Ganti block.';return;}
-    const next=world.tiles.slice();
-    if(tool==='fill') fill(next,index,value,world.gridSize);
-    else next[index]=tool==='erase'?0:value;
-    if(next.every((v,i)=>v===world.tiles[i])) return;
-    status.textContent=(window.editorBlockHistory ? window.editorBlockHistory.update(world.id,next) : worlds.updateTiles(world.id,next))
-      ? `${columnLabel(point.column)}${point.row+1}: ${tool==='erase' ? 'block dihapus' : previous===0 ? 'block ditambahkan' : 'block diganti'}.`
+    const stacks=world.blockStacks ? world.blockStacks.map(stack=>stack.slice()) : world.tiles.map(tile=>tile?[tile]:[]);
+    const stack=stacks[index];
+    if(tool==='add') {
+      if(stack.length>=32) {status.textContent='Tinggi maksimum 32 block.';return;}
+      stack.push(value);
+    } else if(tool==='erase') {
+      if(!stack.length) {status.textContent='Tidak ada block untuk dihapus.';return;}
+      stack.pop();
+    } else if(tool==='draw') stack[stack.length-1]=value;
+    else if(tool==='fill') {
+      // Fill only connected top surfaces at the same height and material.
+      const height=stack.length, target=previous, queue=[index],seen=new Set(queue);
+      for(let i=0;i<queue.length;i++) {
+        const n=queue[i], cell=stacks[n];
+        if(height) cell[cell.length-1]=value; else cell.push(value);
+        const x=n%world.gridSize,y=Math.floor(n/world.gridSize);
+        for(const [dx,dy] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+          const nx=x+dx,ny=y+dy, j=ny*world.gridSize+nx;
+          if(nx>=0 && nx<world.gridSize && ny>=0 && ny<world.gridSize && !seen.has(j) && stacks[j].length===height && world.tiles[j]===target) {seen.add(j);queue.push(j);}
+        }
+      }
+    }
+    const old=world.blockStacks || world.tiles.map(tile=>tile?[tile]:[]);
+    if(stacks.every((cell,i)=>cell.length===old[i].length && cell.every((v,j)=>v===old[i][j]))) return;
+    status.textContent=(window.editorBlockHistory ? window.editorBlockHistory.update(world.id,stacks) : worlds.updateBlockStacks(world.id,stacks))
+      ? `${columnLabel(point.column)}${point.row+1}: ${tool==='erase' ? 'block dihapus' : tool==='add' || previous===0 ? 'block ditambahkan' : 'block diganti'}.`
       : 'Tidak disimpan: block digunakan karakter/rumah atau penyimpanan bermasalah.';
   }
   canvas.addEventListener('pointerdown',event=>{
     if(stage.dataset.mode!=='editor'||!tool||gesture||(event.pointerType==='mouse'&&event.button!==0))return;
     event.preventDefault();event.stopImmediatePropagation();
     if(window.editorBlockHistory && tool!=='pick' && !window.editorBlockHistory.begin()) { status.textContent='Tidak dapat mengubah block pada world ini.';return; }
-    gesture={id:event.pointerId,last:-1};
+    gesture={id:event.pointerId,visited:new Set()};
     try{canvas.setPointerCapture(event.pointerId);}catch(_){}
     apply(event);
   },true);

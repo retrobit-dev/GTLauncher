@@ -84,6 +84,7 @@
   // The green cap overhangs the narrower soil body along the front perimeter.
   const ISLAND_GRASS_OVERHANG = 4;
   const ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
+  const BLOCK_HEIGHT = ISLAND_DEPTH;
   const ISLAND_BASE_BOTTOM_MARGIN = 8;
   const ISLAND_VERTICAL_LIFT = 10;
   const ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
@@ -1132,7 +1133,7 @@
     return slot < 4 ? 0 : 1 + (slot - 4) % 3;
   }
 
-  function drawGrassTile(tile, palette, sunlight, material = 1) {
+  function drawGrassTile(tile, palette, sunlight, material = 1, raised = false) {
     const lightTile = tile.variant === 0;
     const terrain = {2:'#ae8b68', 3:'#5e9eb4', 4:'#929995', 5:'#dac695', 6:'#805e43'};
     const fill = material === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
@@ -1143,8 +1144,8 @@
     const cornerRadius = 1.4;
     const leftPerimeterFace = tile.row === ISLAND_GRID_SIZE - 1;
     const rightPerimeterFace = tile.column === ISLAND_GRID_SIZE - 1;
-    const leftSideDepth = leftPerimeterFace ? ISLAND_GRASS_BAND_DEPTH : ISLAND_TILE_SIDE_DEPTH;
-    const rightSideDepth = rightPerimeterFace ? ISLAND_GRASS_BAND_DEPTH : ISLAND_TILE_SIDE_DEPTH;
+    const leftSideDepth = raised ? BLOCK_HEIGHT : leftPerimeterFace ? ISLAND_GRASS_BAND_DEPTH : ISLAND_TILE_SIDE_DEPTH;
+    const rightSideDepth = raised ? BLOCK_HEIGHT : rightPerimeterFace ? ISLAND_GRASS_BAND_DEPTH : ISLAND_TILE_SIDE_DEPTH;
     drawGrassTileSide(tile.x, tile.y,
       leftPerimeterFace ? ISLAND_TILE_WIDTH / 2 : halfWidth,
       leftPerimeterFace ? islandTileHeight / 2 : halfHeight,
@@ -1595,9 +1596,15 @@
 
   let editingDraft = null, editingHouseDraft = null, gameplayDraft = null, gameplayRoute = null;
   let editingSelected = false, editingHouseSelected = false;
+  function surfaceHeight(column,row) {
+    const world=window.worldManager?.getActive(), size=world?.gridSize;
+    if(!world?.blockStacks || !Number.isInteger(column) || !Number.isInteger(row) || column<0 || row<0 || column>=size || row>=size) return 1;
+    return world.blockStacks[row*size+column].length;
+  }
   function characterCentre(character) {
+    const elevation=Number.isFinite(character.blockHeight) ? character.blockHeight : surfaceHeight(character.column,character.row);
     return {x: WIDTH / 2 + (character.column - character.row) * ISLAND_TILE_WIDTH / 2,
-      y: islandTop + islandTileHeight / 2 + (character.column + character.row) * islandTileHeight / 2};
+      y: islandTop + islandTileHeight / 2 + (character.column + character.row) * islandTileHeight / 2 - Math.max(0,elevation-1)*BLOCK_HEIGHT};
   }
 
   // Shared ground-shadow primitive for surface objects. Each renderer supplies a ground
@@ -1797,17 +1804,25 @@
     // The island keeps its original independent shadow, not the cloud ray projection.
     const light = pickLightSource(sunAltitude, sunHourAngle, moon, cloudCover);
     drawIslandShadow(centerX, lowerY, light.altitude, light.hourAngle, cloudCover, code);
-    const tileData = window.worldManager?.getActive()?.tiles;
-    if (tileData && tileData.some(value => value !== 1)) {
+    const activeWorld = window.worldManager?.getActive();
+    const tileData = activeWorld?.tiles, stacks=activeWorld?.blockStacks;
+    if (tileData && (stacks || tileData.some(value => value !== 1))) {
       for (const tile of ISLAND_TILES) {
-        if (!tileData[tile.row * ISLAND_GRID_SIZE + tile.column] || !tileVisible(tile, ISLAND_DEPTH)) continue;
-        const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
-        // Full-depth faces expose the silhouette and the soil beneath each remaining tile.
-        const leftOpen = tile.row === ISLAND_GRID_SIZE - 1 || !tileData[(tile.row + 1) * ISLAND_GRID_SIZE + tile.column];
-        const rightOpen = tile.column === ISLAND_GRID_SIZE - 1 || !tileData[tile.row * ISLAND_GRID_SIZE + tile.column + 1];
-        if (leftOpen) drawSmoothIslandPolygon([[tile.x-hw,tile.y],[tile.x,tile.y+hh],[tile.x,tile.y+hh+ISLAND_DEPTH],[tile.x-hw,tile.y+ISLAND_DEPTH]], palette.soilLight, palette.soilDark);
-        if (rightOpen) drawSmoothIslandPolygon([[tile.x,tile.y+hh],[tile.x+hw,tile.y],[tile.x+hw,tile.y+ISLAND_DEPTH],[tile.x,tile.y+hh+ISLAND_DEPTH]], palette.soilDark, palette.soilDark);
-        drawGrassTile(tile, palette, sunlight, tileData[tile.row * ISLAND_GRID_SIZE + tile.column]);
+        const index=tile.row * ISLAND_GRID_SIZE + tile.column, stack=stacks?.[index];
+        if (!tileData[index]) continue;
+        if (tileVisible(tile, ISLAND_DEPTH)) {
+          const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
+          // Full-depth faces expose the silhouette and the soil beneath each remaining tile.
+          const leftOpen = tile.row === ISLAND_GRID_SIZE - 1 || !tileData[(tile.row + 1) * ISLAND_GRID_SIZE + tile.column];
+          const rightOpen = tile.column === ISLAND_GRID_SIZE - 1 || !tileData[tile.row * ISLAND_GRID_SIZE + tile.column + 1];
+          if (leftOpen) drawSmoothIslandPolygon([[tile.x-hw,tile.y],[tile.x,tile.y+hh],[tile.x,tile.y+hh+ISLAND_DEPTH],[tile.x-hw,tile.y+ISLAND_DEPTH]], palette.soilLight, palette.soilDark);
+          if (rightOpen) drawSmoothIslandPolygon([[tile.x,tile.y+hh],[tile.x+hw,tile.y],[tile.x+hw,tile.y+ISLAND_DEPTH],[tile.x,tile.y+hh+ISLAND_DEPTH]], palette.soilDark, palette.soilDark);
+          drawGrassTile(tile, palette, sunlight, stack ? stack[0] : tileData[index]);
+        }
+        if (stack) for(let level=1;level<stack.length;level++) {
+          const raised={...tile,y:tile.y-level*BLOCK_HEIGHT};
+          if(tileVisible(raised,BLOCK_HEIGHT)) drawGrassTile(raised,palette,sunlight,stack[level],true);
+        }
       }
     } else {
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.
@@ -2263,6 +2278,7 @@
         y: anchorY + (y - anchorY - cameraPanY) / islandZoom};
     },
     centre: characterCentre,
+    surfaceHeight,
     houseAt,
     centreHouse(house) { return characterCentre({column: house.column + 1, row: house.row + 1}); },
     hitHouse(point, house) {
@@ -2279,12 +2295,28 @@
         && point.y >= y - PLAYER_HEIGHT * character.scale - 4.5 && point.y <= y + 4;
     },
     tileAt(point) {
+      const world=window.worldManager?.getActive();
+      if(world?.blockStacks) {
+        const hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
+        // Reverse painter order picks the visible top face nearest the viewer.
+        for(let i=ISLAND_TILES.length-1;i>=0;i--) {
+          const tile=ISLAND_TILES[i], height=world.blockStacks[tile.row*ISLAND_GRID_SIZE+tile.column].length;
+          if(!height) continue;
+          const y=tile.y-(height-1)*BLOCK_HEIGHT;
+          const dx=Math.abs(point.x-tile.x)/hw;
+          if(dx<=1 && (dx+Math.abs(point.y-y)/hh<=1 ||
+             (height>1 && point.y>=y+hh*(1-dx) && point.y<=y+hh*(1-dx)+(height-1)*BLOCK_HEIGHT)))
+            return {column:tile.column,row:tile.row};
+        }
+      }
       const dx = (point.x - WIDTH / 2) / (ISLAND_TILE_WIDTH / 2);
       const dy = (point.y - islandTop - islandTileHeight / 2) / (islandTileHeight / 2);
       const column = Math.round((dx + dy) / 2), row = Math.round((dy - dx) / 2);
       return column >= 0 && column < ISLAND_GRID_SIZE && row >= 0 && row < ISLAND_GRID_SIZE ? {column, row} : null;
     },
     tile(point) {
+      const visible = this.tileAt(point);
+      if (visible) return visible;
       const dx = (point.x - WIDTH / 2) / (ISLAND_TILE_WIDTH / 2);
       const dy = (point.y - islandTop - islandTileHeight / 2) / (islandTileHeight / 2);
       return {column: clamp(Math.round((dx + dy) / 2), 0, ISLAND_GRID_SIZE - 1),

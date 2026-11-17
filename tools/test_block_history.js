@@ -35,13 +35,14 @@ assert.equal(w.worldManager.getCharacter().column,23);
 undo.click();assert.equal(w.worldManager.getCharacter().column,24);assert.equal(tile(4,4),2);
 undo.click();assert.equal(tile(4,4),1);assert.equal(tile(5,4),1);
 redo.click();assert.equal(tile(4,4),2);redo.click();assert.equal(w.worldManager.getCharacter().column,23);
-// Do not add on an occupied cell; do not replace an empty one.
-d.getElementById('terrain-add').click();tap(4,4);assert.equal(tile(4,4),2);assert.match(d.getElementById('terrain-status').textContent,/sudah berisi/);
-d.getElementById('terrain-erase').click();tap(4,4);assert.equal(tile(4,4),0);
+// Add on an occupied cell creates another level, and history restores all levels.
+d.getElementById('terrain-add').click();tap(4,4);assert.deepEqual(Array.from(w.worldManager.getActive().blockStacks[204]),[2,2]);
+undo.click();assert.equal(w.worldManager.getActive().blockStacks,undefined);redo.click();assert.deepEqual(Array.from(w.worldManager.getActive().blockStacks[204]),[2,2]);
+d.getElementById('terrain-erase').click();tap(4,4);assert.equal(tile(4,4),2);tap(4,4);assert.equal(tile(4,4),0);
 d.getElementById('terrain-draw').click();tap(4,4);assert.equal(tile(4,4),0);assert.match(d.getElementById('terrain-status').textContent,/Sel kosong/);
 d.getElementById('terrain-add').click();tap(4,4);assert.equal(tile(4,4),2);undo.click();assert.equal(tile(4,4),0);redo.click();assert.equal(tile(4,4),2);
 // A successful new action invalidates redo, while a rejected action leaves it intact.
-undo.click();assert(!redo.disabled);tap(5,4);assert(!redo.disabled);tap(4,4);assert(redo.disabled);
+undo.click();assert(!redo.disabled);d.getElementById('terrain-draw').click();tap(4,4);assert(!redo.disabled);d.getElementById('terrain-add').click();tap(4,4);assert(redo.disabled);
 // Out-of-band changes must invalidate history instead of overwriting them.
 const external=w.worldManager.getActive().tiles.slice();external[7*50+7]=5;assert(w.worldManager.updateTiles(world.id,external));assert(undo.disabled && redo.disabled);assert.equal(tile(7,7),5);
 // Stale-tab writes are refused during undo; neither newer data nor in-memory tiles are overwritten.

@@ -54,9 +54,10 @@
     const obj = type === 'house' ? window.worldManager.getHouse() : window.worldManager.getCharacter();
     return obj ? {...obj} : null;
   }
-  function snapshot() { const tiles=window.worldManager.getActive().tiles; return {character: current('character'), house: current('house'), tiles: Array.isArray(tiles) ? tiles.slice() : null}; }
-  function sameTiles(a,b) { return a===b || (Array.isArray(a) && Array.isArray(b) && a.length===b.length && a.every((v,i)=>v===b[i])); }
-  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house) && sameTiles(a.tiles,b.tiles); }
+  function blocks(world) { return world.blockStacks ? world.blockStacks.map(x=>x.slice()) : world.tiles?.map(t=>t?[t]:[]) ?? null; }
+  function snapshot() { return {character: current('character'), house: current('house'), blocks: blocks(window.worldManager.getActive())}; }
+  function sameBlocks(a,b) { return a===b || (Array.isArray(a) && Array.isArray(b) && a.length===b.length && a.every((v,i)=>v.length===b[i].length && v.every((t,j)=>t===b[i][j]))); }
+  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house) && sameBlocks(a.blocks,b.blocks); }
   function ensureHistory(id) {
     const state = snapshot();
     let item = histories.get(id);
@@ -84,11 +85,11 @@
     if (!editing || !history || pendingTerrain || pointers.size || dialog.open || !from.length) return;
     const next = from[from.length - 1];
     if (next.type === 'tiles') {
-      const before=window.worldManager.getActive().tiles?.slice();
+      const before=blocks(window.worldManager.getActive());
       if (!before) return;
       applyingHistory=true;
       let saved;
-      try { saved=window.worldManager.updateTiles(worldId,next.value); } finally { applyingHistory=false; }
+      try { saved=window.worldManager.updateBlockStacks(worldId,next.value); } finally { applyingHistory=false; }
       if (!saved) { tell('EDITING · Riwayat block tidak dapat disimpan.'); return; }
       from.pop();to.push({type:'tiles',value:before});
       if(to.length>HISTORY_LIMIT)to.shift();
@@ -108,18 +109,18 @@
       if (!editing && document.querySelector('.preview-stage')?.dataset.mode==='editor') editButton.click();
       const world=window.worldManager.getActive();
       if (!editing || !history || world.id!==worldId || !Array.isArray(world.tiles) || pointers.size || dialog.open) return false;
-      pendingTerrain={id:worldId,before:world.tiles.slice(),changed:false};syncControls();return true;
+      pendingTerrain={id:worldId,before:blocks(world),changed:false};syncControls();return true;
     },
-    update(id,tiles) {
+    update(id,stacks) {
       if (!pendingTerrain || pendingTerrain.id!==id || id!==worldId || !history) return false;
       applyingHistory=true;let saved;
-      try { saved=window.worldManager.updateTiles(id,tiles); } finally { applyingHistory=false; }
+      try { saved=window.worldManager.updateBlockStacks(id,stacks); } finally { applyingHistory=false; }
       if(saved) { pendingTerrain.changed=true;history.last=snapshot(); }
       return saved;
     },
     end() {
       const pending=pendingTerrain;pendingTerrain=null;
-      if (pending?.changed && editing && history && pending.id===worldId && window.worldManager.getActive().id===worldId && !sameTiles(pending.before,window.worldManager.getActive().tiles)) {
+      if (pending?.changed && editing && history && pending.id===worldId && window.worldManager.getActive().id===worldId && !sameBlocks(pending.before,blocks(window.worldManager.getActive()))) {
         history.undo.push({type:'tiles',value:pending.before});
         if(history.undo.length>HISTORY_LIMIT)history.undo.shift();
         history.redo.length=0;history.last=snapshot();
