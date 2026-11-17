@@ -60,7 +60,7 @@
     }
     if(walk.routeIndex!==index){walk.routeIndex=index;scene.setGameplayRoute?.(walk.route,index);}
     const a=walk.route[index-1],b=walk.route[index],t=Math.max(0,Math.min(1,elapsed/walk.durations[index-1]));
-    scene.setGameplayDraft({...walk.character,column:a.column+(b.column-a.column)*t,row:a.row+(b.row-a.row)*t,blockHeight:scene.surfaceHeight(a.column,a.row)*(1-t)+scene.surfaceHeight(b.column,b.row)*t,facing:direction(a,b),running:walk.running,walkPhase:(index-1+t)*Math.PI*2});
+    scene.setGameplayDraft({...walk.character,column:a.column+(b.column-a.column)*t,row:a.row+(b.row-a.row)*t,blockHeight:scene.surfaceHeight(a.column,a.row)*(1-t)+scene.surfaceHeight(b.column,b.row)*t,waterDepth:scene.waterDepth(a.column,a.row)*(1-t)+scene.waterDepth(b.column,b.row)*t,facing:direction(a,b),running:walk.running,walkPhase:(index-1+t)*Math.PI*2});
     window.requestAnimationFrame(next=>step(next,token));
   }
   function direction(a,b){return b.column>a.column?'E':b.column<a.column?'W':b.row>a.row?'S':'N';}

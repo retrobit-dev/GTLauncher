@@ -1223,19 +1223,10 @@
       cornerRadius, fill, sunlight);
     if (material === 3) {
       ctx.restore();
-      // Draw an opaque earthen ledge at the bottom of exposed water faces.
-      const bankDepth=Math.min(2, leftSideDepth);
-      if(borders.left) drawGrassTileSide(tile.x,tile.y+leftSideDepth-bankDepth,
-        halfWidth,halfHeight,0,bankDepth,palette.soilLight,true);
-      const rightBankDepth=Math.min(2, rightSideDepth);
-      if(borders.right) drawGrassTileSide(tile.x,tile.y+rightSideDepth-rightBankDepth,
-        halfWidth,halfHeight,0,rightBankDepth,palette.soilLight,false);
-      // Earthen edging also runs down the exposed side corners.
-      ctx.save();ctx.strokeStyle=palette.soilDark;ctx.lineWidth=1.1;ctx.lineCap='round';
-      function bankLine(x,y,depth) {ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+depth);ctx.stroke();}
-      if(borders.left) {bankLine(tile.x-halfWidth,tile.y,leftSideDepth);bankLine(tile.x,tile.y+halfHeight,leftSideDepth);}
-      if(borders.right) {bankLine(tile.x+halfWidth,tile.y,rightSideDepth);if(!borders.left) bankLine(tile.x,tile.y+halfHeight,rightSideDepth);}
-      ctx.restore();
+      // Exposed faces are solid earthen banks, not merely an outline. Adjacent
+      // water and waterfalls leave the shared side open.
+      if(borders.left) drawGrassTileSide(tile.x,tile.y,halfWidth,halfHeight,0,leftSideDepth,palette.soilLight,true);
+      if(borders.right) drawGrassTileSide(tile.x,tile.y,halfWidth,halfHeight,0,rightSideDepth,palette.soilLight,false);
       // Quiet, fixed ripples remain legible without flickering at high zoom.
       ctx.save();ctx.globalAlpha *= 0.50;ctx.strokeStyle='#d8faf1';ctx.lineWidth=0.55;
       ctx.lineCap='round';
@@ -1689,6 +1680,14 @@
     if(!world?.blockStacks || !Number.isInteger(column) || !Number.isInteger(row) || column<0 || row<0 || column>=size || row>=size) return 1;
     return world.blockStacks[row*size+column].length;
   }
+  function waterDepth(column,row) {
+    const world=window.worldManager?.getActive(), size=world?.gridSize;
+    if (!world?.tiles || !Number.isInteger(column) || !Number.isInteger(row) || column<0 || row<0 || column>=size || row>=size) return 0;
+    return world.tiles[row*size+column]===3 ? BLOCK_HEIGHT : 0;
+  }
+  function characterWaterDepth(character) {
+    return Number.isFinite(character.waterDepth) ? Math.max(0,Math.min(BLOCK_HEIGHT,character.waterDepth)) : waterDepth(character.column,character.row);
+  }
   function characterCentre(character) {
     const elevation=Number.isFinite(character.blockHeight) ? character.blockHeight : surfaceHeight(character.column,character.row);
     return {x: WIDTH / 2 + (character.column - character.row) * ISLAND_TILE_WIDTH / 2,
@@ -1742,7 +1741,7 @@
   }
   function drawCharacterProjectedShadow(light, cloudCover) {
     const world=window.worldManager?.getActive(), character=editingDraft || gameplayDraft || window.worldManager?.getCharacter();
-    if(!world || world.id==='base' || !character?.visible || !Number.isFinite(light.azimuth) || light.altitude<=0)return;
+    if(!world || world.id==='base' || !character?.visible || characterWaterDepth(character)>0 || !Number.isFinite(light.azimuth) || light.altitude<=0)return;
     const sprite=activeCharacterSprite(character);
     if(!sprite.complete || !sprite.naturalWidth)return;
     let mask=characterShadowMasks.get(sprite);
@@ -1845,7 +1844,7 @@
     const mirror = character.facing === 'W' || character.facing === 'E';
     const sprite = back ? playerBackImage : playerImage;
     if (!sprite.complete || !sprite.naturalWidth) return;
-    const anchor = characterCentre(character), x=anchor.x, y=anchor.y + .5 * character.scale;
+    const anchor = characterCentre(character), depth=characterWaterDepth(character), x=anchor.x, y=anchor.y + .5 * character.scale + depth;
     const width = PLAYER_WIDTH * character.scale;
     // Breathing changes height only, never the ground anchor. With reduced motion time is zero.
     const idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5 : 0;
@@ -1853,12 +1852,20 @@
     ctx.save();
     applyIslandTransform();
     // The intact sprite avoids exposed seams until independently drawn gait frames exist.
-    ctx.fillStyle='rgba(12,23,30,.38)';ctx.beginPath();ctx.ellipse(x,y-.45*character.scale,4.6*character.scale,.8*character.scale,0,0,Math.PI*2);ctx.fill();
+    if(depth===0) {ctx.fillStyle='rgba(12,23,30,.38)';ctx.beginPath();ctx.ellipse(x,y-.45*character.scale,4.6*character.scale,.8*character.scale,0,0,Math.PI*2);ctx.fill();}
     ctx.imageSmoothingEnabled = false;
-    ctx.save();ctx.translate(x,y);if (mirror) ctx.scale(-1,1);
     const drawnSprite=activeCharacterSprite(character);
-    ctx.drawImage(drawnSprite,-width/2,-height,width,height);
-    ctx.restore();
+    function drawSprite() {ctx.save();ctx.translate(x,y);if (mirror) ctx.scale(-1,1);ctx.drawImage(drawnSprite,-width/2,-height,width,height);ctx.restore();}
+    if(depth>0) {
+      // The portion below the surface is translucent against the already drawn water.
+      const waterline=y-depth;
+      ctx.save();ctx.beginPath();ctx.rect(x-width/2-2,y-height-2,width+4,height-depth+2);ctx.clip();drawSprite();ctx.restore();
+      ctx.save();ctx.beginPath();
+      ctx.moveTo(x-ISLAND_TILE_WIDTH/2,waterline);ctx.lineTo(x,waterline-islandTileHeight/2);
+      ctx.lineTo(x+ISLAND_TILE_WIDTH/2,waterline);ctx.lineTo(x,waterline+islandTileHeight/2);ctx.closePath();ctx.clip();
+      ctx.beginPath();ctx.rect(x-width/2-2,waterline,width+4,depth+2);ctx.clip();ctx.globalAlpha*=0.35;drawSprite();ctx.restore();
+      ctx.save();ctx.strokeStyle='rgba(218,250,244,.6)';ctx.lineWidth=.45;ctx.beginPath();ctx.ellipse(x,waterline,Math.min(width*.48,5),1.1,0,0,Math.PI*2);ctx.stroke();ctx.restore();
+    } else drawSprite();
     if (editingSelected) {
       ctx.strokeStyle = '#fff4a8';
       ctx.lineWidth = 1;
@@ -2372,6 +2379,7 @@
     },
     centre: characterCentre,
     surfaceHeight,
+    waterDepth,
     waterBorders,
     waterFalls,
     houseAt,
@@ -2385,7 +2393,8 @@
     },
     hit(point, character) {
       if (!character.visible) return false;
-      const {x, y} = characterCentre(character);
+      const {x, y: surfaceY} = characterCentre(character);
+      const y=surfaceY+characterWaterDepth(character);
       return Math.abs(point.x - x) <= PLAYER_WIDTH * character.scale / 2 + 4
         && point.y >= y - PLAYER_HEIGHT * character.scale - 4.5 && point.y <= y + 4;
     },

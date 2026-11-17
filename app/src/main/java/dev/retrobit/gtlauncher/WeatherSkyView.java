@@ -310,6 +310,14 @@ public final class WeatherSkyView extends View {
         stepStarted=SystemClock.uptimeMillis()-Math.round(progress*duration);
         invalidate();return Math.max(0,Math.round((1-progress)*duration));
     }
+    private float waterDepthAt(int column, int row) {
+        if (worldTerrain == null || column < 0 || row < 0 || column >= ISLAND_GRID_SIZE || row >= ISLAND_GRID_SIZE) return 0f;
+        return worldTerrain.tile(column,row)==3 ? ISLAND_GRASS_BAND_DEPTH : 0f;
+    }
+    private float visualWaterDepth() {
+        float target=waterDepthAt(characterColumn,characterRow);
+        return characterStepping ? waterDepthAt(stepFromColumn,stepFromRow)*(1f-stepProgress()) + target*stepProgress() : target;
+    }
     private float visualColumn() { return characterStepping ? stepFromColumn+(characterColumn-stepFromColumn)*stepProgress() : characterColumn; }
     private float visualRow() { return characterStepping ? stepFromRow+(characterRow-stepFromRow)*stepProgress() : characterRow; }
     void animateCharacterStep(int fromColumn,int fromRow,int toColumn,int toRow,float scale,String facing,int index,int total,int duration) {
@@ -580,7 +588,7 @@ public final class WeatherSkyView extends View {
         if(!showCharacter || getWidth()<=0 || getHeight()<=0)return false;
         Bitmap sprite=(characterFacing.equals("N")||characterFacing.equals("W"))?mainCharacterBack:mainCharacter;
         float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f;
-        float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f;
+        float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f+visualWaterDepth();
         return opaqueAt(sprite,new RectF(x-6.75f*characterScale,y-25*characterScale,x+6.75f*characterScale,y),islandX(sx),islandY(sy),characterFacing.equals("W")||characterFacing.equals("E"));
     }
     WorldStore.SurfaceObject sellingMarkerAt(float sx,float sy) {
@@ -705,7 +713,7 @@ public final class WeatherSkyView extends View {
             if(fenceOverlaps(image,f,mirror,sprite,new RectF(x-width/2,bottom-height,x+width/2,bottom),house.facing.equals("N")||house.facing.equals("E")))return true;
         }
         if(front && showCharacter) {
-            float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f,width=13.5f*characterScale,height=25*characterScale;
+            float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f+visualWaterDepth(),width=13.5f*characterScale,height=25*characterScale;
             boolean back=characterFacing.equals("N")||characterFacing.equals("W");
             if(fenceOverlaps(image,f,mirror,back?mainCharacterBack:mainCharacter,new RectF(x-width/2,y-height,x+width/2,y),characterFacing.equals("W")||characterFacing.equals("E")))return true;
         }
@@ -910,7 +918,7 @@ public final class WeatherSkyView extends View {
             paint.setAlpha(originalAlpha);
         }
         Bitmap sprite = currentCharacterSprite();
-        if (showCharacter && sprite != null && light.altitudeDegrees > 0) {
+        if (showCharacter && sprite != null && light.altitudeDegrees > 0 && visualWaterDepth() <= 0) {
             float x = SCENE_WIDTH / 2f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2f;
             float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2f + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2f;
             float height=25f*characterScale,width=13.5f*characterScale;
@@ -1008,10 +1016,11 @@ public final class WeatherSkyView extends View {
         float x = SCENE_WIDTH / 2.0f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2.0f;
         float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f
                 + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2.0f;
-        y+=.5f*characterScale;
+        float depth=visualWaterDepth();
+        y+=.5f*characterScale+depth;
         float width = 13.5f * characterScale;
         paint.setStyle(Paint.Style.FILL);paint.setColor(Color.argb(97,12,23,30));
-        canvas.drawOval(new RectF(x-4.6f*characterScale,y-1.25f*characterScale,x+4.6f*characterScale,y+.35f*characterScale),paint);
+        if(depth==0f) canvas.drawOval(new RectF(x-4.6f*characterScale,y-1.25f*characterScale,x+4.6f*characterScale,y+.35f*characterScale),paint);
         float idle = characterStepping ? 0f : (Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5f : 0.0f);
         // Keep the dimensions fixed while moving; bounce translates rather than stretches.
         float height = 25.0f * characterScale + (characterStepping ? 0 : idle);
@@ -1020,9 +1029,25 @@ public final class WeatherSkyView extends View {
         paint.setFilterBitmap(true);
         int save = canvas.save();
         if (mirror) canvas.scale(-1, 1, x, 0);
-        // Use the same complete gait frame as the projected shadow.
-        canvas.drawBitmap(sprite, null, new RectF(x - width / 2, y - height, x + width / 2, y), paint);
+        // Use the same gait frame, compositing the submerged portion over water.
+        RectF destination=new RectF(x-width/2,y-height,x+width/2,y);
+        if (depth>0) {
+            int upper=canvas.save();canvas.clipRect(x-width/2-2,y-height-2,x+width/2+2,y-depth);
+            canvas.drawBitmap(sprite,null,destination,paint);canvas.restoreToCount(upper);
+            int lower=canvas.save();
+            Path waterFootprint=new Path();waterFootprint.moveTo(x-ISLAND_TILE_WIDTH/2f,y-depth);
+            waterFootprint.lineTo(x,y-depth-ISLAND_TILE_HEIGHT/2f);waterFootprint.lineTo(x+ISLAND_TILE_WIDTH/2f,y-depth);
+            waterFootprint.lineTo(x,y-depth+ISLAND_TILE_HEIGHT/2f);waterFootprint.close();canvas.clipPath(waterFootprint);
+            canvas.clipRect(x-width/2-2,y-depth,x+width/2+2,y+2);
+            paint.setAlpha(89);canvas.drawBitmap(sprite,null,destination,paint);paint.setAlpha(255);canvas.restoreToCount(lower);
+        } else canvas.drawBitmap(sprite,null,destination,paint);
         canvas.restoreToCount(save);
+        if(depth>0) {
+            paint.setColor(0x99dafaf4);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.45f);
+            float radius=Math.min(width*.48f,5f);
+            canvas.drawOval(new RectF(x-radius,y-depth-1.1f,x+radius,y-depth+1.1f),paint);
+            paint.setStyle(Paint.Style.FILL);
+        }
     }
 
     private void drawMovingHair(Canvas canvas, Bitmap sprite, int sw, int sh, int top,
@@ -1475,18 +1500,9 @@ public final class WeatherSkyView extends View {
                 drawSunlitIslandDiamond(canvas,x,y,material==3?hw:hw-0.05f,material==3?hh:hh-0.025f,material==3?0:1.4f,fill,sunlight);
                 if (material==3) {
                     canvas.restore();
-                    float bankDepth=Math.min(2f,ISLAND_TILE_SIDE_DEPTH);
-                    if (!leftWater) drawGrassTileSide(canvas,x,y+ISLAND_TILE_SIDE_DEPTH-bankDepth,hw,hh,0,bankDepth,palette.soilLight,true);
-                    if (!rightWater) drawGrassTileSide(canvas,x,y+ISLAND_TILE_SIDE_DEPTH-bankDepth,hw,hh,0,bankDepth,palette.soilLight,false);
-                    paint.setColor(palette.soilDark);paint.setStrokeWidth(1.1f);paint.setStyle(Paint.Style.STROKE);
-                    if (!leftWater) {
-                        canvas.drawLine(x-hw,y,x-hw,y+ISLAND_TILE_SIDE_DEPTH,paint);
-                        canvas.drawLine(x,y+hh,x,y+hh+ISLAND_TILE_SIDE_DEPTH,paint);
-                    }
-                    if (!rightWater) {
-                        canvas.drawLine(x+hw,y,x+hw,y+ISLAND_TILE_SIDE_DEPTH,paint);
-                        if (leftWater) canvas.drawLine(x,y+hh,x,y+hh+ISLAND_TILE_SIDE_DEPTH,paint);
-                    }
+                    // Solid exposed soil walls frame the water; shared water edges stay open.
+                    if (!leftWater) drawGrassTileSide(canvas,x,y,hw,hh,0,ISLAND_TILE_SIDE_DEPTH,palette.soilLight,true);
+                    if (!rightWater) drawGrassTileSide(canvas,x,y,hw,hh,0,ISLAND_TILE_SIDE_DEPTH,palette.soilLight,false);
                     paint.setColor(0x80d8faf1); paint.setStrokeWidth(.55f); paint.setStyle(Paint.Style.STROKE);
                     for (float[] offset : new float[][]{{-.35f,-.2f},{.20f,.13f}}) {
                         float rx=x+hw*offset[0], ry=y+hh*offset[1];

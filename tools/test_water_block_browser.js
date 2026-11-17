@@ -20,9 +20,12 @@ const {chromium}=require('playwright-core');
     return [sceneEditing.waterBorders(1,1,1,w),sceneEditing.waterBorders(1,1,0,w),sceneEditing.waterBorders(2,2,1,w)];
   });
   assert.deepEqual(checks,[{left:false,right:true},{left:true,right:false},{left:true,right:true}], 'neighbours must contain water at the same level; edges keep banks');
+  const sidePixel=()=>page.evaluate(t=>{const canvas=document.querySelector('#sky-canvas'),r=canvas.getBoundingClientRect(),o=sceneEditing.toLocal(r.left,r.top),z=sceneEditing.camera().renderZoom,n=sceneEditing.centre(t),x=(n.x+7-o.x)*z/320*canvas.width,y=(n.y+3+4-o.y)*z/200*canvas.height;return [...canvas.getContext('2d').getImageData(Math.round(x),Math.round(y),1,1).data];},target);
+  const exposed=await sidePixel();
   const neighbor={column:target.column+1,row:target.row};
   await page.evaluate(t=>{const w=worldManager.getActive(),s=w.blockStacks.map(x=>x.slice());s[t.row*w.gridSize+t.column].push(3);if(!worldManager.updateBlockStacks(w.id,s))throw Error('neighbor update failed')},neighbor);
   borders=await page.evaluate(t=>sceneEditing.waterBorders(t.column,t.row,1),target);assert.deepEqual(borders,{left:true,right:false},'water next to water has no shared bank');
+  const joined=await sidePixel();assert.notDeepEqual(joined,exposed,'actual outer wall disappears when adjacent water connects');
   await page.evaluate(t=>{const w=worldManager.getActive(),s=w.blockStacks.map(x=>x.slice());s[t.row*w.gridSize+t.column].pop();if(!worldManager.updateBlockStacks(w.id,s))throw Error('neighbor removal failed')},neighbor);
   borders=await page.evaluate(t=>sceneEditing.waterBorders(t.column,t.row,1),target);assert.deepEqual(borders,{left:true,right:true},'bank returns when water is removed');
   // The out-of-band edits deliberately invalidate history; create a new step.
