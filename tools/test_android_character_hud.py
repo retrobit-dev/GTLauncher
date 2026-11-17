@@ -10,7 +10,7 @@ assert hud.get(a+'visibility') not in ('gone','invisible')
 assert hud.get(a+'clickable')=='false' and hud.get(a+'focusable')=='false'
 assert not hud.findall('.//TextView')
 portrait_view,stats=list(hud)
-assert hud.get(a+'background') == '@drawable/bg_clean_hud_frame'
+assert hud.get(a+'background') == '@drawable/bg_character_status_frame'
 assert portrait_view.get(a+'background') is None
 assert hud.get(a+'layout_height') == portrait_view.get(a+'layout_height') == '48dp'
 assert stats.get(a+'layout_height') == 'match_parent'
@@ -24,7 +24,7 @@ for row,name in zip(stats,['health','stamina','food']):
  assert bar.get(a+'background')=='@drawable/status_bar_'+name
  assert (res/'drawable-nodpi'/('status_icon_'+name+'.png')).read_bytes() == (root/'preview/assets/hud'/('status-'+name+'.png')).read_bytes()
  layers=ET.parse(res/'drawable'/('status_bar_'+name+'.xml')).getroot()
- assert list(layers)[2].find('shape/solid').get(a+'color') == {'health':'#C94E43','stamina':'#E1A52E','food':'#6D9134'}[name]
+ assert list(layers)[2].find('shape/gradient').get(a+'centerColor') == {'health':'#C94E43','stamina':'#E1A52E','food':'#6D9134'}[name]
 import struct
 portrait=(res/'drawable-nodpi/character_hud_current.png').read_bytes()
 assert portrait==(root/'preview/assets/character-hud-current.png').read_bytes()
