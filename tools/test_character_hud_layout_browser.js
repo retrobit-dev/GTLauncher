@@ -10,16 +10,15 @@ const {chromium} = require('playwright-core');
    await page.setViewportSize({width,height:700});
    const geometry=await page.evaluate(()=>{
     const rect=s=>{const r=document.querySelector(s).getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:r.width,height:r.height}};
-    return {hud:rect('.character-hud'),portrait:rect('.character-hud-portrait'),vitals:rect('.character-hud-vitals'),rows:[...document.querySelectorAll('.character-hud-stats > div')].map(e=>{const r=e.getBoundingClientRect(); return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,iconCount:e.querySelectorAll('.stat-icon').length}}),buttons:['#world-button','#weather-cycle-button'].map(s=>[rect(s),rect(s+' svg')])};
+    return {hud:rect('.character-hud'),portrait:rect('.character-hud-portrait'),vitals:rect('.character-hud-vitals'),rows:[...document.querySelectorAll('.character-hud-stats > div')].map(e=>{const r=e.getBoundingClientRect(); return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,iconCount:e.querySelectorAll('.stat-icon').length,barCount:e.querySelectorAll('.stat-bar').length}}),buttons:['#world-button','#weather-cycle-button'].map(s=>[rect(s),rect(s+' svg')])};
    });
    assert(geometry.vitals.left>=geometry.portrait.right-0.5,`vitals must be right of portrait at ${width}`);
-   assert.equal(geometry.rows.length,4);
-   assert.notEqual(await page.locator('.character-hud-stats').evaluate(e=>getComputedStyle(e).borderImageSource),'none','one shared status frame');
+   assert.equal(geometry.rows.length,3);
    assert(await page.locator('.character-hud-stats > div').evaluateAll(rows=>rows.every(row=>getComputedStyle(row).borderStyle==='none' && getComputedStyle(row).backgroundImage==='none')), 'status icons have no box');
    assert(Math.abs(geometry.hud.bottom-geometry.portrait.bottom)<0.5,`HUD stays within intended height at ${width}`);
    assert(Math.abs(geometry.vitals.top-geometry.portrait.top)<0.5 && Math.abs(geometry.vitals.bottom-geometry.portrait.bottom)<0.5,`status height matches portrait at ${width}`);
    assert.equal(await page.locator('.stat-label').count(),0);
-   for (let i=0;i<4;i++){assert.equal(geometry.rows[i].iconCount,5);if(i) assert(geometry.rows[i].top>=geometry.rows[i-1].bottom-0.5,`bars must stack at ${width}`);}
+   for (let i=0;i<3;i++){assert.equal(geometry.rows[i].iconCount,1);assert.equal(geometry.rows[i].barCount,1);if(i) assert(geometry.rows[i].top>=geometry.rows[i-1].bottom-0.5,`bars must stack at ${width}`);}
    for(const [button,icon] of geometry.buttons){
     assert(Math.abs((button.left+button.right-icon.left-icon.right)/2)<1,`icon horizontal center at ${width}`);
     assert(Math.abs((button.top+button.bottom-icon.top-icon.bottom)/2)<1,`icon vertical center at ${width}`);

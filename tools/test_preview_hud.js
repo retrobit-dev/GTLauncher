@@ -25,7 +25,9 @@ assert.throws(()=>season.classify(rainfall(0),new Date('2026-12-01T12:00:00Z')))
  d.getElementById('dock-close').click();d.querySelector('[data-dock="settings"]').click();assert.match(d.getElementById('dock-message').textContent,/Android.*pengaturan perangkat/);
  d.getElementById('dock-close').click();assert(!dialog.open);
  for(const img of d.querySelectorAll('.character-hud img, .home-dock img'))assert(fs.existsSync(path.join(root,img.getAttribute('src').split('?')[0])));
- assert.equal(d.querySelectorAll('.character-hud-stats > div').length,4);
+ assert.equal(d.querySelectorAll('.character-hud-stats > div').length,3);
+ assert.equal(d.querySelectorAll('.character-hud-stats .stat-bar').length,3);
+ assert.equal(d.querySelector('.character-hud-stats .food'),null);
  assert.equal(d.querySelectorAll('.home-dock button').length,11);
  assert.equal(d.querySelector('.dock-tab.selected').getAttribute('aria-label'),'Tools');assert.equal(d.querySelector('.dock-tab.selected').textContent,'Tools');assert.equal(d.querySelector('.dock-tab.selected img'),null);
  assert(!d.querySelector('[data-dock="close"]'),'no close icon in dock');

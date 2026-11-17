@@ -13,19 +13,15 @@ portrait_view,stats=list(hud)
 assert portrait_view.get(a+'background') == '@drawable/status_frame'
 assert hud.get(a+'layout_height') == portrait_view.get(a+'layout_height') == '48dp'
 assert stats.get(a+'layout_height') == 'match_parent'
-assert stats.get(a+'background') == '@drawable/status_frame'
-assert all(row.get(a+'background') is None for row in stats)
-assert (res/'drawable-xhdpi/status_frame.9.png').exists()
-assert [row.get(a+'contentDescription').split(':')[0] for row in stats] == ['Health','Stamina','Makanan','Air']
-assert all(row.get(a+'layout_width') == 'match_parent' and row.get(a+'layout_weight') == '1' and '20 poin' in row.get(a+'contentDescription') for row in stats)
-for row,name in zip(stats,['health','stamina','food','water']):
- icons=row.findall('ImageView')
- assert len(icons)==5 and all(icon.get(a+'src')=='@drawable/hud_stat_icon_'+name for icon in icons)
- ET.parse(res/'drawable'/('hud_stat_icon_'+name+'.xml'))
-assert ET.parse(res/'drawable/hud_stat_icon_food.xml').getroot().find('group/path').get(a+'fillColor').lower() == '#6d9134'
-for name in ['health','stamina','food','water']:
- paths=ET.parse(res/'drawable'/('hud_stat_icon_'+name+'.xml')).getroot().findall('group/path')
- assert len(paths)==2 and paths[0].get(a+'strokeColor') == '#493020'
+assert stats.get(a+'background') is None
+assert [row.get(a+'contentDescription').split(':')[0] for row in stats] == ['Health','Stamina','Air']
+assert all(row.get(a+'layout_width') == 'match_parent' and row.get(a+'layout_weight') == '1' and '100 dari 100' in row.get(a+'contentDescription') for row in stats)
+for row,name in zip(stats,['health','stamina','water']):
+ icon=row.find('ImageView'); bar=row.find('View')
+ assert icon.get(a+'src')=='@drawable/status_icon_'+name
+ assert bar.get(a+'background')=='@drawable/status_bar_'+name
+ assert (res/'drawable-nodpi'/('status_icon_'+name+'.png')).read_bytes() == (root/'preview/assets/hud'/('status-'+name+'.png')).read_bytes()
+ ET.parse(res/'drawable'/('status_bar_'+name+'.xml'))
 import struct
 portrait=(res/'drawable-nodpi/character_hud_current.png').read_bytes()
 assert portrait==(root/'preview/assets/character-hud-current.png').read_bytes()
