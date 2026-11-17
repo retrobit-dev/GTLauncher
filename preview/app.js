@@ -84,7 +84,8 @@
   // The green cap overhangs the narrower soil body along the front perimeter.
   const ISLAND_GRASS_OVERHANG = 4;
   const ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
-  const BLOCK_HEIGHT = ISLAND_DEPTH;
+  // A stacked block has the same height as the island’s grass band.
+  const BLOCK_HEIGHT = ISLAND_GRASS_BAND_DEPTH;
   const ISLAND_BASE_BOTTOM_MARGIN = 8;
   const ISLAND_VERTICAL_LIFT = 10;
   const ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;

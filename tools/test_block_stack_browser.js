@@ -15,7 +15,7 @@ const {chromium}=require('playwright-core');
   const clickTarget=async()=>{let p=await pos(target);assert.equal(await page.evaluate(({x,y})=>document.elementFromPoint(x,y)?.id,p),'sky-canvas');await page.mouse.click(p.x,p.y);};
   let ground=await page.evaluate(p=>sceneEditing.centre(p).y,target);
   await page.locator('#terrain-material').selectOption('2');await page.locator('#terrain-add').click();await clickTarget();
-  assert.deepEqual(await stack(),[1,2]);assert.equal(await page.evaluate(p=>sceneEditing.centre(p).y,target),ground-24);
+  assert.deepEqual(await stack(),[1,2]);assert.equal(await page.evaluate(p=>sceneEditing.centre(p).y,target),ground-8);
   assert.deepEqual(await page.evaluate(p=>sceneEditing.tileAt(sceneEditing.centre(p)),target),target,'raised top is selectable');
   await clickTarget();assert.deepEqual(await stack(),[1,2,2]);
   assert.equal(await page.evaluate(p=>GameplayPath.find(worldManager.getActive(),worldManager.getCharacter(),p,worldManager.getHouse()),target),null,'two-level cliff blocks access');
@@ -26,7 +26,7 @@ const {chromium}=require('playwright-core');
   await page.locator('#mode-gameplay').click();
   const path=await page.evaluate(p=>GameplayPath.find(worldManager.getActive(),worldManager.getCharacter(),p,worldManager.getHouse()),target);assert(path && path.length===2,'one-step elevation reachable');
   await clickTarget();await page.waitForFunction(p=>{let c=worldManager.getCharacter();return c.column===p.column&&c.row===p.row},target,{timeout:10000});assert.deepEqual(await page.evaluate(()=>{const {column,row}=worldManager.getCharacter();return {column,row};}),target,'character reaches elevated block');
-  assert.equal(await page.evaluate(()=>sceneEditing.centre(worldManager.getCharacter()).y),ground-24);
+  assert.equal(await page.evaluate(()=>sceneEditing.centre(worldManager.getCharacter()).y),ground-8);
   await page.reload({waitUntil:'domcontentloaded'});assert.deepEqual(await stack(),[1,4],'stack survives reload');
   console.log('Browser stack editing, history, raised hit testing, gameplay and reload: OK');
  } finally {await browser.close();}
