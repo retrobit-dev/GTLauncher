@@ -11,3 +11,7 @@ Peta preview dan Android tetap tersimpan terpisah. Penempatan melalui katalog ha
 Rumah standar kini menggunakan konsep `house-player-simple-concept.png`, dengan interpretasi belakang terpisah dan pintu yang lebih tinggi dari player pada skala bawaan. Aset dan konsep rumah sebelumnya tetap disimpan. Aset Android rumah standar juga diperbarui, tetapi belum dibangun atau diuji pada perangkat. Desain wide lama belum didesain ulang; fitur upgrade belum tersedia.
 
 Tampilan depan dan belakang rumah sederhana disejajarkan pada titik kontak sudut pondasi yang sama sebelum dicerminkan untuk arah lain. Dengan demikian rotasi mempertahankan titik pijak, posisi tapak dan skala; hasil asli sebelum disejajarkan tetap tersedia. Sprite Android standar diselaraskan juga, tetapi belum diuji melalui build atau perangkat. Rumah Android desain wide yang lama tidak diubah.
+
+## Penyelarasan tapak di preview
+
+Rumah sederhana diproyeksikan terhadap tapak 3×3: kedua sisi pondasi sejajar dengan sumbu tile, dan pintu berada pada tile tengah sisi depan. Dua bagian sprite ditransformasikan terhadap sudut pondasi yang sama; pemilihan berbasis alpha memakai transformasi balik yang sama. Arah yang memperlihatkan sisi belakang tidak menggambar pintu pada sisi yang menghadap kamera. Ukuran visual yang diubah secara manual tetap dapat melebihi tapak logis. Peningkatan proyeksi ini baru di preview; renderer Android masih menggunakan proyeksi sprite sebelumnya dan belum diuji pada perangkat.

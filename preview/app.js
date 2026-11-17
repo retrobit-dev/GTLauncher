@@ -1821,8 +1821,8 @@
     if (house?.visible && houseSprite.complete && houseSprite.naturalWidth) {
       const centre = characterCentre({column: house.column + 1, row: house.row + 1});
       // Anchor to the front base of the sprite, so the smaller shadow remains visible.
-      shadows.push({anchor: {x: centre.x, y: centre.y + 1.25 * islandTileHeight * house.scale},
-        width: 70 * house.scale, depth: islandTileHeight * 2.5 * house.scale, height: 67 * house.scale});
+      shadows.push({anchor: {x: centre.x, y: centre.y + 1.5 * islandTileHeight * house.scale},
+        width: 84 * house.scale, depth: islandTileHeight * 3 * house.scale, height: 85 * house.scale});
     }
     for(const tree of world.orangeTrees||[]) {
       const centre=characterCentre({column:tree.column+.5,row:tree.row+.5,blockHeight:surfaceHeight(tree.column,tree.row)});
@@ -1844,26 +1844,32 @@
     ctx.restore();
   }
 
+  function houseProjection(house) {
+    const centre=characterCentre({column:house.column+1,row:house.row+1});
+    const geometry=window.HouseGeometry.create(ISLAND_TILE_WIDTH,islandTileHeight,house.scale);
+    return {centre,geometry,bottom:centre.y+geometry.halfDepth,mirror:house.facing==='N'||house.facing==='E'};
+  }
   function drawHouse() {
     const house = editingHouseDraft || window.worldManager?.getHouse?.();
     if (!house?.visible) return;
-    const back = house.facing === 'N' || house.facing === 'W';
-    const mirror = house.facing === 'N' || house.facing === 'E';
-    const sprite = back ? houseBackImage : houseImage;
-    if (!sprite.complete || !sprite.naturalWidth) return;
-    // column/row are the north-west corner of the house's 3×3 logical footprint.
-    const centre = characterCentre({column: house.column + 1, row: house.row + 1});
-    const bottom = centre.y + 1.25 * islandTileHeight * house.scale;
-    const width = 70 * house.scale, height = 67 * house.scale;
-    ctx.save(); applyIslandTransform(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-    if (mirror) { ctx.save(); ctx.translate(centre.x, 0); ctx.scale(-1, 1);
-      ctx.drawImage(sprite, -width / 2, bottom - height, width, height); ctx.restore();
-    } else ctx.drawImage(sprite, centre.x - width / 2, bottom - height, width, height);
-    if (editingHouseSelected) {
-      ctx.strokeStyle = '#fff4a8'; ctx.lineWidth = 1;
-      ctx.strokeRect(centre.x - width / 2 - 2, bottom - height - 2, width + 4, height + 4);
+    const back=house.facing==='N'||house.facing==='W';
+    const sprite=back?houseBackImage:houseImage;
+    if (!sprite.complete || !sprite.naturalWidth || !window.HouseGeometry) return;
+    const {centre,geometry:g,bottom,mirror}=houseProjection(house);
+    ctx.save();applyIslandTransform();ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    ctx.translate(centre.x,bottom);if(mirror)ctx.scale(-1,1);
+    // Independently align the two visible foundation faces with the tile axes.
+    for(const [from,to,side] of [[0,g.pivotX,g.left],[g.pivotX,512,g.right]]) {
+      ctx.save();ctx.transform(side.sx,side.shear,0,g.sy,0,0);
+      ctx.drawImage(sprite,from,0,to-from,490,from-g.pivotX,-g.pivotY,to-from,490);ctx.restore();
     }
     ctx.restore();
+    if(editingHouseSelected) {
+      const points=[[0,0],[g.pivotX,0],[512,0],[0,490],[g.pivotX,490],[512,490]].map(([x,y])=>window.HouseGeometry.project(g,x,y));
+      const xs=points.map(p=>p.x*(mirror?-1:1)), ys=points.map(p=>p.y);
+      ctx.save();applyIslandTransform();ctx.strokeStyle='#fff4a8';ctx.lineWidth=1;
+      ctx.strokeRect(centre.x+Math.min(...xs)-2,bottom+Math.min(...ys)-2,Math.max(...xs)-Math.min(...xs)+4,Math.max(...ys)-Math.min(...ys)+4);ctx.restore();
+    }
   }
 
   let editingTreeSelection=null;
@@ -2447,11 +2453,11 @@
     const back=house.facing==='N'||house.facing==='W', mirror=house.facing==='N'||house.facing==='E';
     const image=back?houseBackImage:houseImage;
     if(!image.complete || !image.naturalWidth || !image.naturalHeight) return false;
-    const centre=characterCentre({column:house.column+1,row:house.row+1});
-    const bottom=centre.y+1.25*islandTileHeight*house.scale, width=70*house.scale, height=67*house.scale;
-    let u=(point.x-(centre.x-width/2))/width, v=(point.y-(bottom-height))/height;
+    if(!window.HouseGeometry)return false;
+    const {centre,geometry,bottom}=houseProjection(house);
+    const p=window.HouseGeometry.unproject(geometry,(point.x-centre.x)*(mirror?-1:1),point.y-bottom);
+    let u=p.x/512,v=p.y/490;
     if(u<0||u>=1||v<0||v>=1) return false;
-    if(mirror) u=1-u;
     try {
       let data=houseHitCache.get(image);
       if(!data){const c=document.createElement('canvas');c.width=128;c.height=128;const h=c.getContext('2d',{willReadFrequently:true});h.drawImage(image,0,0,128,128);data=h.getImageData(0,0,128,128).data;houseHitCache.set(image,data);}
@@ -2522,10 +2528,7 @@
     centreHouse(house) { return characterCentre({column: house.column + 1, row: house.row + 1}); },
     hitHouse(point, house) {
       if (!house?.visible) return false;
-      const {x, y} = characterCentre({column: house.column + 1, row: house.row + 1});
-      const bottom = y + 1.25 * islandTileHeight * house.scale;
-      return Math.abs(point.x - x) <= 35 * house.scale + 3
-        && point.y >= bottom - 67 * house.scale - 3 && point.y <= bottom + 3;
+      return houseAt(point,house);
     },
     hit(point, character) {
       if (!character.visible) return false;
