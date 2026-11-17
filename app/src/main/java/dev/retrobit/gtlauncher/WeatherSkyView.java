@@ -1462,17 +1462,22 @@ public final class WeatherSkyView extends View {
             else {
                 int[] colors={0,0,0xffae8b68,0xff75cbd0,0xff929995,0xffdac695,0xff805e43};
                 int fill=material==2 ? blend(palette.soilLight,0xffd49d65,0.4) : blend(colors[material],palette.grassDark,0.12);
+                boolean leftWater = material==3 && row+1<ISLAND_GRID_SIZE && worldTerrain.tile(column,row+1)==3;
+                boolean rightWater = material==3 && column+1<ISLAND_GRID_SIZE && worldTerrain.tile(column+1,row)==3;
                 if (material==3) {
                     // Flat portable worlds have a riverbed under translucent water.
-                    drawSunlitIslandDiamond(canvas,x,y,hw-0.05f,hh-0.025f,1.4f,
+                    drawSunlitIslandDiamond(canvas,x,y,hw,hh,0,
                             blend(palette.soilLight,0xffdac695,0.45),sunlight);
                     canvas.saveLayerAlpha(x-hw-2,y-hh-2,x+hw+2,y+hh+ISLAND_TILE_SIDE_DEPTH+2,163,Canvas.ALL_SAVE_FLAG);
                 }
-                drawGrassTileSide(canvas,x,y,hw,hh,1.4f,ISLAND_TILE_SIDE_DEPTH,fill,true);
-                drawGrassTileSide(canvas,x,y,hw,hh,1.4f,ISLAND_TILE_SIDE_DEPTH,fill,false);
-                drawSunlitIslandDiamond(canvas,x,y,hw-0.05f,hh-0.025f,1.4f,fill,sunlight);
+                if (!leftWater) drawGrassTileSide(canvas,x,y,hw,hh,material==3?0:1.4f,ISLAND_TILE_SIDE_DEPTH,fill,true);
+                if (!rightWater) drawGrassTileSide(canvas,x,y,hw,hh,material==3?0:1.4f,ISLAND_TILE_SIDE_DEPTH,fill,false);
+                drawSunlitIslandDiamond(canvas,x,y,material==3?hw:hw-0.05f,material==3?hh:hh-0.025f,material==3?0:1.4f,fill,sunlight);
                 if (material==3) {
                     canvas.restore();
+                    float bankDepth=Math.min(2f,ISLAND_TILE_SIDE_DEPTH);
+                    if (!leftWater) drawGrassTileSide(canvas,x,y+ISLAND_TILE_SIDE_DEPTH-bankDepth,hw,hh,0,bankDepth,palette.soilLight,true);
+                    if (!rightWater) drawGrassTileSide(canvas,x,y+ISLAND_TILE_SIDE_DEPTH-bankDepth,hw,hh,0,bankDepth,palette.soilLight,false);
                     paint.setColor(0x80d8faf1); paint.setStrokeWidth(.55f); paint.setStyle(Paint.Style.STROKE);
                     for (float[] offset : new float[][]{{-.35f,-.2f},{.20f,.13f}}) {
                         float rx=x+hw*offset[0], ry=y+hh*offset[1];

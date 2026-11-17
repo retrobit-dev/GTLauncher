@@ -1134,15 +1134,29 @@
     return slot < 4 ? 0 : 1 + (slot - 4) % 3;
   }
 
-  function drawGrassTile(tile, palette, sunlight, material = 1, raised = false) {
+  // Only the two camera-facing faces are visible. A water neighbour at the
+  // same level replaces that face; other heights/materials retain the bank.
+  function waterBorders(column, row, level, world = window.worldManager?.getActive()) {
+    const size=world?.gridSize;
+    function isWater(c,r) {
+      if (!Number.isInteger(size) || c<0 || r<0 || c>=size || r>=size) return false;
+      const index=r*size+c;
+      return world.blockStacks ? world.blockStacks[index]?.[level] === 3
+        : level===0 && world.tiles?.[index] === 3;
+    }
+    return {left:!isWater(column,row+1),right:!isWater(column+1,row)};
+  }
+  function drawGrassTile(tile, palette, sunlight, material = 1, level = 0) {
+    const raised = level > 0;
+    const borders = material === 3 ? waterBorders(tile.column,tile.row,level) : null;
     const lightTile = tile.variant === 0;
     const terrain = {2:'#ae8b68', 3:'#75cbd0', 4:'#929995', 5:'#dac695', 6:'#805e43'};
     const fill = material === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
       : material === 2 ? blendColor(palette.soilLight, '#d49d65', 0.4)
       : blendColor(terrain[material] || terrain[2], palette.grassDark, 0.12);
-    const halfWidth = ISLAND_TILE_WIDTH / 2 - 0.05;
-    const halfHeight = islandTileHeight / 2 - 0.025;
-    const cornerRadius = 1.4;
+    const halfWidth = ISLAND_TILE_WIDTH / 2 - (material===3 ? 0 : 0.05);
+    const halfHeight = islandTileHeight / 2 - (material===3 ? 0 : 0.025);
+    const cornerRadius = material===3 ? 0 : 1.4;
     const leftPerimeterFace = tile.row === ISLAND_GRID_SIZE - 1;
     const rightPerimeterFace = tile.column === ISLAND_GRID_SIZE - 1;
     // A flat water tile sits over a riverbed; raised water blends over the block
@@ -1154,11 +1168,11 @@
     }
     const leftSideDepth = raised ? BLOCK_HEIGHT : leftPerimeterFace ? ISLAND_GRASS_BAND_DEPTH : ISLAND_TILE_SIDE_DEPTH;
     const rightSideDepth = raised ? BLOCK_HEIGHT : rightPerimeterFace ? ISLAND_GRASS_BAND_DEPTH : ISLAND_TILE_SIDE_DEPTH;
-    drawGrassTileSide(tile.x, tile.y,
+    if (!borders || borders.left) drawGrassTileSide(tile.x, tile.y,
       leftPerimeterFace ? ISLAND_TILE_WIDTH / 2 : halfWidth,
       leftPerimeterFace ? islandTileHeight / 2 : halfHeight,
       leftPerimeterFace ? 0 : cornerRadius, leftSideDepth, fill, true);
-    drawGrassTileSide(tile.x, tile.y,
+    if (!borders || borders.right) drawGrassTileSide(tile.x, tile.y,
       rightPerimeterFace ? ISLAND_TILE_WIDTH / 2 : halfWidth,
       rightPerimeterFace ? islandTileHeight / 2 : halfHeight,
       rightPerimeterFace ? 0 : cornerRadius, rightSideDepth, fill, false);
@@ -1168,6 +1182,13 @@
       cornerRadius, fill, sunlight);
     if (material === 3) {
       ctx.restore();
+      // Draw an opaque earthen ledge at the bottom of exposed water faces.
+      const bankDepth=Math.min(2, leftSideDepth);
+      if(borders.left) drawGrassTileSide(tile.x,tile.y+leftSideDepth-bankDepth,
+        halfWidth,halfHeight,0,bankDepth,palette.soilLight,true);
+      const rightBankDepth=Math.min(2, rightSideDepth);
+      if(borders.right) drawGrassTileSide(tile.x,tile.y+rightSideDepth-rightBankDepth,
+        halfWidth,halfHeight,0,rightBankDepth,palette.soilLight,false);
       // Quiet, fixed ripples remain legible without flickering at high zoom.
       ctx.save();ctx.globalAlpha *= 0.50;ctx.strokeStyle='#d8faf1';ctx.lineWidth=0.55;
       ctx.lineCap='round';
@@ -1841,7 +1862,7 @@
         }
         if (stack) for(let level=1;level<stack.length;level++) {
           const raised={...tile,y:tile.y-level*BLOCK_HEIGHT};
-          if(tileVisible(raised,BLOCK_HEIGHT)) drawGrassTile(raised,palette,sunlight,stack[level],true);
+          if(tileVisible(raised,BLOCK_HEIGHT)) drawGrassTile(raised,palette,sunlight,stack[level],level);
         }
       }
     } else {
@@ -2299,6 +2320,7 @@
     },
     centre: characterCentre,
     surfaceHeight,
+    waterBorders,
     houseAt,
     centreHouse(house) { return characterCentre({column: house.column + 1, row: house.row + 1}); },
     hitHouse(point, house) {
