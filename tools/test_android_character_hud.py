@@ -10,7 +10,8 @@ assert hud.get(a+'visibility') not in ('gone','invisible')
 assert hud.get(a+'clickable')=='false' and hud.get(a+'focusable')=='false'
 assert not hud.findall('.//TextView')
 portrait_view,stats=list(hud)
-assert hud.get(a+'background') == '@drawable/bg_character_status_frame'
+assert hud.get(a+'background') == '@drawable/character_status_frame'
+assert (res/'drawable-xhdpi/character_status_frame.9.png').exists()
 assert portrait_view.get(a+'background') is None
 assert hud.get(a+'layout_height') == portrait_view.get(a+'layout_height') == '48dp'
 assert stats.get(a+'layout_height') == 'match_parent'
