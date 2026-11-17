@@ -1478,6 +1478,15 @@ public final class WeatherSkyView extends View {
                     float bankDepth=Math.min(2f,ISLAND_TILE_SIDE_DEPTH);
                     if (!leftWater) drawGrassTileSide(canvas,x,y+ISLAND_TILE_SIDE_DEPTH-bankDepth,hw,hh,0,bankDepth,palette.soilLight,true);
                     if (!rightWater) drawGrassTileSide(canvas,x,y+ISLAND_TILE_SIDE_DEPTH-bankDepth,hw,hh,0,bankDepth,palette.soilLight,false);
+                    paint.setColor(palette.soilDark);paint.setStrokeWidth(1.1f);paint.setStyle(Paint.Style.STROKE);
+                    if (!leftWater) {
+                        canvas.drawLine(x-hw,y,x-hw,y+ISLAND_TILE_SIDE_DEPTH,paint);
+                        canvas.drawLine(x,y+hh,x,y+hh+ISLAND_TILE_SIDE_DEPTH,paint);
+                    }
+                    if (!rightWater) {
+                        canvas.drawLine(x+hw,y,x+hw,y+ISLAND_TILE_SIDE_DEPTH,paint);
+                        if (leftWater) canvas.drawLine(x,y+hh,x,y+hh+ISLAND_TILE_SIDE_DEPTH,paint);
+                    }
                     paint.setColor(0x80d8faf1); paint.setStrokeWidth(.55f); paint.setStyle(Paint.Style.STROKE);
                     for (float[] offset : new float[][]{{-.35f,-.2f},{.20f,.13f}}) {
                         float rx=x+hw*offset[0], ry=y+hh*offset[1];

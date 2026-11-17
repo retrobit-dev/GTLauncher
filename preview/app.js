@@ -1146,9 +1146,50 @@
     }
     return {left:!isWater(column,row+1),right:!isWater(column+1,row)};
   }
+  // A fall exists only between neighbouring exposed water surfaces, and is
+  // visual: it never creates, moves or consumes terrain blocks.
+  function waterFalls(column,row,world=window.worldManager?.getActive()) {
+    const size=world?.gridSize, tiles=world?.tiles;
+    if(!tiles || column<0 || row<0 || column>=size || row>=size || tiles[row*size+column]!==3) return {};
+    const height=(c,r)=>world.blockStacks ? world.blockStacks[r*size+c].length : 1;
+    const source=height(column,row), result={};
+    for(const [name,dx,dy] of [['left',0,1],['right',1,0],['backLeft',-1,0],['backRight',0,-1]]) {
+      const c=column+dx,r=row+dy;
+      if(c<0||r<0||c>=size||r>=size || tiles[r*size+c]!==3) continue;
+      const drop=source-height(c,r);
+      if(drop>0) result[name]=drop;
+    }
+    return result;
+  }
+  function drawWaterfalls(tile, level, falls, motionTime) {
+    const hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2, x=tile.x,y=tile.y-level*BLOCK_HEIGHT;
+    const edges={left:[[x-hw,y],[x,y+hh]],right:[[x,y+hh],[x+hw,y]],
+      backLeft:[[x,y-hh],[x-hw,y]],backRight:[[x+hw,y],[x,y-hh]]};
+    for(const [side,drop] of Object.entries(falls)) {
+      const [a,b]=edges[side],depth=drop*BLOCK_HEIGHT;
+      ctx.save();ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);
+      ctx.lineTo(b[0],b[1]+depth);ctx.lineTo(a[0],a[1]+depth);ctx.closePath();
+      ctx.fillStyle='rgba(105,204,215,0.68)';ctx.fill();ctx.clip();
+      ctx.strokeStyle='rgba(218,250,244,0.60)';ctx.lineWidth=.65;ctx.lineCap='round';
+      const phase=REDUCED_MOTION ? 0 : (motionTime*5)%5;
+      for(let i=1;i<=5;i++) {
+        const fraction=i/6, px=a[0]+(b[0]-a[0])*fraction, py=a[1]+(b[1]-a[1])*fraction;
+        for(let k=-1;k*5+phase<depth;k++) {
+          const start=Math.max(0,k*5+phase), end=Math.min(depth,k*5+phase+2.3);
+          if(end>start){ctx.beginPath();ctx.moveTo(px,py+start);ctx.lineTo(px,py+end);ctx.stroke();}
+        }
+      }
+      ctx.restore();
+    }
+  }
   function drawGrassTile(tile, palette, sunlight, material = 1, level = 0) {
     const raised = level > 0;
     const borders = material === 3 ? waterBorders(tile.column,tile.row,level) : null;
+    const world=material===3 ? window.worldManager?.getActive() : null;
+    const top=world?.blockStacks?.[tile.row*ISLAND_GRID_SIZE+tile.column]?.length-1;
+    const falls=world?.blockStacks && material===3 && level===top ? waterFalls(tile.column,tile.row,world) : {};
+    if(borders && falls.left) borders.left=false;
+    if(borders && falls.right) borders.right=false;
     const lightTile = tile.variant === 0;
     const terrain = {2:'#ae8b68', 3:'#75cbd0', 4:'#929995', 5:'#dac695', 6:'#805e43'};
     const fill = material === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
@@ -1189,6 +1230,12 @@
       const rightBankDepth=Math.min(2, rightSideDepth);
       if(borders.right) drawGrassTileSide(tile.x,tile.y+rightSideDepth-rightBankDepth,
         halfWidth,halfHeight,0,rightBankDepth,palette.soilLight,false);
+      // Earthen edging also runs down the exposed side corners.
+      ctx.save();ctx.strokeStyle=palette.soilDark;ctx.lineWidth=1.1;ctx.lineCap='round';
+      function bankLine(x,y,depth) {ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+depth);ctx.stroke();}
+      if(borders.left) {bankLine(tile.x-halfWidth,tile.y,leftSideDepth);bankLine(tile.x,tile.y+halfHeight,leftSideDepth);}
+      if(borders.right) {bankLine(tile.x+halfWidth,tile.y,rightSideDepth);if(!borders.left) bankLine(tile.x,tile.y+halfHeight,rightSideDepth);}
+      ctx.restore();
       // Quiet, fixed ripples remain legible without flickering at high zoom.
       ctx.save();ctx.globalAlpha *= 0.50;ctx.strokeStyle='#d8faf1';ctx.lineWidth=0.55;
       ctx.lineCap='round';
@@ -1821,7 +1868,7 @@
   }
 
   function drawFloatingIsland(sunAltitude, sunAzimuth, sunHourAngle, cloudCover, code,
-    moon, cloudStates) {
+    moon, cloudStates, motionTime) {
     ctx.save();
     applyIslandTransform();
     const palette = islandPalette(sunAltitude, cloudCover, code);
@@ -1863,6 +1910,11 @@
         if (stack) for(let level=1;level<stack.length;level++) {
           const raised={...tile,y:tile.y-level*BLOCK_HEIGHT};
           if(tileVisible(raised,BLOCK_HEIGHT)) drawGrassTile(raised,palette,sunlight,stack[level],level);
+        }
+        if(stack && tileData[index]===3) {
+          const level=stack ? stack.length-1 : 0;
+          const falls=waterFalls(tile.column,tile.row,activeWorld);
+          if(Object.keys(falls).length) drawWaterfalls(tile,level,falls,motionTime);
         }
       }
     } else {
@@ -2060,7 +2112,7 @@
     // Ground shadows go down before the island so the plate covers them, and before the clouds so
     // no sprite is ever painted over by a shadow it did not come from.
     drawFloatingIsland(sun.altitude, sun.azimuth, sun.hourAngleDegrees,
-      sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates);
+      sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates, motionTime);
     drawSurfaceObjectShadows(shadowLight, sceneWeather.cloudCover, sceneWeather.weatherCode);
     drawCharacterProjectedShadow(shadowLight, sceneWeather.cloudCover);
     drawGameplayRoute();
@@ -2321,6 +2373,7 @@
     centre: characterCentre,
     surfaceHeight,
     waterBorders,
+    waterFalls,
     houseAt,
     centreHouse(house) { return characterCentre({column: house.column + 1, row: house.row + 1}); },
     hitHouse(point, house) {
