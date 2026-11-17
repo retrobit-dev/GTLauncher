@@ -5,6 +5,10 @@
   const stage=document.querySelector('.preview-stage'), canvas=document.getElementById('sky-canvas');
   const material=document.getElementById('terrain-material'), status=document.getElementById('terrain-status');
   const pan=document.getElementById('editor-pan'), scene=window.sceneEditing, worlds=window.worldManager;
+  const grassPreview=document.getElementById('grass-block-preview');
+  function updateGrassPreview() { if(grassPreview) grassPreview.hidden=material.value!=='1'; }
+  material?.addEventListener('change',updateGrassPreview);
+  updateGrassPreview();
   const buttons=Object.fromEntries(['draw','erase','pick','fill'].map(name=>[name,document.getElementById('terrain-'+name)]));
   if (!stage || !canvas || !material || !status || !pan || !scene?.tileAt || !worlds?.updateTiles || Object.values(buttons).some(x=>!x)) return;
   let tool=null, gesture=null, lastWorld=worlds.getActive().id;
@@ -46,7 +50,7 @@
     const previous=world.tiles[index], value=Number(material.value);
     if(tool==='pick') {
       if(previous===0){status.textContent='Tidak ada block untuk diambil.';return;}
-      material.value=String(previous);status.textContent='Jenis block diambil.';return;
+      material.value=String(previous);updateGrassPreview();status.textContent='Jenis block diambil.';return;
     }
     const next=world.tiles.slice();
     if(tool==='fill') fill(next,index,value,world.gridSize);
