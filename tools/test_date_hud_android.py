@@ -53,5 +53,5 @@ stack=next(el for el in hud.iter() if panel in list(el))
 assert stack.get(ns+'layout_marginTop') == '10dp' and stack.get(ns+'layout_height') == '54dp'
 
 left=layout.find(".//*[@"+ns+"id='@+id/home_character_hud']")
-assert float(calendar.get(ns+'layout_height').removesuffix('dp')) * float(hud.get(ns+'scaleY')) == float(left.get(ns+'layout_height').removesuffix('dp'))
+assert float(calendar.get(ns+'layout_height').removesuffix('dp')) * float(hud.get(ns+'scaleY')) == float(list(left)[0].get(ns+'layout_height').removesuffix('dp'))
 assert left.get(ns+'layout_marginTop') == hud.get(ns+'layout_marginTop')
