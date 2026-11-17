@@ -298,10 +298,11 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .hud-calendar[data-weekend="true"]::before { background:#c85439; }
 .hud-calendar::after { content:""; position:absolute; top:-3%; left:20%; width:5%; height:14%; background:#6b4b27; box-shadow:2.7cqw 0 #6b4b27; }
 .hud-calendar strong { font-size:1.65cqw; }
- .home-dock-shell { position:absolute; z-index:4; bottom:3%; left:18%; width:64%; height:9.7%; }
+ .home-dock-shell { position:absolute; z-index:4; bottom:3%; left:18%; width:64%; height:calc(8.925% - 1.4px); }
 .dock-tabs { position:absolute; left:1%; bottom:100%; display:flex; gap:.25cqw; height:45%; align-items:stretch; }
 .dock-tab { min-width:3.8cqw; padding:0 .6cqw; background:#c4a781; color:#513c2d; border:.19cqw solid #806244; border-bottom:0; border-radius:.45cqw .45cqw 0 0; font: .85cqw HudPixel,monospace; cursor:pointer; }
 .dock-tab.selected { background:#f1e4c5; }
+.dock-tab img { display:block; width:100%; height:100%; object-fit:contain; padding:.2cqw; }
 .home-dock { height:100%; display:grid; grid-template-columns:repeat(11,minmax(0,1fr)); grid-template-rows:minmax(0,1fr); padding:.35cqw; gap:.15cqw; background:#c2a47d; border:.24cqw solid #806346; border-radius:.7cqw; box-shadow:inset 0 0 0 .15cqw #f4dfbb; }
 .home-dock button { min-width:0; min-height:0; width:100%; height:100%; padding:.2cqw; background:#e3cfaa; border:.16cqw solid #a88863; border-radius:0; cursor:pointer; }
 .home-dock button[data-dock="axe"] { padding:0; }

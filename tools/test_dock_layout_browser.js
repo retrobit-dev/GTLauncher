@@ -12,9 +12,10 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
     const inset=side=>parseFloat(style['border'+side+'Width'])+parseFloat(style['padding'+side]);
     const inner={left:d.left+inset('Left'),right:d.right-inset('Right'),top:d.top+inset('Top'),bottom:d.bottom-inset('Bottom')};
     const rect=r=>({left:r.left,right:r.right,top:r.top,bottom:r.bottom});
-    return {inner,buttons:[...dock.querySelectorAll('button')].map(b=>({button:rect(b.getBoundingClientRect()),icon:rect(b.querySelector('img').getBoundingClientRect())}))};
+    return {inner,dockHeight:d.height,clockHeight:document.querySelector('.clock-readouts').getBoundingClientRect().height,buttons:[...dock.querySelectorAll('button')].map(b=>({button:rect(b.getBoundingClientRect()),icon:rect(b.querySelector('img').getBoundingClientRect())}))};
    });
    assert.equal(result.buttons.length,11);
+   assert(Math.abs(result.dockHeight-result.clockHeight)<1,`dock height differs from clock/battery at ${width}px`);
    const within=(r,p)=>r.left>=p.left-0.2 && r.right<=p.right+0.2 && r.top>=p.top-0.2 && r.bottom<=p.bottom+0.2;
    for(const {button,icon} of result.buttons){assert(within(button,result.inner),`slot background overflows dock at ${width}px`);assert(within(icon,button),`icon overflows slot at ${width}px`);}
   }

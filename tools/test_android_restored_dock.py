@@ -27,6 +27,11 @@ import struct
 settings=(root/'app/src/main/res/drawable-nodpi/dock_settings.png').read_bytes()
 assert settings==(root/'preview/assets/hud/dock_settings.png').read_bytes()
 assert settings[:8]==b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',settings[16:24])==(512,512) and settings[25]==6
+tab=ids['@+id/dock_tools_tab']
+assert tab.tag=='ImageView' and tab.get(ns+'src')=='@drawable/dock_tools_tab' and tab.get(ns+'contentDescription')=='Tools'
+ET.parse(root/'app/src/main/res/drawable/dock_tools_tab.xml')
+# 54dp clock stack at 0.75 scale is 40.5dp; the dock row matches it.
+assert ids['@+id/dock_tool_hand'].get(ns+'layout_height')=='40.5dp'
 assert '@+id/dock_add_tab' in ids
 assert '@+id/dock_close' not in ids
 java=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
