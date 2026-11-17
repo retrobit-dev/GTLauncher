@@ -1,0 +1,21 @@
+const assert=require('node:assert/strict'), life=require('../preview/pond-life.js');
+const world={gridSize:10,tiles:Array(100).fill(1)};
+const set=(x,y,t=3)=>world.tiles[y*10+x]=t;
+for(const [x,y] of [[1,1],[2,1],[1,2]])set(x,y);
+assert.equal(life.build(world).ponds.length,0,'three cells are insufficient');set(2,2);
+let p=life.build(world);assert.deepEqual(p.ponds.map(p=>[p.area,p.fish,p.lilypads]),[[4,2,1]]);
+for(const [x,y] of [[3,1],[3,2],[4,1],[4,2]])set(x,y);
+p=life.build(world);assert.deepEqual(p.ponds.map(p=>[p.area,p.fish,p.lilypads]),[[8,4,2]]);
+for(const [x,y] of [[7,5],[8,5],[7,6],[8,6]])set(x,y);
+p=life.build(world);assert.deepEqual(p.ponds.map(p=>[p.area,p.fish,p.lilypads]),[[8,4,2],[4,2,1]],'separate ponds count independently');
+set(8,6,1);assert.equal(life.build(world).ponds.length,1);
+const line={gridSize:10,tiles:Array(100).fill(1)};for(let i=0;i<8;i++)line.tiles[i]=3;
+assert.equal(life.build(line).ponds.length,0,'long narrow stream is not a 2x2 pond');
+const heights={gridSize:2,tiles:[3,3,3,3],blockStacks:[[3],[3],[3],[1,3]]};
+assert.equal(life.build(heights).ponds.length,0,'water on different heights does not form a flat 2x2 pond');
+heights.blockStacks[3]=[3];assert.equal(life.build(heights).ponds[0].fish,2);
+const item={type:'lilypad',seed:3};assert.deepEqual(life.position(item,1,0,0),life.position(item,10,0,0),'calm water freezes lily drift');
+assert.notDeepEqual(life.position(item,1,0,0),life.position(item,1,4,2),'wind drives displacement');
+for(let i=0;i<100;i++){const pos=life.position(item,i,i*4,i*3);assert(Math.abs(pos.u)<=.16 && Math.abs(pos.v)<=.16);}
+assert.deepEqual(life.position({type:'fish',seed:1},0,0,0,true),life.position({type:'fish',seed:1},12,0,0,true),'reduced motion freezes fish');
+console.log('Pond detection, scaling, separate levels and bounded wind motion: OK');

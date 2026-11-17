@@ -460,8 +460,11 @@ public final class WeatherSkyView extends View {
         worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects); invalidate();
     }
     private PreviewWorld20 worldTerrain;
+    private PondLife pondLife;
+    private double pondWindX=0,pondWindY=0,pondWindLast=-1;
     void setWorldTerrain(PreviewWorld20 terrain) {
         worldTerrain=terrain;
+        pondLife=terrain==null ? null : PondLife.build(terrain.size,terrain::tile);
         if(terrain!=null) {
             ISLAND_GRID_SIZE=terrain.size;
             ISLAND_TOP=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN-ISLAND_DEPTH-ISLAND_GRID_SIZE*ISLAND_TILE_HEIGHT;
@@ -1103,8 +1106,16 @@ public final class WeatherSkyView extends View {
         cameraFrameTime=frameTime;
         long now = System.currentTimeMillis();
         double elapsedSeconds = (now - animationStartMillis) / 1000.0;
+        boolean pondMotion=animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled();
         double motionSeconds = animationEnabled ? elapsedSeconds : 0.0;
         plantMotionSeconds=motionSeconds;
+        if(pondMotion) {
+            double dt=pondWindLast<0?0:Math.max(0,Math.min(.25,elapsedSeconds-pondWindLast));
+            double speed=weather==null?4:Math.max(0,weather.windSpeedKmh);
+            double bearing=Math.toRadians((weather==null?90:weather.windDirectionDegrees)+180);
+            pondWindX+=Math.sin(bearing)*speed*dt;pondWindY-=Math.cos(bearing)*speed*dt;
+            pondWindLast=elapsedSeconds;
+        } else pondWindLast=-1;
         SkyMath.Position sun = SkyMath.sun(now, latitude, longitude);
         SkyMath.Position moon = SkyMath.moon(now, latitude, longitude);
         double cloudCover = weather == null ? 42.0 : weather.cloudCoverPercent;
@@ -1492,6 +1503,32 @@ public final class WeatherSkyView extends View {
         return column>=0 && row>=0 && column<ISLAND_GRID_SIZE && row<ISLAND_GRID_SIZE
                 && worldTerrain.tile(column,row)==3;
     }
+    private void drawPondLife(Canvas canvas, float x, float y, int index) {
+        if(pondLife==null || index<0 || index>=pondLife.cells.length || pondLife.cells[index]==null)return;
+        boolean animate=animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled();
+        float hw=ISLAND_TILE_WIDTH/2f,hh=ISLAND_TILE_HEIGHT/2f;
+        Path diamond=new Path();diamond.moveTo(x,y-hh);diamond.lineTo(x+hw,y);diamond.lineTo(x,y+hh);diamond.lineTo(x-hw,y);diamond.close();
+        int save=canvas.save();canvas.clipPath(diamond);
+        // Draw fish first, beneath the floating pads.
+        for(int pass=0;pass<2;pass++)for(PondLife.Item item:pondLife.cells[index]) {
+            if(item.fish!=(pass==0))continue;
+            double phase=(item.seed%997)/997.0*Math.PI*2, u,v;
+            if(item.fish) {
+                double a=phase+(animate?plantMotionSeconds*(.6+(item.seed%3)*.1):0);
+                u=.17*Math.cos(a);v=.13*Math.sin(a);
+                float px=x+(float)(u-v)*hw,py=y+(float)(u+v)*hh,dir=Math.sin(a)>=0?1:-1;
+                paint.setStyle(Paint.Style.FILL);paint.setColor(0x78214d4f);
+                canvas.drawOval(new RectF(px-2.2f,py-.85f,px+2.2f,py+.85f),paint);
+                Path tail=new Path();tail.moveTo(px-1.6f*dir,py);tail.lineTo(px-3*dir,py-1.1f);tail.lineTo(px-3*dir,py+1.1f);tail.close();canvas.drawPath(tail,paint);
+            } else {
+                u=.16*Math.sin(pondWindX*.10+phase);v=.16*Math.sin(pondWindY*.10+phase*1.17);
+                float px=x+(float)(u-v)*hw,py=y+(float)(u+v)*hh;
+                paint.setStyle(Paint.Style.FILL);paint.setColor(0xff557f4b);canvas.drawOval(new RectF(px-2.5f,py-1.25f,px+2.5f,py+1.25f),paint);
+                paint.setStyle(Paint.Style.STROKE);paint.setColor(0xffa9ca89);paint.setStrokeWidth(.4f);canvas.drawLine(px,py,px+1.9f,py-1f,paint);paint.setStyle(Paint.Style.FILL);
+            }
+        }
+        canvas.restoreToCount(save);
+    }
     private void drawPortableTerrain(Canvas canvas, IslandPalette palette, IslandSunlight sunlight) {
         for(int diagonal=0;diagonal<ISLAND_GRID_SIZE*2-1;diagonal++) for(int row=0;row<ISLAND_GRID_SIZE;row++) {
             int column=diagonal-row;
@@ -1554,6 +1591,7 @@ public final class WeatherSkyView extends View {
                     for(float offset:new float[]{-.42f,0f,.42f}) canvas.drawLine(x-hw*(1-Math.abs(offset)),y+hh*offset,x+hw*(1-Math.abs(offset)),y+hh*offset,paint);
                     paint.setStyle(Paint.Style.FILL);
                 }
+                if(material==3) drawPondLife(canvas,x,y,row*ISLAND_GRID_SIZE+column);
             }
         }
     }

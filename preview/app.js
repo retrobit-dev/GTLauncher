@@ -1920,8 +1920,47 @@
     ctx.restore();
   }
 
+  let pondCache={tiles:null,stacks:null,id:null,layout:null};
+  let pondWind={x:0,y:0,last:null};
+  function pondLayout(world) {
+    if(!window.PondLife || !world?.tiles) return null;
+    if(pondCache.tiles!==world.tiles || pondCache.stacks!==world.blockStacks || pondCache.id!==world.id) {
+      pondCache={tiles:world.tiles,stacks:world.blockStacks,id:world.id,layout:window.PondLife.build(world)};
+    }
+    return pondCache.layout;
+  }
+  function updatePondWind(time,sceneWeather) {
+    if(REDUCED_MOTION) return;
+    const dt=pondWind.last===null ? 0 : clamp(time-pondWind.last,0,.25);pondWind.last=time;
+    const speed=Number.isFinite(sceneWeather.windSpeed) ? Math.max(0,sceneWeather.windSpeed) : 0;
+    const direction=Number.isFinite(sceneWeather.windDirection) ? sceneWeather.windDirection : 0;
+    const angle=(direction+180)*Math.PI/180;
+    pondWind.x+=Math.sin(angle)*speed*dt;pondWind.y-=Math.cos(angle)*speed*dt;
+  }
+  function drawPondLife(tile,items,motionTime) {
+    if(!items?.length || !window.PondLife) return;
+    const hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
+    ctx.save();ctx.beginPath();ctx.moveTo(tile.x,tile.y-hh);ctx.lineTo(tile.x+hw,tile.y);
+    ctx.lineTo(tile.x,tile.y+hh);ctx.lineTo(tile.x-hw,tile.y);ctx.closePath();ctx.clip();
+    // Fish are painted before pads, underneath the floating leaves.
+    for(const type of ['fish','lilypad']) for(const item of items) {
+      if(item.type!==type)continue;
+      const pos=window.PondLife.position(item,motionTime,pondWind.x,pondWind.y,REDUCED_MOTION);
+      const x=tile.x+(pos.u-pos.v)*hw, y=tile.y+(pos.u+pos.v)*hh;
+      if(type==='fish') {
+        ctx.save();ctx.translate(x,y);ctx.scale(pos.direction,1);ctx.fillStyle='rgba(33,77,79,.47)';
+        ctx.beginPath();ctx.ellipse(0,0,2.2,.85,0,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.moveTo(-1.6,0);ctx.lineTo(-3,-1.1);ctx.lineTo(-3,1.1);ctx.closePath();ctx.fill();ctx.restore();
+      } else {
+        ctx.fillStyle='#557f4b';ctx.beginPath();ctx.ellipse(x,y,2.5,1.25,0,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='#a9ca89';ctx.lineWidth=.4;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+1.9,y-1);ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
   function drawFloatingIsland(sunAltitude, sunAzimuth, sunHourAngle, cloudCover, code,
-    moon, cloudStates, motionTime) {
+    moon, cloudStates, motionTime, sceneWeather) {
     ctx.save();
     applyIslandTransform();
     const palette = islandPalette(sunAltitude, cloudCover, code);
@@ -1947,6 +1986,7 @@
     drawIslandShadow(centerX, lowerY, light.altitude, light.hourAngle, cloudCover, code);
     const activeWorld = window.worldManager?.getActive();
     const tileData = activeWorld?.tiles, stacks=activeWorld?.blockStacks;
+    const pond=pondLayout(activeWorld);updatePondWind(motionTime,sceneWeather);
     if (tileData && (stacks || tileData.some(value => value !== 1))) {
       for (const tile of ISLAND_TILES) {
         const index=tile.row * ISLAND_GRID_SIZE + tile.column, stack=stacks?.[index];
@@ -1963,6 +2003,10 @@
         if (stack) for(let level=1;level<stack.length;level++) {
           const raised={...tile,y:tile.y-level*BLOCK_HEIGHT};
           if(tileVisible(raised,BLOCK_HEIGHT)) drawGrassTile(raised,palette,sunlight,stack[level],level);
+        }
+        if(tileData[index]===3 && pond?.byTile.has(index)) {
+          const level=stack ? stack.length-1 : 0, topTile={...tile,y:tile.y-level*BLOCK_HEIGHT};
+          if(tileVisible(topTile,BLOCK_HEIGHT)) drawPondLife(topTile,pond.byTile.get(index),motionTime);
         }
         if(stack && tileData[index]===3) {
           const level=stack ? stack.length-1 : 0;
@@ -2165,7 +2209,7 @@
     // Ground shadows go down before the island so the plate covers them, and before the clouds so
     // no sprite is ever painted over by a shadow it did not come from.
     drawFloatingIsland(sun.altitude, sun.azimuth, sun.hourAngleDegrees,
-      sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates, motionTime);
+      sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates, motionTime, sceneWeather);
     drawSurfaceObjectShadows(shadowLight, sceneWeather.cloudCover, sceneWeather.weatherCode);
     drawCharacterProjectedShadow(shadowLight, sceneWeather.cloudCover);
     drawGameplayRoute();
