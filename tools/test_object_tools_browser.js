@@ -18,6 +18,13 @@ await p.reload({waitUntil:'domcontentloaded'});assert.deepEqual(await p.evaluate
 await p.locator('#mode-map-editor').click();await p.evaluate(()=>sceneEditing.setCamera(3,0,40));
 await p.locator('#object-tool-select').click();
 const housePoint=await p.evaluate(()=>{const h=worldManager.getHouse(),c=sceneEditing.centreHouse(h),r=document.querySelector('#sky-canvas').getBoundingClientRect(),o=sceneEditing.toLocal(r.left,r.top),z=sceneEditing.camera().renderZoom;for(let y=c.y-40;y<c.y+8;y++)for(let x=c.x-30;x<c.x+30;x++){const sx=r.left+(x-o.x)*z*r.width/320,sy=r.top+(y-o.y)*z*r.height/200;if(sceneEditing.houseAt({x,y},h)&&!sceneEditing.hit({x,y},worldManager.getCharacter())&&sceneEditing.orangeTreeAt({x,y})===null&&document.elementFromPoint(sx,sy)?.id==='sky-canvas')return{x:sx,y:sy}}});assert(housePoint);await p.mouse.click(housePoint.x,housePoint.y);
+const initial=await p.evaluate(()=>({house:worldManager.getHouse(),centre:sceneEditing.centreHouse(worldManager.getHouse())}));
+for(const facing of ['W','N','E','S']) {
+ await p.locator('#rotate-right').click();
+ const current=await p.evaluate(()=>({house:worldManager.getHouse(),centre:sceneEditing.centreHouse(worldManager.getHouse())}));
+ assert.equal(current.house.facing,facing);assert.deepEqual(current.centre,initial.centre,'rotation preserves house anchor');
+ assert.equal(current.house.column,initial.house.column);assert.equal(current.house.row,initial.house.row);
+}
 await p.locator('#rotate-right').click();assert.equal((await p.evaluate(()=>worldManager.getHouse())).facing,'W');
 await p.locator('#object-tool-move').click();await clickTile({column:29,row:30});assert.equal((await p.evaluate(()=>worldManager.getHouse())).row,30);
 p.once('dialog',d=>d.accept());await p.locator('#object-tool-delete').click();assert.equal(await p.evaluate(()=>worldManager.getHouse()),null);await p.locator('#object-undo').click();assert.equal((await p.evaluate(()=>worldManager.getHouse())).row,30);

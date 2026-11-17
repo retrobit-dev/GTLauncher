@@ -43,10 +43,10 @@
     Array.from({length:12},(_,i)=>{const image=new Image();image.src=`./assets/character-${mode}/${side}-${String(i).padStart(2,'0')}.png?v=short-stocky-1`;return image;})]))]));
   const houseImage = new Image();
   houseImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
-  houseImage.src = './assets/simple-house.png';
+  houseImage.src = './assets/simple-house-aligned.png?v=1';
   const houseBackImage = new Image();
   houseBackImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
-  houseBackImage.src = './assets/simple-house-back.png';
+  houseBackImage.src = './assets/simple-house-back-aligned.png?v=1';
   const orangeTreeImage = new Image();
   orangeTreeImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
   orangeTreeImage.src = './assets/orange-tree.png';
