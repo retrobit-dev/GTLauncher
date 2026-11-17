@@ -10,10 +10,12 @@ assert hud.get(a+'visibility') not in ('gone','invisible')
 assert hud.get(a+'clickable')=='false' and hud.get(a+'focusable')=='false'
 assert not hud.findall('.//TextView')
 portrait_view,stats=list(hud)
-assert portrait_view.get(a+'background') == '@drawable/status_frame'
+assert hud.get(a+'background') == '@drawable/bg_clean_hud_frame'
+assert portrait_view.get(a+'background') is None
 assert hud.get(a+'layout_height') == portrait_view.get(a+'layout_height') == '48dp'
 assert stats.get(a+'layout_height') == 'match_parent'
-assert stats.get(a+'background') is None
+assert stats.get(a+'background') == '@drawable/bg_hud_status_rows'
+assert [row.get(a+'background') for row in stats] == [None, '@drawable/bg_hud_row_separator', '@drawable/bg_hud_row_separator']
 assert [row.get(a+'contentDescription').split(':')[0] for row in stats] == ['Health','Stamina','Makanan']
 assert all(row.get(a+'layout_width') == 'match_parent' and row.get(a+'layout_weight') == '1' and '100 dari 100' in row.get(a+'contentDescription') for row in stats)
 for row,name in zip(stats,['health','stamina','food']):

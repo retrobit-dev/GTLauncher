@@ -14,8 +14,9 @@ const {chromium} = require('playwright-core');
    });
    assert(geometry.vitals.left>=geometry.portrait.right-0.5,`vitals must be right of portrait at ${width}`);
    assert.equal(geometry.rows.length,3);
-   assert(await page.locator('.character-hud-stats > div').evaluateAll(rows=>rows.every(row=>getComputedStyle(row).borderStyle==='none' && getComputedStyle(row).backgroundImage==='none')), 'status icons have no box');
-   assert(Math.abs(geometry.hud.bottom-geometry.portrait.bottom)<0.5,`HUD stays within intended height at ${width}`);
+   assert(await page.locator('.character-hud').evaluate(e=>getComputedStyle(e).borderTopStyle==='solid'), 'shared character frame');
+   assert(await page.locator('.character-hud-stats > div').evaluateAll(rows=>rows.every((row,i)=>i===0 || getComputedStyle(row).borderTopStyle==='solid')), 'clean row dividers');
+   assert(geometry.portrait.bottom<=geometry.hud.bottom && geometry.portrait.top>=geometry.hud.top,`portrait stays within HUD at ${width}`);
    assert(Math.abs(geometry.vitals.top-geometry.portrait.top)<0.5 && Math.abs(geometry.vitals.bottom-geometry.portrait.bottom)<0.5,`status height matches portrait at ${width}`);
    assert.equal(await page.locator('.stat-label').count(),0);
    for (let i=0;i<3;i++){assert.equal(geometry.rows[i].iconCount,1);assert.equal(geometry.rows[i].barCount,1);if(i) assert(geometry.rows[i].top>=geometry.rows[i-1].bottom-0.5,`bars must stack at ${width}`);}

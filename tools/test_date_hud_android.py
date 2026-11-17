@@ -51,10 +51,10 @@ for file, color in [('bg_date_hud_calendar.xml','#94BD2B'),('bg_date_hud_calenda
 # Calendar header ends at 2dp + 8dp; the adjacent readout starts there and ends with the calendar.
 stack=next(el for el in hud.iter() if panel in list(el))
 assert stack.get(ns+'layout_marginTop') == '10dp' and stack.get(ns+'layout_height') == '54dp'
-assert stack.get(ns+'background') == '@drawable/date_hud_frame'
+assert stack.get(ns+'background') == '@drawable/bg_clean_hud_frame'
 assert (root/'app/src/main/res/drawable-xhdpi/date_hud_frame.9.png').exists()
 for filename in ['bg_date_hud_calendar.xml','bg_date_hud_calendar_weekend.xml']:
- assert list(ET.parse(root/'app/src/main/res/drawable'/filename).getroot())[0].get(ns+'drawable') == '@drawable/date_hud_frame'
+ assert list(ET.parse(root/'app/src/main/res/drawable'/filename).getroot())[0].get(ns+'drawable') == '@drawable/bg_clean_hud_frame'
 
 left=layout.find(".//*[@"+ns+"id='@+id/home_character_hud']")
 assert float(calendar.get(ns+'layout_height').removesuffix('dp')) * float(hud.get(ns+'scaleY')) == float(left.find('ImageView').get(ns+'layout_height').removesuffix('dp'))
