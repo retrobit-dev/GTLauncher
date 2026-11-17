@@ -1191,9 +1191,10 @@
     if(borders && falls.left) borders.left=false;
     if(borders && falls.right) borders.right=false;
     const lightTile = tile.variant === 0;
-    const terrain = {2:'#ae8b68', 3:'#75cbd0', 4:'#929995', 5:'#dac695', 6:'#805e43'};
+    const terrain = {2:'#ae8b68', 3:'#75cbd0', 4:'#b8b2a7', 5:'#dac695', 6:'#805e43'};
     const fill = material === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
       : material === 2 ? blendColor(palette.soilLight, '#d49d65', 0.4)
+      : material === 4 ? blendColor(terrain[4],palette.soilDark,0.08)
       : blendColor(terrain[material] || terrain[2], palette.grassDark, 0.12);
     const halfWidth = ISLAND_TILE_WIDTH / 2 - (material===3 ? 0 : 0.05);
     const halfHeight = islandTileHeight / 2 - (material===3 ? 0 : 0.025);
@@ -1235,6 +1236,18 @@
         ctx.beginPath();ctx.moveTo(x-halfWidth*0.17,y);ctx.lineTo(x-halfWidth*0.05,y-halfHeight*0.07);
         ctx.lineTo(x+halfWidth*0.06,y);ctx.lineTo(x+halfWidth*0.17,y-halfHeight*0.07);ctx.stroke();
       }
+      ctx.restore();
+    }
+    if (material === 4) {
+      // Subtle fissures and pale mineral flecks inspired by the selected stone concept.
+      ctx.save();ctx.strokeStyle='rgba(66,65,62,.50)';ctx.lineWidth=.45;ctx.lineCap='round';
+      const direction=(tile.column+tile.row)%2 ? -1 : 1;
+      ctx.beginPath();ctx.moveTo(tile.x-halfWidth*.48*direction,tile.y-halfHeight*.02);
+      ctx.lineTo(tile.x-halfWidth*.30*direction,tile.y-halfHeight*.08);
+      ctx.lineTo(tile.x-halfWidth*.20*direction,tile.y+halfHeight*.09);
+      ctx.lineTo(tile.x-halfWidth*.04*direction,tile.y+halfHeight*.05);ctx.stroke();
+      ctx.fillStyle='rgba(236,229,211,.70)';ctx.fillRect(tile.x+halfWidth*.30*direction,tile.y-halfHeight*.17,.85,.65);
+      ctx.fillStyle='rgba(87,84,79,.40)';ctx.fillRect(tile.x+halfWidth*.30*direction,tile.y-halfHeight*.17+.65,.85,.35);
       ctx.restore();
     }
     if (material === 6) {

@@ -1485,8 +1485,8 @@ public final class WeatherSkyView extends View {
                 drawSmoothIslandQuad(canvas,x,y+hh,x+hw,y,x+hw,y+ISLAND_DEPTH,x,y+hh+ISLAND_DEPTH,palette.soilDark,palette.soilDark,0,0f);
             if(material==1) drawGrassTile(canvas,x,y,(column+row)%2==0,column,row,palette,sunlight);
             else {
-                int[] colors={0,0,0xffae8b68,0xff75cbd0,0xff929995,0xffdac695,0xff805e43};
-                int fill=material==2 ? blend(palette.soilLight,0xffd49d65,0.4) : blend(colors[material],palette.grassDark,0.12);
+                int[] colors={0,0,0xffae8b68,0xff75cbd0,0xffb8b2a7,0xffdac695,0xff805e43};
+                int fill=material==2 ? blend(palette.soilLight,0xffd49d65,0.4) : material==4 ? blend(colors[material],palette.soilDark,0.08) : blend(colors[material],palette.grassDark,0.12);
                 boolean leftWater = material==3 && row+1<ISLAND_GRID_SIZE && worldTerrain.tile(column,row+1)==3;
                 boolean rightWater = material==3 && column+1<ISLAND_GRID_SIZE && worldTerrain.tile(column+1,row)==3;
                 if (material==3) {
@@ -1511,6 +1511,19 @@ public final class WeatherSkyView extends View {
                         canvas.drawLine(rx+hw*.06f,ry,rx+hw*.17f,ry-hh*.07f,paint);
                     }
                     paint.setStyle(Paint.Style.FILL);
+                }
+                if(material==4) {
+                    float direction=(column+row)%2==0?1f:-1f;
+                    float topHw=hw-.05f, topHh=hh-.025f;
+                    paint.setColor(0x8042413e);paint.setStrokeWidth(.45f);paint.setStyle(Paint.Style.STROKE);
+                    Path fissure=new Path();fissure.moveTo(x-topHw*.48f*direction,y-topHh*.02f);
+                    fissure.lineTo(x-topHw*.30f*direction,y-topHh*.08f);
+                    fissure.lineTo(x-topHw*.20f*direction,y+topHh*.09f);
+                    fissure.lineTo(x-topHw*.04f*direction,y+topHh*.05f);canvas.drawPath(fissure,paint);
+                    paint.setStyle(Paint.Style.FILL);paint.setColor(0xb3ece5d3);
+                    float fx=x+topHw*.30f*direction,fy=y-topHh*.17f;
+                    canvas.drawRect(fx,fy,fx+.85f,fy+.65f,paint);
+                    paint.setColor(0x6657544f);canvas.drawRect(fx,fy+.65f,fx+.85f,fy+1f,paint);
                 }
                 if(material==6) {
                     paint.setColor(0xff523b2d);paint.setStrokeWidth(.75f);paint.setStyle(Paint.Style.STROKE);
