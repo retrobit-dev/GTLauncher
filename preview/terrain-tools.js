@@ -12,7 +12,8 @@
     tool=next; gesture=null;
     for (const [name, button] of Object.entries(buttons)) button.setAttribute('aria-pressed', String(name===tool));
     canvas.classList.toggle('is-terrain-editing',Boolean(tool));
-    status.textContent=tool ? 'Ketuk atau seret tile pada world 20×20, 25×25, 50×50 atau 100×100.' : '';
+    const hint={draw:'Ketuk atau seret untuk menambah atau mengganti block di dalam grid.',erase:'Ketuk atau seret untuk menghapus block.',pick:'Ketuk block untuk mengambil jenisnya.',fill:'Ketuk untuk mengisi area block yang tersambung.'};
+    status.textContent=tool ? hint[tool] : '';
   }
   for (const [name,button] of Object.entries(buttons)) button.addEventListener('click',()=>{
     if (pan.getAttribute('aria-pressed')==='true') pan.click();
@@ -44,16 +45,16 @@
     if(gesture) gesture.last=index;
     const previous=world.tiles[index], value=Number(material.value);
     if(tool==='pick') {
-      if(previous===0){status.textContent='Tidak ada tile untuk diambil.';return;}
-      material.value=String(previous);status.textContent='Material diambil.';return;
+      if(previous===0){status.textContent='Tidak ada block untuk diambil.';return;}
+      material.value=String(previous);status.textContent='Jenis block diambil.';return;
     }
     const next=world.tiles.slice();
     if(tool==='fill') fill(next,index,value,world.gridSize);
     else next[index]=tool==='erase'?0:value;
     if(next.every((v,i)=>v===world.tiles[i])) return;
     status.textContent=worlds.updateTiles(world.id,next)
-      ? `${columnLabel(point.column)}${point.row+1} diperbarui.`
-      : 'Tidak disimpan: tile digunakan objek atau penyimpanan bermasalah.';
+      ? `${columnLabel(point.column)}${point.row+1}: ${tool==='erase' ? 'block dihapus' : previous===0 ? 'block ditambahkan' : 'block diganti'}.`
+      : 'Tidak disimpan: block digunakan karakter/rumah atau penyimpanan bermasalah.';
   }
   canvas.addEventListener('pointerdown',event=>{
     if(stage.dataset.mode!=='editor'||!tool||gesture||(event.pointerType==='mouse'&&event.button!==0))return;
