@@ -49,7 +49,9 @@
   houseBackImage.src = './assets/simple-house-back-aligned.png?v=1';
   const orangeTreeImage = new Image();
   orangeTreeImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
-  orangeTreeImage.src = './assets/orange-tree.png';
+  orangeTreeImage.src = './assets/orange-tree-pixel.png?v=1';
+  // Preserve the approved artwork's aspect ratio at a 60-unit height.
+  const ORANGE_TREE_HEIGHT=60, ORANGE_TREE_WIDTH=ORANGE_TREE_HEIGHT*512/490;
   const PLAYER_WIDTH = 13.5;
   const PLAYER_HEIGHT = 25;
   // Base and new worlds are 50×50; older worlds retain their original geometry.
@@ -1877,7 +1879,7 @@
     if(!orangeTreeImage.complete || !orangeTreeImage.naturalWidth)return;
     const ground=surfaceHeight(tree.column,tree.row);
     const centre=characterCentre({column:tree.column+.5,row:tree.row+.5,blockHeight:ground});
-    const bottom=centre.y+islandTileHeight*.55, width=48,height=60;
+    const bottom=centre.y+islandTileHeight*.55, width=ORANGE_TREE_WIDTH,height=ORANGE_TREE_HEIGHT;
     const speed=Math.max(0,Math.min(30,sceneWeather.windSpeed||0));
     const sway=REDUCED_MOTION ? 0 : Math.sin(motionTime*.9+(tree.column*7+tree.row*11)) * speed*.0012;
     ctx.save();applyIslandTransform();ctx.translate(centre.x,bottom);ctx.rotate(sway);
@@ -2517,7 +2519,7 @@
         const trees=window.worldManager?.getActive()?.orangeTrees || [];
         for(let i=trees.length-1;i>=0;i--) {
           const tree=trees[i], centre=characterCentre({column:tree.column+.5,row:tree.row+.5,blockHeight:surfaceHeight(tree.column,tree.row)}),bottom=centre.y+islandTileHeight*.55;
-          let u=(point.x-centre.x+24)/48,v=(point.y-(bottom-60))/60;
+          let u=(point.x-centre.x+ORANGE_TREE_WIDTH/2)/ORANGE_TREE_WIDTH,v=(point.y-(bottom-ORANGE_TREE_HEIGHT))/ORANGE_TREE_HEIGHT;
           if(u<0||u>=1||v<0||v>=1)continue;
           if(tree.facing==='W'||tree.facing==='E')u=1-u;
           if(data[(Math.min(127,Math.floor(v*128))*128+Math.min(127,Math.floor(u*128)))*4+3]>32)return i;
