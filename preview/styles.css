@@ -304,6 +304,7 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .dock-tab.selected { background:#f1e4c5; }
 .home-dock { height:100%; display:grid; grid-template-columns:repeat(11,minmax(0,1fr)); grid-template-rows:minmax(0,1fr); padding:.35cqw; gap:.15cqw; background:#c2a47d; border:.24cqw solid #806346; border-radius:.7cqw; box-shadow:inset 0 0 0 .15cqw #f4dfbb; }
 .home-dock button { min-width:0; min-height:0; width:100%; height:100%; padding:.2cqw; background:#e3cfaa; border:.16cqw solid #a88863; border-radius:0; cursor:pointer; }
+.home-dock button[data-dock="axe"] { padding:0; }
 .home-dock button img { min-width:0; min-height:0; max-width:100%; max-height:100%; width:100%; height:100%; object-fit:contain; image-rendering:pixelated; }
 .dock-tab:focus-visible { outline:3px solid white; outline-offset:2px; }
 .home-dock button:focus-visible { outline:3px solid white; outline-offset:2px; }

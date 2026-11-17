@@ -23,7 +23,8 @@ while q:
 box=im.getchannel('A').getbbox()
 if not box or box[0]==0 or box[1]==0 or box[2]==w or box[3]==h:raise ValueError(f'background extraction failed: {box}')
 im=im.crop(box)
-scale=min(464/im.width,464/im.height)
+# Maximize the shorter axe silhouette within the slot without cropping.
+scale=min(500/im.width,500/im.height)
 im=im.resize((round(im.width*scale),round(im.height*scale)),Image.Resampling.LANCZOS)
 canvas=Image.new('RGBA',(512,512));canvas.alpha_composite(im,((512-im.width)//2,(512-im.height)//2))
 preview=ROOT/'preview/assets/hud/tools/axe-selected.png';canvas.save(preview,optimize=True)
