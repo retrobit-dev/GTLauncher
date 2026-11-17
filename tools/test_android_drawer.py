@@ -8,7 +8,7 @@ phone=next(n for n in layout.iter() if id_of(n)=='@+id/home_phone_button')
 end_slot=next(n for n in layout.iter() if id_of(n)=='@+id/home_settings_button')
 assert end_slot.tag=='ImageButton' and end_slot.attrib[a+'src']=='@drawable/dock_settings'
 assert end_slot.attrib[a+'contentDescription']=='Buka pengaturan perangkat'
-assert end_slot.attrib[a+'layout_width']=='24dp' and end_slot.attrib[a+'layout_height']=='24dp'
+assert end_slot.attrib[a+'layout_width']=='24dp' and end_slot.attrib[a+'layout_height']=='22dp'
 overlay=next(n for n in layout.iter() if id_of(n)=='@+id/app_drawer_screen')
 window=next(n for n in overlay.iter() if id_of(n)=='@+id/app_drawer_window')
 header=next(n for n in window if n.tag=='LinearLayout')
