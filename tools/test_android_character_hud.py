@@ -7,6 +7,8 @@ layout=ET.parse(res/'layout/activity_home.xml').getroot()
 hud=layout.find(".//*[@"+a+"id='@+id/home_character_hud']")
 assert hud is not None and hud.get(a+'layout_gravity')=='top|left'
 assert hud.get(a+'visibility') not in ('gone','invisible')
+assert hud.get(a+'alpha') == '0.75'
+assert all(node.get(a+'alpha') is None for node in hud.iter() if node is not hud)
 assert hud.get(a+'clickable')=='false' and hud.get(a+'focusable')=='false'
 assert not hud.findall('.//TextView')
 portrait_view,stats=list(hud)
