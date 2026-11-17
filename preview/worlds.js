@@ -197,6 +197,21 @@
       || typeof house.scale !== 'number' || !['N','E','S','W'].includes(house.facing)) return false;
     return commit({...state, worlds: state.worlds.map(w => w.id === id ? {...w, house: {...house}} : w)});
   }
+  // Single player house per custom world. Used by catalogue placement and its undo/redo.
+  function replacePlayerHouse(id, expected, next) {
+    const world=activeWorld(), current=getHouse(world), size=world.gridSize;
+    if(id==='base' || world.id!==id || ![20,25,50,100].includes(size) || !Array.isArray(world.tiles)
+      || JSON.stringify(current)!==JSON.stringify(expected) || (next!==null && (!validHouse(next,size)
+      || typeof next.visible!=='boolean' || typeof next.scale!=='number' || !['N','E','S','W'].includes(next.facing)))) return false;
+    if(next) {
+      const player=getCharacter(world);
+      if(player.visible && player.column>=next.column && player.column<next.column+3 && player.row>=next.row && player.row<next.row+3) return false;
+      if(!levelHouse(world,next)) return false;
+      for(let r=next.row;r<next.row+3;r++) for(let c=next.column;c<next.column+3;c++)
+        if(!world.tiles[r*size+c] || world.tiles[r*size+c]===3) return false;
+    }
+    return commit({...state,worlds:state.worlds.map(w=>w.id===id ? {...w,house:next ? {...next} : null} : w)});
+  }
   function displayName(world) { return world.name; }
   function announce(text) { message.textContent = text; }
   function commit(next) {
@@ -606,7 +621,7 @@
     const tiles=world.tiles.slice();tiles[index]=6;
     return updateTiles(id,tiles);
   }
-  window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, updateTiles, updateBlockStacks, tillTile});
+  window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, replacePlayerHouse, updateTiles, updateBlockStacks, tillTile});
   render();
   if (homeUpgraded) announce('Home diperbarui menjadi 25×25. Cadangan sebelum perubahan tersedia untuk diunduh.');
   else if (storageError) announce(storageError);

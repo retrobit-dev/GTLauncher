@@ -1,5 +1,7 @@
 # Peran karakter dan arah desain
 
+Gunakan istilah **player** untuk menyebut karakter pengguna dalam percakapan dan fitur baru.
+
 Karakter menggabungkan peran **farmer, builder, adventurer, peternak, dan fisherman**. Untuk pekerjaan berikutnya, sesuaikan desain, ikon, animasi, dan fitur dengan gabungan peran ini serta gaya game yang sudah disetujui; ikuti arahan spesifik pengguna. Jangan menganggap setiap fitur harus mencakup ketiga peran sekaligus.
 
 # Aturan pembuatan ikon dock

@@ -43,10 +43,10 @@
     Array.from({length:12},(_,i)=>{const image=new Image();image.src=`./assets/character-${mode}/${side}-${String(i).padStart(2,'0')}.png?v=short-stocky-1`;return image;})]))]));
   const houseImage = new Image();
   houseImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
-  houseImage.src = './assets/house.png';
+  houseImage.src = './assets/player-house.png';
   const houseBackImage = new Image();
   houseBackImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
-  houseBackImage.src = './assets/house-back.png';
+  houseBackImage.src = './assets/player-house-back.png';
   const PLAYER_WIDTH = 13.5;
   const PLAYER_HEIGHT = 25;
   // Base and new worlds are 50×50; older worlds retain their original geometry.
@@ -1848,7 +1848,7 @@
     const centre = characterCentre({column: house.column + 1, row: house.row + 1});
     const bottom = centre.y + 1.25 * islandTileHeight * house.scale;
     const width = 70 * house.scale, height = 67 * house.scale;
-    ctx.save(); applyIslandTransform(); ctx.imageSmoothingEnabled = false;
+    ctx.save(); applyIslandTransform(); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     if (mirror) { ctx.save(); ctx.translate(centre.x, 0); ctx.scale(-1, 1);
       ctx.drawImage(sprite, -width / 2, bottom - height, width, height); ctx.restore();
     } else ctx.drawImage(sprite, centre.x - width / 2, bottom - height, width, height);
