@@ -31,7 +31,7 @@ for side,pos in [('front',(447,68)),('back',(386,94))]:
 # The new seated frames are placed at their source artwork pixel scale, not fit
 # independently into a target box. Samples are inside the overalls/backpack.
 for side,frame,source_name,pt,shift in [
-    ('front','sitting','sit-redraw-repaired-front-v2.png',(630,520),(-13,6)),
+    ('front','sitting','sit-front-hands-corrected.png',(630,520),(-13,6)),
     ('front','sit-nearly','sit-redraw-near-front.png',(630,520),(-13,6)),
     ('back','sitting','sit-redraw-final-back.png',(600,600),(-13,39)),
     ('back','sit-nearly','sit-redraw-near-back.png',(600,600),(-13,39)),
@@ -40,5 +40,11 @@ for side,frame,source_name,pt,shift in [
     rendered=Image.open(root/f'preview/assets/player-idle-{side}-{frame}.png').convert('RGBA')
     assert rendered.getpixel((pt[0]+shift[0],pt[1]+shift[1]))==source.getpixel(pt), (side,frame,'body was rescaled')
 front=Image.open(root/'preview/assets/player-idle-front-sit-nearly.png').convert('RGBA')
-assert front.getpixel((836,670))[3]==0, 'enclosed background between arms must be transparent'
+def skin(pixel):
+    r,g,b,a=pixel
+    return a>64 and r>150 and r>g*1.25 and r>b*1.25 and g>65
+for pose in ('sitting','sit-nearly'):
+    im=Image.open(root/f'preview/assets/player-idle-front-{pose}.png').convert('RGBA')
+    assert sum(map(skin,im.crop((925,560,960,715)).getdata()))==0, 'duplicate far forearm must be occluded'
+    assert sum(map(skin,im.crop((840,640,910,690)).getdata()))>100, 'far supporting hand remains visible'
 print('Selected idle sprites: size, transparency, fixed boots, browser/Android parity: OK')

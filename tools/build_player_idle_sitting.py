@@ -21,9 +21,21 @@ for view in ('front','back'):
             im=im.resize((round(im.width*scale),round(im.height*scale)),Image.Resampling.LANCZOS)
             canvas=Image.new('RGBA',(1280,800));canvas.alpha_composite(im,((1280-im.width)//2,800-im.height))
         else:
-            file={'front':{'sitting':'sit-redraw-repaired-front-v2.png','nearly':'sit-redraw-near-front.png'},
+            file={'front':{'sitting':'sit-front-hands-corrected.png','nearly':'sit-redraw-near-front.png'},
                   'back':{'sitting':'sit-redraw-final-back.png','nearly':'sit-redraw-near-back.png'}}[view][frame]
-            im,box=extract(ART/file)
+            if view=='front' and frame=='nearly':
+                # Preserve the bent legs but use the matching occluded far arm from
+                # the corrected seated frame. This avoids a second visible forearm.
+                pose=Image.open(ART/file).convert('RGB')
+                corrected=Image.open(ART/'sit-front-hands-corrected.png').convert('RGB')
+                if pose.size!=corrected.size:raise ValueError('front study coordinates differ')
+                mask=Image.new('L',pose.size)
+                ImageDraw.Draw(mask).polygon([(840,420),(925,420),(985,500),(985,755),(895,755),(886,710),(859,690),(840,635)],fill=255)
+                pose.paste(corrected,(0,0),mask);tmp=ART/'.front-nearly-corrected.png';pose.save(tmp)
+                try: im,box=extract(tmp)
+                finally: tmp.unlink()
+            else:
+                im,box=extract(ART/file)
             # Both redrawn studies per side use the same 1306x816 coordinates.
             # Place them at native size without scaling either the body or legs.
             dx=-13;dy=6 if view=='front' else 39
