@@ -102,10 +102,8 @@
   const CELESTIAL_BAND_HEIGHT = HEIGHT / 3 - CELESTIAL_BAND_TOP;
   // Keep the Sun's roughly 18-unit halo inside the canvas along the upper edge.
   const SUN_GLOW_SAFE_INSET = 20;
-  // Temporarily hide sky objects while retaining their renderer for later design iterations.
-  // The previous sky objects (pixel sun, moon and star field) were removed. Weather still
-  // drives the sky gradient, fog and lightning, and the sun's position still drives the
-  // island lighting; only the drawn celestial bodies are gone while the replacement is designed.
+  // Sun and moon sprites remain hidden while the replacement is designed. Weather and the
+  // virtual bodies still drive sky lighting; decorative stars are rendered at night.
   // A stylized 9 x 9 tile surface represents a 2.25 km square ground patch.
   const ISLAND_TILE_METERS = 250;
   // Clouds are raster sprites traced from reference art, downsampled to a 30-column grid and
@@ -443,7 +441,7 @@
       + Math.cos(lat) * Math.cos(dec) * Math.cos(hourAngle)) * 180 / Math.PI;
     const azimuth = Math.atan2(-Math.sin(hourAngle),
       Math.tan(dec) * Math.cos(lat) - Math.sin(lat) * Math.cos(hourAngle)) * 180 / Math.PI;
-    return { azimuth: normalizeDegrees(azimuth), altitude, hourAngleDegrees };
+    return { azimuth: normalizeDegrees(azimuth), altitude, hourAngleDegrees, declination };
   }
 
   function solarEclipticLongitude(jd) {
@@ -586,7 +584,7 @@
 
   // The sun is a plain pixel disc shaded with a soft two-colour vertical gradient: the warm
   // light tone at the top fading into the deeper tone at the bottom. No rays, no facets.
-  const SUN_BODY_RADIUS = 10.5;
+  const SUN_BODY_RADIUS = ISLAND_TILE_WIDTH / 2;
   // East and west ends of the celestial arc, inset so the disc never clips the frame.
   // East sits on the right of the screen and west on the left, so the sun rises on the right
   // and sets on the left, which is the reading most people expect from a sky panel.
@@ -635,17 +633,17 @@
 
   // Shared by the sun and the moon so both halos breathe with the same rhythm.
   function drawCelestialGlow(centerX, centerY, altitude, motionTime, tint, visibility,
-    strength) {
+    strength, size = 1) {
     if (visibility <= 0 || strength <= 0) return;
     const high = clamp(clamp(altitude, 0, 90) / 45, 0, 1);
     const squash = 0.52 + high * 0.48;
     const breathe = 0.5 + 0.5 * Math.sin(motionTime * GLOW_PULSE_SPEED);
-    const reach = GLOW_REACH * (1.15 - high * 0.45) * (0.82 + breathe * 0.36);
+    const reach = GLOW_REACH * size * (1.15 - high * 0.45) * (0.82 + breathe * 0.36);
     const alpha = GLOW_ALPHA * (0.72 + breathe * 0.42) * visibility * strength;
     ctx.fillStyle = tint.replace('rgb', 'rgba').replace(')', `, ${alpha})`);
     for (let step = 0; step < GLOW_STEPS; step += 1) {
       const progress = step / (GLOW_STEPS - 1);
-      glowDisc(centerX, centerY, SUN_BODY_RADIUS + 1.0 + progress * reach, squash);
+      glowDisc(centerX, centerY, SUN_BODY_RADIUS * size + size + progress * reach, squash);
     }
   }
 
@@ -674,25 +672,19 @@
   }
 
   function drawMoon(moon, motionTime, sunAltitude) {
-    if (moon.altitude <= -1) return;
-    // The moon is only shown once the sun is gone, so it reads as a night object rather than a
-    // pale sliver that competes with the sun in the daytime sky. It also fades in over the last
-    // few degrees of sunset instead of popping in.
-    const nightFall = clamp((MOON_VISIBLE_BELOW_SUN - sunAltitude) / 4, 0, 1);
-    if (nightFall <= 0) return;
+    if (sunAltitude >= 0 || moon.altitude <= 0) return;
     const palette = moonPalette();
-    const position = sunPlanePosition(moon.hourAngleDegrees);
-    const screen = planeToScreen(position.x, position.y);
-    const centerX = Math.round(screen.x / RENDER_CELL) * RENDER_CELL;
-    const centerY = Math.round(screen.y / RENDER_CELL) * RENDER_CELL;
-    const visibility = clamp((moon.altitude + 1) / 3, 0, 1) * nightFall;
+    const position = celestialPosition(moon);
+    const centerX = position.x, centerY = position.y;
+    const visibility = clamp(moon.altitude / 2, 0, 1);
+    ctx.save(); applyIslandTransform();
     const previousAlpha = ctx.globalAlpha;
     ctx.globalAlpha = previousAlpha * visibility;
     drawCelestialGlow(centerX, centerY, moon.altitude, motionTime,
       blendColor(palette.top, '#cfe0ff', 0.45), visibility,
-      0.35 + clamp(moon.illumination, 0, 1) * 0.55);
+      0.35 + clamp(moon.illumination, 0, 1) * 0.55, .5);
     drawMoonBody(centerX, centerY, palette, moon);
-    ctx.globalAlpha = previousAlpha;
+    ctx.globalAlpha = previousAlpha; ctx.restore();
   }
 
   // The terminator is projected as an ellipse rather than an offset circle, which is the
@@ -700,7 +692,7 @@
   // the terminator is a straight line through the centre; as the moon fills out it bows toward
   // the dark limb, and as it thins it bows back toward the lit limb.
   function drawMoonBody(centerX, centerY, palette, moon) {
-    const radius = SUN_BODY_RADIUS;
+    const radius = SUN_BODY_RADIUS / 2;
     const illumination = clamp(moon.illumination, 0, 1);
     const terminator = 1 - illumination * 2;
     // In the southern hemisphere the lit limb faces the opposite side from the north.
@@ -752,20 +744,36 @@
       y: anchorY + (y - anchorY) * islandZoom + cameraPanY };
   }
 
+  function celestialPosition(body) {
+    const p=window.CelestialGeometry.offset(body.hourAngleDegrees,body.declination,location.latitude);
+    return {x:WIDTH/2+p.x,y:islandCenterY+p.y};
+  }
   function drawSun(sun, cloudCover, motionTime) {
-    if (sun.altitude <= -1) return;
+    if (sun.altitude <= 0) return;
     const palette = sunPalette(sun.altitude, cloudCover);
-    const position = sunPlanePosition(sun.hourAngleDegrees);
-    const screen = planeToScreen(position.x, position.y);
-    const centerX = Math.round(screen.x / RENDER_CELL) * RENDER_CELL;
-    const centerY = Math.round(screen.y / RENDER_CELL) * RENDER_CELL;
+    const position = celestialPosition(sun);
+    const centerX = position.x, centerY = position.y;
+    ctx.save(); applyIslandTransform();
     const previousAlpha = ctx.globalAlpha;
-    const visibility = clamp((sun.altitude + 1) / 3, 0, 1);
+    const visibility = clamp(sun.altitude / 2, 0, 1);
     ctx.globalAlpha = previousAlpha * visibility;
     drawCelestialGlow(centerX, centerY, sun.altitude, motionTime,
       blendColor(palette.top, '#ffd98a', 0.55), visibility, 1);
     drawSunBody(centerX, centerY, palette);
-    ctx.globalAlpha = previousAlpha;
+    ctx.globalAlpha = previousAlpha; ctx.restore();
+  }
+
+  // Decorative stars on the same island-relative arc as Android; not an actual star map.
+  function drawStars(sunAltitude, cloudCover) {
+    const opacity=clamp((-sunAltitude-4)/8,0,1)*(1-clamp(cloudCover/100,0,1)*.85);
+    if(opacity<=0)return;
+    ctx.save();applyIslandTransform();ctx.fillStyle=`rgba(244,245,220,${opacity})`;
+    for(let i=0;i<16;i++) {
+      const angle=Math.PI*(i+.5)/16, side=RENDER_CELL*.5*(i%4===0?2:1);
+      const x=WIDTH/2+300*Math.cos(angle),y=islandCenterY-300*Math.sin(angle);
+      ctx.fillRect(x-side/2,y-side/2,side,side);
+    }
+    ctx.restore();
   }
 
   function drawSky(now, sun, code, cloudCover) {
@@ -1005,21 +1013,16 @@
   // Chooses which body is currently lighting the scene: the sun whenever it is up, otherwise the
   // moon when it is up and bright enough to cast anything. Returns a neutral light for the in
   // between cases so the shadow simply fades rather than snapping to a new direction.
-  function pickLightSource(sunAltitude, sunHourAngle, moon, cloudCover) {
-    if (sunAltitude > 2) return { altitude: sunAltitude, hourAngle: sunHourAngle };
+  function pickLightSource(sunAltitude, sunHourAngle, moon, sun) {
+    if (sunAltitude > 2) return { altitude: sunAltitude, hourAngle: sunHourAngle, declination: sun.declination };
     if (moon && moon.altitude > 2) {
       // Moonlight is far weaker, so scale its apparent elevation down.
       const moonlight = clamp(moon.altitude * (0.35 + moon.illumination * 0.65), 0, 90);
-      return { altitude: moonlight, hourAngle: moon.hourAngleDegrees };
+      return { altitude: moonlight, hourAngle: moon.hourAngleDegrees, declination: moon.declination };
     }
-    return { altitude: Math.max(sunAltitude, moon ? moon.altitude : -90), hourAngle: sunHourAngle };
+    return { altitude: Math.max(sunAltitude, moon ? moon.altitude : -90), hourAngle: sunHourAngle, declination: sun.declination };
   }
 
-  // The island's cast shadow is pushed away from whichever body is lighting the scene. It
-  // starts from the island's own progress along the celestial arc, so the shadow drifts to the
-  // opposite side of the arc as the sun or moon travels, then fades out once the light is too
-  // low to cast anything. Offset and size are both kept small so the shadow stays tucked close
-  // under the island instead of floating away from it.
   // Relative luminance of what actually sits behind the shadow: the sky gradient at the floor line,
   // after the same weather blend drawSky uses. Measuring beats guessing here, because the whole
   // problem is that a fixed alpha removes a fixed fraction of a backdrop whose own brightness swings
@@ -1040,11 +1043,11 @@
     return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
   }
 
-  function drawIslandShadow(centerX, lowerY, lightAltitude, lightHourAngle, cloudCover, code) {
+  function drawIslandShadow(centerX, lowerY, lightAltitude, lightHourAngle, cloudCover, code, lightDeclination) {
     // Constant, like the size: weather decides how the sky looks, not how dark the plate's shadow
     // is. Opacity used to follow the light level, so the same shadow faded from 0.14 by day to 0.02
     // at night -- it looked as if the shadow shrank and then disappeared, when all that changed was
-    // its weight. Its position and size are fixed beneath the island.
+    // its weight. The lower edge remains 50 units below the bottom tile center.
     //
     // A fixed alpha is not enough on its own, and that is why the shadow vanished after dark: alpha
     // blends toward the shade colour, so it removes a fixed FRACTION of the backdrop. The same 0.14
@@ -1057,10 +1060,10 @@
       0.06, 0.45);
     // The island shadow is fixed directly beneath the island, independent of celestial motion.
     const shadowCenterX = centerX;
-    const shadowCenterY = lowerY - ISLAND_DEPTH - ISLAND_BODY_SHADOW_RISE;
-    // One size, never a function of the light or the weather.
-    const halfWidth = ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH / 4 * ISLAND_BODY_SHADOW_SCALE;
-    const halfHeight = ISLAND_GRID_SIZE * islandTileHeight / 4 * ISLAND_BODY_SHADOW_SCALE;
+    const scale=ISLAND_BODY_SHADOW_SCALE*window.CelestialGeometry.shadowScale(lightHourAngle,lightDeclination,location.latitude,ISLAND_DEPTH);
+    const halfWidth=ISLAND_GRID_SIZE*ISLAND_TILE_WIDTH/4*scale;
+    const halfHeight=ISLAND_GRID_SIZE*islandTileHeight/4*scale;
+    const shadowCenterY=window.CelestialGeometry.shadow(lowerY-ISLAND_DEPTH,islandTileHeight,halfHeight);
     drawIslandPolygon([
       [shadowCenterX, shadowCenterY - halfHeight],
       [shadowCenterX + halfWidth, shadowCenterY],
@@ -1986,7 +1989,7 @@
   }
 
   function drawFloatingIsland(sunAltitude, sunAzimuth, sunHourAngle, cloudCover, code,
-    moon, cloudStates, motionTime, sceneWeather) {
+    moon, cloudStates, motionTime, sceneWeather, sun) {
     ctx.save();
     applyIslandTransform();
     const palette = islandPalette(sunAltitude, cloudCover, code);
@@ -2008,8 +2011,8 @@
     // shadow follows whichever body is actually in the sky. With the water gone the plate's shadow
     // lands straight on the ground again, so it is drawn here, in the same pass as the plate.
     // The island keeps its original independent shadow, not the cloud ray projection.
-    const light = pickLightSource(sunAltitude, sunHourAngle, moon, cloudCover);
-    drawIslandShadow(centerX, lowerY, light.altitude, light.hourAngle, cloudCover, code);
+    const light = pickLightSource(sunAltitude, sunHourAngle, moon, sun);
+    drawIslandShadow(centerX, lowerY, light.altitude, light.hourAngle, cloudCover, code, light.declination);
     const activeWorld = window.worldManager?.getActive();
     const tileData = activeWorld?.tiles, stacks=activeWorld?.blockStacks;
     const pond=pondLayout(activeWorld);updatePondWind(motionTime,sceneWeather);
@@ -2236,7 +2239,7 @@
     // Ground shadows go down before the island so the plate covers them, and before the clouds so
     // no sprite is ever painted over by a shadow it did not come from.
     drawFloatingIsland(sun.altitude, sun.azimuth, sun.hourAngleDegrees,
-      sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates, motionTime, sceneWeather);
+      sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates, motionTime, sceneWeather, sun);
     drawSurfaceObjectShadows(shadowLight, sceneWeather.cloudCover, sceneWeather.weatherCode);
     drawCharacterProjectedShadow(shadowLight, sceneWeather.cloudCover);
     drawGameplayRoute();
@@ -2250,7 +2253,8 @@
     // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
     // cloud can hang below the horizon line, and clipping it there hid the cloud while its
     // shadow still showed on the grass. Edge clamping already keeps every sprite in frame.
-    // Foreground cloud sprites are hidden as well.
+    // Foreground cloud sprites are hidden as well; decorative stars remain visible at night.
+    drawStars(sun.altitude,sceneWeather.cloudCover);
     drawPrecipitation(sceneWeather);
     displayCtx.drawImage(renderCanvas, 0, 0, canvas.width, canvas.height);
     scheduleFrame();
