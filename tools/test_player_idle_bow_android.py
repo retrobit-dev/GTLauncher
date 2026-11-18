@@ -1,7 +1,7 @@
 from pathlib import Path
 s=Path('app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java').read_text()
 t=Path('app/src/main/java/dev/retrobit/gtlauncher/PlayerIdleBow.java').read_text()
-assert 'DELAY = 20000, DURATION = 4000' in t
+assert 'DELAY = 3000, DURATION = 2000, INTERVAL = 3000' in t
 assert 'updateIdleBow(frameTime);' in s
 assert 'characterStepping && animationEnabled' in s
 assert '!characterStepping && !portalWalkActive' in s

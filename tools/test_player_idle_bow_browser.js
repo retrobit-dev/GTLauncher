@@ -9,7 +9,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
  });
  await page.route('**/api.open-meteo.com/**',r=>r.abort());await page.route('**/archive-api.open-meteo.com/**',r=>r.abort());
  await page.goto(process.env.PREVIEW_URL||'http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.sceneEditing && worldManager.getActive().id==='idle');await page.waitForTimeout(1000);
- const stored=await page.evaluate(()=>localStorage.getItem('gtlauncher.worlds.v1'));assert.equal(await page.evaluate(()=>window.bowDraws),0);await page.evaluate(()=>window.clockOffset=22500);
+ const stored=await page.evaluate(()=>localStorage.getItem('gtlauncher.worlds.v1'));assert.equal(await page.evaluate(()=>window.bowDraws),0);await page.evaluate(()=>window.clockOffset=4500);
  if(reduced==='reduce'){await page.waitForTimeout(500);assert.equal(await page.evaluate(()=>window.bowDraws),0);} else {
   await page.waitForFunction(()=>window.bowDraws>0,null,{timeout:60000});
   await page.evaluate(()=>{sceneEditing.setGameplayDraft({...worldManager.getCharacter(),column:24.2,walkPhase:1});window.bowDraws=0});

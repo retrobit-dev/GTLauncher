@@ -2,17 +2,17 @@ package dev.retrobit.gtlauncher;
 
 /** Timed decorative bow, reset by movement, a world/tile change or disabled animation. */
 final class PlayerIdleBow {
-    static final long DELAY = 20000, DURATION = 4000;
+    static final long DELAY = 3000, DURATION = 2000, INTERVAL = 3000;
     private String key;
     private long since;
     private static float smooth(float t) { t=Math.max(0,Math.min(1,t));return t*t*(3-2*t); }
     static float amount(long elapsed) {
         if(elapsed<DELAY)return 0;
-        long t=(elapsed-DELAY)%(DELAY+DURATION);
+        long t=(elapsed-DELAY)%INTERVAL;
         if(t>=DURATION)return 0;
-        if(t<1000)return smooth(t/1000f);
-        if(t<3000)return 1;
-        return 1-smooth((t-3000)/1000f);
+        if(t<500)return smooth(t/500f);
+        if(t<1500)return 1;
+        return 1-smooth((t-1500)/500f);
     }
     float update(long now, String nextKey, boolean enabled) {
         if(!enabled || nextKey==null) { key=null;since=now;return 0; }
