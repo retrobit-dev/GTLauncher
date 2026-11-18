@@ -47,4 +47,14 @@ for pose in ('sitting','sit-nearly'):
     im=Image.open(root/f'preview/assets/player-idle-front-{pose}.png').convert('RGBA')
     assert sum(map(skin,im.crop((925,560,960,715)).getdata()))==0, 'duplicate far forearm must be occluded'
     assert sum(map(skin,im.crop((840,640,910,690)).getdata()))>100, 'far supporting hand remains visible'
+# The near supporting hand must move backward on the image, without shifting
+# the whole body or losing the separately occluded far hand.
+def hand_mean_x(image, dx, dy):
+    xs=[x for y in range(710+dy,750+dy) for x in range(760+dx,930+dx) if skin(image.getpixel((x,y)))]
+    assert xs
+    return sum(xs)/len(xs)-dx
+old=Image.open(root/'preview/assets/character-redraw/sit-front-hands-corrected.png').convert('RGBA')
+for pose in ('sitting','sit-nearly'):
+    image=Image.open(root/f'preview/assets/player-idle-front-{pose}.png').convert('RGBA')
+    assert hand_mean_x(image,-13,6)>hand_mean_x(old,0,0)+20, 'supporting hand should be farther back'
 print('Selected idle sprites: size, transparency, fixed boots, browser/Android parity: OK')

@@ -23,15 +23,26 @@ for view in ('front','back'):
         else:
             file={'front':{'sitting':'sit-front-hands-corrected.png','nearly':'sit-redraw-near-front.png'},
                   'back':{'sitting':'sit-redraw-final-back.png','nearly':'sit-redraw-near-back.png'}}[view][frame]
-            if view=='front' and frame=='nearly':
-                # Preserve the bent legs but use the matching occluded far arm from
-                # the corrected seated frame. This avoids a second visible forearm.
+            if view=='front':
+                # Reposition the near supporting arm while keeping the far hand
+                # behind it. Both poses use this same patch, avoiding arm jumps.
+                original=Image.open(ART/'sit-front-hands-corrected.png').convert('RGB')
+                arm=Image.open(ART/'sit-front-hand-back-study.png').convert('RGB')
                 pose=Image.open(ART/file).convert('RGB')
-                corrected=Image.open(ART/'sit-front-hands-corrected.png').convert('RGB')
-                if pose.size!=corrected.size:raise ValueError('front study coordinates differ')
+                if pose.size!=original.size or arm.size!=original.size:raise ValueError('front study coordinates differ')
+                # Recover the previously visible far hand only through the new
+                # foreground arm's background: it stays correctly occluded.
+                oldpx=original.load();newpx=arm.load()
+                def background(rgb):
+                    r,g,b=rgb
+                    return r>210 and g>195 and b>175 and abs(r-g)<35 and abs(g-b)<40
+                for yy in range(635,685):
+                    for xx in range(840,930):
+                        if background(newpx[xx,yy]) and not background(oldpx[xx,yy]):
+                            newpx[xx,yy]=oldpx[xx,yy]
                 mask=Image.new('L',pose.size)
-                ImageDraw.Draw(mask).polygon([(840,420),(925,420),(985,500),(985,755),(895,755),(886,710),(859,690),(840,635)],fill=255)
-                pose.paste(corrected,(0,0),mask);tmp=ART/'.front-nearly-corrected.png';pose.save(tmp)
+                ImageDraw.Draw(mask).polygon([(740,420),(900,420),(1020,520),(1020,760),(740,760)],fill=255)
+                pose.paste(arm,(0,0),mask);tmp=ART/'.front-arm-corrected.png';pose.save(tmp)
                 try: im,box=extract(tmp)
                 finally: tmp.unlink()
             else:
