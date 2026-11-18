@@ -13,4 +13,11 @@ for view in ('front','back'):
   assert layer.size==source.size
   for a,b in zip(layer.getdata(),source.getdata()):
    if a[3]: assert a==b, f'{view}/{part} changes source pixels'
+# Repaired artwork stays an isolated study, not silently substituted into runtime.
+for side,name in [('front','sit-redraw-repaired-front-v2.png'),('back','sit-redraw-final-back.png')]:
+ study=Image.open(ROOT/'preview/assets/character-redraw'/name).convert('RGBA')
+ assert study.size==(1306,816)
+ assert study.getpixel((0,0))[3]==255
+ runtime=Image.open(ROOT/f'preview/assets/player-idle-{side}-sitting.png').convert('RGBA')
+ assert runtime.size==(1280,800)
 print('Sitting reference layers retain original dimensions and source pixels: OK')
