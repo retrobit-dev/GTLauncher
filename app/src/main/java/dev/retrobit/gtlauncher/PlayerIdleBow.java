@@ -14,6 +14,7 @@ final class PlayerIdleBow {
         if(t<1500)return 1;
         return 1-smooth((t-1500)/500f);
     }
+    static int frame(float value) { return value<.2f?0:value<.75f?1:2; }
     float update(long now, String nextKey, boolean enabled) {
         if(!enabled || nextKey==null) { key=null;since=now;return 0; }
         if(!nextKey.equals(key)||now<since) { key=nextKey;since=now;return 0; }

@@ -6,6 +6,8 @@ assert 'updateIdleBow(frameTime);' in s
 assert 'characterStepping && animationEnabled' in s
 assert '!characterStepping && !portalWalkActive' in s
 assert 'android.animation.ValueAnimator.areAnimatorsEnabled()' in s
-assert 'if(idleBowAmount>0 && !characterStepping && idleBowBitmap!=null)return idleBowBitmap;' in s
+assert 'int idleFrame=PlayerIdleBow.frame(idleBowAmount);' in s
+for name in ['idleFrontTransition','idleFrontPose','idleBackTransition','idleBackPose']:
+    assert name in s
 assert 'onWindowVisibilityChanged' in s
 print('Android idle timing, movement, shadow sprite and reduced-motion wiring: static checks OK')

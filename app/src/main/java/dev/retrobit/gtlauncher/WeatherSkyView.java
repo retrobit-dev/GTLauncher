@@ -267,7 +267,7 @@ public final class WeatherSkyView extends View {
     private boolean animationEnabled = true;
     private double plantMotionSeconds;
     private Integer worldIslandTint;
-    private Bitmap mainCharacter, mainCharacterBack, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
+    private Bitmap mainCharacter, mainCharacterBack, idleFrontTransition, idleFrontPose, idleBackTransition, idleBackPose, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
     private final Bitmap[] walkFront=new Bitmap[12], walkBack=new Bitmap[12], runFront=new Bitmap[12], runBack=new Bitmap[12];
     private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron;
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
@@ -363,6 +363,10 @@ public final class WeatherSkyView extends View {
         grassDetail = BitmapFactory.decodeResource(getResources(), R.drawable.island_grass_detail);
         mainCharacter = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_uhd_front);
         mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_uhd_back);
+        idleFrontTransition=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_front_transition);
+        idleFrontPose=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_front_concept);
+        idleBackTransition=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_back_transition);
+        idleBackPose=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_back_concept);
         int[] frontFrames={R.drawable.character_walk_front_00, R.drawable.character_walk_front_01, R.drawable.character_walk_front_02, R.drawable.character_walk_front_03, R.drawable.character_walk_front_04, R.drawable.character_walk_front_05, R.drawable.character_walk_front_06, R.drawable.character_walk_front_07, R.drawable.character_walk_front_08, R.drawable.character_walk_front_09, R.drawable.character_walk_front_10, R.drawable.character_walk_front_11};
         int[] backFrames={R.drawable.character_walk_back_00, R.drawable.character_walk_back_01, R.drawable.character_walk_back_02, R.drawable.character_walk_back_03, R.drawable.character_walk_back_04, R.drawable.character_walk_back_05, R.drawable.character_walk_back_06, R.drawable.character_walk_back_07, R.drawable.character_walk_back_08, R.drawable.character_walk_back_09, R.drawable.character_walk_back_10, R.drawable.character_walk_back_11};
         for(int i=0;i<12;i++) {walkFront[i]=BitmapFactory.decodeResource(getResources(),frontFrames[i]);walkBack[i]=BitmapFactory.decodeResource(getResources(),backFrames[i]);}
@@ -1034,31 +1038,22 @@ public final class WeatherSkyView extends View {
         canvas.drawPath(outline,paint);paint.setStyle(Paint.Style.FILL);
     }
     private final PlayerIdleBow playerIdleBow = new PlayerIdleBow();
-    private Bitmap idleBowBitmap;
-    private final Paint idleBowPaint = new Paint();
     private float idleBowAmount;
     private void updateIdleBow(long now) {
         boolean enabled=gameplayMode && showCharacter && !characterStepping && !portalWalkActive
                 && animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled();
         String key=enabled ? surfaceWorldId+":"+characterColumn+":"+characterRow : null;
         idleBowAmount=playerIdleBow.update(now,key,enabled);
-        if(idleBowAmount<=0)return;
-        Bitmap base=("N".equals(characterFacing)||"W".equals(characterFacing))?mainCharacterBack:mainCharacter;
-        if(base==null){idleBowAmount=0;return;}
-        int w=base.getWidth(),h=base.getHeight(),hip=Math.round(h*.68f);
-        if(idleBowBitmap==null||idleBowBitmap.getWidth()!=w||idleBowBitmap.getHeight()!=h)
-            idleBowBitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);
-        idleBowBitmap.eraseColor(Color.TRANSPARENT);
-        Canvas dst=new Canvas(idleBowBitmap); idleBowPaint.setFilterBitmap(false);
-        dst.drawBitmap(base,new Rect(0,hip,w,h),new RectF(0,hip,w,h),idleBowPaint);
-        float sx=1-.20f*idleBowAmount,shift=w*.10f*idleBowAmount,sy=1-.20f*idleBowAmount;
-        Matrix m=new Matrix();m.setValues(new float[]{sx,-shift/hip,w*(1-sx)/2+shift,0,sy,hip*(1-sy),0,0,1});
-        dst.concat(m);dst.drawBitmap(base,new Rect(0,0,w,hip),new RectF(0,0,w,hip),idleBowPaint);
     }
     private Bitmap currentCharacterSprite() {
         boolean back="N".equals(characterFacing)||"W".equals(characterFacing);
         Bitmap sprite=back?mainCharacterBack:mainCharacter;
-        if(idleBowAmount>0 && !characterStepping && idleBowBitmap!=null)return idleBowBitmap;
+        int idleFrame=PlayerIdleBow.frame(idleBowAmount);
+        if(idleFrame>0 && !characterStepping) {
+            Bitmap idle=back ? (idleFrame==1?idleBackTransition:idleBackPose)
+                    : (idleFrame==1?idleFrontTransition:idleFrontPose);
+            if(idle!=null)return idle;
+        }
         if(characterStepping && animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled()) {
             int frame=(int)Math.floor((stepIndex-1+stepProgress())*12)%12;
             Bitmap current=characterRunning?(back?runBack:runFront)[frame]:(back?walkBack:walkFront)[frame];

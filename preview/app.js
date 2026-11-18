@@ -1749,21 +1749,19 @@
   }
   const characterShadowMasks=new WeakMap();
   const idleBowController=window.PlayerIdleBow.create();
-  const idleBowCanvas=document.createElement('canvas');idleBowCanvas.dataset.playerIdleBow='true';
-  const idleBowShadowMask=document.createElement('canvas');
+  const idleBowFrames=Object.fromEntries(['front','back'].map(side=>[side,
+    ['transition','concept'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=1`;return image;})]));
   let idleBowAmount=0, idleBowSprite=null;
   function updateIdleBow(now) {
     const world=window.worldManager?.getActive(), character=window.worldManager?.getCharacter();
     const enabled=!REDUCED_MOTION && cameraMode==='gameplay' && !document.hidden && !gameplayDraft && !editingDraft && world?.id!=='base' && character?.visible;
     const key=enabled?`${world.id}:${character.column}:${character.row}`:null;
     idleBowAmount=idleBowController.update(now,key,enabled); idleBowSprite=null;
-    if(idleBowAmount>0) {
-      const sprite=activeCharacterSprite(character);
-      if(sprite.complete && sprite.naturalWidth) {
-        if(idleBowCanvas.width!==sprite.naturalWidth || idleBowCanvas.height!==sprite.naturalHeight){idleBowCanvas.width=sprite.naturalWidth;idleBowCanvas.height=sprite.naturalHeight;}
-        window.PlayerIdleBow.draw(idleBowCanvas.getContext('2d'),sprite,idleBowCanvas.width,idleBowCanvas.height,idleBowAmount);
-        idleBowSprite=idleBowCanvas;
-      }
+    const frame=window.PlayerIdleBow.frame(idleBowAmount);
+    if(frame && character) {
+      const side=character.facing==='N'||character.facing==='W'?'back':'front';
+      const image=idleBowFrames[side][frame-1];
+      if(image.complete && image.naturalWidth)idleBowSprite=image;
     }
   }
   document.addEventListener('visibilitychange',()=>idleBowController.reset());
@@ -1782,12 +1780,11 @@
     if(!world || world.id==='base' || !character?.visible || characterWaterDepth(character)>0 || !Number.isFinite(light.azimuth) || light.altitude<=0)return;
     const source=activeCharacterSprite(character), sprite=idleBowSprite || source;
     if(!source.complete || !source.naturalWidth)return;
-    let mask=idleBowSprite ? null : characterShadowMasks.get(sprite);
+    let mask=characterShadowMasks.get(sprite);
     if(!mask) {
-      mask=idleBowSprite ? idleBowShadowMask : document.createElement('canvas');
-      if(mask.width!==source.naturalWidth || mask.height!==source.naturalHeight){mask.width=source.naturalWidth;mask.height=source.naturalHeight;}
-      const m=mask.getContext('2d');m.globalCompositeOperation='source-over';m.clearRect(0,0,mask.width,mask.height);m.drawImage(sprite,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);
-      if(!idleBowSprite)characterShadowMasks.set(sprite,mask);
+      mask=document.createElement('canvas');mask.width=sprite.naturalWidth;mask.height=sprite.naturalHeight;
+      const m=mask.getContext('2d');m.drawImage(sprite,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);
+      characterShadowMasks.set(sprite,mask);
     }
     const anchor=characterCentre(character), width=PLAYER_WIDTH*character.scale,height=PLAYER_HEIGHT*character.scale;
     const ray=characterShadowOffset(light.azimuth,light.altitude,height);
