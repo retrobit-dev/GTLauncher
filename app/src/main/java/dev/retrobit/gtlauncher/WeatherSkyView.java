@@ -613,7 +613,7 @@ public final class WeatherSkyView extends View {
         Bitmap sprite=currentCharacterSprite();
         float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f;
         float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f+visualWaterDepth();
-        if(sprite==idleBlendBitmap)y+=(100f/800f)*25f*characterScale*PlayerIdleBow.seatGroundWeight(idleSitAmount);
+        if(sprite==idleBlendBitmap)y+=((800f-((characterFacing.equals("N")||characterFacing.equals("W"))?778f:725f))/800f)*25f*characterScale*PlayerIdleBow.seatGroundWeight(idleSitAmount);
         float width=characterSpriteWidth(sprite);
         return opaqueAt(sprite,new RectF(x-width/2,y-25*characterScale,x+width/2,y),islandX(sx),islandY(sy),characterFacing.equals("W")||characterFacing.equals("E"));
     }
@@ -1109,7 +1109,7 @@ public final class WeatherSkyView extends View {
                 + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2.0f;
         float depth=visualWaterDepth();
         float seatWeight=sprite==idleBlendBitmap?PlayerIdleBow.seatGroundWeight(idleSitAmount):0f;
-        y+=.5f*characterScale+depth+(100f/800f)*25f*characterScale*seatWeight;
+        y+=.5f*characterScale+depth+((800f-(back?778f:725f))/800f)*25f*characterScale*seatWeight;
         float width = characterSpriteWidth(sprite);
         float idle = characterStepping ? 0f : (Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5f : 0.0f);
         float height = 25.0f * characterScale + (characterStepping ? 0 : idle);
@@ -1117,8 +1117,8 @@ public final class WeatherSkyView extends View {
         if(depth==0f) {
             canvas.drawOval(new RectF(x-4.6f*characterScale,y-1.25f*characterScale,x+4.6f*characterScale,y+.35f*characterScale),paint);
             if(seatWeight>0) {
-                float[][] contacts=back?new float[][]{{635,700,2.5f},{404,730,1.3f},{720,778,1.3f}}
-                        :new float[][]{{600,700,2.5f},{700,700,1.2f},{810,730,1.3f}};
+                float[][] contacts=back?new float[][]{{600,778,2.5f},{395,774,1.3f},{780,795,1.3f}}
+                        :new float[][]{{680,725,2.5f},{815,751,1.3f},{920,710,1.3f}};
                 paint.setColor(Color.argb(Math.round(97*seatWeight),12,23,30));
                 for(float[] p:contacts) {
                     float cx=x+(mirror?-1:1)*(p[0]-640)*width/1280f,cy=y+(p[1]-800)*height/800f;

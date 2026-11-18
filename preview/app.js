@@ -1750,7 +1750,7 @@
   const characterShadowMasks=new WeakMap();
   const idleBowController=window.PlayerIdleBow.create();
   const idleBowFrames=Object.fromEntries(['front','back'].map(side=>[side,
-    ['transition','concept','sit-lowering','sit-nearly','sitting'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=7`;return image;})]));
+    ['transition','concept','sit-lowering','sit-nearly','sitting'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=8`;return image;})]));
   let idleBowAmount=0, idleSitAmount=0, idleBowSprite=null;
   const idleBlend=document.createElement('canvas');idleBlend.width=512;idleBlend.height=800;
   idleBlend.dataset.playerIdleBow='true';
@@ -1962,8 +1962,9 @@
     if (!sprite.complete || !sprite.naturalWidth) return;
     const anchor = characterCentre(character), depth=characterWaterDepth(character), x=anchor.x;
     const seatWeight=idleBowSprite ? window.PlayerIdleBow.seatGroundWeight(idleSitAmount) : 0;
-    // The seat is at y=700 in the 800px pose, not at the feet at y=800.
-    const y=anchor.y + .5 * character.scale + depth + 100/800 * PLAYER_HEIGHT * character.scale * seatWeight;
+    // Put the hips, rather than the frontmost boot, on the tile's surface.
+    const seatY=back?778:725;
+    const y=anchor.y + .5 * character.scale + depth + (800-seatY)/800 * PLAYER_HEIGHT * character.scale * seatWeight;
     const width = PLAYER_WIDTH * character.scale * (idleBowSprite ? (idleBowSprite.naturalWidth||idleBowSprite.width)/432 : 1);
     // Breathing changes height only, never the ground anchor. With reduced motion time is zero.
     const idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5 : 0;
@@ -1976,7 +1977,7 @@
       ctx.beginPath();ctx.ellipse(x,y-.45*character.scale,4.6*character.scale,.8*character.scale,0,0,Math.PI*2);ctx.fill();
       if(seatWeight>0) {
         // Contact patches follow the illustrated hip and supporting palms, including mirrors.
-        const contacts=back?[[635,700,2.5],[404,730,1.3],[720,778,1.3]]:[[600,700,2.5],[700,700,1.2],[810,730,1.3]];
+        const contacts=back?[[600,778,2.5],[395,774,1.3],[780,795,1.3]]:[[680,725,2.5],[815,751,1.3],[920,710,1.3]];
         const dir=mirror?-1:1;ctx.globalAlpha=seatWeight;
         for(const [px,py,r] of contacts) {
           const cx=x+dir*(px-640)*width/1280,cy=y+(py-800)*height/800;
@@ -2609,7 +2610,7 @@
     hit(point, character) {
       if (!character.visible) return false;
       const {x, y: surfaceY} = characterCentre(character);
-      const y=surfaceY+characterWaterDepth(character)+(idleBowSprite?100/800*PLAYER_HEIGHT*character.scale*window.PlayerIdleBow.seatGroundWeight(idleSitAmount):0);
+      const y=surfaceY+characterWaterDepth(character)+(idleBowSprite?(800-(character.facing==='N'||character.facing==='W'?778:725))/800*PLAYER_HEIGHT*character.scale*window.PlayerIdleBow.seatGroundWeight(idleSitAmount):0);
       return Math.abs(point.x - x) <= PLAYER_WIDTH * character.scale * (idleBowSprite ? (idleBowSprite.naturalWidth||idleBowSprite.width)/432 : 1) / 2 + 4
         && point.y >= y - PLAYER_HEIGHT * character.scale - 4.5 && point.y <= y + 4;
     },

@@ -8,7 +8,7 @@ assert 'idleFrontSitting' in s and 'idleBackSitting' in s
 assert 'idleFrontSitLowering' in s and 'idleBackSitNearly' in s
 assert 'canvasWidth=1280' in s
 assert 'seatGroundWeight(idleSitAmount)' in s
-assert '100f/800f' in s
+assert '778f:725f' in s
 assert 'updateIdleBow(frameTime);' in s
 assert 'characterStepping && animationEnabled' in s
 assert '!characterStepping && !portalWalkActive' in s
