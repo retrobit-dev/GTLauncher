@@ -23,4 +23,11 @@ for side in ('front','back'):
         assert preview.read_bytes()==android.read_bytes()
         im=Image.open(preview).convert('RGBA')
         assert im.size==(1280,800) and im.getpixel((0,0))[3]==0 and im.getchannel('A').getbbox()[3]==800
+for side,pos in [('front',(450,62)),('back',(390,55))]:
+    original=Image.open(root/('preview/assets/main-character.png' if side=='front' else 'preview/assets/main-character-back.png')).convert('RGBA')
+    for pose in ('sitting','sit-nearly'):
+        im=Image.open(root/f'preview/assets/player-idle-{side}-{pose}.png').convert('RGBA')
+        assert im.crop((pos[0],pos[1],pos[0]+432,pos[1]+190)).tobytes()==original.crop((0,0,432,190)).tobytes(), 'original hat must be kept'
+front=Image.open(root/'preview/assets/player-idle-front-sit-nearly.png').convert('RGBA')
+assert front.getpixel((340,670))[3]==0, 'enclosed background between legs must be transparent'
 print('Selected idle sprites: size, transparency, fixed boots, browser/Android parity: OK')

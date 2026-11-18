@@ -613,6 +613,7 @@ public final class WeatherSkyView extends View {
         Bitmap sprite=currentCharacterSprite();
         float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f;
         float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f+visualWaterDepth();
+        if(sprite==idleBlendBitmap)y+=(100f/800f)*25f*characterScale*PlayerIdleBow.seatGroundWeight(idleSitAmount);
         float width=characterSpriteWidth(sprite);
         return opaqueAt(sprite,new RectF(x-width/2,y-25*characterScale,x+width/2,y),islandX(sx),islandY(sy),characterFacing.equals("W")||characterFacing.equals("E"));
     }
@@ -1107,13 +1108,25 @@ public final class WeatherSkyView extends View {
         float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2.0f
                 + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2.0f;
         float depth=visualWaterDepth();
-        y+=.5f*characterScale+depth;
+        float seatWeight=sprite==idleBlendBitmap?PlayerIdleBow.seatGroundWeight(idleSitAmount):0f;
+        y+=.5f*characterScale+depth+(100f/800f)*25f*characterScale*seatWeight;
         float width = characterSpriteWidth(sprite);
-        paint.setStyle(Paint.Style.FILL);paint.setColor(Color.argb(97,12,23,30));
-        if(depth==0f) canvas.drawOval(new RectF(x-4.6f*characterScale,y-1.25f*characterScale,x+4.6f*characterScale,y+.35f*characterScale),paint);
         float idle = characterStepping ? 0f : (Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5f : 0.0f);
-        // Keep the dimensions fixed while moving; bounce translates rather than stretches.
         float height = 25.0f * characterScale + (characterStepping ? 0 : idle);
+        paint.setStyle(Paint.Style.FILL);paint.setColor(Color.argb(Math.round(97*(1-seatWeight)),12,23,30));
+        if(depth==0f) {
+            canvas.drawOval(new RectF(x-4.6f*characterScale,y-1.25f*characterScale,x+4.6f*characterScale,y+.35f*characterScale),paint);
+            if(seatWeight>0) {
+                float[][] contacts=back?new float[][]{{635,700,2.5f},{404,730,1.3f},{720,778,1.3f}}
+                        :new float[][]{{600,700,2.5f},{700,700,1.2f},{810,730,1.3f}};
+                paint.setColor(Color.argb(Math.round(97*seatWeight),12,23,30));
+                for(float[] p:contacts) {
+                    float cx=x+(mirror?-1:1)*(p[0]-640)*width/1280f,cy=y+(p[1]-800)*height/800f;
+                    canvas.drawOval(new RectF(cx-p[2]*characterScale,cy-.45f*characterScale,cx+p[2]*characterScale,cy+.45f*characterScale),paint);
+                }
+            }
+        }
+        // Keep the dimensions fixed while moving; bounce translates rather than stretches.
         paint.setColor(Color.WHITE);
         paint.setAlpha(255);
         paint.setFilterBitmap(true);

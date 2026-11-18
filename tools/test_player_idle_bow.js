@@ -4,4 +4,5 @@ const c=bow.create();assert.equal(c.update(100,'world:2:3',true),0);assert.equal
 assert.equal(bow.frame(0),0);assert.equal(bow.frame(.19),0);assert.equal(bow.frame(.2),1);assert.equal(bow.frame(.74),1);assert.equal(bow.frame(.75),2);assert.equal(bow.frame(1),2);
 const sit=bow.create();sit.update(0,'tile',true);assert.equal(sit.update(15000,'tile',true),0);assert.equal(sit.sitting(),0);sit.update(15900,'tile',true);assert.equal(sit.sitting(),.5);sit.update(16800,'tile',true);assert.equal(sit.sitting(),1);sit.update(16801,null,false);assert.equal(sit.sitting(),0);
 const water=bow.create();water.update(0,'water',true,false);assert.equal(water.update(15500,'water',true,false),1);
+assert.equal(bow.seatGroundWeight(0),0);assert.equal(bow.seatGroundWeight(1/3),0);assert.equal(bow.seatGroundWeight(.5),.5);assert.equal(bow.seatGroundWeight(2/3),1);assert.equal(bow.seatGroundWeight(1),1);
 console.log('Idle timing, movement resets and three whole-frame poses: OK');

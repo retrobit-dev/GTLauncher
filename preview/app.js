@@ -1750,8 +1750,8 @@
   const characterShadowMasks=new WeakMap();
   const idleBowController=window.PlayerIdleBow.create();
   const idleBowFrames=Object.fromEntries(['front','back'].map(side=>[side,
-    ['transition','concept','sit-lowering','sit-nearly','sitting'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=6`;return image;})]));
-  let idleBowAmount=0, idleBowSprite=null;
+    ['transition','concept','sit-lowering','sit-nearly','sitting'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=7`;return image;})]));
+  let idleBowAmount=0, idleSitAmount=0, idleBowSprite=null;
   const idleBlend=document.createElement('canvas');idleBlend.width=512;idleBlend.height=800;
   idleBlend.dataset.playerIdleBow='true';
   let idleBlendKey='';
@@ -1761,6 +1761,7 @@
     const key=enabled?`${world.id}:${character.column}:${character.row}`:null;
     idleBowAmount=idleBowController.update(now,key,enabled,character && characterWaterDepth(character)===0); idleBowSprite=null;
     const sit=character && characterWaterDepth(character)===0 ? idleBowController.sitting() : 0;
+    idleSitAmount=sit;
     if((idleBowAmount>0 || sit>0) && character) {
       const back=character.facing==='N'||character.facing==='W', side=back?'back':'front';
       const standing=back?playerBackImage:playerImage, frames=idleBowFrames[side];
@@ -1959,7 +1960,10 @@
     const mirror = character.facing === 'W' || character.facing === 'E';
     const sprite = back ? playerBackImage : playerImage;
     if (!sprite.complete || !sprite.naturalWidth) return;
-    const anchor = characterCentre(character), depth=characterWaterDepth(character), x=anchor.x, y=anchor.y + .5 * character.scale + depth;
+    const anchor = characterCentre(character), depth=characterWaterDepth(character), x=anchor.x;
+    const seatWeight=idleBowSprite ? window.PlayerIdleBow.seatGroundWeight(idleSitAmount) : 0;
+    // The seat is at y=700 in the 800px pose, not at the feet at y=800.
+    const y=anchor.y + .5 * character.scale + depth + 100/800 * PLAYER_HEIGHT * character.scale * seatWeight;
     const width = PLAYER_WIDTH * character.scale * (idleBowSprite ? (idleBowSprite.naturalWidth||idleBowSprite.width)/432 : 1);
     // Breathing changes height only, never the ground anchor. With reduced motion time is zero.
     const idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5 : 0;
@@ -1967,7 +1971,20 @@
     ctx.save();
     applyIslandTransform();
     // The intact sprite avoids exposed seams until independently drawn gait frames exist.
-    if(depth===0) {ctx.fillStyle='rgba(12,23,30,.38)';ctx.beginPath();ctx.ellipse(x,y-.45*character.scale,4.6*character.scale,.8*character.scale,0,0,Math.PI*2);ctx.fill();}
+    if(depth===0) {
+      ctx.fillStyle='rgba(12,23,30,.38)';ctx.globalAlpha=1-seatWeight;
+      ctx.beginPath();ctx.ellipse(x,y-.45*character.scale,4.6*character.scale,.8*character.scale,0,0,Math.PI*2);ctx.fill();
+      if(seatWeight>0) {
+        // Contact patches follow the illustrated hip and supporting palms, including mirrors.
+        const contacts=back?[[635,700,2.5],[404,730,1.3],[720,778,1.3]]:[[600,700,2.5],[700,700,1.2],[810,730,1.3]];
+        const dir=mirror?-1:1;ctx.globalAlpha=seatWeight;
+        for(const [px,py,r] of contacts) {
+          const cx=x+dir*(px-640)*width/1280,cy=y+(py-800)*height/800;
+          ctx.beginPath();ctx.ellipse(cx,cy,r*character.scale,.45*character.scale,0,0,Math.PI*2);ctx.fill();
+        }
+      }
+      ctx.globalAlpha=1;
+    }
     ctx.imageSmoothingEnabled = false;
     const drawnSprite=idleBowSprite || activeCharacterSprite(character);
     function drawSprite() {ctx.save();ctx.translate(x,y);if (mirror) ctx.scale(-1,1);ctx.drawImage(drawnSprite,-width/2,-height,width,height);ctx.restore();}
@@ -2476,7 +2493,7 @@
     cameraPanY = HEIGHT * 0.56 - anchorY - (gameplayFollowCentre.y - anchorY) * islandZoom;
   }
   function setPreviewCameraMode(mode) {
-    idleBowController.reset(); idleBowAmount=0; idleBowSprite=null;
+    idleBowController.reset(); idleBowAmount=0; idleSitAmount=0; idleBowSprite=null;
     if (mode !== 'gameplay' && mode !== 'editor') return;
     if (cameraMode === mode) return;
     if (mode === 'gameplay') {
@@ -2527,7 +2544,7 @@
       if (REDUCED_MOTION) drawFrame();
     },
     setGameplayDraft(draft) {
-      if(draft) { idleBowController.reset(); idleBowSprite=null; idleBowAmount=0; }
+      if(draft) { idleBowController.reset(); idleBowSprite=null; idleBowAmount=0; idleSitAmount=0; }
       gameplayDraft = draft;
       if (cameraMode === 'gameplay') applyGameplayCamera();
       if (REDUCED_MOTION) drawFrame();
@@ -2592,7 +2609,7 @@
     hit(point, character) {
       if (!character.visible) return false;
       const {x, y: surfaceY} = characterCentre(character);
-      const y=surfaceY+characterWaterDepth(character);
+      const y=surfaceY+characterWaterDepth(character)+(idleBowSprite?100/800*PLAYER_HEIGHT*character.scale*window.PlayerIdleBow.seatGroundWeight(idleSitAmount):0);
       return Math.abs(point.x - x) <= PLAYER_WIDTH * character.scale * (idleBowSprite ? (idleBowSprite.naturalWidth||idleBowSprite.width)/432 : 1) / 2 + 4
         && point.y >= y - PLAYER_HEIGHT * character.scale - 4.5 && point.y <= y + 4;
     },
