@@ -3,8 +3,8 @@
 from pathlib import Path
 from PIL import Image, ImageOps
 ROOT=Path(__file__).resolve().parents[1]
-specs=[('front','transition',.94),('front','concept',.86),('back','transition',.94),('back','concept',.86)]
-for view,pose,relative_height in specs:
+specs=[('front','transition'),('front','concept'),('back','transition'),('back','concept')]
+for view,pose in specs:
     im=Image.open(ROOT/f'preview/assets/character-redraw/idle-exhausted-{view}-{pose}.png').convert('RGBA')
     pixels=im.load()
     for y in range(im.height):
@@ -16,9 +16,17 @@ for view,pose,relative_height in specs:
     if not box or box[0]==0 or box[2]==im.width:raise ValueError(f'invalid crop {view}/{pose}: {box}')
     im=im.crop(box)
     if view=='back':im=ImageOps.mirror(im) # match the existing back-facing reference
-    height=round(800*relative_height);scale=min(416/im.width,height/im.height)
+    # Use one fixed fit for all poses. Lower heads come from the artwork, never by shrinking the whole player.
+    scale=min(400/im.width,792/im.height)
     im=im.resize((round(im.width*scale),round(im.height*scale)),Image.Resampling.LANCZOS)
-    canvas=Image.new('RGBA',(432,800));canvas.alpha_composite(im,((432-im.width)//2,798-im.height))
+    canvas=Image.new('RGBA',(432,800))
+    standing=Image.open(ROOT/('preview/assets/main-character-back.png' if view=='back' else 'preview/assets/main-character.png')).convert('RGBA')
+    # Align the centre of the boots to the standing pose, not the centre of the hat or backpack.
+    target=standing.getchannel('A').crop((0,760,432,800)).getbbox()
+    feet=im.getchannel('A').crop((0,im.height-40,im.width,im.height)).getbbox()
+    x=round((target[0]+target[2]-feet[0]-feet[2])/2)
+    x=max(0,min(432-im.width,x))
+    canvas.alpha_composite(im,(x,800-im.height))
     name=f'player-idle-{view}-{pose}.png';dest=ROOT/'preview/assets'/name;canvas.save(dest,optimize=True)
     (ROOT/f'app/src/main/res/drawable-nodpi/{name.replace("-","_")}').write_bytes(dest.read_bytes())
     print(name,box,canvas.getbbox())
