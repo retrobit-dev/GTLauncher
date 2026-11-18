@@ -2,7 +2,7 @@ package dev.retrobit.gtlauncher;
 
 /** Timed decorative bow, reset by movement, a world/tile change or disabled animation. */
 final class PlayerIdleBow {
-    static final long DELAY = 3000, DURATION = 2000, INTERVAL = 3000, SIT_DELAY = 15000, SIT_TRANSITION = 1000;
+    static final long DELAY = 3000, DURATION = 2000, INTERVAL = 3000, SIT_DELAY = 15000, SIT_TRANSITION = 1800;
     private String key;
     private long since, elapsed;
     private static float smooth(float t) { t=Math.max(0,Math.min(1,t));return t*t*(3-2*t); }

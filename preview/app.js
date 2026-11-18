@@ -1750,7 +1750,7 @@
   const characterShadowMasks=new WeakMap();
   const idleBowController=window.PlayerIdleBow.create();
   const idleBowFrames=Object.fromEntries(['front','back'].map(side=>[side,
-    ['transition','concept','sitting'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=5`;return image;})]));
+    ['transition','concept','sit-lowering','sit-nearly','sitting'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=6`;return image;})]));
   let idleBowAmount=0, idleBowSprite=null;
   const idleBlend=document.createElement('canvas');idleBlend.width=512;idleBlend.height=800;
   idleBlend.dataset.playerIdleBow='true';
@@ -1765,13 +1765,17 @@
       const back=character.facing==='N'||character.facing==='W', side=back?'back':'front';
       const standing=back?playerBackImage:playerImage, frames=idleBowFrames[side];
       const progress=Math.max(0,Math.min(2,idleBowAmount*2)), index=Math.min(1,Math.floor(progress)), mix=progress-index;
-      const poses=[standing,...frames], from=sit>0?standing:poses[index], to=sit>0?frames[2]:poses[index+1], weight=sit>0?sit:mix;
+      const poses=[standing,frames[0],frames[1]], sitPoses=[standing,frames[2],frames[3],frames[4]];
+      const sitProgress=Math.min(3,sit*3), sitIndex=Math.min(2,Math.floor(sitProgress));
+      const from=sit>0?sitPoses[sitIndex]:poses[index], to=sit>0?sitPoses[sitIndex+1]:poses[index+1];
+      const weight=sit>0?sitProgress-sitIndex:mix, canvasWidth=sit>0?1280:512;
       if(from.complete && from.naturalWidth && to.complete && to.naturalWidth) {
-        const blendKey=`${side}:${sit>0?'sit':index}:${weight}`;
+        const blendKey=`${side}:${sit>0?'sit'+sitIndex:index}:${weight}`;
         if(blendKey!==idleBlendKey) {
-          const c=idleBlend.getContext('2d');c.clearRect(0,0,512,800);c.globalCompositeOperation='source-over';
-          c.globalAlpha=1-weight;c.drawImage(from,(512-from.naturalWidth)/2,0);
-          c.globalCompositeOperation='lighter';c.globalAlpha=weight;c.drawImage(to,(512-to.naturalWidth)/2,0);
+          if(idleBlend.width!==canvasWidth)idleBlend.width=canvasWidth;
+          const c=idleBlend.getContext('2d');c.clearRect(0,0,canvasWidth,800);c.globalCompositeOperation='source-over';
+          c.globalAlpha=1-weight;c.drawImage(from,(canvasWidth-from.naturalWidth)/2,0);
+          c.globalCompositeOperation='lighter';c.globalAlpha=weight;c.drawImage(to,(canvasWidth-to.naturalWidth)/2,0);
           c.globalAlpha=1;c.globalCompositeOperation='source-over';idleBlendKey=blendKey;
           characterShadowMasks.delete(idleBlend);
         }

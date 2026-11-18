@@ -268,7 +268,7 @@ public final class WeatherSkyView extends View {
     private boolean animationEnabled = true;
     private double plantMotionSeconds;
     private Integer worldIslandTint;
-    private Bitmap mainCharacter, mainCharacterBack, idleFrontTransition, idleFrontPose, idleBackTransition, idleBackPose, idleFrontSitting, idleBackSitting, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
+    private Bitmap mainCharacter, mainCharacterBack, idleFrontTransition, idleFrontPose, idleBackTransition, idleBackPose, idleFrontSitting, idleBackSitting, idleFrontSitLowering, idleBackSitLowering, idleFrontSitNearly, idleBackSitNearly, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
     private final Bitmap[] walkFront=new Bitmap[12], walkBack=new Bitmap[12], runFront=new Bitmap[12], runBack=new Bitmap[12];
     private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron;
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
@@ -370,6 +370,10 @@ public final class WeatherSkyView extends View {
         idleBackPose=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_back_concept);
         idleFrontSitting=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_front_sitting);
         idleBackSitting=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_back_sitting);
+        idleFrontSitLowering=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_front_sit_lowering);
+        idleBackSitLowering=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_back_sit_lowering);
+        idleFrontSitNearly=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_front_sit_nearly);
+        idleBackSitNearly=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_back_sit_nearly);
         int[] frontFrames={R.drawable.character_walk_front_00, R.drawable.character_walk_front_01, R.drawable.character_walk_front_02, R.drawable.character_walk_front_03, R.drawable.character_walk_front_04, R.drawable.character_walk_front_05, R.drawable.character_walk_front_06, R.drawable.character_walk_front_07, R.drawable.character_walk_front_08, R.drawable.character_walk_front_09, R.drawable.character_walk_front_10, R.drawable.character_walk_front_11};
         int[] backFrames={R.drawable.character_walk_back_00, R.drawable.character_walk_back_01, R.drawable.character_walk_back_02, R.drawable.character_walk_back_03, R.drawable.character_walk_back_04, R.drawable.character_walk_back_05, R.drawable.character_walk_back_06, R.drawable.character_walk_back_07, R.drawable.character_walk_back_08, R.drawable.character_walk_back_09, R.drawable.character_walk_back_10, R.drawable.character_walk_back_11};
         for(int i=0;i<12;i++) {walkFront[i]=BitmapFactory.decodeResource(getResources(),frontFrames[i]);walkBack[i]=BitmapFactory.decodeResource(getResources(),backFrames[i]);}
@@ -1060,14 +1064,20 @@ public final class WeatherSkyView extends View {
             float progress=Math.max(0,Math.min(2,idleBowAmount*2));
             Bitmap from=progress<1?standing:transition, to=progress<1?transition:pose;
             float mix=progress<1?progress:progress-1;
-            if(idleSitAmount>0) {from=standing;to=back?idleBackSitting:idleFrontSitting;mix=idleSitAmount;}
-            if(from!=null && to!=null && (idleBlendBitmap==null || from!=idleBlendFrom || to!=idleBlendTo || mix!=idleBlendMix)) {
-                if(idleBlendBitmap==null)idleBlendBitmap=Bitmap.createBitmap(512,800,Bitmap.Config.ARGB_8888);
+            int canvasWidth=512;
+            if(idleSitAmount>0) {
+                Bitmap[] sitPoses={standing,back?idleBackSitLowering:idleFrontSitLowering,
+                        back?idleBackSitNearly:idleFrontSitNearly,back?idleBackSitting:idleFrontSitting};
+                float sitProgress=Math.min(3,idleSitAmount*3);int sitIndex=Math.min(2,(int)sitProgress);
+                from=sitPoses[sitIndex];to=sitPoses[sitIndex+1];mix=sitProgress-sitIndex;canvasWidth=1280;
+            }
+            if(from!=null && to!=null && (idleBlendBitmap==null || idleBlendBitmap.getWidth()!=canvasWidth || from!=idleBlendFrom || to!=idleBlendTo || mix!=idleBlendMix)) {
+                if(idleBlendBitmap==null || idleBlendBitmap.getWidth()!=canvasWidth)idleBlendBitmap=Bitmap.createBitmap(canvasWidth,800,Bitmap.Config.ARGB_8888);
                 Canvas blend=new Canvas(idleBlendBitmap);blend.drawColor(Color.TRANSPARENT,PorterDuff.Mode.CLEAR);
                 idleBlendPaint.setXfermode(null);idleBlendPaint.setAlpha(Math.round(255*(1-mix)));
-                blend.drawBitmap(from,null,new RectF((512-from.getWidth())/2f,0,(512+from.getWidth())/2f,800),idleBlendPaint);
+                blend.drawBitmap(from,null,new RectF((canvasWidth-from.getWidth())/2f,0,(canvasWidth+from.getWidth())/2f,800),idleBlendPaint);
                 idleBlendPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.ADD));idleBlendPaint.setAlpha(Math.round(255*mix));
-                blend.drawBitmap(to,null,new RectF((512-to.getWidth())/2f,0,(512+to.getWidth())/2f,800),idleBlendPaint);
+                blend.drawBitmap(to,null,new RectF((canvasWidth-to.getWidth())/2f,0,(canvasWidth+to.getWidth())/2f,800),idleBlendPaint);
                 idleBlendPaint.setXfermode(null);idleBlendPaint.setAlpha(255);
                 idleBlendFrom=from;idleBlendTo=to;idleBlendMix=mix;
             }
