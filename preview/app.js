@@ -327,6 +327,9 @@
   let particleEpoch = performance.now();
   let lastFetch = 0;
   let weatherError = false;
+  let weatherRefreshing = false;
+  let weatherModelTime = '';
+  const weatherRefreshButton = document.getElementById('weather-refresh-button');
   const animationStart = performance.now();
 
   function clamp(value, min, max) {
@@ -362,10 +365,10 @@
   function updateWeatherModeControls() {
     const mode = PREVIEW_MODES[previewModeIndex];
     if (weatherModeLabel) {
-      const source = location.fallback ? 'Rembang, Jawa Tengah (fallback)' : 'lokasi perangkat';
+      const source = `${location.fallback ? 'Rembang, Jawa Tengah (fallback)' : 'lokasi perangkat'} (${location.latitude.toFixed(3)}, ${location.longitude.toFixed(3)})`;
       const observation = lastFetch > 0
-        ? ` · diterima ${new Date(lastFetch).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})} · kode ${weather.weatherCode} · hujan ${weather.rain} mm · awan ${Math.round(weather.cloudCover)}%${weatherError ? ' · pembaruan gagal, memakai data terakhir' : ''}`
-        : weatherError ? ' · data cuaca tidak tersedia' : ' · data cuaca belum diterima';
+        ? ` · diterima ${new Date(lastFetch).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})}${weatherModelTime ? ` · waktu model ${weatherModelTime}` : ''} · kode ${weather.weatherCode} · hujan ${weather.rain} mm · presipitasi ${weather.precipitation} mm · awan ${Math.round(weather.cloudCover)}% · angin ${weather.windSpeed} km/jam${weatherError ? ' · pembaruan gagal, memakai data terakhir' : ''}${weatherRefreshing ? ' · memperbarui…' : ''}`
+        : weatherError ? ' · data cuaca tidak tersedia' : weatherRefreshing ? ' · memperbarui…' : ' · data cuaca belum diterima';
       weatherModeLabel.textContent = mode.live
         ? `Suasana: ${mode.label} · ${source}${observation}` : `Demo: ${mode.label}`;
       weatherModeLabel.title = weatherModeLabel.textContent;
@@ -2301,6 +2304,7 @@
       windDirection: Number(current.wind_direction_10m ?? 90)
     };
     location = target;
+    weatherModelTime = typeof current.time === 'string' ? `${current.time.replace('T',' ')} ${typeof payload.timezone === 'string' ? payload.timezone : ''}`.trim() : '';
     lastFetch = Date.now();
     weatherError = false;
     updateWeatherModeControls();
@@ -2309,20 +2313,29 @@
     if (REDUCED_MOTION) drawFrame();
   }
 
+  async function refreshWeather(target) {
+    if (weatherRefreshing) return;
+    weatherRefreshing=true;
+    if(weatherRefreshButton) weatherRefreshButton.disabled=true;
+    updateWeatherModeControls();
+    try { await fetchWeather(target); }
+    catch (error) { weatherError=true; }
+    finally {
+      weatherRefreshing=false;
+      if(weatherRefreshButton) weatherRefreshButton.disabled=false;
+      updateWeatherModeControls();
+    }
+  }
   async function initializeWeather() {
     const gps = await getDeviceLocation();
     location = gps;
-    updateWeatherModeControls();
-    try { await fetchWeather(gps); }
-    catch (error) { weatherError=true; updateWeatherModeControls(); }
+    await refreshWeather(gps);
     if (lastFetch === 0 && PREVIEW_MODES[previewModeIndex].live) rebuildParticles(weather);
-    window.setInterval(async () => {
-      if (Date.now() - lastFetch < REFRESH_INTERVAL) return;
-      try { await fetchWeather(location); }
-      catch (error) { weatherError=true; updateWeatherModeControls(); }
+    window.setInterval(() => {
+      if (Date.now() - lastFetch >= REFRESH_INTERVAL) refreshWeather(location);
     }, REFRESH_INTERVAL);
-
   }
+  weatherRefreshButton?.addEventListener('click', () => refreshWeather(location));
 
   if (islandElevationInput) {
     islandElevationInput.value = String(DEFAULT_ISLAND_CAMERA_ELEVATION);

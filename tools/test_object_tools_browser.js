@@ -34,6 +34,6 @@ payload.world.id='objects-copy';payload.world.name='Objects copy';
 await p.locator('#world-import-file').setInputFiles({name:'copy.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(payload))});
 await p.waitForFunction(()=>worldManager.getActive().id==='objects-copy');assert.equal((await p.evaluate(()=>worldManager.getActive().orangeTrees[0])).facing,'W');
 await p.locator('#world-close').click();
-for(const width of [1000,500,280]){await p.setViewportSize({width,height:700});let x=await p.locator('#object-tool-select').boundingBox(),tablet=await p.locator('.device-frame').boundingBox();assert(x.x+x.width<=tablet.x && x.x>=0,'left controls fit');}
+for(const width of [1000,500,280]){await p.setViewportSize({width,height:700});let tablet=await p.locator('.device-frame').boundingBox();for(const id of ['object-tool-select','object-tool-move','object-undo','object-redo','object-tool-delete']){let x=await p.locator('#'+id).boundingBox();assert(x && x.y+x.height<=tablet.y && x.x>=tablet.x && x.x+x.width<=tablet.x+tablet.width,'top controls fit above tablet');}let rotation=await p.locator('#rotate-right').boundingBox();assert(rotation && rotation.x+rotation.width<=tablet.x,'rotation remains left');}
 console.log('Object tools: tree selection, rotate, move, delete, undo/redo, persistence, responsive layout: OK');
 }finally{await b.close()}})().catch(e=>{console.error(e);process.exitCode=1});

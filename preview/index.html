@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#e2e4e1">
   <title>GTLauncher — Live Weather Preview</title>
-  <link rel="stylesheet" href="./styles.css?v=live-sky-59">
+  <link rel="stylesheet" href="./styles.css?v=live-sky-60">
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./worlds.js?v=34" defer></script>
   <script src="./object-editor.js?v=14" defer></script>
@@ -16,7 +16,7 @@
   <script src="./celestial-geometry.js?v=1" defer></script>
   <script src="./cloud-layout.js?v=1" defer></script>
   <script src="./tree-shadow.js?v=1" defer></script>
-  <script src="./app.js?v=sky-229" defer></script>
+  <script src="./app.js?v=sky-230" defer></script>
   <script src="./preview-modes.js?v=2" defer></script>
   <script src="./editor-camera.js?v=7" defer></script>
   <script src="./terrain-tools.js?v=107" defer></script>
@@ -28,7 +28,8 @@
 <body>
   <main class="preview-stage" aria-label="Pratinjau GTLauncher">
     <div class="world-topbar"><nav class="mode-tabs" aria-label="Mode preview"><button id="mode-gameplay" type="button" aria-pressed="true">Gameplay</button><button id="mode-map-editor" type="button" aria-pressed="false">Map Editor</button></nav><button id="world-button" class="weather-cycle-button world-button" type="button" aria-haspopup="dialog" aria-controls="world-dialog" aria-label="World" title="World"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-3 3-3 15 0 18M12 3c3 3 3 15 0 18"/></svg></button><span id="active-world-label" class="active-world-label" aria-live="polite">World: Base World</span></div>
-    <div class="device-wrap"><div class="device-frame" aria-label="Huawei MatePad Mini dalam orientasi lanskap"><div class="history-controls" aria-label="Riwayat edit"><button id="object-undo" class="world-secondary object-history-button" type="button" disabled aria-label="Urungkan perubahan editor" title="Undo">↶</button><button id="object-redo" class="world-secondary object-history-button" type="button" disabled aria-label="Ulangi perubahan editor" title="Redo">↷</button></div>
+    <div class="device-wrap"><nav class="history-controls editor-top-tools" aria-label="Alat objek dan riwayat editor"><button id="object-tool-select" type="button" aria-label="Pilih objek" title="Pilih objek" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l13 10-6 1-3 6z"/></svg></button>
+          <button id="object-tool-move" type="button" aria-label="Pindahkan objek" title="Pindahkan objek" aria-pressed="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></button><button id="object-undo" class="world-secondary object-history-button" type="button" disabled aria-label="Urungkan perubahan editor" title="Undo">↶</button><button id="object-redo" class="world-secondary object-history-button" type="button" disabled aria-label="Ulangi perubahan editor" title="Redo">↷</button><button id="object-tool-delete" type="button" aria-label="Hapus objek" title="Hapus objek" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 4h6M6 7l1 13h10l1-13M10 10v7m4-7v7"/></svg></button></nav><div class="device-frame" aria-label="Huawei MatePad Mini dalam orientasi lanskap">
       <div class="device-display" aria-label="Homescreen GTLauncher dengan langit dan pulau terapung pixel art yang mengikuti cuaca">
         <canvas id="sky-canvas" class="sky-canvas" aria-label="Langit pixel art dan pulau terapung dengan pencahayaan adaptif serta efek cuaca"></canvas>
         <div id="editor-pan-surface" class="editor-pan-surface" hidden aria-label="Seret untuk menggeser peta"></div>
@@ -67,15 +68,12 @@
           <button id="editor-pan" type="button" aria-label="Geser peta" title="Geser peta: aktifkan lalu seret layar" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></button>
           <button id="editor-zoom-in" type="button" aria-label="Perbesar peta" title="Perbesar">+</button><output id="editor-zoom-value" aria-live="polite">7.5</output><button id="editor-zoom-out" type="button" aria-label="Perkecil peta" title="Perkecil">−</button>
           <button id="editor-fit" type="button" aria-label="Atur ulang kamera" title="Atur ulang kamera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
-          <span class="object-tools-divider" aria-hidden="true"></span>
-          <button id="object-tool-select" type="button" aria-label="Pilih objek" title="Pilih objek" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l13 10-6 1-3 6z"/></svg></button>
-          <button id="object-tool-move" type="button" aria-label="Pindahkan objek" title="Pindahkan objek" aria-pressed="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></button>
           <div id="rotate-controls" class="object-rotate-controls" aria-label="Putar arah objek">
             <button id="rotate-left" type="button" aria-label="Putar objek ke kiri" title="Putar objek ke kiri">↶</button>
             <span id="rotate-direction" class="visually-hidden" aria-live="polite">Selatan</span>
             <button id="rotate-right" type="button" aria-label="Putar objek ke kanan" title="Putar objek ke kanan">↷</button>
           </div>
-          <button id="object-tool-delete" type="button" aria-label="Hapus objek" title="Hapus objek" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 4h6M6 7l1 13h10l1-13M10 10v7m4-7v7"/></svg></button>
+
         </nav>
     <div class="editor-right-controls">
       <button id="object-library-button" class="weather-cycle-button" type="button" aria-haspopup="dialog" aria-controls="object-library-dialog" aria-label="Objek" title="Objek"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10"/></svg></button>
@@ -108,7 +106,7 @@
     <section class="preview-controls" aria-label="Kontrol suasana preview">
       <div class="weather-preview-control"><button id="weather-cycle-button" class="weather-cycle-button" type="button" aria-label="Ganti suasana preview">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
-      </button><p id="weather-mode-label" class="weather-mode-label" aria-live="polite">Suasana: Live · Open-Meteo</p></div>
+      </button><button id="weather-refresh-button" class="weather-cycle-button" type="button" disabled aria-label="Perbarui cuaca live" title="Perbarui cuaca live">↻</button><p id="weather-mode-label" class="weather-mode-label" aria-live="polite">Suasana: Live · Open-Meteo</p></div>
       <button id="object-edit-button" class="weather-cycle-button object-edit-button internal-edit-toggle" type="button" aria-pressed="false">Edit</button>
       <span id="edit-status" class="edit-status" role="status" aria-live="polite" hidden></span>
       <button id="object-select-button" class="world-secondary icon-action" type="button" aria-label="Pilih karakter" title="Pilih karakter" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M5 20c0-4 3-7 7-7s7 3 7 7z"/></svg></button>

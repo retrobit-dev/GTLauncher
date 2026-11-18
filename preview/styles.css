@@ -425,3 +425,15 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .editor-camera-controls button { flex:none; }
 .editor-camera-controls button:disabled { opacity:.4; cursor:not-allowed; }
 .editor-camera-controls .visually-hidden { position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+
+/* Object selection and history sit above the tablet; rotation remains on the left rail. */
+.editor-top-tools { top:-35px; right:0; gap:4px; }
+.editor-top-tools button { width:29px; height:29px; min-height:29px; padding:5px; border:1px solid #a6bba5; border-radius:8px; background:#f1f6ed; color:#3b5946; cursor:pointer; display:grid; place-items:center; line-height:1; }
+.editor-top-tools .object-history-button { width:29px; min-height:29px; padding:0; font-size:17px; }
+.editor-top-tools button[aria-pressed="true"] { background:#4b6a55; color:#fff; }
+.editor-top-tools button:disabled { opacity:.4; cursor:not-allowed; }
+.editor-top-tools svg { width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linejoin:round; stroke-linecap:round; }
+.editor-top-tools button:focus-visible { outline:2px solid #567d57; outline-offset:2px; }
+.preview-stage[data-mode="editor"] .device-wrap { margin-top:35px; }
+#weather-refresh-button { font-size:20px; line-height:1; }
+#weather-refresh-button:disabled { opacity:.5; cursor:wait; }
