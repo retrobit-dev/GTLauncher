@@ -1750,18 +1750,33 @@
   const characterShadowMasks=new WeakMap();
   const idleBowController=window.PlayerIdleBow.create();
   const idleBowFrames=Object.fromEntries(['front','back'].map(side=>[side,
-    ['transition','concept'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=5`;return image;})]));
+    ['transition','concept','sitting'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=5`;return image;})]));
   let idleBowAmount=0, idleBowSprite=null;
+  const idleBlend=document.createElement('canvas');idleBlend.width=512;idleBlend.height=800;
+  idleBlend.dataset.playerIdleBow='true';
+  let idleBlendKey='';
   function updateIdleBow(now) {
     const world=window.worldManager?.getActive(), character=window.worldManager?.getCharacter();
     const enabled=!REDUCED_MOTION && cameraMode==='gameplay' && !document.hidden && !gameplayDraft && !editingDraft && world?.id!=='base' && character?.visible;
     const key=enabled?`${world.id}:${character.column}:${character.row}`:null;
-    idleBowAmount=idleBowController.update(now,key,enabled); idleBowSprite=null;
-    const frame=window.PlayerIdleBow.frame(idleBowAmount);
-    if(frame && character) {
-      const side=character.facing==='N'||character.facing==='W'?'back':'front';
-      const image=idleBowFrames[side][frame-1];
-      if(image.complete && image.naturalWidth)idleBowSprite=image;
+    idleBowAmount=idleBowController.update(now,key,enabled,character && characterWaterDepth(character)===0); idleBowSprite=null;
+    const sit=character && characterWaterDepth(character)===0 ? idleBowController.sitting() : 0;
+    if((idleBowAmount>0 || sit>0) && character) {
+      const back=character.facing==='N'||character.facing==='W', side=back?'back':'front';
+      const standing=back?playerBackImage:playerImage, frames=idleBowFrames[side];
+      const progress=Math.max(0,Math.min(2,idleBowAmount*2)), index=Math.min(1,Math.floor(progress)), mix=progress-index;
+      const poses=[standing,...frames], from=sit>0?standing:poses[index], to=sit>0?frames[2]:poses[index+1], weight=sit>0?sit:mix;
+      if(from.complete && from.naturalWidth && to.complete && to.naturalWidth) {
+        const blendKey=`${side}:${sit>0?'sit':index}:${weight}`;
+        if(blendKey!==idleBlendKey) {
+          const c=idleBlend.getContext('2d');c.clearRect(0,0,512,800);c.globalCompositeOperation='source-over';
+          c.globalAlpha=1-weight;c.drawImage(from,(512-from.naturalWidth)/2,0);
+          c.globalCompositeOperation='lighter';c.globalAlpha=weight;c.drawImage(to,(512-to.naturalWidth)/2,0);
+          c.globalAlpha=1;c.globalCompositeOperation='source-over';idleBlendKey=blendKey;
+          characterShadowMasks.delete(idleBlend);
+        }
+        idleBowSprite=idleBlend;
+      }
     }
   }
   document.addEventListener('visibilitychange',()=>idleBowController.reset());
@@ -1782,12 +1797,12 @@
     if(!source.complete || !source.naturalWidth)return;
     let mask=characterShadowMasks.get(sprite);
     if(!mask) {
-      mask=document.createElement('canvas');mask.width=sprite.naturalWidth;mask.height=sprite.naturalHeight;
+      mask=document.createElement('canvas');mask.width=sprite.naturalWidth||sprite.width;mask.height=sprite.naturalHeight||sprite.height;
       const m=mask.getContext('2d');m.drawImage(sprite,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);
       characterShadowMasks.set(sprite,mask);
     }
     const anchor=characterCentre(character), baseWidth=PLAYER_WIDTH*character.scale,
-      width=baseWidth*(idleBowSprite ? idleBowSprite.naturalWidth/432 : 1),height=PLAYER_HEIGHT*character.scale;
+      width=baseWidth*(idleBowSprite ? (idleBowSprite.naturalWidth||idleBowSprite.width)/432 : 1),height=PLAYER_HEIGHT*character.scale;
     const ray=characterShadowOffset(light.azimuth,light.altitude,height);
     if(Math.abs(ray.y)<height*.12)ray.y=(ray.y<0?-1:1)*height*.12; // visible thickness for side-lit sprites
     const strength=clamp((light.altitude/10),0,1)*(1-.65*clamp(cloudCover/100,0,1));
@@ -1941,7 +1956,7 @@
     const sprite = back ? playerBackImage : playerImage;
     if (!sprite.complete || !sprite.naturalWidth) return;
     const anchor = characterCentre(character), depth=characterWaterDepth(character), x=anchor.x, y=anchor.y + .5 * character.scale + depth;
-    const width = PLAYER_WIDTH * character.scale * (idleBowSprite ? idleBowSprite.naturalWidth/432 : 1);
+    const width = PLAYER_WIDTH * character.scale * (idleBowSprite ? (idleBowSprite.naturalWidth||idleBowSprite.width)/432 : 1);
     // Breathing changes height only, never the ground anchor. With reduced motion time is zero.
     const idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5 : 0;
     const height = PLAYER_HEIGHT * character.scale + idle;
@@ -2574,7 +2589,7 @@
       if (!character.visible) return false;
       const {x, y: surfaceY} = characterCentre(character);
       const y=surfaceY+characterWaterDepth(character);
-      return Math.abs(point.x - x) <= PLAYER_WIDTH * character.scale * (idleBowSprite ? idleBowSprite.naturalWidth/432 : 1) / 2 + 4
+      return Math.abs(point.x - x) <= PLAYER_WIDTH * character.scale * (idleBowSprite ? (idleBowSprite.naturalWidth||idleBowSprite.width)/432 : 1) / 2 + 4
         && point.y >= y - PLAYER_HEIGHT * character.scale - 4.5 && point.y <= y + 4;
     },
     tileAt(point) {

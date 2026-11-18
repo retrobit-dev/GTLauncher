@@ -9,6 +9,7 @@ import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PointF;
@@ -267,7 +268,7 @@ public final class WeatherSkyView extends View {
     private boolean animationEnabled = true;
     private double plantMotionSeconds;
     private Integer worldIslandTint;
-    private Bitmap mainCharacter, mainCharacterBack, idleFrontTransition, idleFrontPose, idleBackTransition, idleBackPose, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
+    private Bitmap mainCharacter, mainCharacterBack, idleFrontTransition, idleFrontPose, idleBackTransition, idleBackPose, idleFrontSitting, idleBackSitting, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
     private final Bitmap[] walkFront=new Bitmap[12], walkBack=new Bitmap[12], runFront=new Bitmap[12], runBack=new Bitmap[12];
     private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron;
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
@@ -321,7 +322,7 @@ public final class WeatherSkyView extends View {
     private float visualColumn() { return characterStepping ? stepFromColumn+(characterColumn-stepFromColumn)*stepProgress() : characterColumn; }
     private float visualRow() { return characterStepping ? stepFromRow+(characterRow-stepFromRow)*stepProgress() : characterRow; }
     void animateCharacterStep(int fromColumn,int fromRow,int toColumn,int toRow,float scale,String facing,int index,int total,int duration) {
-        playerIdleBow.reset();idleBowAmount=0;
+        playerIdleBow.reset();idleBowAmount=0;idleSitAmount=0;
         setWorldCharacter(true,toColumn,toRow,scale,facing);
         stepFromColumn=fromColumn; stepFromRow=fromRow; stepIndex=index; stepCount=total;
         stepDuration=duration; stepStarted=SystemClock.uptimeMillis();
@@ -367,6 +368,8 @@ public final class WeatherSkyView extends View {
         idleFrontPose=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_front_concept);
         idleBackTransition=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_back_transition);
         idleBackPose=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_back_concept);
+        idleFrontSitting=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_front_sitting);
+        idleBackSitting=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_back_sitting);
         int[] frontFrames={R.drawable.character_walk_front_00, R.drawable.character_walk_front_01, R.drawable.character_walk_front_02, R.drawable.character_walk_front_03, R.drawable.character_walk_front_04, R.drawable.character_walk_front_05, R.drawable.character_walk_front_06, R.drawable.character_walk_front_07, R.drawable.character_walk_front_08, R.drawable.character_walk_front_09, R.drawable.character_walk_front_10, R.drawable.character_walk_front_11};
         int[] backFrames={R.drawable.character_walk_back_00, R.drawable.character_walk_back_01, R.drawable.character_walk_back_02, R.drawable.character_walk_back_03, R.drawable.character_walk_back_04, R.drawable.character_walk_back_05, R.drawable.character_walk_back_06, R.drawable.character_walk_back_07, R.drawable.character_walk_back_08, R.drawable.character_walk_back_09, R.drawable.character_walk_back_10, R.drawable.character_walk_back_11};
         for(int i=0;i<12;i++) {walkFront[i]=BitmapFactory.decodeResource(getResources(),frontFrames[i]);walkBack[i]=BitmapFactory.decodeResource(getResources(),backFrames[i]);}
@@ -568,7 +571,7 @@ public final class WeatherSkyView extends View {
     private final CameraFollow gameplayCamera=new CameraFollow();
     private long cameraFrameTime;
     private boolean cameraMoving;
-    void setGameplayMode(boolean value) { if(gameplayMode!=value){playerIdleBow.reset();idleBowAmount=0;gameplayCamera.reset();cameraFrameTime=0;} gameplayMode=value; invalidate(); }
+    void setGameplayMode(boolean value) { if(gameplayMode!=value){playerIdleBow.reset();idleBowAmount=0;idleSitAmount=0;gameplayCamera.reset();cameraFrameTime=0;} gameplayMode=value; invalidate(); }
     private float mapSourceX() { return gameplayMode && showCharacter
             ? (gameplayCamera.ready()?gameplayCamera.x():SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f) : SCENE_WIDTH/2f; }
     private float mapSourceY() { return gameplayMode && showCharacter
@@ -1039,26 +1042,45 @@ public final class WeatherSkyView extends View {
         canvas.drawPath(outline,paint);paint.setStyle(Paint.Style.FILL);
     }
     private final PlayerIdleBow playerIdleBow = new PlayerIdleBow();
-    private float idleBowAmount;
+    private float idleBowAmount, idleSitAmount;
+    private Bitmap idleBlendBitmap, idleBlendFrom, idleBlendTo;
+    private float idleBlendMix=-1;
+    private final Paint idleBlendPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
     private void updateIdleBow(long now) {
         boolean enabled=gameplayMode && showCharacter && !characterStepping && !portalWalkActive
                 && animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled();
         String key=enabled ? surfaceWorldId+":"+characterColumn+":"+characterRow : null;
-        idleBowAmount=playerIdleBow.update(now,key,enabled);
+        idleBowAmount=playerIdleBow.update(now,key,enabled,visualWaterDepth()<=0);
+        idleSitAmount=visualWaterDepth()<=0?playerIdleBow.sitting():0;
+        if(idleBowAmount>0 || idleSitAmount>0) {
+            boolean back="N".equals(characterFacing)||"W".equals(characterFacing);
+            Bitmap standing=back?mainCharacterBack:mainCharacter;
+            Bitmap transition=back?idleBackTransition:idleFrontTransition;
+            Bitmap pose=back?idleBackPose:idleFrontPose;
+            float progress=Math.max(0,Math.min(2,idleBowAmount*2));
+            Bitmap from=progress<1?standing:transition, to=progress<1?transition:pose;
+            float mix=progress<1?progress:progress-1;
+            if(idleSitAmount>0) {from=standing;to=back?idleBackSitting:idleFrontSitting;mix=idleSitAmount;}
+            if(from!=null && to!=null && (idleBlendBitmap==null || from!=idleBlendFrom || to!=idleBlendTo || mix!=idleBlendMix)) {
+                if(idleBlendBitmap==null)idleBlendBitmap=Bitmap.createBitmap(512,800,Bitmap.Config.ARGB_8888);
+                Canvas blend=new Canvas(idleBlendBitmap);blend.drawColor(Color.TRANSPARENT,PorterDuff.Mode.CLEAR);
+                idleBlendPaint.setXfermode(null);idleBlendPaint.setAlpha(Math.round(255*(1-mix)));
+                blend.drawBitmap(from,null,new RectF((512-from.getWidth())/2f,0,(512+from.getWidth())/2f,800),idleBlendPaint);
+                idleBlendPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.ADD));idleBlendPaint.setAlpha(Math.round(255*mix));
+                blend.drawBitmap(to,null,new RectF((512-to.getWidth())/2f,0,(512+to.getWidth())/2f,800),idleBlendPaint);
+                idleBlendPaint.setXfermode(null);idleBlendPaint.setAlpha(255);
+                idleBlendFrom=from;idleBlendTo=to;idleBlendMix=mix;
+            }
+        }
     }
     private float characterSpriteWidth(Bitmap sprite) {
-        boolean idle=sprite!=null && (sprite==idleFrontTransition || sprite==idleFrontPose || sprite==idleBackTransition || sprite==idleBackPose);
+        boolean idle=sprite!=null && (sprite==idleFrontTransition || sprite==idleFrontPose || sprite==idleBackTransition || sprite==idleBackPose || sprite==idleBlendBitmap);
         return 13.5f * characterScale * (idle ? sprite.getWidth()/432f : 1f);
     }
     private Bitmap currentCharacterSprite() {
         boolean back="N".equals(characterFacing)||"W".equals(characterFacing);
         Bitmap sprite=back?mainCharacterBack:mainCharacter;
-        int idleFrame=PlayerIdleBow.frame(idleBowAmount);
-        if(idleFrame>0 && !characterStepping) {
-            Bitmap idle=back ? (idleFrame==1?idleBackTransition:idleBackPose)
-                    : (idleFrame==1?idleFrontTransition:idleFrontPose);
-            if(idle!=null)return idle;
-        }
+        if((idleBowAmount>0 || idleSitAmount>0) && !characterStepping && idleBlendBitmap!=null)return idleBlendBitmap;
         if(characterStepping && animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled()) {
             int frame=(int)Math.floor((stepIndex-1+stepProgress())*12)%12;
             Bitmap current=characterRunning?(back?runBack:runFront)[frame]:(back?walkBack:walkFront)[frame];
@@ -1144,11 +1166,11 @@ public final class WeatherSkyView extends View {
     protected void onWindowVisibilityChanged(int visibility) {
         super.onWindowVisibilityChanged(visibility);
         if(playerIdleBow!=null)playerIdleBow.reset();
-        idleBowAmount=0;
+        idleBowAmount=0;idleSitAmount=0;
     }
 
     public void setAnimationEnabled(boolean enabled) {
-        playerIdleBow.reset(); idleBowAmount=0;
+        playerIdleBow.reset(); idleBowAmount=0;idleSitAmount=0;
         animationEnabled = enabled;
         if (enabled) postInvalidateOnAnimation();
     }

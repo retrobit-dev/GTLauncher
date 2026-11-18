@@ -15,4 +15,11 @@ for side in ('front','back'):
         assert im.crop((0,712,512,800)).tobytes()==padded.crop((0,712,512,800)).tobytes(),name
         assert im.getchannel('A').getextrema()==(0,255),name
         assert 20<=im.getchannel('A').getbbox()[1]<=100, 'pose should keep player size: '+name
+for side in ('front','back'):
+    name=f'player-idle-{side}-sitting.png'
+    preview=root/'preview/assets'/name
+    android=root/'app/src/main/res/drawable-nodpi'/name.replace('-','_')
+    assert preview.read_bytes()==android.read_bytes()
+    im=Image.open(preview).convert('RGBA')
+    assert im.size==(512,800) and im.getpixel((0,0))[3]==0 and im.getchannel('A').getbbox()[3]==800
 print('Selected idle sprites: size, transparency, fixed boots, browser/Android parity: OK')
