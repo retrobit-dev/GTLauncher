@@ -80,7 +80,7 @@ public class HomeActivity extends Activity {
     private static final int IMPORT_WORLD_REQUEST = 722;
     private static final int MAX_WORLD_BYTES = 256 * 1024;
     private static final String WEATHER_SETTINGS_PREFS = "weather_settings";
-    private static final long WEATHER_REFRESH_INTERVAL_MS = 30L * 60L * 1000L;
+    private static final long WEATHER_REFRESH_INTERVAL_MS = 10L * 60L * 1000L;
     private static final long WEATHER_CACHE_MAX_AGE_MS = 6L * 60L * 60L * 1000L;
     private static final long GPS_TIMEOUT_MS = 12000L;
     private static final double FALLBACK_LATITUDE = -6.7097;
@@ -123,7 +123,7 @@ public class HomeActivity extends Activity {
     private void updateDayNightIcon() {
         if (dayNightIcon == null) return;
         boolean night = DayNight.isNight(System.currentTimeMillis(), currentLatitude, currentLongitude);
-        String kind = HudWeather.kind(currentWeather == null ? -1 : currentWeather.weatherCode);
+        String kind = HudWeather.kind(currentWeather == null ? -1 : currentWeather.hasStorm() ? currentWeather.weatherCode : currentWeather.hasRain() ? 61 : currentWeather.weatherCode);
         int image;
         String weatherLabel;
         switch (kind) {

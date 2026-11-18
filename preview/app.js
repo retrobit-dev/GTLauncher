@@ -111,11 +111,6 @@
   // Clouds are raster sprites traced from reference art, downsampled to a 30-column grid and
   // quantised into three flat bands. One `cell` value drives both axes, so each silhouette
   // keeps the ratio it was traced at instead of stretching into a flat smudge.
-  // Cloud cover breakpoints, one cloud per step cleared. The first step is 0 so even a fully
-  // clear sky keeps a single cloud in the panel; 82% and up fills every slot.
-  const CLOUD_COVER_STEPS = [0, 32, 58, 82];
-  // Two thirds of the previous cloud size, in both axes. Shadows share this cell size.
-  const CLOUD_CELL = 2 / 3;
   // Horizontal slots are absolute scene units, not fractions, so the widest sprite still clears
   // both frame edges.
   const CLOUD_SLOT_X = [56, 264, 118, 206];
@@ -160,9 +155,6 @@
   const CLOUD_DRIFT_MAX = 4.2;
   // A cloud is fully off-screen on the left only once its trail clears the frame with margin.
   const CLOUD_EDGE_INSET = 4;
-  // The shadow is a shrunk copy of the cloud, not a same-size one: at full size it covered most of
-  // the island and read as a hole rather than as shade.
-  const CLOUD_SHADOW_SCALE = 0.78;
   // The island's own cast shadow: close to the base, drifting with the light direction.
   const ISLAND_BODY_SHADOW_SCALE = 1.55;
   const ISLAND_BODY_SHADOW_OPACITY_SCALE = 0.46;
@@ -175,7 +167,7 @@
   const ISLAND_BODY_SHADOW_RISE = 1;
   const ISLAND_BODY_SHADOW_DRIFT = 10;
   const FALLBACK = { latitude: -6.7097, longitude: 111.3476, fallback: true };
-  const REFRESH_INTERVAL = 30 * 60 * 1000;
+  const REFRESH_INTERVAL = 10 * 60 * 1000;
   const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const CLOUD_SHAPES = [
     ['000000000000001110011110000000',
@@ -336,6 +328,7 @@
   let particles = [];
   let particleEpoch = performance.now();
   let lastFetch = 0;
+  let weatherError = false;
   const animationStart = performance.now();
 
   function clamp(value, min, max) {
@@ -373,10 +366,11 @@
     if (weatherModeLabel) {
       const source = location.fallback ? 'Rembang, Jawa Tengah (fallback)' : 'lokasi perangkat';
       const observation = lastFetch > 0
-        ? ` · awan ${Math.round(weather.cloudCover)}%`
-        : ' · data cuaca belum diterima';
+        ? ` · diterima ${new Date(lastFetch).toLocaleTimeString('id-ID', {hour:'2-digit',minute:'2-digit'})} · kode ${weather.weatherCode} · hujan ${weather.rain} mm · awan ${Math.round(weather.cloudCover)}%${weatherError ? ' · pembaruan gagal, memakai data terakhir' : ''}`
+        : weatherError ? ' · data cuaca tidak tersedia' : ' · data cuaca belum diterima';
       weatherModeLabel.textContent = mode.live
         ? `Suasana: ${mode.label} · ${source}${observation}` : `Demo: ${mode.label}`;
+      weatherModeLabel.title = weatherModeLabel.textContent;
     }
     if (weatherModeButton) {
       weatherModeButton.setAttribute('aria-label', `Ganti suasana preview. Aktif: ${mode.label}`);
@@ -806,14 +800,6 @@
     return variants;
   }, []);
 
-  function cloudCountForCover(cloudCover) {
-    const cover = clamp(cloudCover, 0, 100);
-    let count = 0;
-    CLOUD_COVER_STEPS.forEach(step => {
-      if (cover >= step) count += 1;
-    });
-    return count;
-  }
 
   function cloudHash(seed, index, salt) {
     let value = (seed ^ Math.imul(index + 1, 0x9e3779b9)
@@ -834,7 +820,7 @@
   function createCloudStates(elapsedSeconds, sceneWeather) {
     const speedKmh = Math.max(0, sceneWeather.windSpeed ?? 0);
     const bearing = normalizeDegrees((sceneWeather.windDirection ?? 0) + 180);
-    if (speedKmh >= 3) {
+    if (speedKmh > 0) {
       if (cloudWindCardinal === null ||
           Math.abs(normalizeSigned(bearing - cloudWindCardinal)) > 50) {
         cloudWindCardinal = wrap(Math.round(bearing / 90) * 90, 360);
@@ -848,23 +834,28 @@
       cloudNorthTravel += Math.cos(angle) * distance;
     }
     cloudLastElapsed = elapsedSeconds;
-    const count = cloudCountForCover(sceneWeather.cloudCover ?? 0);
+    const count = window.CloudLayout.count(sceneWeather.cloudCover ?? 0, sceneWeather.weatherCode);
     const seed = Math.trunc(location.latitude * 37 + location.longitude * 17)
       ^ Math.imul(count, 0x2545f491);
     const axisLength = Math.hypot(ISLAND_TILE_WIDTH, islandTileHeight);
     const clouds = [];
+    const cols=Math.ceil(Math.sqrt(count)), rows=Math.ceil(count/cols);
     for (let index = 0; index < count; index += 1) {
       const shape = CLOUD_SHAPE_VARIANTS[Math.floor(cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length)];
-      const east = wrap(cloudHash(seed, index, 2) * 9 + cloudEastTravel, 9) - 4.5;
-      const north = wrap(cloudHash(seed, index, 3) * 9 + cloudNorthTravel, 9) - 4.5;
+      const cell=window.CloudLayout.cellSize(ISLAND_TILE_WIDTH,islandTileHeight,shape[0].length,shape.length);
+      const eastSeed=((index%cols)+.2+.6*cloudHash(seed,index,2))/cols*ISLAND_GRID_SIZE;
+      const northSeed=(Math.floor(index/cols)+.2+.6*cloudHash(seed,index,3))/rows*ISLAND_GRID_SIZE;
+      const east = wrap(eastSeed + cloudEastTravel, ISLAND_GRID_SIZE) - ISLAND_GRID_SIZE/2;
+      const north = wrap(northSeed + cloudNorthTravel, ISLAND_GRID_SIZE) - ISLAND_GRID_SIZE/2;
       const x = WIDTH / 2 - LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_WIDTH / axisLength
         + (east + north) * ISLAND_TILE_WIDTH / 2;
       const y = islandCenterY - LANGIT_AWAN_LIFT
         - LANGIT_AWAN_WEST_SHIFT * islandTileHeight / axisLength
         + (east - north) * islandTileHeight / 2;
-      const screen = planeToScreen(x, y);
-      clouds.push({ shape, cell: CLOUD_CELL, planeX: x, planeY: y,
-        screenCenterX: screen.x, screenBottomY: screen.y + shape.length * CLOUD_CELL / 2 });
+      const displayY=y-(1000/ISLAND_TILE_METERS*ISLAND_TILE_WIDTH-LANGIT_AWAN_LIFT)-shape.length*cell/2;
+      const screen = planeToScreen(x, displayY);
+      clouds.push({ shape, cell, planeX: x, planeY: y,
+        screenCenterX: screen.x, screenBottomY: screen.y + shape.length * cell / 2 });
     }
     return clouds;
   }
@@ -1660,34 +1651,6 @@
       + ARC_TILT * (0.5 - progress) + offset;
   }
 
-  // A cloud dims the ground it covers the way the island's own shadow does: as one full diamond
-  // plane on the ground, not as a small dark copy of the sprite stuck to the grass. The plane's
-  // size tracks the cloud's footprint, its shape stays a diamond because the ground is a plane in
-  // the same dimetric projection, and it is only drawn where it lands on the island.
-  // Draws a sprite mask as a ground shadow: the same cells, scaled down, then squashed by the
-  // island's own tile ratio so it lies flat on the dimetric surface instead of standing upright.
-  function drawGroundSilhouette(shape, centreX, centreY, width, height) {
-    const cellX = width / shape[0].length;
-    const cellY = height / shape.length;
-    for (let row = 0; row < shape.length; row += 1) {
-      const line = shape[row];
-      const top = centreY - height * 0.5 + row * cellY;
-      for (let column = 0; column < line.length; column += 1) {
-        if (line[column] === '0') continue;
-        ctx.fillRect(centreX - width * 0.5 + column * cellX, top, cellX + 0.02, cellY + 0.02);
-      }
-    }
-  }
-
-  // The shadow is thrown AWAY from the light. Progress runs 0 at the eastern (right) end to 1 at
-  // the western (left) end, so a morning sun on the right pushes the shadow left, which is the
-  // negative direction. This is the opposite sign to the island body's own shadow, whose drift
-  // describes which side the light is on rather than which way the shadow is thrown.
-  function cloudShadowLean(lightHourAngle) {
-    return -(0.5 - celestialProgress(lightHourAngle))
-      * ISLAND_GRID_SIZE * ISLAND_TILE_WIDTH * 0.55;
-  }
-
   // One shared light model for every cloud shadow, on the island or on the ground, so the two never
   // drift apart in weight the way the island body's and the cloud's used to.
   function cloudShadowOpacity(light, cloudCover, code) {
@@ -1698,30 +1661,29 @@
     return (0.10 + directLight * 0.30) * cloudFilter * ISLAND_BODY_SHADOW_OPACITY_SCALE * 0.9;
   }
 
-  // The floor outside the island is a visual continuation of the island plane. Drawing it
-  // before the island lets the island cover it; the clipped surface pass uses the same ray.
-  function drawProjectedCloudShadows(clouds, lightAltitude, lightHourAngle, cloudCover, code,
-    clipToIsland) {
+  // Hidden clouds cast diffuse, unioned shadows on the island surface.
+  function drawCloudShadowsOnIsland(clouds, lightAltitude, lightHourAngle, cloudCover, code, motionTime) {
     if (!clouds.length) return;
-    const opacity = cloudShadowOpacity({altitude: lightAltitude}, cloudCover, code);
-    const light = sunPlanePosition(lightHourAngle);
-    const ratio = LANGIT_MATAHARI_LIFT / (LANGIT_MATAHARI_LIFT - LANGIT_AWAN_LIFT);
-    ctx.save();
-    applyIslandTransform();
-    if (clipToIsland) clipIslandSurface();
-    ctx.fillStyle = `rgba(12,23,40,${opacity})`;
-    clouds.forEach(cloud => {
-      const x = light.x + ratio * (cloud.planeX - light.x);
-      const y = light.y + ratio * (cloud.planeY - light.y);
-      drawGroundSilhouette(cloud.shape, x, y,
-        cloud.shape[0].length * cloud.cell * CLOUD_SHADOW_SCALE,
-        cloud.shape.length * cloud.cell * CLOUD_SHADOW_SCALE);
-    });
-    ctx.restore();
-  }
-
-  function drawCloudShadowsOnIsland(clouds, lightAltitude, lightHourAngle, cloudCover, code) {
-    drawProjectedCloudShadows(clouds, lightAltitude, lightHourAngle, cloudCover, code, true);
+    const wet=window.CloudLayout.wet(cloudCover,code);
+    const opacity=Math.max(cloudShadowOpacity({altitude:lightAltitude},cloudCover,code),wet?.16:0)
+      *window.CloudLayout.fade(motionTime,!REDUCED_MOTION);
+    ctx.save();applyIslandTransform();clipIslandSurface();
+    ctx.fillStyle=`rgba(12,23,40,${opacity})`;
+    ctx.filter=`blur(${wet?3:1.5}px)`;
+    ctx.beginPath();
+    for(const cloud of clouds) {
+      // Wrap on the world plane, independent of camera or player movement.
+      const dx=(cloud.planeX-WIDTH/2)/(ISLAND_TILE_WIDTH/2);
+      const dy=(cloud.planeY+LANGIT_AWAN_LIFT-islandCenterY)/(islandTileHeight/2);
+      const a=wrap((dx+dy)/2+ISLAND_GRID_SIZE/2,ISLAND_GRID_SIZE)-ISLAND_GRID_SIZE/2;
+      const b=wrap((dx-dy)/2+ISLAND_GRID_SIZE/2,ISLAND_GRID_SIZE)-ISLAND_GRID_SIZE/2;
+      const x=WIDTH/2+(a+b)*ISLAND_TILE_WIDTH/2, y=islandCenterY+(a-b)*islandTileHeight/2;
+      const w=cloud.shape[0].length*cloud.cell,h=cloud.shape.length*cloud.cell;
+      for(let row=0;row<cloud.shape.length;row++)for(let col=0;col<cloud.shape[row].length;col++)
+        if(cloud.shape[row][col]!=='0')ctx.rect(x-w/2+col*cloud.cell,y-h/2+row*cloud.cell,cloud.cell+.02,cloud.cell+.02);
+    }
+    // One union fill avoids darker overlaps; blur makes the shadow diffuse.
+    ctx.fill();ctx.restore();
   }
 
   let editingDraft = null, editingHouseDraft = null, gameplayDraft = null, gameplayRoute = null;
@@ -2119,7 +2081,7 @@
     const shadowLight = sunAltitude <= MOON_VISIBLE_BELOW_SUN && moon
       ? moon : {altitude: sunAltitude, hourAngleDegrees: sunHourAngle};
     drawCloudShadowsOnIsland(cloudStates, shadowLight.altitude, shadowLight.hourAngleDegrees,
-      cloudCover, code);
+      cloudCover, code, motionTime);
     // No surface clip here any more: the overlay carries its own, and clipping to the plate as well
     // would slice the top off a lattice that has been lifted clear of it.
     // Draw the upper frame last so it remains on top where the projections overlap.
@@ -2320,12 +2282,12 @@
       timezone: 'auto'
     });
     const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`, {
-      cache: 'no-store'
+      cache: 'no-store', signal: AbortSignal.timeout(12000)
     });
     if (!response.ok) throw new Error(`Open-Meteo HTTP ${response.status}`);
     const payload = await response.json();
     const current = payload.current;
-    if (!current) throw new Error('Open-Meteo response has no current weather');
+    if (!current || ['weather_code','cloud_cover','precipitation','rain','wind_speed_10m','wind_direction_10m'].some(key => typeof current[key] !== 'number' || !Number.isFinite(current[key]))) throw new Error('Incomplete Open-Meteo current weather');
     weather = {
       weatherCode: Number(current.weather_code ?? 3),
       cloudCover: Number(current.cloud_cover ?? 45),
@@ -2336,6 +2298,7 @@
     };
     location = target;
     lastFetch = Date.now();
+    weatherError = false;
     updateWeatherModeControls();
     window.dispatchEvent(new Event('hudweatherchange'));
     if (PREVIEW_MODES[previewModeIndex].live) rebuildParticles(weather);
@@ -2346,28 +2309,15 @@
     const gps = await getDeviceLocation();
     location = gps;
     updateWeatherModeControls();
-    try {
-      await fetchWeather(gps);
-    } catch (error) {
-      if (!gps.fallback) {
-        location = FALLBACK;
-        updateWeatherModeControls();
-        try {
-          await fetchWeather(FALLBACK);
-        } catch (fallbackError) {
-          // Keep the quiet time-based sky if weather data cannot be reached.
-        }
-      }
-    }
+    try { await fetchWeather(gps); }
+    catch (error) { weatherError=true; updateWeatherModeControls(); }
     if (lastFetch === 0 && PREVIEW_MODES[previewModeIndex].live) rebuildParticles(weather);
     window.setInterval(async () => {
       if (Date.now() - lastFetch < REFRESH_INTERVAL) return;
-      try {
-        await fetchWeather(location);
-      } catch (error) {
-        // Continue animating from the last successful weather snapshot.
-      }
+      try { await fetchWeather(location); }
+      catch (error) { weatherError=true; updateWeatherModeControls(); }
     }, REFRESH_INTERVAL);
+
   }
 
   if (islandElevationInput) {
@@ -2391,7 +2341,11 @@
   // Clock uses the real device time and active location, never the weather demo time.
   window.previewHudLocation = () => ({latitude: location.latitude, longitude: location.longitude});
   window.previewHudSunAltitude = time => sunPosition(time, location.latitude, location.longitude).altitude;
-  window.previewHudWeatherCode = () => lastFetch ? weather.weatherCode : null;
+  window.previewHudWeatherCode = () => {
+    if (!lastFetch) return null;
+    const code=weather.weatherCode;
+    return !weatherCodeIsSolidPrecipitation(code) && !weatherCodeIsStorm(code) && (weather.rain>0.05 || weather.precipitation>0.1) ? 61 : code;
+  };
   window.addEventListener('gameplaytoolchange',()=>{if(REDUCED_MOTION)drawFrame();});
   window.addEventListener('orangefruitupdate',()=>{if(REDUCED_MOTION)drawFrame();});
   window.addEventListener('worldchange', () => {
