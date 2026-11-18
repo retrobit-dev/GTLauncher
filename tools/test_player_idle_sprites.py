@@ -16,5 +16,10 @@ for side in ('front','back'):
         assert abs((feet[0]+feet[2]-reference[0]-reference[2])/2)<=3, (name,feet,reference)
         assert abs((feet[2]-feet[0])-(reference[2]-reference[0]))<=15, (name,feet,reference)
         assert im.crop((0,712,432,800)).tobytes()==standing.crop((0,712,432,800)).tobytes(),name
+        if side=='back':
+            def skin_count(rect):
+                return sum(1 for r,g,b,a in im.crop(rect).getdata() if a and r>150 and r>g*1.25 and r>b*1.25 and g>65)
+            assert skin_count((170,490,280,605))==0, 'far hand must be hidden: '+name
+            assert skin_count((310,495,395,610))>1000, 'near hand must remain visible: '+name
         assert im.getchannel('A').getextrema()==(0,255),name
 print('Exhausted pose assets: transparent, consistent anchor, browser/Android parity: OK')

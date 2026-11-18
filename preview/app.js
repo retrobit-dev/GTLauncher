@@ -1750,7 +1750,7 @@
   const characterShadowMasks=new WeakMap();
   const idleBowController=window.PlayerIdleBow.create();
   const idleBowFrames=Object.fromEntries(['front','back'].map(side=>[side,
-    ['transition','concept'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=3`;return image;})]));
+    ['transition','concept'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=4`;return image;})]));
   let idleBowAmount=0, idleBowSprite=null;
   function updateIdleBow(now) {
     const world=window.worldManager?.getActive(), character=window.worldManager?.getCharacter();

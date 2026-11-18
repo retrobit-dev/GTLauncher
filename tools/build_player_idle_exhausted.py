@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Extract the new exhausted key poses; preserve the original sprites and foot anchor."""
 from pathlib import Path
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageDraw
 ROOT=Path(__file__).resolve().parents[1]
-specs=[('front','transition'),('front','concept'),('back','transition'),('back','concept')]
+specs=[('front','transition'),('front','concept'),('back','concept'),('back','transition')]
+back_occluded=None
 for view,pose in specs:
     im=Image.open(ROOT/f'preview/assets/character-redraw/idle-exhausted-{view}-{pose}.png').convert('RGBA')
     pixels=im.load()
@@ -32,6 +33,37 @@ for view,pose in specs:
     join=Image.new('L',(432,800))
     join.putdata([round(255*min(1,max(0,(y-682)/30))) for y in range(800) for _ in range(432)])
     canvas=Image.composite(standing,canvas,join)
+    if view=='back':
+        mask=Image.new('L',canvas.size);draw=ImageDraw.Draw(mask)
+        if pose=='concept':
+            # Far hand is behind the body in this rear view. Rebuild the covered fabric
+            # using unoccluded pixels from the original player rather than painting skin.
+            draw.polygon([(126,489),(192,487),(194,526),(199,540),(213,557),(220,584),(217,612),(204,628),(147,626),(137,618),(137,574),(129,550),(125,510)],fill=255)
+            source=Image.open(ROOT/'preview/assets/main-character.png').convert('RGBA')
+            patch=Image.new('RGBA',canvas.size);patch.paste(source.crop((0,60,432,800)),(0,0))
+            canvas=Image.composite(patch,canvas,mask)
+            back_occluded=canvas.copy()
+        else:
+            # Transition uses the matching already-repaired trousers behind the arm.
+            draw.polygon([(162,493),(215,466),(232,475),(248,503),(265,518),(282,535),(292,554),(294,577),(285,599),(270,612),(217,614),(204,599),(202,565),(190,548),(178,527)],fill=255)
+            canvas=Image.composite(back_occluded,canvas,mask)
+            pixels=canvas.load()
+            def skin(v):
+                r,g,b,a=v
+                return a and r>150 and r>g*1.25 and r>b*1.25 and g>65
+            # Clean tiny skin/outline remnants along the overlap using adjacent fabric pixels.
+            for y in range(510,615):
+                for x in range(165,298):
+                    if skin(pixels[x,y]):
+                        for k in range(1,100):
+                            if x-k>=80 and not skin(pixels[x-k,y]) and pixels[x-k,y][3]>200:
+                                pixels[x,y]=pixels[x-k,y];break
+            seam=Image.new('L',canvas.size)
+            ImageDraw.Draw(seam).polygon([(280,536),(292,544),(298,558),(298,584),(291,600),(280,598)],fill=255)
+            ms=seam.load()
+            for y in range(530,605):
+                for x in range(275,300):
+                    if ms[x,y]:pixels[x,y]=pixels[x-18,y]
     name=f'player-idle-{view}-{pose}.png';dest=ROOT/'preview/assets'/name;canvas.save(dest,optimize=True)
     (ROOT/f'app/src/main/res/drawable-nodpi/{name.replace("-","_")}').write_bytes(dest.read_bytes())
     print(name,box,canvas.getbbox())
