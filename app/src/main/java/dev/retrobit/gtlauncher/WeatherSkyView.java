@@ -321,6 +321,7 @@ public final class WeatherSkyView extends View {
     private float visualColumn() { return characterStepping ? stepFromColumn+(characterColumn-stepFromColumn)*stepProgress() : characterColumn; }
     private float visualRow() { return characterStepping ? stepFromRow+(characterRow-stepFromRow)*stepProgress() : characterRow; }
     void animateCharacterStep(int fromColumn,int fromRow,int toColumn,int toRow,float scale,String facing,int index,int total,int duration) {
+        playerIdleBow.reset();idleBowAmount=0;
         setWorldCharacter(true,toColumn,toRow,scale,facing);
         stepFromColumn=fromColumn; stepFromRow=fromRow; stepIndex=index; stepCount=total;
         stepDuration=duration; stepStarted=SystemClock.uptimeMillis();
@@ -563,7 +564,7 @@ public final class WeatherSkyView extends View {
     private final CameraFollow gameplayCamera=new CameraFollow();
     private long cameraFrameTime;
     private boolean cameraMoving;
-    void setGameplayMode(boolean value) { if(gameplayMode!=value){gameplayCamera.reset();cameraFrameTime=0;} gameplayMode=value; invalidate(); }
+    void setGameplayMode(boolean value) { if(gameplayMode!=value){playerIdleBow.reset();idleBowAmount=0;gameplayCamera.reset();cameraFrameTime=0;} gameplayMode=value; invalidate(); }
     private float mapSourceX() { return gameplayMode && showCharacter
             ? (gameplayCamera.ready()?gameplayCamera.x():SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f) : SCENE_WIDTH/2f; }
     private float mapSourceY() { return gameplayMode && showCharacter
@@ -1032,9 +1033,32 @@ public final class WeatherSkyView extends View {
         paint.setColor(Color.WHITE);paint.setStrokeWidth(1.2f);paint.setStrokeJoin(Paint.Join.ROUND);paint.setStyle(Paint.Style.STROKE);
         canvas.drawPath(outline,paint);paint.setStyle(Paint.Style.FILL);
     }
+    private final PlayerIdleBow playerIdleBow = new PlayerIdleBow();
+    private Bitmap idleBowBitmap;
+    private final Paint idleBowPaint = new Paint();
+    private float idleBowAmount;
+    private void updateIdleBow(long now) {
+        boolean enabled=gameplayMode && showCharacter && !characterStepping && !portalWalkActive
+                && animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled();
+        String key=enabled ? surfaceWorldId+":"+characterColumn+":"+characterRow : null;
+        idleBowAmount=playerIdleBow.update(now,key,enabled);
+        if(idleBowAmount<=0)return;
+        Bitmap base=("N".equals(characterFacing)||"W".equals(characterFacing))?mainCharacterBack:mainCharacter;
+        if(base==null){idleBowAmount=0;return;}
+        int w=base.getWidth(),h=base.getHeight(),hip=Math.round(h*.68f);
+        if(idleBowBitmap==null||idleBowBitmap.getWidth()!=w||idleBowBitmap.getHeight()!=h)
+            idleBowBitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888);
+        idleBowBitmap.eraseColor(Color.TRANSPARENT);
+        Canvas dst=new Canvas(idleBowBitmap); idleBowPaint.setFilterBitmap(false);
+        dst.drawBitmap(base,new Rect(0,hip,w,h),new RectF(0,hip,w,h),idleBowPaint);
+        float sx=1-.20f*idleBowAmount,shift=w*.10f*idleBowAmount,sy=1-.20f*idleBowAmount;
+        Matrix m=new Matrix();m.setValues(new float[]{sx,-shift/hip,w*(1-sx)/2+shift,0,sy,hip*(1-sy),0,0,1});
+        dst.concat(m);dst.drawBitmap(base,new Rect(0,0,w,hip),new RectF(0,0,w,hip),idleBowPaint);
+    }
     private Bitmap currentCharacterSprite() {
         boolean back="N".equals(characterFacing)||"W".equals(characterFacing);
         Bitmap sprite=back?mainCharacterBack:mainCharacter;
+        if(idleBowAmount>0 && !characterStepping && idleBowBitmap!=null)return idleBowBitmap;
         if(characterStepping && animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled()) {
             int frame=(int)Math.floor((stepIndex-1+stepProgress())*12)%12;
             Bitmap current=characterRunning?(back?runBack:runFront)[frame]:(back?walkBack:walkFront)[frame];
@@ -1116,7 +1140,15 @@ public final class WeatherSkyView extends View {
         canvas.restoreToCount(save);
     }
 
+    @Override
+    protected void onWindowVisibilityChanged(int visibility) {
+        super.onWindowVisibilityChanged(visibility);
+        if(playerIdleBow!=null)playerIdleBow.reset();
+        idleBowAmount=0;
+    }
+
     public void setAnimationEnabled(boolean enabled) {
+        playerIdleBow.reset(); idleBowAmount=0;
         animationEnabled = enabled;
         if (enabled) postInvalidateOnAnimation();
     }
@@ -1127,6 +1159,7 @@ public final class WeatherSkyView extends View {
         if (getWidth() <= 0 || getHeight() <= 0) return;
 
         long frameTime=SystemClock.uptimeMillis();
+        updateIdleBow(frameTime);
         if(gameplayMode && showCharacter) {
             float tx=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f;
             float ty=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f;

@@ -1748,6 +1748,25 @@
       y:-length*(Math.sin(a)-Math.cos(a))*.30};
   }
   const characterShadowMasks=new WeakMap();
+  const idleBowController=window.PlayerIdleBow.create();
+  const idleBowCanvas=document.createElement('canvas');idleBowCanvas.dataset.playerIdleBow='true';
+  const idleBowShadowMask=document.createElement('canvas');
+  let idleBowAmount=0, idleBowSprite=null;
+  function updateIdleBow(now) {
+    const world=window.worldManager?.getActive(), character=window.worldManager?.getCharacter();
+    const enabled=!REDUCED_MOTION && cameraMode==='gameplay' && !document.hidden && !gameplayDraft && !editingDraft && world?.id!=='base' && character?.visible;
+    const key=enabled?`${world.id}:${character.column}:${character.row}`:null;
+    idleBowAmount=idleBowController.update(now,key,enabled); idleBowSprite=null;
+    if(idleBowAmount>0) {
+      const sprite=activeCharacterSprite(character);
+      if(sprite.complete && sprite.naturalWidth) {
+        if(idleBowCanvas.width!==sprite.naturalWidth || idleBowCanvas.height!==sprite.naturalHeight){idleBowCanvas.width=sprite.naturalWidth;idleBowCanvas.height=sprite.naturalHeight;}
+        window.PlayerIdleBow.draw(idleBowCanvas.getContext('2d'),sprite,idleBowCanvas.width,idleBowCanvas.height,idleBowAmount);
+        idleBowSprite=idleBowCanvas;
+      }
+    }
+  }
+  document.addEventListener('visibilitychange',()=>idleBowController.reset());
   function activeCharacterSprite(character) {
     const back=character.facing==='N'||character.facing==='W';
     let sprite=back?playerBackImage:playerImage;
@@ -1761,13 +1780,14 @@
   function drawCharacterProjectedShadow(light, cloudCover) {
     const world=window.worldManager?.getActive(), character=editingDraft || gameplayDraft || window.worldManager?.getCharacter();
     if(!world || world.id==='base' || !character?.visible || characterWaterDepth(character)>0 || !Number.isFinite(light.azimuth) || light.altitude<=0)return;
-    const sprite=activeCharacterSprite(character);
-    if(!sprite.complete || !sprite.naturalWidth)return;
-    let mask=characterShadowMasks.get(sprite);
+    const source=activeCharacterSprite(character), sprite=idleBowSprite || source;
+    if(!source.complete || !source.naturalWidth)return;
+    let mask=idleBowSprite ? null : characterShadowMasks.get(sprite);
     if(!mask) {
-      mask=document.createElement('canvas');mask.width=sprite.naturalWidth;mask.height=sprite.naturalHeight;
-      const m=mask.getContext('2d');m.drawImage(sprite,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);
-      characterShadowMasks.set(sprite,mask);
+      mask=idleBowSprite ? idleBowShadowMask : document.createElement('canvas');
+      if(mask.width!==source.naturalWidth || mask.height!==source.naturalHeight){mask.width=source.naturalWidth;mask.height=source.naturalHeight;}
+      const m=mask.getContext('2d');m.globalCompositeOperation='source-over';m.clearRect(0,0,mask.width,mask.height);m.drawImage(sprite,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);
+      if(!idleBowSprite)characterShadowMasks.set(sprite,mask);
     }
     const anchor=characterCentre(character), width=PLAYER_WIDTH*character.scale,height=PLAYER_HEIGHT*character.scale;
     const ray=characterShadowOffset(light.azimuth,light.altitude,height);
@@ -1932,7 +1952,7 @@
     // The intact sprite avoids exposed seams until independently drawn gait frames exist.
     if(depth===0) {ctx.fillStyle='rgba(12,23,30,.38)';ctx.beginPath();ctx.ellipse(x,y-.45*character.scale,4.6*character.scale,.8*character.scale,0,0,Math.PI*2);ctx.fill();}
     ctx.imageSmoothingEnabled = false;
-    const drawnSprite=activeCharacterSprite(character);
+    const drawnSprite=idleBowSprite || activeCharacterSprite(character);
     function drawSprite() {ctx.save();ctx.translate(x,y);if (mirror) ctx.scale(-1,1);ctx.drawImage(drawnSprite,-width/2,-height,width,height);ctx.restore();}
     if(depth>0) {
       // The portion below the surface is translucent against the already drawn water.
@@ -2212,6 +2232,7 @@
     const sceneWeather = getSceneWeather();
     const time = (performance.now() - animationStart) / 1000;
     const motionTime = REDUCED_MOTION ? 0 : time;
+    updateIdleBow(performance.now());
     orangeTreeMotionState={time:motionTime,speed:sceneWeather.windSpeed,direction:sceneWeather.windDirection,heading:headingDegrees};
     const sun = sunPosition(skyNow, location.latitude, location.longitude);
     const moonNow = moonPosition(skyNow, location.latitude, location.longitude,
@@ -2438,6 +2459,7 @@
     cameraPanY = HEIGHT * 0.56 - anchorY - (gameplayFollowCentre.y - anchorY) * islandZoom;
   }
   function setPreviewCameraMode(mode) {
+    idleBowController.reset(); idleBowAmount=0; idleBowSprite=null;
     if (mode !== 'gameplay' && mode !== 'editor') return;
     if (cameraMode === mode) return;
     if (mode === 'gameplay') {
@@ -2488,6 +2510,7 @@
       if (REDUCED_MOTION) drawFrame();
     },
     setGameplayDraft(draft) {
+      if(draft) { idleBowController.reset(); idleBowSprite=null; idleBowAmount=0; }
       gameplayDraft = draft;
       if (cameraMode === 'gameplay') applyGameplayCamera();
       if (REDUCED_MOTION) drawFrame();
