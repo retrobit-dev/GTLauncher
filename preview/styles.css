@@ -441,4 +441,4 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .editor-top-tools .object-rotate-controls { display:flex; flex-direction:row; gap:4px; }
 .editor-top-tools .object-rotate-controls[hidden] { display:none; }
 .editor-top-tools .object-rotate-controls button { font:700 18px system-ui; padding:0; }
-.editor-camera-controls .object-history-button { padding:0; font-size:18px; }
+.editor-camera-controls .object-history-button { padding:5px; }
