@@ -426,7 +426,7 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .editor-camera-controls button:disabled { opacity:.4; cursor:not-allowed; }
 .editor-camera-controls .visually-hidden { position:absolute; width:1px; height:1px; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
 
-/* Object selection and history sit above the tablet; rotation remains on the left rail. */
+/* Object selection and rotation sit above the tablet; history is on the left rail. */
 .editor-top-tools { top:-35px; right:0; gap:4px; }
 .editor-top-tools button { width:29px; height:29px; min-height:29px; padding:5px; border:1px solid #a6bba5; border-radius:8px; background:#f1f6ed; color:#3b5946; cursor:pointer; display:grid; place-items:center; line-height:1; }
 .editor-top-tools .object-history-button { width:29px; min-height:29px; padding:0; font-size:17px; }
@@ -437,3 +437,8 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .preview-stage[data-mode="editor"] .device-wrap { margin-top:35px; }
 #weather-refresh-button { font-size:20px; line-height:1; }
 #weather-refresh-button:disabled { opacity:.5; cursor:wait; }
+
+.editor-top-tools .object-rotate-controls { display:flex; flex-direction:row; gap:4px; }
+.editor-top-tools .object-rotate-controls[hidden] { display:none; }
+.editor-top-tools .object-rotate-controls button { font:700 18px system-ui; padding:0; }
+.editor-camera-controls .object-history-button { padding:0; font-size:18px; }
