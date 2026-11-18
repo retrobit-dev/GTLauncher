@@ -1,17 +1,18 @@
 const assert=require('node:assert/strict'),{chromium}=require('playwright-core');
 (async()=>{const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader']});try{
- for(const reduced of ['no-preference','reduce']) {
+ for(const [reduced,facing] of [['no-preference','E'],['no-preference','N'],['reduce','E']]) {
  const page=await b.newPage({viewport:{width:1000,height:700},reducedMotion:reduced}),errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.addInitScript(()=>{
-  if(!localStorage.getItem('gtlauncher.worlds.v1'))localStorage.setItem('gtlauncher.worlds.v1',JSON.stringify({activeId:'idle',worlds:[{id:'idle',name:'Idle',description:'',color:'#a8c795',gridSize:50,tiles:Array(2500).fill(1),showCharacter:true,characterColumn:24,characterRow:24,characterScale:1,characterFacing:'E',house:null}]}));
+ await page.addInitScript((facing)=>{
+  if(!localStorage.getItem('gtlauncher.worlds.v1'))localStorage.setItem('gtlauncher.worlds.v1',JSON.stringify({activeId:'idle',worlds:[{id:'idle',name:'Idle',description:'',color:'#a8c795',gridSize:50,tiles:Array(2500).fill(1),showCharacter:true,characterColumn:24,characterRow:24,characterScale:1,characterFacing:facing,house:null}]}));
   window.clockOffset=1000;performance.now=()=>window.clockOffset;
-  window.bowDraws=0;const draw=CanvasRenderingContext2D.prototype.drawImage;CanvasRenderingContext2D.prototype.drawImage=function(image,...args){if(image?.dataset?.playerIdleBow==='true')window.bowDraws++;return draw.call(this,image,...args)};
- });
+  window.bowDraws=0;window.bowSources=[];const draw=CanvasRenderingContext2D.prototype.drawImage;CanvasRenderingContext2D.prototype.drawImage=function(image,...args){if(image?.dataset?.playerIdleBow==='true'){window.bowDraws++;window.bowSources.push(image.src);}return draw.call(this,image,...args)};
+ },facing);
  await page.route('**/api.open-meteo.com/**',r=>r.abort());await page.route('**/archive-api.open-meteo.com/**',r=>r.abort());
  await page.goto(process.env.PREVIEW_URL||'http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.sceneEditing && worldManager.getActive().id==='idle');await page.waitForTimeout(1000);
  const stored=await page.evaluate(()=>localStorage.getItem('gtlauncher.worlds.v1'));assert.equal(await page.evaluate(()=>window.bowDraws),0);await page.evaluate(()=>window.clockOffset=4500);
  if(reduced==='reduce'){await page.waitForTimeout(500);assert.equal(await page.evaluate(()=>window.bowDraws),0);} else {
   await page.waitForFunction(()=>window.bowDraws>0,null,{timeout:60000});
+  assert.ok((await page.evaluate(()=>window.bowSources)).some(src=>src.includes('player-idle-'+(facing==='N'?'back':'front')+'-concept.png')), 'selected pose for the facing is rendered');
   await page.evaluate(()=>{sceneEditing.setGameplayDraft({...worldManager.getCharacter(),column:24.2,walkPhase:1});window.bowDraws=0});
   await page.waitForTimeout(800);assert.equal(await page.evaluate(()=>window.bowDraws),0,'walking stops idle pose');
   await page.evaluate(()=>{sceneEditing.setGameplayDraft(null);window.bowDraws=0});await page.waitForTimeout(500);assert.equal(await page.evaluate(()=>window.bowDraws),0,'idle delay restarts after walking');

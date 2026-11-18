@@ -1750,7 +1750,7 @@
   const characterShadowMasks=new WeakMap();
   const idleBowController=window.PlayerIdleBow.create();
   const idleBowFrames=Object.fromEntries(['front','back'].map(side=>[side,
-    ['transition','concept'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=4`;return image;})]));
+    ['transition','concept'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=5`;return image;})]));
   let idleBowAmount=0, idleBowSprite=null;
   function updateIdleBow(now) {
     const world=window.worldManager?.getActive(), character=window.worldManager?.getCharacter();
@@ -1786,14 +1786,15 @@
       const m=mask.getContext('2d');m.drawImage(sprite,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);
       characterShadowMasks.set(sprite,mask);
     }
-    const anchor=characterCentre(character), width=PLAYER_WIDTH*character.scale,height=PLAYER_HEIGHT*character.scale;
+    const anchor=characterCentre(character), baseWidth=PLAYER_WIDTH*character.scale,
+      width=baseWidth*(idleBowSprite ? idleBowSprite.naturalWidth/432 : 1),height=PLAYER_HEIGHT*character.scale;
     const ray=characterShadowOffset(light.azimuth,light.altitude,height);
     if(Math.abs(ray.y)<height*.12)ray.y=(ray.y<0?-1:1)*height*.12; // visible thickness for side-lit sprites
     const strength=clamp((light.altitude/10),0,1)*(1-.65*clamp(cloudCover/100,0,1));
     ctx.save();applyIslandTransform();clipIslandSurface();ctx.globalAlpha=.34*strength;
     // Bound the complete projected silhouette to the character dimensions. Scale around
     // its ground anchor so the feet stay attached and the light direction is preserved.
-    const shadowScale=Math.min(1,width/(width+Math.abs(ray.x)),height/Math.abs(ray.y));
+    const shadowScale=Math.min(1,baseWidth/(width+Math.abs(ray.x)),height/Math.abs(ray.y));
     ctx.translate(anchor.x,anchor.y);ctx.scale(shadowScale,shadowScale);
     ctx.transform(1,0,-ray.x/height,-ray.y/height,-width/2+ray.x,ray.y);
     if(character.facing==='W'||character.facing==='E'){ctx.translate(width,0);ctx.scale(-1,1);}
@@ -1940,7 +1941,7 @@
     const sprite = back ? playerBackImage : playerImage;
     if (!sprite.complete || !sprite.naturalWidth) return;
     const anchor = characterCentre(character), depth=characterWaterDepth(character), x=anchor.x, y=anchor.y + .5 * character.scale + depth;
-    const width = PLAYER_WIDTH * character.scale;
+    const width = PLAYER_WIDTH * character.scale * (idleBowSprite ? idleBowSprite.naturalWidth/432 : 1);
     // Breathing changes height only, never the ground anchor. With reduced motion time is zero.
     const idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5 : 0;
     const height = PLAYER_HEIGHT * character.scale + idle;
@@ -2573,7 +2574,7 @@
       if (!character.visible) return false;
       const {x, y: surfaceY} = characterCentre(character);
       const y=surfaceY+characterWaterDepth(character);
-      return Math.abs(point.x - x) <= PLAYER_WIDTH * character.scale / 2 + 4
+      return Math.abs(point.x - x) <= PLAYER_WIDTH * character.scale * (idleBowSprite ? idleBowSprite.naturalWidth/432 : 1) / 2 + 4
         && point.y >= y - PLAYER_HEIGHT * character.scale - 4.5 && point.y <= y + 4;
     },
     tileAt(point) {

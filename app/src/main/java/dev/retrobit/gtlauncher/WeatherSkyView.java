@@ -603,10 +603,11 @@ public final class WeatherSkyView extends View {
     }
     boolean characterAt(float sx,float sy) {
         if(!showCharacter || getWidth()<=0 || getHeight()<=0)return false;
-        Bitmap sprite=(characterFacing.equals("N")||characterFacing.equals("W"))?mainCharacterBack:mainCharacter;
+        Bitmap sprite=currentCharacterSprite();
         float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f;
         float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f+visualWaterDepth();
-        return opaqueAt(sprite,new RectF(x-6.75f*characterScale,y-25*characterScale,x+6.75f*characterScale,y),islandX(sx),islandY(sy),characterFacing.equals("W")||characterFacing.equals("E"));
+        float width=characterSpriteWidth(sprite);
+        return opaqueAt(sprite,new RectF(x-width/2,y-25*characterScale,x+width/2,y),islandX(sx),islandY(sy),characterFacing.equals("W")||characterFacing.equals("E"));
     }
     WorldStore.SurfaceObject sellingMarkerAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;float x=islandX(sx),y=islandY(sy);
@@ -960,12 +961,12 @@ public final class WeatherSkyView extends View {
         if (showCharacter && sprite != null && light.altitudeDegrees > 0 && visualWaterDepth() <= 0) {
             float x = SCENE_WIDTH / 2f + (visualColumn() - visualRow()) * ISLAND_TILE_WIDTH / 2f;
             float y = ISLAND_TOP + ISLAND_TILE_HEIGHT / 2f + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2f;
-            float height=25f*characterScale,width=13.5f*characterScale;
+            float height=25f*characterScale,width=characterSpriteWidth(sprite),baseWidth=13.5f*characterScale;
             float[] ray=CharacterShadow.offset(light.azimuthDegrees,light.altitudeDegrees,height);
             if(Math.abs(ray[1])<height*.12f)ray[1]=Math.copySign(height*.12f,ray[1]);
             float strength=(float)Math.min(1,light.altitudeDegrees/10)*(1-.65f*(float)Math.max(0,Math.min(1,cloudCover/100)));
             paint.setColor(Color.argb(Math.round(255*.34f*strength),12,23,40));
-            float shadowScale=CharacterShadow.fitScale(width,height,ray[0],ray[1]);
+            float shadowScale=Math.min(1f,Math.min(baseWidth/(width+Math.abs(ray[0])),height/Math.abs(ray[1])));
             Matrix transform=new Matrix();transform.setValues(new float[]{shadowScale,-shadowScale*ray[0]/height,x+shadowScale*(-width/2+ray[0]),0,-shadowScale*ray[1]/height,y+shadowScale*ray[1],0,0,1});
             int shadowSave=canvas.save();canvas.concat(transform);
             if("W".equals(characterFacing)||"E".equals(characterFacing)){canvas.translate(width,0);canvas.scale(-1,1);}
@@ -1045,6 +1046,10 @@ public final class WeatherSkyView extends View {
         String key=enabled ? surfaceWorldId+":"+characterColumn+":"+characterRow : null;
         idleBowAmount=playerIdleBow.update(now,key,enabled);
     }
+    private float characterSpriteWidth(Bitmap sprite) {
+        boolean idle=sprite!=null && (sprite==idleFrontTransition || sprite==idleFrontPose || sprite==idleBackTransition || sprite==idleBackPose);
+        return 13.5f * characterScale * (idle ? sprite.getWidth()/432f : 1f);
+    }
     private Bitmap currentCharacterSprite() {
         boolean back="N".equals(characterFacing)||"W".equals(characterFacing);
         Bitmap sprite=back?mainCharacterBack:mainCharacter;
@@ -1071,7 +1076,7 @@ public final class WeatherSkyView extends View {
                 + (visualColumn() + visualRow()) * ISLAND_TILE_HEIGHT / 2.0f;
         float depth=visualWaterDepth();
         y+=.5f*characterScale+depth;
-        float width = 13.5f * characterScale;
+        float width = characterSpriteWidth(sprite);
         paint.setStyle(Paint.Style.FILL);paint.setColor(Color.argb(97,12,23,30));
         if(depth==0f) canvas.drawOval(new RectF(x-4.6f*characterScale,y-1.25f*characterScale,x+4.6f*characterScale,y+.35f*characterScale),paint);
         float idle = characterStepping ? 0f : (Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5f : 0.0f);

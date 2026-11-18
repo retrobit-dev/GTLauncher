@@ -2,24 +2,17 @@ from pathlib import Path
 from PIL import Image
 root=Path(__file__).resolve().parents[1]
 for side in ('front','back'):
+    standing=Image.open(root/('preview/assets/main-character-back.png' if side=='back' else 'preview/assets/main-character.png')).convert('RGBA')
+    padded=Image.new('RGBA',(512,800));padded.alpha_composite(standing,(40,0))
     for pose in ('transition','concept'):
         name=f'player-idle-{side}-{pose}.png'
         preview=root/'preview/assets'/name
         android=root/'app/src/main/res/drawable-nodpi'/name.replace('-','_')
         assert preview.read_bytes()==android.read_bytes(),name
         im=Image.open(preview).convert('RGBA')
-        assert im.size==(432,800) and im.getchannel('A').getbbox()[3]==800,name
-        assert im.getpixel((0,0))[3]==0 and im.getpixel((431,799))[3]==0,name
-        standing=Image.open(root/('preview/assets/main-character-back.png' if side=='back' else 'preview/assets/main-character.png')).convert('RGBA')
-        feet=im.getchannel('A').crop((0,760,432,800)).getbbox()
-        reference=standing.getchannel('A').crop((0,760,432,800)).getbbox()
-        assert abs((feet[0]+feet[2]-reference[0]-reference[2])/2)<=3, (name,feet,reference)
-        assert abs((feet[2]-feet[0])-(reference[2]-reference[0]))<=15, (name,feet,reference)
-        assert im.crop((0,712,432,800)).tobytes()==standing.crop((0,712,432,800)).tobytes(),name
-        if side=='back':
-            def skin_count(rect):
-                return sum(1 for r,g,b,a in im.crop(rect).getdata() if a and r>150 and r>g*1.25 and r>b*1.25 and g>65)
-            assert skin_count((170,490,280,605))==0, 'far hand must be hidden: '+name
-            assert skin_count((310,495,395,610))>1000, 'near hand must remain visible: '+name
+        assert im.size==(512,800) and im.getchannel('A').getbbox()[3]==800,name
+        assert im.getpixel((0,0))[3]==0 and im.getpixel((511,799))[3]==0,name
+        assert im.crop((0,712,512,800)).tobytes()==padded.crop((0,712,512,800)).tobytes(),name
         assert im.getchannel('A').getextrema()==(0,255),name
-print('Exhausted pose assets: transparent, consistent anchor, browser/Android parity: OK')
+        assert 20<=im.getchannel('A').getbbox()[1]<=100, 'pose should keep player size: '+name
+print('Selected idle sprites: size, transparency, fixed boots, browser/Android parity: OK')

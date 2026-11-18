@@ -10,4 +10,6 @@ assert 'int idleFrame=PlayerIdleBow.frame(idleBowAmount);' in s
 for name in ['idleFrontTransition','idleFrontPose','idleBackTransition','idleBackPose']:
     assert name in s
 assert 'onWindowVisibilityChanged' in s
+assert 'sprite.getWidth()/432f' in s
+assert 'baseWidth/(width+Math.abs(ray[0]))' in s
 print('Android idle timing, movement, shadow sprite and reduced-motion wiring: static checks OK')

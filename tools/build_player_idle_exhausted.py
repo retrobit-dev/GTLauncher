@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract the new exhausted key poses; preserve the original sprites and foot anchor."""
+"""Rebuild archived pre-redesign studies only; never overwrite selected runtime sprites."""
 from pathlib import Path
 from PIL import Image, ImageOps, ImageDraw
 ROOT=Path(__file__).resolve().parents[1]
@@ -64,6 +64,6 @@ for view,pose in specs:
             for y in range(530,605):
                 for x in range(275,300):
                     if ms[x,y]:pixels[x,y]=pixels[x-18,y]
-    name=f'player-idle-{view}-{pose}.png';dest=ROOT/'preview/assets'/name;canvas.save(dest,optimize=True)
-    (ROOT/f'app/src/main/res/drawable-nodpi/{name.replace("-","_")}').write_bytes(dest.read_bytes())
+    name=f'player-idle-{view}-{pose}.png';dest=ROOT/'preview/assets/character-redraw/idle-previous'/name
+    dest.parent.mkdir(parents=True,exist_ok=True);canvas.save(dest,optimize=True)
     print(name,box,canvas.getbbox())
