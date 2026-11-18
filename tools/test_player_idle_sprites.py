@@ -15,5 +15,6 @@ for side in ('front','back'):
         reference=standing.getchannel('A').crop((0,760,432,800)).getbbox()
         assert abs((feet[0]+feet[2]-reference[0]-reference[2])/2)<=3, (name,feet,reference)
         assert abs((feet[2]-feet[0])-(reference[2]-reference[0]))<=15, (name,feet,reference)
+        assert im.crop((0,712,432,800)).tobytes()==standing.crop((0,712,432,800)).tobytes(),name
         assert im.getchannel('A').getextrema()==(0,255),name
 print('Exhausted pose assets: transparent, consistent anchor, browser/Android parity: OK')

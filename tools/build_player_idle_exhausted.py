@@ -27,6 +27,11 @@ for view,pose in specs:
     x=round((target[0]+target[2]-feet[0]-feet[2])/2)
     x=max(0,min(432-im.width,x))
     canvas.alpha_composite(im,(x,800-im.height))
+    # Reuse the standing boots verbatim, feathering only the ankle join. This keeps the
+    # foot size and placement identical through all frames without redrawing the player.
+    join=Image.new('L',(432,800))
+    join.putdata([round(255*min(1,max(0,(y-682)/30))) for y in range(800) for _ in range(432)])
+    canvas=Image.composite(standing,canvas,join)
     name=f'player-idle-{view}-{pose}.png';dest=ROOT/'preview/assets'/name;canvas.save(dest,optimize=True)
     (ROOT/f'app/src/main/res/drawable-nodpi/{name.replace("-","_")}').write_bytes(dest.read_bytes())
     print(name,box,canvas.getbbox())
