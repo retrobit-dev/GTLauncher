@@ -11,7 +11,7 @@
       const bob=hover?Math.sin(now/450)*1.2*scale:0;
       const x=anchor.x+drift*(1-seat)+(mirror?-1:1)*.5*scale*seat;
       const y=cap+(-3.5*scale+bob)*(1-seat);
-      return {x,y,seat,hovering:hover,flap:hover && Math.floor(now/300)%2===0};
+      return {x,y,seat,hovering:hover,flap:hover && Math.floor(now/120)%2===0};
     }
   };}
   return Object.freeze({create});

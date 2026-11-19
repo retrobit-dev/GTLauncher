@@ -1118,7 +1118,7 @@ public final class WeatherSkyView extends View {
         paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
         boolean flying=hovering;
         Bitmap rest=back?sparrowBack:sparrowPet, flap=back?sparrowBackFlap:sparrowFlap;
-        Bitmap bird=flying && (now/300)%2==0 && flap!=null?flap:rest;
+        Bitmap bird=flying && (now/120)%2==0 && flap!=null?flap:rest;
         if(bird!=null){int save=canvas.save();if(mirror)canvas.scale(-1,1,sparrowX,0);
             canvas.drawBitmap(bird,null,new RectF(sparrowX-size/2,py-size,sparrowX+size/2,py),paint);canvas.restoreToCount(save);}
         paint.setFilterBitmap(true);

@@ -2278,7 +2278,7 @@
     framePending = true;
     window.requestAnimationFrame(timestamp => {
       framePending = false;
-      if (timestamp - lastAnimatedFrame < 1000 / (gameplayDraft || gameplayCameraMoving || window.worldManager?.getActive()?.orangeTrees?.length ? 30 : cameraMode==='gameplay' && window.worldManager?.getCharacter()?.visible ? 20 : 8)) { scheduleFrame(); return; }
+      if (timestamp - lastAnimatedFrame < 1000 / (gameplayDraft || gameplayCameraMoving || window.worldManager?.getActive()?.orangeTrees?.length ? 30 : cameraMode==='gameplay' && window.worldManager?.getCharacter()?.visible && idleSitAmount<1 ? 30 : 8)) { scheduleFrame(); return; }
       lastAnimatedFrame = timestamp;
       drawFrame();
     });
