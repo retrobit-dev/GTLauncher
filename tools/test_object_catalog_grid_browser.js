@@ -13,6 +13,12 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
       await page.goto(process.env.PREVIEW_URL||'http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
       await page.locator('#mode-map-editor').click();await page.locator('#object-library-button').click();
       assert.equal(await page.locator('#catalog-buildings-title').innerText(),'Bangunan');
+      assert.equal(await page.locator('#catalog-tab-buildings').getAttribute('aria-selected'),'true');
+      assert.equal(await page.locator('#catalog-panel-plants').isVisible(),false);
+      assert(await page.getByRole('button',{name:'Tempatkan rumah player, tapak 3 kali 3'}).isEnabled());
+      await page.locator('#catalog-tab-buildings').focus();await page.keyboard.press('ArrowRight');
+      assert.equal(await page.locator('#catalog-tab-plants').getAttribute('aria-selected'),'true');
+      assert.equal(await page.locator('#catalog-panel-buildings').isVisible(),false);
       assert.equal(await page.locator('#catalog-trees-title').innerText(),'Tanaman dan pohon');
       assert.equal(await page.locator('#catalog-trees-title + .catalog-grid .catalog-tile').count(),10);
       const geom=await page.evaluate(()=>{
@@ -22,8 +28,6 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
       assert(geom.scroll<=geom.client,'dialog has no horizontal overflow');
       assert(Math.abs(geom.a.top-geom.b.top)<1 && geom.a.right<=geom.b.left,'trees are in the same grid row');
       assert(geom.a.width>=44 && geom.b.width>=44,'cards have touch-friendly target sizes');
-      const house=page.getByRole('button',{name:'Tempatkan rumah player, tapak 3 kali 3'});
-      assert(await house.isEnabled());
       const tree=page.getByRole('button',{name:'Tempatkan pohon cemara laut, tapak 2 kali 2'});
       await tree.focus();await page.keyboard.press('Enter');
       assert.equal(await page.locator('#object-library-dialog').evaluate(e=>e.open),false,'keyboard selection begins placement');

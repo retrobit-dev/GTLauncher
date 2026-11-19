@@ -13,6 +13,15 @@
   if (!dialog || !form || !canvas || !window.worldManager) return;
   const libraryDialog = $('object-library-dialog');
   const libraryList = $('object-library-list');
+  const catalogTabs=[$('catalog-tab-buildings'),$('catalog-tab-plants')];
+  function selectCatalogTab(index,focus=false) {
+    catalogTabs.forEach((tab,i)=>{const active=i===index;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;$(tab.getAttribute('aria-controls')).hidden=!active;});
+    if(focus)catalogTabs[index].focus();
+  }
+  catalogTabs.forEach((tab,index)=>{
+    tab.addEventListener('click',()=>selectCatalogTab(index));
+    tab.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();selectCatalogTab(event.key==='Home'?0:event.key==='End'?catalogTabs.length-1:(index+1)%catalogTabs.length,true);});
+  });
   function renderLibrary() {
     const world = window.worldManager.getActive();
     $('object-library-world').textContent = `World: ${world.name}`;

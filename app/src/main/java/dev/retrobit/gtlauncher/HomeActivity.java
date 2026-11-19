@@ -862,19 +862,27 @@ public class HomeActivity extends Activity {
             LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(16),dp(8),dp(16),dp(8));
             ScrollView scroll=new ScrollView(this);scroll.addView(panel);
             AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Katalog objek").setView(scroll).setNegativeButton("Batal",null).create();
-            TextView buildings=new TextView(this);buildings.setText("Bangunan");buildings.setTextColor(Color.rgb(52,75,59));buildings.setTypeface(null,android.graphics.Typeface.BOLD);panel.addView(buildings);
-            GridLayout buildingGrid=new GridLayout(this);buildingGrid.setColumnCount(2);panel.addView(buildingGrid);
+            LinearLayout tabs=new LinearLayout(this);tabs.setOrientation(LinearLayout.HORIZONTAL);panel.addView(tabs);
+            Button buildingsTab=new Button(this),plantsTab=new Button(this);buildingsTab.setText("Bangunan");plantsTab.setText("Tanaman dan pohon");
+            tabs.addView(buildingsTab,new LinearLayout.LayoutParams(0,dp(48),1));tabs.addView(plantsTab,new LinearLayout.LayoutParams(0,dp(48),1));
+            LinearLayout buildingPanel=new LinearLayout(this);buildingPanel.setOrientation(LinearLayout.VERTICAL);panel.addView(buildingPanel);
+            LinearLayout plantPanel=new LinearLayout(this);plantPanel.setOrientation(LinearLayout.VERTICAL);panel.addView(plantPanel);plantPanel.setVisibility(View.GONE);
+            buildingsTab.setAllCaps(false);plantsTab.setAllCaps(false);buildingsTab.setSelected(true);plantsTab.setAlpha(.55f);
+            buildingsTab.setOnClickListener(v->{buildingPanel.setVisibility(View.VISIBLE);plantPanel.setVisibility(View.GONE);buildingsTab.setSelected(true);plantsTab.setSelected(false);buildingsTab.setAlpha(1f);plantsTab.setAlpha(.55f);scroll.scrollTo(0,0);});
+            plantsTab.setOnClickListener(v->{buildingPanel.setVisibility(View.GONE);plantPanel.setVisibility(View.VISIBLE);buildingsTab.setSelected(false);plantsTab.setSelected(true);buildingsTab.setAlpha(.55f);plantsTab.setAlpha(1f);scroll.scrollTo(0,0);});
+            TextView buildings=new TextView(this);buildings.setText("Bangunan");buildings.setTextColor(Color.rgb(52,75,59));buildings.setTypeface(null,android.graphics.Typeface.BOLD);buildingPanel.addView(buildings);
+            GridLayout buildingGrid=new GridLayout(this);buildingGrid.setColumnCount(3);buildingPanel.addView(buildingGrid);
             for(final String material:new String[]{"wood","stone"}) {
                 LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundResource(R.drawable.bg_portal_button);
-                ImageView image=new ImageView(this);image.setImageResource(material.equals("wood")?R.drawable.fence_mesh_wood:R.drawable.fence_mesh_stone);image.setScaleType(ImageView.ScaleType.FIT_CENTER);card.addView(image,new LinearLayout.LayoutParams(dp(96),dp(64)));
+                ImageView image=new ImageView(this);image.setImageResource(material.equals("wood")?R.drawable.fence_mesh_wood:R.drawable.fence_mesh_stone);image.setScaleType(ImageView.ScaleType.FIT_CENTER);card.addView(image,new LinearLayout.LayoutParams(dp(56),dp(44)));
                 TextView label=new TextView(this);label.setText(material.equals("wood")?"Pagar kayu":"Pagar batu");label.setGravity(Gravity.CENTER);label.setTextColor(Color.rgb(52,75,59));card.addView(label);
-                GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(140);cell.setMargins(0,dp(8),dp(8),0);buildingGrid.addView(card,cell);
+                GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(80);cell.setMargins(0,dp(4),dp(4),0);buildingGrid.addView(card,cell);
                 card.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Pilih sisi tile").setItems(new String[]{"Utara","Timur","Selatan","Barat"},(d,which)->{
                     dialog.dismiss();applyActiveWorld();placingPlantKind="fence";placingPlantVariant=material;placingPlantSize=which;setPlacementWorld(world.id);closeDrawer();Toast.makeText(this,"Ketuk tile kering untuk menempatkan pagar.",Toast.LENGTH_LONG).show();
                 }).setNegativeButton("Batal",null).show());
             }
-            TextView group=new TextView(this);group.setText("Tanaman dan pohon");group.setTextColor(Color.rgb(52,75,59));group.setTypeface(null,android.graphics.Typeface.BOLD);panel.addView(group);
-            GridLayout grid=new GridLayout(this);grid.setColumnCount(2);panel.addView(grid);
+            TextView group=new TextView(this);group.setText("Tanaman dan pohon");group.setTextColor(Color.rgb(52,75,59));group.setTypeface(null,android.graphics.Typeface.BOLD);plantPanel.addView(group);
+            GridLayout grid=new GridLayout(this);grid.setColumnCount(3);plantPanel.addView(grid);
             String[] names={"Rumput liar","Semak","Semak","Semak melati","Semak melati","Semak murbei","Semak murbei"};
             String[] kinds={"wild-grass","bush","bush","bush","bush","bush","bush"}, variants={null,null,null,"flower","flower","berry","berry"};
             int[] sizes={1,1,2,1,2,1,2}, images={R.drawable.wild_grass_selected,R.drawable.bush_selected,R.drawable.bush_selected,R.drawable.bush_jasmine,R.drawable.bush_jasmine,R.drawable.bush_mulberry,R.drawable.bush_mulberry};
@@ -884,9 +892,9 @@ public class HomeActivity extends Activity {
                 card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundResource(R.drawable.bg_portal_button);
                 card.setFocusable(true);card.setClickable(true);card.setContentDescription("Tempatkan "+name+", tapak "+size+" kali "+size);
                 ImageView image=new ImageView(this);image.setImageResource(images[i]);image.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                card.addView(image,new LinearLayout.LayoutParams(dp(96),dp(64)));
+                card.addView(image,new LinearLayout.LayoutParams(dp(56),dp(44)));
                 TextView caption=new TextView(this);caption.setText(name+" · "+size+"×"+size);caption.setTextColor(Color.rgb(52,75,59));caption.setGravity(Gravity.CENTER);card.addView(caption);
-                GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(140);cell.height=GridLayout.LayoutParams.WRAP_CONTENT;cell.setMargins(0,dp(8),dp(8),0);grid.addView(card,cell);
+                GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(80);cell.height=GridLayout.LayoutParams.WRAP_CONTENT;cell.setMargins(0,dp(4),dp(4),0);grid.addView(card,cell);
                 card.setOnClickListener(v->{dialog.dismiss();applyActiveWorld();placingPlantKind=kind;placingPlantVariant=variant;placingPlantSize=size;setPlacementWorld(world.id);closeDrawer();
                     Toast.makeText(this,"Ketuk tile kering untuk menempatkan "+name+". Buka World untuk membatalkan.",Toast.LENGTH_LONG).show();});
             }

@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#e2e4e1">
   <title>GTLauncher — Live Weather Preview</title>
-  <link rel="stylesheet" href="./styles.css?v=live-sky-65">
+  <link rel="stylesheet" href="./styles.css?v=live-sky-66">
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./fence-edges.js?v=1" defer></script>
   <script src="./worlds.js?v=44" defer></script>
-  <script src="./object-editor.js?v=23" defer></script>
+  <script src="./object-editor.js?v=24" defer></script>
   <script src="./pond-life.js?v=1" defer></script>
   <script src="./house-geometry.js?v=2" defer></script>
   <script src="./orange-tree-motion.js?v=2" defer></script>
@@ -185,7 +185,11 @@
     <div class="world-content"><section class="object-catalog" aria-labelledby="object-catalog-title">
       <h3 id="object-catalog-title">Katalog objek</h3>
       <p class="world-help catalog-intro">Pilih objek, lalu ketuk tile pada peta untuk menempatkannya.</p>
-      <section class="catalog-group" aria-labelledby="catalog-buildings-title">
+      <div class="catalog-tabs" role="tablist" aria-label="Jenis objek">
+        <button id="catalog-tab-buildings" type="button" role="tab" aria-controls="catalog-panel-buildings" aria-selected="true" tabindex="0">Bangunan</button>
+        <button id="catalog-tab-plants" type="button" role="tab" aria-controls="catalog-panel-plants" aria-selected="false" tabindex="-1">Tanaman dan pohon</button>
+      </div>
+      <section id="catalog-panel-buildings" class="catalog-group" role="tabpanel" aria-labelledby="catalog-tab-buildings">
         <h4 id="catalog-buildings-title">Bangunan</h4>
         <div class="catalog-grid">
           <button id="catalog-place-fence-wood" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/fence-mesh-wood.png?v=1" alt=""></span><strong>Pagar kayu</strong><span class="catalog-footprint">Sisi tile</span></button>
@@ -196,7 +200,7 @@
         </div>
         <p id="catalog-house-status" class="world-help catalog-status" role="status"></p>
       </section>
-      <section class="catalog-group" aria-labelledby="catalog-trees-title">
+      <section id="catalog-panel-plants" class="catalog-group" role="tabpanel" aria-labelledby="catalog-tab-plants" hidden>
         <h4 id="catalog-trees-title">Tanaman dan pohon</h4>
         <div class="catalog-grid">
           <button id="catalog-place-orange" type="button" class="catalog-tile" aria-label="Tempatkan pohon jeruk, tapak 2 kali 2">
