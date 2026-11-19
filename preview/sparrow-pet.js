@@ -14,7 +14,8 @@
       else {const f=1-Math.exp(-dt*5);x+=(tx-x)*f;y+=(ty-y)*f;}
       key=world;last=now;
       const hop=!reduced && moving && seat<.1 ? Math.abs(Math.sin(now/180))*.65*scale : 0;
-      return {x,y:y-hop,seat};
+      const flying=!reduced && (moving || Math.hypot(tx-x,ty-y)>.7*scale);
+      return {x,y:y-hop,seat,flap:flying && Math.floor(now/160)%2===0};
     }
   };}
   return Object.freeze({create});

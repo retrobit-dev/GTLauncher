@@ -3,5 +3,6 @@ let p=pet.update(0,'world',a,1,0,false,false,false,false);assert.equal(p.x,93);a
 p=pet.update(100,'world',{x:110,y:100},1,0,false,false,true,false);assert.ok(p.x>93&&p.x<103,'smoothly follows');
 p=pet.update(200,'other',a,1,1,false,false,false,false);assert.equal(p.x,100.5);assert.ok(p.y<80,'perches on cap');
 p=pet.update(300,'other',a,1,1,true,true,false,true);assert.equal(p.x,99.5);assert.ok(p.y<80,'reduced motion places it without animation');
+pet.reset();pet.update(1000,'world',a,1,0,false,false,false,false);p=pet.update(1120,'world',a,1,0,false,false,true,false);assert.equal(p.flap,false);p=pet.update(1280,'world',a,1,0,false,false,true,false);assert.equal(p.flap,true);p=pet.update(1440,'world',a,1,0,false,false,true,true);assert.equal(p.flap,false,'reduced motion disables wing animation');
 pet.reset();p=pet.update(400,'other',a,1,0,false,false,false,false);assert.equal(p.x,93);
 console.log('Sparrow follow, perch, world reset and reduced motion: OK');

@@ -268,7 +268,7 @@ public final class WeatherSkyView extends View {
     private boolean animationEnabled = true;
     private double plantMotionSeconds;
     private Integer worldIslandTint;
-    private Bitmap sparrowPet, mainCharacter, mainCharacterBack, idleFrontTransition, idleFrontPose, idleBackTransition, idleBackPose, idleFrontSitting, idleBackSitting, idleFrontSitLowering, idleBackSitLowering, idleFrontSitNearly, idleBackSitNearly, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
+    private Bitmap sparrowPet, sparrowFlap, mainCharacter, mainCharacterBack, idleFrontTransition, idleFrontPose, idleBackTransition, idleBackPose, idleFrontSitting, idleBackSitting, idleFrontSitLowering, idleBackSitLowering, idleFrontSitNearly, idleBackSitNearly, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
     private final Bitmap[] walkFront=new Bitmap[12], walkBack=new Bitmap[12], runFront=new Bitmap[12], runBack=new Bitmap[12];
     private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron;
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
@@ -363,6 +363,7 @@ public final class WeatherSkyView extends View {
         renderBitmapPaint.setDither(false);
         grassDetail = BitmapFactory.decodeResource(getResources(), R.drawable.island_grass_detail);
         sparrowPet = BitmapFactory.decodeResource(getResources(), R.drawable.pet_sparrow);
+        sparrowFlap = BitmapFactory.decodeResource(getResources(), R.drawable.pet_sparrow_flap);
         mainCharacter = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_uhd_front);
         mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_uhd_back);
         idleFrontTransition=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_front_transition);
@@ -1119,7 +1120,9 @@ public final class WeatherSkyView extends View {
         float py=sparrowY-hop,size=4.4f*characterScale;
         if(seat<.5f && depth==0){paint.setColor(0x380c171e);canvas.drawOval(new RectF(sparrowX-.9f*characterScale,py-.3f*characterScale,sparrowX+.9f*characterScale,py+.3f*characterScale),paint);}
         paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
-        canvas.drawBitmap(sparrowPet,null,new RectF(sparrowX-size/2,py-size,sparrowX+size/2,py),paint);
+        boolean flying=!reduced && (characterStepping || Math.hypot(tx-sparrowX,ty-sparrowY)>.7f*characterScale);
+        Bitmap bird=flying && (now/160)%2==0 && sparrowFlap!=null?sparrowFlap:sparrowPet;
+        canvas.drawBitmap(bird,null,new RectF(sparrowX-size/2,py-size,sparrowX+size/2,py),paint);
         paint.setFilterBitmap(true);
     }
 

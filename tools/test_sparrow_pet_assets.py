@@ -5,7 +5,11 @@ preview=root/'preview/assets/pet-sparrow.png'
 assert preview.read_bytes()==(root/'app/src/main/res/drawable-nodpi/pet_sparrow.png').read_bytes()
 im=Image.open(preview).convert('RGBA')
 assert max(im.size)==192 and im.getpixel((0,0))[3]==0 and im.getchannel('A').getextrema()==(0,255)
+flap=root/'preview/assets/pet-sparrow-flap.png'
+assert flap.read_bytes()==(root/'app/src/main/res/drawable-nodpi/pet_sparrow_flap.png').read_bytes()
+f=Image.open(flap).convert('RGBA')
+assert f.size==im.size and f.crop((0,0,75,192)).tobytes()==im.crop((0,0,75,192)).tobytes() and f.tobytes()!=im.tobytes()
 s=(root/'app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java').read_text()
-for text in ['R.drawable.pet_sparrow','drawSparrowPet(canvas,motionTime','seatWeight,mirror,back,depth','!android.animation.ValueAnimator.areAnimatorsEnabled()']:
+for text in ['R.drawable.pet_sparrow','R.drawable.pet_sparrow_flap','drawSparrowPet(canvas,motionTime','seatWeight,mirror,back,depth','!android.animation.ValueAnimator.areAnimatorsEnabled()']:
     assert text in s
 print('Sparrow sprite parity and Android wiring: OK (static)')
