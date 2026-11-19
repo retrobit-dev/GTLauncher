@@ -460,3 +460,6 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .catalog-placed { margin-top:20px; }
 .catalog-placed .world-list { margin-top:9px; }
 @media (max-width:420px) { .catalog-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+.editor-top-tools #object-placement-cancel[hidden] { display:none; }
+.editor-top-tools #object-placement-cancel { font:700 20px system-ui; padding:0; }

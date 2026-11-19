@@ -335,6 +335,11 @@ public class PortalImportTest {
         assertTrue(store.deleteSelectedPlant("home",w.surfaces.get(0)));assertEquals(1,store.activeWorld().surfaces.size());
         assertTrue(store.deleteSelectedPlant("home",store.activeWorld().surfaces.get(0)));assertEquals(0,store.activeWorld().surfaces.size());
     }
+    @Test public void fenceShadowStaysBoundedAndFollowsLight() {
+        float[] right=FenceShadow.offset(0,0,16,8,-500,200,175),left=FenceShadow.offset(0,0,16,8,500,200,175);
+        assertTrue(right[0]>0);assertTrue(left[0]<0);
+        assertTrue(Math.abs(right[0])<=4.8f);assertTrue(Math.abs(right[1])+8<=25);
+    }
     @Test public void fenceBoundaryBlocksBothDirectionsOnly() {
         assertTrue(FenceEdges.blocks(4,5,"E",4,5,5,5));
         assertTrue(FenceEdges.blocks(5,5,"W",5,5,4,5));

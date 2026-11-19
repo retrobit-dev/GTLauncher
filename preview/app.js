@@ -56,7 +56,7 @@
   const wildGrassImage=new Image();wildGrassImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};wildGrassImage.src='./assets/wild-grass-selected.png?v=3';
   const bushImage=new Image();bushImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};bushImage.src='./assets/bush-selected.png?v=1';
   const bushFlowerImage=new Image(),bushBerryImage=new Image();for(const [image,path] of [[bushFlowerImage,'jasmine'],[bushBerryImage,'mulberry']]){image.onload=()=>{if(REDUCED_MOTION)drawFrame();};image.src=`./assets/bush-${path}.png?v=1`;}
-  const fenceImages=Object.fromEntries(['wood','stone'].map(material=>{const image=new Image();image.onload=()=>{if(REDUCED_MOTION)drawFrame();};image.src=`./assets/fence-approved-${material}.png`;return [material,image];}));
+  const fenceImages=Object.fromEntries(['wood','stone'].map(material=>{const image=new Image();image.onload=()=>{if(REDUCED_MOTION)drawFrame();};image.src=`./assets/fence-harmonized-${material}.png`;return [material,image];}));
   const treeSprite=tree=>tree.kind==='bush'?(window.BushHarvest?.ready(window.worldManager?.getActive(),tree)?(tree.variant==='flower'?bushFlowerImage:bushBerryImage):bushImage):tree.kind==='wild-grass'?wildGrassImage:tree.kind==='conifer'?coniferTreeImage:orangeTreeImage;
   const treeSize=tree=>tree.size===1?1:2;
   const treeVisualScale=tree=>tree.kind==='bush'?14.5/60*treeSize(tree):tree.kind==='wild-grass'?14/60:treeSize(tree)/2;
@@ -1844,8 +1844,8 @@
       shadows.push({anchor: {x: centre.x, y: bottom},
         width: 84 * house.scale, depth: islandTileHeight * 3 * house.scale, height: 85 * house.scale});
     }
-    const trees=world.orangeTrees||[];
-    if (!shadows.length && !trees.length) return;
+    const trees=world.orangeTrees||[], fences=world.fences||[];
+    if (!shadows.length && !trees.length && !fences.length) return;
     const lightPoint = sunPlanePosition(light.hourAngleDegrees);
     ctx.save(); applyIslandTransform(); clipIslandSurface();
     // Object shadows remain legible even under overcast conditions or virtual moonlight.
@@ -1857,6 +1857,11 @@
       ctx.beginPath(); ctx.moveTo(points[0][0], points[0][1]);
       for (const [x, y] of points.slice(1)) ctx.lineTo(x, y);
       ctx.closePath(); ctx.fill();
+    }
+    // Fence shadows share the exact endpoints of the visible segment and stay on top faces.
+    for(const fence of fences) {
+      const {a,b}=fenceGeometry(fence),d=window.FenceShadow.offset(a,b,lightPoint,LANGIT_MATAHARI_LIFT);
+      ctx.fillStyle=`rgba(12,23,40,${opacity*.55})`;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(b.x+d.x,b.y+d.y);ctx.lineTo(a.x+d.x,a.y+d.y);ctx.closePath();ctx.fill();
     }
     // The projected alpha preserves branches and canopy, including mirroring and wind sway.
     if(trees.length && window.TreeShadow) {

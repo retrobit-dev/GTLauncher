@@ -39,5 +39,14 @@ for name,(source,poly) in shapes.items():
                 if g>r*.9 and b<g*.75 and r<190:m[x,y]=0
     im.putalpha(mask);box=im.getbbox();im=im.crop(box);im.thumbnail((480,390),Image.Resampling.LANCZOS)
     target=Image.new('RGBA',(512,400));target.alpha_composite(im,((512-im.width)//2,400-im.height))
-    path=ROOT/'preview/assets'/f'fence-approved-{name}.png';target.save(path,optimize=True)
-    (ROOT/'app/src/main/res/drawable-nodpi'/f'fence_approved_{name}.png').write_bytes(path.read_bytes())
+    # Subdue the original saturated orange / lavender towards the house and stone palette.
+    px=target.load()
+    for y in range(target.height):
+        for x in range(target.width):
+            r,g,b,a=px[x,y]
+            if not a: continue
+            if name=='wood': r,g,b=round(.86*r+.06*g),round(.90*g+.08*b),round(.70*b+.31*g)
+            else: r,g,b=round(.65*r+.35*g),round(.70*g+.30*r),round(.25*b+.65*g+.10*r)
+            px[x,y]=(min(255,r),min(255,g),min(255,b),a)
+    path=ROOT/'preview/assets'/f'fence-harmonized-{name}.png';target.save(path,optimize=True)
+    (ROOT/'app/src/main/res/drawable-nodpi'/f'fence_harmonized_{name}.png').write_bytes(path.read_bytes())

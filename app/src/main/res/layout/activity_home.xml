@@ -34,6 +34,8 @@
         </LinearLayout>
     </LinearLayout>
 
+    <TextView android:id="@+id/placement_cancel" android:layout_width="wrap_content" android:layout_height="32dp" android:layout_gravity="top|center_horizontal" android:layout_marginTop="70dp" android:paddingStart="12dp" android:paddingEnd="12dp" android:gravity="center" android:background="@drawable/bg_portal_button" android:textColor="#344b3b" android:textSize="11sp" android:textStyle="bold" android:visibility="gone" android:clickable="true" android:focusable="true" android:contentDescription="Batalkan penempatan objek" />
+
     <!-- Tools are visual placeholders until their gameplay actions are restored. -->
     <HorizontalScrollView android:id="@+id/home_dock_scroll" android:alpha="0.85" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="12dp" android:scrollbars="none">
       <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical">

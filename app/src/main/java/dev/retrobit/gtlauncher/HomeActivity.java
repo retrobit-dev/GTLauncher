@@ -323,6 +323,7 @@ public class HomeActivity extends Activity {
         defaultHomeButton.setOnClickListener(view -> requestDefaultLauncher());
         findViewById(R.id.location_permission_button).setOnClickListener(view -> showLocationPermissionExplanation());
         findViewById(R.id.world_button).setOnClickListener(view -> showWorldDialog());
+        findViewById(R.id.placement_cancel).setOnClickListener(view->{setPlacementWorld(null);Toast.makeText(this,"Penempatan objek dibatalkan.",Toast.LENGTH_SHORT).show();});
 
         searchView.addTextChangedListener(new TextWatcher() {
             @Override
@@ -381,7 +382,7 @@ public class HomeActivity extends Activity {
     @Override
     protected void onPause() {
         stopBatteryUpdates();
-        placingWildGrassWorld=null;
+        setPlacementWorld(null);
         portalWalkGeneration++;
         if (skyView != null) { skyView.setPortalWalkActive(false); applyActiveWorld(); }
         mainHandler.removeCallbacks(dayNightRefresh);
@@ -491,7 +492,17 @@ public class HomeActivity extends Activity {
         }
     }
     private int[] gameplayTools() {return new int[]{R.id.dock_tool_hand,R.id.dock_tool_hoe,R.id.dock_tool_shovel,R.id.dock_tool_water,R.id.dock_tool_sickle,R.id.dock_tool_axe,R.id.dock_tool_pickaxe,R.id.dock_tool_fishing};}
+    private void setPlacementWorld(String worldId) {
+        placingWildGrassWorld=worldId;
+        TextView cancel=findViewById(R.id.placement_cancel);
+        if(cancel==null)return;
+        if(worldId==null){cancel.setVisibility(View.GONE);return;}
+        String name="fence".equals(placingPlantKind)?("wood".equals(placingPlantVariant)?"Pagar kayu":"Pagar batu"):
+                "bush".equals(placingPlantKind)?"Semak":"Rumput liar";
+        cancel.setText(name+" · Batal");cancel.setVisibility(View.VISIBLE);
+    }
     private void selectTool(int tool) {
+        setPlacementWorld(null);
         movingObjectWorld=null;movingHouse=null;movingSurface=null;
         selectedTool=selectedTool==tool ? -1 : tool;
         for(int id:gameplayTools())findViewById(id).setSelected(id==selectedTool);
@@ -781,7 +792,7 @@ public class HomeActivity extends Activity {
     }
 
     private void showWorldDialog() {
-        placingWildGrassWorld=null;
+        setPlacementWorld(null);
         final List<WorldStore.World> worlds;
         try {
             worlds = worldStore.list();
@@ -829,11 +840,11 @@ public class HomeActivity extends Activity {
             GridLayout buildingGrid=new GridLayout(this);buildingGrid.setColumnCount(2);panel.addView(buildingGrid);
             for(final String material:new String[]{"wood","stone"}) {
                 LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundResource(R.drawable.bg_portal_button);
-                ImageView image=new ImageView(this);image.setImageResource(material.equals("wood")?R.drawable.fence_approved_wood:R.drawable.fence_approved_stone);image.setScaleType(ImageView.ScaleType.FIT_CENTER);card.addView(image,new LinearLayout.LayoutParams(dp(96),dp(64)));
+                ImageView image=new ImageView(this);image.setImageResource(material.equals("wood")?R.drawable.fence_harmonized_wood:R.drawable.fence_harmonized_stone);image.setScaleType(ImageView.ScaleType.FIT_CENTER);card.addView(image,new LinearLayout.LayoutParams(dp(96),dp(64)));
                 TextView label=new TextView(this);label.setText(material.equals("wood")?"Pagar kayu":"Pagar batu");label.setGravity(Gravity.CENTER);label.setTextColor(Color.rgb(52,75,59));card.addView(label);
                 GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(140);cell.setMargins(0,dp(8),dp(8),0);buildingGrid.addView(card,cell);
                 card.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Pilih sisi tile").setItems(new String[]{"Utara","Timur","Selatan","Barat"},(d,which)->{
-                    dialog.dismiss();applyActiveWorld();placingPlantKind="fence";placingPlantVariant=material;placingPlantSize=which;placingWildGrassWorld=world.id;closeDrawer();Toast.makeText(this,"Ketuk tile kering untuk menempatkan pagar.",Toast.LENGTH_LONG).show();
+                    dialog.dismiss();applyActiveWorld();placingPlantKind="fence";placingPlantVariant=material;placingPlantSize=which;setPlacementWorld(world.id);closeDrawer();Toast.makeText(this,"Ketuk tile kering untuk menempatkan pagar.",Toast.LENGTH_LONG).show();
                 }).setNegativeButton("Batal",null).show());
             }
             TextView group=new TextView(this);group.setText("Tanaman dan pohon");group.setTextColor(Color.rgb(52,75,59));group.setTypeface(null,android.graphics.Typeface.BOLD);panel.addView(group);
@@ -850,7 +861,7 @@ public class HomeActivity extends Activity {
                 card.addView(image,new LinearLayout.LayoutParams(dp(96),dp(64)));
                 TextView caption=new TextView(this);caption.setText(name+" · "+size+"×"+size);caption.setTextColor(Color.rgb(52,75,59));caption.setGravity(Gravity.CENTER);card.addView(caption);
                 GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(140);cell.height=GridLayout.LayoutParams.WRAP_CONTENT;cell.setMargins(0,dp(8),dp(8),0);grid.addView(card,cell);
-                card.setOnClickListener(v->{dialog.dismiss();applyActiveWorld();placingPlantKind=kind;placingPlantVariant=variant;placingPlantSize=size;placingWildGrassWorld=world.id;closeDrawer();
+                card.setOnClickListener(v->{dialog.dismiss();applyActiveWorld();placingPlantKind=kind;placingPlantVariant=variant;placingPlantSize=size;setPlacementWorld(world.id);closeDrawer();
                     Toast.makeText(this,"Ketuk tile kering untuk menempatkan "+name+". Buka World untuk membatalkan.",Toast.LENGTH_LONG).show();});
             }
             dialog.show();
@@ -861,16 +872,16 @@ public class HomeActivity extends Activity {
     private void placeWildGrassAt(float x,float y) {
         String id=placingWildGrassWorld;
         if(id==null)return;
-        if(!id.equals(worldStore.activeId())) {placingWildGrassWorld=null;return;}
+        if(!id.equals(worldStore.activeId())) {setPlacementWorld(null);return;}
         PortalTravel.Tile tile=skyView.groundTileAt(x,y);
         try {
             if(tile==null || !("fence".equals(placingPlantKind)?worldStore.placePreviewFence(id,tile.column,tile.row,new String[]{"N","E","S","W"}[placingPlantSize],placingPlantVariant):worldStore.placePreviewPlant(id,tile.column,tile.row,placingPlantKind,placingPlantSize,placingPlantVariant))) {
                 Toast.makeText(this,"Pilih tile kering yang kosong, tanpa rumah atau player.",Toast.LENGTH_LONG).show();return;
             }
-            placingWildGrassWorld=null;applyActiveWorld();
-            Toast.makeText(this,("fence".equals(placingPlantKind)?"Pagar":"bush".equals(placingPlantKind)?"Semak":"Rumput liar")+" ditempatkan.",Toast.LENGTH_SHORT).show();
+            applyActiveWorld();
+            Toast.makeText(this,("fence".equals(placingPlantKind)?"Pagar":"bush".equals(placingPlantKind)?"Semak":"Rumput liar")+" ditempatkan. Ketuk tile lain; pilih alat atau World untuk berhenti.",Toast.LENGTH_SHORT).show();
         } catch(JSONException | IllegalArgumentException error) {
-            placingWildGrassWorld=null;
+            setPlacementWorld(null);
             Toast.makeText(this,"Objek tidak tersimpan; data world tidak diubah.",Toast.LENGTH_LONG).show();
         }
     }
@@ -1230,6 +1241,7 @@ public class HomeActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if(placingWildGrassWorld!=null){setPlacementWorld(null);Toast.makeText(this,"Penempatan objek dibatalkan.",Toast.LENGTH_SHORT).show();return;}
         if (drawerScreen != null && drawerScreen.getVisibility() == View.VISIBLE) {
             closeDrawer();
         }

@@ -397,7 +397,7 @@ public final class WeatherSkyView extends View {
         houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_back);
         houseWideMirrorImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_mirror);houseWideBackMirrorImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_back_mirror);
         portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation_red);
-        fenceApprovedWood=BitmapFactory.decodeResource(getResources(),R.drawable.fence_approved_wood);fenceApprovedStone=BitmapFactory.decodeResource(getResources(),R.drawable.fence_approved_stone);
+        fenceApprovedWood=BitmapFactory.decodeResource(getResources(),R.drawable.fence_harmonized_wood);fenceApprovedStone=BitmapFactory.decodeResource(getResources(),R.drawable.fence_harmonized_stone);
         fenceFarm=BitmapFactory.decodeResource(getResources(),R.drawable.fence_farm);fenceSlat=BitmapFactory.decodeResource(getResources(),R.drawable.fence_slat);fenceStone=BitmapFactory.decodeResource(getResources(),R.drawable.fence_stone);fenceIron=BitmapFactory.decodeResource(getResources(),R.drawable.fence_iron);
         flowerSprites.put("rose",BitmapFactory.decodeResource(getResources(),R.drawable.petals_rose));
         flowerSprites.put("tulip",BitmapFactory.decodeResource(getResources(),R.drawable.petals_tulip));
@@ -1077,6 +1077,16 @@ public final class WeatherSkyView extends View {
             int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-Math.max(0,house.opacity))/100f));
             drawObjectSilhouette(canvas,image,x,wide?y+ISLAND_TILE_HEIGHT*1.25f*scale:houseBottom(house,new HouseGeometry(ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,scale)),70*scale*(wide?7f/6:1),(wide?100:74)*scale,lightPoint,"N".equals(house.facing)||"E".equals(house.facing));
             paint.setAlpha(originalAlpha);
+        }
+        java.util.List<FenceGeometry.Edge> shadowEdges=new java.util.ArrayList<>();
+        for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("fence"))shadowEdges.add(new FenceGeometry.Edge(o.column,o.row,o.edge));
+        for(PortalTravel.Portal portal:worldPortals)shadowEdges.add(new FenceGeometry.Edge(portal.tile.column,portal.tile.row,portal.edge));
+        for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("fence")) {
+            float x=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
+            FenceGeometry.Bounds g=FenceGeometry.bounds(new FenceGeometry.Edge(o.column,o.row,o.edge),shadowEdges,x,y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT);
+            float[] d=FenceShadow.offset(g.firstX,g.firstY,g.secondX,g.secondY,lightPoint[0],lightPoint[1],LANGIT_MATAHARI_LIFT);
+            Path shade=new Path();shade.moveTo(g.firstX,g.firstY);shade.lineTo(g.secondX,g.secondY);shade.lineTo(g.secondX+d[0],g.secondY+d[1]);shade.lineTo(g.firstX+d[0],g.firstY+d[1]);shade.close();
+            int alpha=paint.getAlpha();paint.setAlpha(Math.round(alpha*.55f*(100-Math.max(0,o.opacity))/100f));canvas.drawPath(shade,paint);paint.setAlpha(alpha);
         }
         // Project the current orange-tree bitmap's alpha, including its wind deformation.
         for(WorldStore.SurfaceObject tree:worldSurfaces) if(tree.type.equals("tree") && (tree.material.equals("orange") || tree.material.startsWith("conifer"))) {

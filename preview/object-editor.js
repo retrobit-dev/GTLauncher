@@ -50,7 +50,7 @@
     const row = document.createElement('option'); row.value = i; row.textContent = String(i + 1); rows.append(row);
   }
   let editing = false, selected = false, selectedType = 'character', worldId = null, draft = null;
-  let selectedTreeIndex=null, selectedFenceIndex=null, placingFence=null, selectingObject=false, movingObject=false, objectPointer=null;
+  let selectedTreeIndex=null, selectedFenceIndex=null, placingFence=null, placingFenceEdge='S', selectingObject=false, movingObject=false, objectPointer=null;
   let dragOffset = null, pinch = null, suppressDrag = false;
   const pointers = new Map();
   // History is local to a world and this browser tab; reopening Edit keeps it until reload.
@@ -63,45 +63,45 @@
       const button=$(id); if(button?.getAttribute('aria-pressed')==='true') button.click();
     }
     selected=false; selectingObject=false; movingObject=false; draft=null; refresh(); syncControls();
-    placingOrange=false; placingFence=null; placingHouse=true; placementWorld=window.worldManager.getActive().id; libraryDialog.close();
+    placingOrange=false; placingFence=null; placingHouse=true; placementWorld=window.worldManager.getActive().id; libraryDialog.close();syncControls();
     tell('EDITING · Ketuk tile untuk sudut pertama rumah player 3×3. Escape untuk batal.');
   });
   $('catalog-place-orange').addEventListener('click',()=>{
     if($('catalog-place-orange').disabled || !editing) return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange=true;placementWorld=window.worldManager.getActive().id;libraryDialog.close();
+    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange=true;placementWorld=window.worldManager.getActive().id;libraryDialog.close();syncControls();
     tell('EDITING · Ketuk sudut pertama pohon jeruk 2×2. Escape untuk batal.');
   });
   $('catalog-place-conifer').addEventListener('click',()=>{
     if($('catalog-place-conifer').disabled || !editing)return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange='conifer';placementWorld=window.worldManager.getActive().id;libraryDialog.close();
+    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange='conifer';placementWorld=window.worldManager.getActive().id;libraryDialog.close();syncControls();
     tell('EDITING · Ketuk sudut pertama pohon cemara laut 2×2. Escape untuk batal.');
   });
   $('catalog-place-conifer-small').addEventListener('click',()=>{
     if($('catalog-place-conifer-small').disabled || !editing)return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange='conifer-small';placementWorld=window.worldManager.getActive().id;libraryDialog.close();
+    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange='conifer-small';placementWorld=window.worldManager.getActive().id;libraryDialog.close();syncControls();
     tell('EDITING · Ketuk tile pohon cemara laut 1×1. Escape untuk batal.');
   });
   $('catalog-place-wild-grass').addEventListener('click',()=>{
     if($('catalog-place-wild-grass').disabled || !editing)return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange='wild-grass';placementWorld=window.worldManager.getActive().id;libraryDialog.close();
+    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange='wild-grass';placementWorld=window.worldManager.getActive().id;libraryDialog.close();syncControls();
     tell('EDITING · Ketuk tile rumput liar 1×1. Escape untuk batal.');
   });
   for(const [suffix,variant,size] of [['',null,1],['-large',null,2],['-flower','flower',1],['-flower-large','flower',2],['-berry','berry',1],['-berry-large','berry',2]]) {
     $('catalog-place-bush'+suffix).addEventListener('click',()=>{
       if($('catalog-place-bush'+suffix).disabled || !editing)return;
       for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-      selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange={kind:'bush',size,...(variant?{variant}:{})};placementWorld=window.worldManager.getActive().id;libraryDialog.close();
+      selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange={kind:'bush',size,...(variant?{variant}:{})};placementWorld=window.worldManager.getActive().id;libraryDialog.close();syncControls();
       tell(`EDITING · Ketuk tile sudut pertama semak ${size}×${size}. Escape untuk batal.`);
     });
   }
   for(const material of ['wood','stone']) $('catalog-place-fence-'+material).addEventListener('click',()=>{
     if(!editing || $('catalog-place-fence-'+material).disabled)return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-    selected=false;selectingObject=false;movingObject=false;draft=null;placingHouse=false;placingFence=null;placingOrange=false;placingFence=material;placementWorld=window.worldManager.getActive().id;refresh();syncControls();libraryDialog.close();
+    selected=false;selectingObject=false;movingObject=false;draft=null;placingHouse=false;placingFence=null;placingOrange=false;placingFence=material;placingFenceEdge='S';placementWorld=window.worldManager.getActive().id;refresh();syncControls();libraryDialog.close();
     tell('EDITING · Ketuk tile untuk pagar di sisi selatan, lalu pilih Putar untuk mengubah sisi.');
   });
   canvas.addEventListener('pointerdown', event => {
@@ -110,8 +110,8 @@
     const tile=scene()?.tileAt(scene().toLocal(event.clientX,event.clientY));
     if(placingFence) {
       const before=window.worldManager.getActive().fences||[];
-      if(!tile || !saveFences(before,[...before,{...tile,edge:'S',material:placingFence}])) {tell('EDITING · Pilih tile kering dengan sisi yang belum berpagar.');return;}
-      selectedType='fence';selectedFenceIndex=before.length;selected=true;placingFence=null;placementWorld=null;refresh();syncControls();tell('EDITING · Pagar ditempatkan; putar untuk memilih sisi.');return;
+      if(!tile || !saveFences(before,[...before,{...tile,edge:placingFenceEdge,material:placingFence}])) {tell('EDITING · Pilih tile kering dengan sisi yang belum berpagar.');return;}
+      selectedType='fence';selectedFenceIndex=before.length;selected=true;refresh();syncControls();tell('EDITING · Pagar ditempatkan. Ketuk tile lain atau Batal penempatan.');return;
     }
     if(placingOrange) {
       const before=window.worldManager.getActive().orangeTrees||[];
@@ -119,8 +119,8 @@
       try {if(tile)saved=window.worldManager.replaceOrangeTrees(placementWorld,before,[...before,typeof placingOrange==='object'?{...tile,...placingOrange,...(placingOrange.variant?{plantId:(globalThis.crypto.randomUUID?.() || Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('')),plantedAt:Date.now()}:{})}:placingOrange==='wild-grass'?{...tile,kind:'wild-grass',size:1}:placingOrange==='conifer-small'?{...tile,kind:'conifer',size:1}:placingOrange==='conifer'?{...tile,kind:'conifer'}:tile]);} finally {applyingHistory=false;}
       if(!saved) {tell(`EDITING · Pilih area ${typeof placingOrange==='object'?`${placingOrange.size}×${placingOrange.size}`:placingOrange==='conifer-small' || placingOrange==='wild-grass'?'1×1':'2×2'} rata tanpa air, lubang, rumah, pohon, atau player.`);return;}
       const treeLabel=typeof placingOrange==='object'?'Semak':placingOrange==='wild-grass'?'Rumput liar':placingOrange==='conifer' || placingOrange==='conifer-small'?'Pohon cemara laut':'Pohon jeruk';
-      placingOrange=false;placementWorld=null;history.undo.push({type:'orangeTrees',value:before.map(t=>({...t}))});
-      if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();syncControls();tell(`EDITING · ${treeLabel} ditempatkan.`);return;
+      history.undo.push({type:'orangeTrees',value:before.map(t=>({...t}))});
+      if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();syncControls();tell(`EDITING · ${treeLabel} ditempatkan. Ketuk tile lain atau Batal penempatan.`);return;
     }
     const house=tile && {column:tile.column,row:tile.row,scale:1,facing:'S',visible:true};
     applyingHistory=true;
@@ -256,19 +256,20 @@
     undoButton.disabled = !editing || !history || !history.undo.length || pointers.size > 0 || Boolean(pendingTerrain);
     redoButton.disabled = !editing || !history || !history.redo.length || pointers.size > 0 || Boolean(pendingTerrain);
     rotateControls.hidden = !editing;
-    rotateLeft.disabled = !selected || pointers.size > 0;
-    rotateRight.disabled = !selected || pointers.size > 0;
+    rotateLeft.disabled = (!selected && !placingFence) || pointers.size > 0;
+    rotateRight.disabled = (!selected && !placingFence) || pointers.size > 0;
+    $('object-placement-cancel').hidden=!editing || !(placingHouse || placingOrange || placingFence);
     $('object-tool-select').setAttribute('aria-pressed',String(selectingObject));
     $('object-tool-move').disabled=!editing || !selected;
     $('object-tool-move').setAttribute('aria-pressed',String(movingObject));
     $('object-tool-delete').disabled=!editing || !selected || selectedType==='character';
-    $('rotate-direction').textContent = directionNames[(draft || current() || {}).facing] || 'Selatan';
+    $('rotate-direction').textContent = directionNames[placingFence ? placingFenceEdge : (draft || current() || {}).facing] || 'Selatan';
   }
   function finishEditing() {
     if(pendingTerrain) window.editorBlockHistory.end();
     selectingObject=false;movingObject=false;selectedTreeIndex=null;selectedFenceIndex=null;placingFence=null;placingHouse=false; placingOrange=false; placementWorld=null; pendingTerrain = null; editing = false; selected = false; worldId = null; draft = null; history = null;
     pointers.clear(); dragOffset = null; pinch = null; suppressDrag = false;
-    scene()?.update(null, false); scene()?.setSelectedTree?.(null); syncControls();
+    scene()?.update(null, false); scene()?.setSelectedTree?.(null);scene()?.setSelectedFence?.(null); syncControls();
   }
   editButton.addEventListener('click', () => {
     if (editing) { finishEditing(); return; }
@@ -283,11 +284,13 @@
   undoButton.addEventListener('click', () => stepHistory(history?.undo, history?.redo, 'Undo'));
   redoButton.addEventListener('click', () => stepHistory(history?.redo, history?.undo, 'Redo'));
   function rotate(step) {
-    if (!editing || !selected || pointers.size || dialog.open) return;
+    if (!editing || pointers.size || dialog.open) return;
+    if(placingFence && (!selected || selectedType!=='fence')) {placingFenceEdge=directions[(directions.indexOf(placingFenceEdge)+step+4)%4];syncControls();tell(`EDITING · Sisi pagar ${directionNames[placingFenceEdge]}.`);return;}
+    if(!selected)return;
     if(selectedType==='fence') {
       const before=window.worldManager.getActive().fences||[],f=before[selectedFenceIndex];if(!f)return;
       const next=before.map((item,i)=>i===selectedFenceIndex?{...item,edge:directions[(directions.indexOf(f.edge)+step+4)%4]}:item);
-      if(saveFences(before,next)){refresh();syncControls();tell('EDITING · Sisi pagar diperbarui.');}else tell('EDITING · Sisi ini sudah berpagar.');return;
+      if(saveFences(before,next)){if(placingFence)placingFenceEdge=next[selectedFenceIndex].edge;refresh();syncControls();tell('EDITING · Sisi pagar diperbarui.');}else tell('EDITING · Sisi ini sudah berpagar.');return;
     }
     if(selectedType==='tree') {
       const trees=window.worldManager.getActive().orangeTrees||[], tree=trees[selectedTreeIndex];if(!tree)return;
@@ -306,13 +309,13 @@
   rotateRight.addEventListener('click', () => rotate(1));
   selectButton.addEventListener('click', () => {
     if (!editing || !window.worldManager.getCharacter().visible) return;
-    selectedType = 'character'; selected = true; draft = null; refresh(); syncControls();
+    deactivateTerrain();selectedType = 'character'; selected = true; draft = null; refresh(); syncControls();
     tell('EDITING · Karakter dipilih. Geser atau gunakan Pengaturan objek.');
     detailsButton.focus();
   });
   selectHouse.addEventListener('click', () => {
     if (!editing || !window.worldManager.getHouse()) return;
-    selectedType = 'house'; selected = true; draft = null; refresh(); syncControls();
+    deactivateTerrain();selectedType = 'house'; selected = true; draft = null; refresh(); syncControls();
     tell('EDITING · Rumah dipilih. Gunakan Pengaturan objek atau geser rumah.');
     detailsButton.focus();
   });
@@ -354,8 +357,9 @@
   function cancelGesture() { pointers.clear(); pinch = null; dragOffset = null; suppressDrag = false; draft = null; refresh(); syncControls(); }
   function deactivateTerrain() {
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-    placingHouse=false;placingFence=null;placingOrange=false;placingFence=null;placementWorld=null;
+    placingHouse=false;placingFence=null;placingOrange=false;placementWorld=null;
   }
+  $('object-placement-cancel').addEventListener('click',()=>{placingHouse=false;placingOrange=false;placingFence=null;placementWorld=null;syncControls();tell('EDITING · Penempatan objek dibatalkan.');});
   function saveFences(before,next) {
     applyingHistory=true;let saved;try{saved=window.worldManager.replaceFences(worldId,before,next);}finally{applyingHistory=false;}
     if(saved){history.undo.push({type:'fences',value:before.map(f=>({...f}))});if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();}return saved;
@@ -383,7 +387,7 @@
       const before=current('house');applyingHistory=true;try{saved=window.worldManager.replacePlayerHouse(worldId,before,null);}finally{applyingHistory=false;}
       if(saved){history.undo.push({type:'housePlacement',value:before});history.redo.length=0;history.last=snapshot();}
     }
-    if(saved){selected=false;selectedTreeIndex=null;movingObject=false;draft=null;refresh();syncControls();tell('EDITING · Objek dihapus. Undo untuk memulihkan.');}
+    if(saved){deactivateTerrain();selected=false;selectedTreeIndex=null;movingObject=false;draft=null;refresh();syncControls();tell('EDITING · Objek dihapus. Undo untuk memulihkan.');}
     else tell('EDITING · Objek tidak dapat dihapus.');
   });
   // Capture object tools before terrain, pan, and the older drag interaction.
@@ -425,7 +429,7 @@
     if(objectPointer!==null && objectPointer===event.pointerId){event.preventDefault();event.stopImmediatePropagation();objectPointer=null;}
   },true);
   for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) $(id)?.addEventListener('click',()=>{
-    selectingObject=false;movingObject=false;syncControls();
+    selectingObject=false;movingObject=false;placingHouse=false;placingOrange=false;placingFence=null;placementWorld=null;syncControls();
   });
   canvas.addEventListener('pointerdown', event => {
     if (!editing || !scene()) return;
@@ -502,7 +506,7 @@
   });
   document.addEventListener('keydown', event => {
     if (event.key==='Escape' && (movingObject || selectingObject)) {event.preventDefault();movingObject=false;selectingObject=false;syncControls();tell('EDITING · Alat objek dibatalkan.');return;}
-    if (event.key === 'Escape' && (placingHouse || placingOrange || placingFence)) { event.preventDefault(); placingHouse=false; placingOrange=false; placingFence=null; placementWorld=null; tell('EDITING · Penempatan objek dibatalkan.'); return; }
+    if (event.key === 'Escape' && (placingHouse || placingOrange || placingFence)) { event.preventDefault(); placingHouse=false; placingOrange=false; placingFence=null; placementWorld=null; syncControls();tell('EDITING · Penempatan objek dibatalkan.'); return; }
     if (event.key === 'Escape' && editing && !dialog.open) { finishEditing(); return; }
     const tag = event.target?.tagName?.toLowerCase();
     if (!editing || dialog.open || !(event.ctrlKey || event.metaKey) || event.altKey

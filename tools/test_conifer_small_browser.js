@@ -11,6 +11,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
  assert.equal(await page.evaluate(()=>GameplayPath.find(worldManager.getActive(),worldManager.getCharacter(),{column:26,row:27},null)),null,'tree tile blocks path');
  assert.notEqual(await page.evaluate(()=>GameplayPath.find(worldManager.getActive(),worldManager.getCharacter(),{column:27,row:27},null)),null,'adjacent tile is not blocked');
  assert.equal(await page.evaluate(()=>{const w=worldManager.getActive(),t=w.orangeTrees[0],p=sceneEditing.orangeTreeAnchor(t),centre=sceneEditing.centre({column:t.column,row:t.row});return Math.abs(p.x-centre.x)<.01&&Math.abs(p.y-centre.y)<.01}),true,'root centred on one tile');
+ await page.locator('#object-placement-cancel').click();
  await page.waitForFunction(()=>{const t=worldManager.getActive().orangeTrees[0],a=sceneEditing.orangeTreeAnchor(t);return sceneEditing.orangeTreeAt({x:a.x,y:a.y-13})===0},null,{timeout:60000});
  const hit=await page.evaluate(()=>{const t=worldManager.getActive().orangeTrees[0],p=sceneEditing.orangeTreeAnchor(t),r=document.querySelector('#sky-canvas').getBoundingClientRect(),o=sceneEditing.toLocal(r.left,r.top),z=sceneEditing.camera().renderZoom;return{x:r.left+(p.x-o.x)*z*r.width/320,y:r.top+(p.y-13-o.y)*z*r.height/200}});
  await page.mouse.click(hit.x,hit.y);assert(await page.locator('#object-tool-move').isEnabled());
