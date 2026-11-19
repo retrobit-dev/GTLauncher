@@ -23,3 +23,5 @@ Tangan dekat tampak depan digeser ke belakang dengan lengan bawah miring, sement
 ## Keluar dari air saat idle (preview)
 
 Pada preview dengan animasi aktif, setelah diam lima detik di air player berjalan otomatis ke block kering terdekat yang dapat dicapai dengan aturan rute normal. Hitungan idle yang sudah berlalu disimpan selama perjalanan otomatis dan dilanjutkan saat tiba; gerakan atau pengalihan tujuan oleh pengguna membatalkan kelanjutan hitungan. Jika tidak ada block kering yang dapat dicapai, player tetap di air dan siklus membungkuk tetap berjalan. Reduced motion menonaktifkan perilaku idle otomatis ini. Perilaku keluar dari air belum diterapkan di Android.
+
+Penyesuaian tangan jauh tampak depan: telapak dipindahkan mendekati sisi pinggul, sementara sedikit lengan dan lengan baju di sisi berlawanan terlihat. Sebagian besar lengan jauh tertutup badan/kaki; frame duduk dan lutut tertekuk memakai patch yang sama serta bayangan kontak yang disesuaikan. Transisi masih crossfade dan sambungan tidak menggunakan rig anatomis. Aset Android identik dengan preview, tetapi belum diuji di perangkat.

@@ -24,25 +24,36 @@ for view in ('front','back'):
             file={'front':{'sitting':'sit-front-hands-corrected.png','nearly':'sit-redraw-near-front.png'},
                   'back':{'sitting':'sit-redraw-final-back.png','nearly':'sit-redraw-near-back.png'}}[view][frame]
             if view=='front':
-                # Reposition the near supporting arm while keeping the far hand
-                # behind it. Both poses use this same patch, avoiding arm jumps.
+                # The near arm remains behind the hip. The far shoulder and a
+                # short upper-arm section are visible on the opposite side;
+                # only fingertips emerge from beneath the hip/leg.
                 original=Image.open(ART/'sit-front-hands-corrected.png').convert('RGB')
                 arm=Image.open(ART/'sit-front-hand-back-study.png').convert('RGB')
+                far=Image.open(ART/'sit-front-far-hand-side-study-v3.png').convert('RGB')
+                fingertips=Image.open(ART/'sit-front-far-hand-side-study.png').convert('RGB')
                 pose=Image.open(ART/file).convert('RGB')
-                if pose.size!=original.size or arm.size!=original.size:raise ValueError('front study coordinates differ')
-                # Recover the previously visible far hand only through the new
-                # foreground arm's background: it stays correctly occluded.
-                oldpx=original.load();newpx=arm.load()
+                if any(im.size!=original.size for im in (pose,arm,far,fingertips)):raise ValueError('front study coordinates differ')
+                mask=Image.new('L',pose.size)
+                ImageDraw.Draw(mask).polygon([(740,420),(900,420),(1020,520),(1020,760),(740,760)],fill=255)
+                pose.paste(arm,(0,0),mask)
+                side=Image.new('L',pose.size)
+                if frame=='sitting':
+                    points=[(503,466),(571,442),(569,548),(554,579),(548,619),(503,637),(486,620),(494,558)]
+                else:
+                    # The raised knee covers the lower part of the far arm.
+                    points=[(518,466),(571,442),(569,530),(548,537),(517,535)]
+                ImageDraw.Draw(side).polygon(points,fill=255);pose.paste(far,(0,0),side)
+                # Reveal only the hand through background gaps, behind the
+                # overalls and foreground arm rather than cutting a wrist off.
                 def background(rgb):
                     r,g,b=rgb
                     return r>210 and g>195 and b>175 and abs(r-g)<35 and abs(g-b)<40
-                for yy in range(635,685):
-                    for xx in range(840,930):
-                        if background(newpx[xx,yy]) and not background(oldpx[xx,yy]):
-                            newpx[xx,yy]=oldpx[xx,yy]
-                mask=Image.new('L',pose.size)
-                ImageDraw.Draw(mask).polygon([(740,420),(900,420),(1020,520),(1020,760),(740,760)],fill=255)
-                pose.paste(arm,(0,0),mask);tmp=ART/'.front-arm-corrected.png';pose.save(tmp)
+                dst=pose.load();source=fingertips.load()
+                for yy in range(635,735):
+                    for xx in range(730,810):
+                        if background(dst[xx,yy]) and not background(source[xx,yy]):
+                            dst[xx,yy]=source[xx,yy]
+                tmp=ART/'.front-arm-corrected.png';pose.save(tmp)
                 try: im,box=extract(tmp)
                 finally: tmp.unlink()
             else:
@@ -70,13 +81,14 @@ for view in ('front','back'):
         if frame in ('nearly','sitting'):
             # Small enclosed background pockets between arms/legs cannot be reached
             # by border flood fill. Limit cleanup to their known transparent regions.
-            region=(830,625,848,705) if view=='front' else (809,675,831,699)
+            regions=[(830,625,848,705),(725,665,800,735)] if view=='front' else [(809,675,831,699)]
             px=canvas.load()
-            for yy in range(region[1],region[3]):
-                for xx in range(region[0],region[2]):
-                    r,g,b,a=px[xx,yy]
-                    if a and r>210 and g>200 and b>180 and max(r,g,b)-min(r,g,b)<45:
-                        px[xx,yy]=(0,0,0,0)
+            for region in regions:
+                for yy in range(region[1],region[3]):
+                    for xx in range(region[0],region[2]):
+                        r,g,b,a=px[xx,yy]
+                        if a and (r>210 and g>195 and b>175 and abs(r-g)<35 and abs(g-b)<40 if view=='front' else r>210 and g>200 and b>180 and max(r,g,b)-min(r,g,b)<45):
+                            px[xx,yy]=(0,0,0,0)
         suffix={'lowering':'sit-lowering','nearly':'sit-nearly','sitting':'sitting'}[frame]
         name=f'player-idle-{view}-{suffix}.png';dest=ROOT/'preview/assets'/name
         canvas.save(dest,optimize=True)
