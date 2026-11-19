@@ -50,6 +50,10 @@
   const orangeTreeImage = new Image();
   orangeTreeImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
   orangeTreeImage.src = './assets/orange-tree-pixel.png?v=1';
+  const coniferTreeImage = new Image();
+  coniferTreeImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};
+  coniferTreeImage.src='./assets/conifer-tree.png?v=1';
+  const treeSprite=tree=>tree.kind==='conifer'?coniferTreeImage:orangeTreeImage;
   // Preserve the approved artwork's aspect ratio at a 60-unit height.
   const ORANGE_TREE_HEIGHT=60, ORANGE_TREE_WIDTH=ORANGE_TREE_HEIGHT*512/490;
   const PLAYER_WIDTH = 13.5;
@@ -1853,15 +1857,17 @@
       ctx.closePath(); ctx.fill();
     }
     // The projected alpha preserves branches and canopy, including mirroring and wind sway.
-    if(trees.length && orangeTreeImage.complete && orangeTreeImage.naturalWidth && window.TreeShadow) {
-      let mask=characterShadowMasks.get(orangeTreeImage);
-      if(!mask) {
-        mask=document.createElement('canvas');mask.width=orangeTreeImage.naturalWidth;mask.height=orangeTreeImage.naturalHeight;
-        const m=mask.getContext('2d');m.drawImage(orangeTreeImage,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);
-        characterShadowMasks.set(orangeTreeImage,mask);
-      }
+    if(trees.length && window.TreeShadow) {
       ctx.globalAlpha=opacity;ctx.imageSmoothingEnabled=true;
       for(const tree of trees) {
+        const sprite=treeSprite(tree);
+        if(!sprite.complete || !sprite.naturalWidth)continue;
+        let mask=characterShadowMasks.get(sprite);
+        if(!mask) {
+          mask=document.createElement('canvas');mask.width=sprite.naturalWidth;mask.height=sprite.naturalHeight;
+          const m=mask.getContext('2d');m.drawImage(sprite,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);
+          characterShadowMasks.set(sprite,mask);
+        }
         const anchor=orangeTreeAnchor(tree), projection=window.TreeShadow.projection(anchor,lightPoint,ORANGE_TREE_WIDTH,ORANGE_TREE_HEIGHT,LANGIT_MATAHARI_LIFT,orangeTreeSway(tree));
         ctx.save();ctx.translate(anchor.x,anchor.y);ctx.transform(1,0,projection.shear,projection.vertical,0,0);
         if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
@@ -1910,14 +1916,15 @@
     return window.OrangeTreeMotion?.sway(!REDUCED_MOTION,m.speed,m.direction,m.heading,m.time,tree.column,tree.row) || 0;
   }
   function drawOrangeTree(tree,motionTime,sceneWeather) {
-    if(!orangeTreeImage.complete || !orangeTreeImage.naturalWidth)return;
+    const sprite=treeSprite(tree);
+    if(!sprite.complete || !sprite.naturalWidth)return;
     const centre=orangeTreeAnchor(tree);
     const bottom=centre.y, width=ORANGE_TREE_WIDTH,height=ORANGE_TREE_HEIGHT;
     const sway=orangeTreeSway(tree);
     ctx.save();applyIslandTransform();ctx.translate(centre.x,bottom);ctx.transform(1,0,-sway/height,1,0,0);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
-    ctx.drawImage(orangeTreeImage,-width/2,-height,width,height);ctx.restore();
+    ctx.drawImage(sprite,-width/2,-height,width,height);ctx.restore();
     if(editingTreeSelection && tree.column===editingTreeSelection.column && tree.row===editingTreeSelection.row) {
       ctx.save();applyIslandTransform();ctx.strokeStyle='#fff4a8';ctx.lineWidth=1;ctx.strokeRect(centre.x-width/2-6.5,bottom-height-2,width+13,height+4);ctx.restore();
     }
@@ -1928,7 +1935,7 @@
   }
   function drawOrangeDrop(tree) {
     const world=window.worldManager?.getActive(),now=Date.now();
-    if(!window.OrangeDrops?.available(world,tree,now))return;
+    if(tree.kind==='conifer' || !window.OrangeDrops?.available(world,tree,now))return;
     const p=orangeDropPosition(tree), progress=window.OrangeDrops.falling(now,REDUCED_MOTION);
     const y=p.y-(1-progress*progress)*ORANGE_TREE_HEIGHT*.58;
     ctx.save();applyIslandTransform();ctx.fillStyle='#b76a25';ctx.fillRect(p.x-1.5,y-1,3,3);
@@ -2610,13 +2617,14 @@
       return null;
     },
     orangeTreeAt(point) {
-      if(!orangeTreeImage.complete || !orangeTreeImage.naturalWidth)return null;
-      let data=houseHitCache.get(orangeTreeImage);
       try {
-        if(!data){const c=document.createElement('canvas');c.width=128;c.height=128;const h=c.getContext('2d',{willReadFrequently:true});h.drawImage(orangeTreeImage,0,0,128,128);data=h.getImageData(0,0,128,128).data;houseHitCache.set(orangeTreeImage,data);}
         const trees=window.worldManager?.getActive()?.orangeTrees || [];
         for(let i=trees.length-1;i>=0;i--) {
-          const tree=trees[i], centre=orangeTreeAnchor(tree),bottom=centre.y;
+          const tree=trees[i], sprite=treeSprite(tree);
+          if(!sprite.complete || !sprite.naturalWidth)continue;
+          let data=houseHitCache.get(sprite);
+          if(!data){const c=document.createElement('canvas');c.width=128;c.height=128;const h=c.getContext('2d',{willReadFrequently:true});h.drawImage(sprite,0,0,128,128);data=h.getImageData(0,0,128,128).data;houseHitCache.set(sprite,data);}
+          const centre=orangeTreeAnchor(tree),bottom=centre.y;
           const x=point.x-centre.x+(point.y-bottom)*orangeTreeSway(tree)/ORANGE_TREE_HEIGHT;
           let u=(x+ORANGE_TREE_WIDTH/2)/ORANGE_TREE_WIDTH,v=(point.y-(bottom-ORANGE_TREE_HEIGHT))/ORANGE_TREE_HEIGHT;
           if(u<0||u>=1||v<0||v>=1)continue;

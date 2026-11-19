@@ -16,7 +16,7 @@
   const key=(world,tree)=>`${encodeURIComponent(world.id)}:${tree.column},${tree.row}`;
   const cycle=now=>Math.floor(now/PERIOD);
   function available(world,tree,now=Date.now()) {
-    if(!world || world.id==='base' || !tree || !Number.isFinite(now) || now<0)return false;
+    if(!world || world.id==='base' || !tree || tree.kind==='conifer' || !Number.isFinite(now) || now<0)return false;
     try {const history=read().collected,k=key(world,tree),last=Object.hasOwn(history,k)?history[k]:-1;return last<cycle(now);} catch (_) {return false;}
   }
   function falling(now=Date.now(),reduced=false) {return reduced?1:Math.min(1,(now%PERIOD)/FALL_TIME);}
@@ -25,11 +25,11 @@
     if(!navigator.locks?.request) return {ok:false,message:'Browser belum mendukung penguncian aman untuk mengambil jeruk.'};
     try {return await navigator.locks.request('gtlauncher.orange-drops.v1',()=>{
       const world=window.worldManager?.getActive();
-      if(!world || world.id!==worldId || !(world.orangeTrees||[]).some(t=>t.column===tree.column && t.row===tree.row))return {ok:false,message:'Pohon sudah berubah; jeruk tidak diambil.'};
+      if(!world || world.id!==worldId || !(world.orangeTrees||[]).some(t=>t.kind!=='conifer' && t.column===tree.column && t.row===tree.row))return {ok:false,message:'Pohon sudah berubah; jeruk tidak diambil.'};
       // Do not rely solely on another tab's asynchronous storage event.
       const stored=JSON.parse(localStorage.getItem('gtlauncher.worlds.v1') || 'null');
       const saved=stored?.worlds?.find(w=>w.id===worldId);
-      if(stored?.activeId!==worldId || !saved?.orangeTrees?.some(t=>t.column===tree.column && t.row===tree.row))return {ok:false,message:'Pohon sudah berubah; jeruk tidak diambil.'};
+      if(stored?.activeId!==worldId || !saved?.orangeTrees?.some(t=>t.kind!=='conifer' && t.column===tree.column && t.row===tree.row))return {ok:false,message:'Pohon sudah berubah; jeruk tidak diambil.'};
       // Re-read after acquiring the cross-tab lock and re-check the current cycle.
       const current=read(),actual=Date.now(),period=cycle(actual);
       if(cycle(now)!==period || !available(world,tree,actual))return {ok:false,message:'Jeruk sudah diambil atau periodenya berubah.'};
