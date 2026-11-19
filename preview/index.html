@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#e2e4e1">
   <title>GTLauncher — Live Weather Preview</title>
-  <link rel="stylesheet" href="./styles.css?v=live-sky-62">
+  <link rel="stylesheet" href="./styles.css?v=live-sky-63">
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./worlds.js?v=35" defer></script>
   <script src="./object-editor.js?v=15" defer></script>
@@ -171,14 +171,31 @@
   </dialog>
   <dialog id="object-library-dialog" class="world-dialog" aria-labelledby="object-library-title">
     <div class="world-header"><div><p class="world-eyebrow">WORLD AKTIF</p><h2 id="object-library-title">Objek</h2><p id="object-library-world" class="world-subtitle"></p></div><button id="object-library-close" class="world-close" type="button" aria-label="Tutup">×</button></div>
-    <div class="world-content"><section><h3>Katalog objek</h3>
-      <div class="world-card"><img src="assets/simple-house-aligned.png?v=1" alt="" width="72" height="69"><div><strong>Rumah player</strong><p class="world-help">Tapak 3×3 · satu rumah per world</p><button id="catalog-place-house" type="button" class="world-secondary">Tempatkan rumah</button></div></div>
-      <p id="catalog-house-status" class="world-help" role="status"></p>
-      <div class="world-card"><img src="assets/orange-tree-pixel.png?v=1" alt="" width="72" height="69"><div><strong>Pohon jeruk</strong><p class="world-help">Tapak 2×2</p><button id="catalog-place-orange" type="button" class="world-secondary">Tempatkan pohon jeruk</button></div></div>
-      <div class="world-card"><img src="assets/conifer-tree.png?v=1" alt="" width="72" height="69"><div><strong>Pohon cemara</strong><p class="world-help">Tapak 2×2</p><button id="catalog-place-conifer" type="button" class="world-secondary">Tempatkan pohon cemara</button></div></div>
-      <h3>Objek di world ini</h3><div id="object-library-list" class="world-list"></div>
-      <p class="world-help">Katalog objek lain dan salinan belum tersedia.</p>
-      <p class="world-help">Aset pagar sudah dibuat, tetapi belum bisa ditambahkan ke world.</p>
+    <div class="world-content"><section class="object-catalog" aria-labelledby="object-catalog-title">
+      <h3 id="object-catalog-title">Katalog objek</h3>
+      <p class="world-help catalog-intro">Pilih objek, lalu ketuk tile pada peta untuk menempatkannya.</p>
+      <section class="catalog-group" aria-labelledby="catalog-buildings-title">
+        <h4 id="catalog-buildings-title">Bangunan</h4>
+        <div class="catalog-grid">
+          <button id="catalog-place-house" type="button" class="catalog-tile" aria-label="Tempatkan rumah player, tapak 3 kali 3" aria-describedby="catalog-house-status">
+            <span class="catalog-art"><img src="assets/simple-house-aligned.png?v=1" alt=""></span><strong>Rumah player</strong><span class="catalog-footprint">Tapak 3×3</span>
+          </button>
+        </div>
+        <p id="catalog-house-status" class="world-help catalog-status" role="status"></p>
+      </section>
+      <section class="catalog-group" aria-labelledby="catalog-trees-title">
+        <h4 id="catalog-trees-title">Pohon</h4>
+        <div class="catalog-grid">
+          <button id="catalog-place-orange" type="button" class="catalog-tile" aria-label="Tempatkan pohon jeruk, tapak 2 kali 2">
+            <span class="catalog-art"><img src="assets/orange-tree-pixel.png?v=1" alt=""></span><strong>Pohon jeruk</strong><span class="catalog-footprint">Tapak 2×2</span>
+          </button>
+          <button id="catalog-place-conifer" type="button" class="catalog-tile" aria-label="Tempatkan pohon cemara, tapak 2 kali 2">
+            <span class="catalog-art"><img src="assets/conifer-tree.png?v=1" alt=""></span><strong>Pohon cemara</strong><span class="catalog-footprint">Tapak 2×2</span>
+          </button>
+        </div>
+      </section>
+      <section class="catalog-placed" aria-labelledby="catalog-placed-title"><h3 id="catalog-placed-title">Objek di world ini</h3><div id="object-library-list" class="world-list"></div></section>
+      <p class="world-help">Katalog objek lain dan salinan belum tersedia. Aset pagar belum bisa ditambahkan ke world.</p>
     </section></div>
   </dialog>
   <dialog id="object-dialog" class="world-dialog" aria-labelledby="object-dialog-title">

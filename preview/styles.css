@@ -442,3 +442,21 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .editor-top-tools .object-rotate-controls[hidden] { display:none; }
 .editor-top-tools .object-rotate-controls button { font:700 18px system-ui; padding:0; }
 .editor-camera-controls .object-history-button { padding:5px; }
+
+/* Object catalog: clear categories with large, entirely tappable object cards. */
+.object-catalog { min-width:0; }
+.catalog-intro { margin:5px 0 15px; }
+.catalog-group { margin:0 0 16px; }
+.catalog-group h4 { margin:0 0 8px; font-size:12px; letter-spacing:.04em; color:#536b59; }
+.catalog-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
+.catalog-tile { min-width:0; min-height:145px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:4px; padding:10px 7px; border:1px solid #dce6db; border-radius:12px; background:#fff; color:#344b3b; font:inherit; text-align:center; cursor:pointer; }
+.catalog-tile:hover:not(:disabled) { border-color:#81a587; background:#f2f8f0; }
+.catalog-tile:disabled { opacity:.5; cursor:not-allowed; }
+.catalog-art { height:82px; width:100%; display:grid; place-items:center; border-radius:8px; background:#eef4ea; }
+.catalog-art img { display:block; width:100%; height:78px; object-fit:contain; }
+.catalog-tile strong { max-width:100%; font-size:13px; line-height:1.2; overflow-wrap:anywhere; }
+.catalog-footprint { font-size:11px; color:#718077; }
+.catalog-status { margin:7px 0 0; }
+.catalog-placed { margin-top:20px; }
+.catalog-placed .world-list { margin-top:9px; }
+@media (max-width:420px) { .catalog-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
