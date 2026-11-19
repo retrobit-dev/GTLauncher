@@ -14,18 +14,21 @@ final class PreviewWorld20 {
     final int size, version;
     private final String json;
     final String id;
-    private final int[] tiles;
+    private final BlockTerrain terrain;
 
-    private PreviewWorld20(String json, String id, int size, int version, int[] tiles) {
-        this.json = json; this.id = id; this.size = size; this.version = version; this.tiles = tiles;
+    private PreviewWorld20(String json, String id, int size, int version, BlockTerrain terrain) {
+        this.json = json; this.id = id; this.size = size; this.version = version; this.terrain = terrain;
     }
     int tile(int column, int row) {
         if (column < 0 || row < 0 || column >= size || row >= size) throw new IndexOutOfBoundsException();
-        return tiles[row * size + column];
+        return terrain.top(column,row);
     }
     boolean canStand(int column, int row) {
         if (column < 0 || row < 0 || column >= size || row >= size) return false;
         int tile = tile(column, row); return tile != 0;
+    }
+    boolean canStep(int fromColumn,int fromRow,int toColumn,int toRow) {
+        return terrain.canStep(fromColumn,fromRow,toColumn,toRow);
     }
     String toJson() { return json; }
     private static void keys(JSONObject object, String... allowed) throws JSONException {
@@ -88,6 +91,6 @@ final class PreviewWorld20 {
             if (h.has("scale")) scale(h,"scale"); if (h.has("facing")) facing(h,"facing"); if (h.has("visible")) bool(h,"visible");
             for (int y=hr;y<hr+3;y++) for (int x=hc;x<hc+3;x++) if (tiles[y*size+x]==0) throw new JSONException("House on empty tile");
         }
-        return new PreviewWorld20(root.toString(),id,size,version,tiles);
+        return new PreviewWorld20(root.toString(),id,size,version,BlockTerrain.parse(size,source,null));
     }
 }

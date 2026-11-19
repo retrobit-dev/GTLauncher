@@ -862,6 +862,7 @@ public class HomeActivity extends Activity {
                 return true;
             }
             public boolean canStep(int a,int b,int c,int d) {
+                if(world.previewData!=null && !world.previewData.canStep(a,b,c,d))return false;
                 // Legacy saves may start inside a house. They can escape, but cannot re-enter.
                 for(WorldStore.House house:world.houses)if(house.covers(c,d) && !house.covers(a,b))return false;
                 for(WorldStore.SurfaceObject o:world.surfaces) if(o.type.equals("fence")) {
