@@ -174,6 +174,7 @@ public class HomeActivity extends Activity {
     private int selectedTool = -1;
     private String movingObjectWorld;
     private String placingWildGrassWorld;
+    private String placingPlantKind="wild-grass";
     private WorldStore.House movingHouse;
     private WorldStore.SurfaceObject movingSurface;
     private WorldStore worldStore;
@@ -547,11 +548,11 @@ public class HomeActivity extends Activity {
         } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }
     private void showHandObjectMenu(String worldId,WorldStore.House house,WorldStore.SurfaceObject object,PortalTravel.Portal portal) {
-        boolean small=WorldStore.portableSmall(object),movable=house!=null || small || WorldStore.isPreviewGrass(object);
+        boolean small=WorldStore.portableSmall(object),movable=house!=null || small || WorldStore.isPreviewGrass(object) || WorldStore.isPreviewBush(object) || WorldStore.isPreviewBush(object);
         java.util.List<String> actions=new java.util.ArrayList<>();
         actions.add(small?"Ambil ke tas (belum bisa ditaruh kembali)":"Ambil — tidak tersedia");
         actions.add(movable?"Pindahkan":"Pindahkan — tidak tersedia");
-        boolean deletable=object!=null && (small || WorldStore.isPreviewGrass(object) || (object.type.equals("tree") && object.material.startsWith("conifer") && object.edge!=null));
+        boolean deletable=object!=null && (small || WorldStore.isPreviewGrass(object) || WorldStore.isPreviewBush(object) || (object.type.equals("tree") && object.material.startsWith("conifer") && object.edge!=null));
         if(deletable)actions.add("Hapus");
         if(object!=null && object.type.equals("tree") && !object.material.startsWith("conifer"))actions.add("Panen pohon");
         else if(object!=null && (object.type.equals("storage-box") || object.type.equals("selling-box")))actions.add("Buka box");
@@ -820,18 +821,22 @@ public class HomeActivity extends Activity {
             LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(16),dp(8),dp(16),dp(8));
             TextView group=new TextView(this);group.setText("Tanaman dan pohon");group.setTextColor(Color.rgb(52,75,59));group.setTypeface(null,android.graphics.Typeface.BOLD);panel.addView(group);
             GridLayout grid=new GridLayout(this);grid.setColumnCount(2);panel.addView(grid);
-            LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);
-            card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundResource(R.drawable.bg_portal_button);
-            card.setFocusable(true);card.setClickable(true);card.setContentDescription("Tempatkan rumput liar, tapak satu kali satu");
-            ImageView image=new ImageView(this);image.setImageResource(R.drawable.wild_grass_selected);image.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            card.addView(image,new LinearLayout.LayoutParams(dp(96),dp(64)));
-            TextView caption=new TextView(this);caption.setText("Rumput liar · 1×1");caption.setTextColor(Color.rgb(52,75,59));caption.setGravity(Gravity.CENTER);card.addView(caption);
-            GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(140);cell.height=GridLayout.LayoutParams.WRAP_CONTENT;cell.setMargins(0,dp(8),dp(8),0);grid.addView(card,cell);
             AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Katalog objek").setView(panel).setNegativeButton("Batal",null).create();
-            card.setOnClickListener(v->{
-                dialog.dismiss();applyActiveWorld();placingWildGrassWorld=world.id;closeDrawer();
-                Toast.makeText(this,"Ketuk tile kering untuk menempatkan rumput liar. Buka World untuk membatalkan.",Toast.LENGTH_LONG).show();
-            });dialog.show();
+            String[] names={"Rumput liar","Semak"}, kinds={"wild-grass","bush"};
+            int[] images={R.drawable.wild_grass_selected,R.drawable.bush_selected};
+            for(int i=0;i<names.length;i++) {
+                final String name=names[i],kind=kinds[i];
+                LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);
+                card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundResource(R.drawable.bg_portal_button);
+                card.setFocusable(true);card.setClickable(true);card.setContentDescription("Tempatkan "+name+", tapak satu kali satu");
+                ImageView image=new ImageView(this);image.setImageResource(images[i]);image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                card.addView(image,new LinearLayout.LayoutParams(dp(96),dp(64)));
+                TextView caption=new TextView(this);caption.setText(name+" · 1×1");caption.setTextColor(Color.rgb(52,75,59));caption.setGravity(Gravity.CENTER);card.addView(caption);
+                GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(140);cell.height=GridLayout.LayoutParams.WRAP_CONTENT;cell.setMargins(0,dp(8),dp(8),0);grid.addView(card,cell);
+                card.setOnClickListener(v->{dialog.dismiss();applyActiveWorld();placingPlantKind=kind;placingWildGrassWorld=world.id;closeDrawer();
+                    Toast.makeText(this,"Ketuk tile kering untuk menempatkan "+name+". Buka World untuk membatalkan.",Toast.LENGTH_LONG).show();});
+            }
+            dialog.show();
         } catch(JSONException error) {
             Toast.makeText(this,"World tidak dapat dibaca; data tidak diubah.",Toast.LENGTH_LONG).show();
         }
@@ -842,11 +847,11 @@ public class HomeActivity extends Activity {
         if(!id.equals(worldStore.activeId())) {placingWildGrassWorld=null;return;}
         PortalTravel.Tile tile=skyView.groundTileAt(x,y);
         try {
-            if(tile==null || !worldStore.placeWildGrass(id,tile.column,tile.row)) {
+            if(tile==null || !worldStore.placePreviewPlant(id,tile.column,tile.row,placingPlantKind)) {
                 Toast.makeText(this,"Pilih tile kering yang kosong, tanpa rumah atau player.",Toast.LENGTH_LONG).show();return;
             }
             placingWildGrassWorld=null;applyActiveWorld();
-            Toast.makeText(this,"Rumput liar ditempatkan.",Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,("bush".equals(placingPlantKind)?"Semak":"Rumput liar")+" ditempatkan.",Toast.LENGTH_SHORT).show();
         } catch(JSONException | IllegalArgumentException error) {
             placingWildGrassWorld=null;
             Toast.makeText(this,"Objek tidak tersimpan; data world tidak diubah.",Toast.LENGTH_LONG).show();

@@ -309,8 +309,8 @@ final class WorldStore {
             JSONArray source=w.getJSONArray("orangeTrees");
             for(int i=0;i<source.length();i++) {
                 JSONObject tree=source.getJSONObject(i);
-                boolean grass="wild-grass".equals(tree.getString("kind"));
-                trees.add(new SurfaceObject(grass?"bush":"tree",tree.getInt("column"),tree.getInt("row"),tree.optString("facing","S"),grass?"wild-grass":tree.optInt("size",2)==1?"conifer-small":"conifer",tree.toString()));
+                boolean grass="wild-grass".equals(tree.getString("kind")), bush="bush".equals(tree.getString("kind"));
+                trees.add(new SurfaceObject(grass || bush?"bush":"tree",tree.getInt("column"),tree.getInt("row"),tree.optString("facing","S"),grass?"wild-grass":bush?"preview-bush":tree.optInt("size",2)==1?"conifer-small":"conifer",tree.toString()));
             }
         }
         World result=new World(data.id,w.getString("name"),w.getString("description"),w.getString("color"),
@@ -534,8 +534,11 @@ final class WorldStore {
     static boolean isPreviewGrass(SurfaceObject object) {
         return object!=null && object.type.equals("bush") && object.material.equals("wild-grass") && object.edge!=null;
     }
+    static boolean isPreviewBush(SurfaceObject object) {
+        return object!=null && object.type.equals("bush") && object.material.equals("preview-bush") && object.edge!=null;
+    }
     static boolean portableSmall(SurfaceObject object) {
-        return object!=null && !isPreviewGrass(object) && (object.type.equals("flower") || object.type.equals("bush") || object.type.equals("sunflower"));
+        return object!=null && !isPreviewGrass(object) && !isPreviewBush(object) && (object.type.equals("flower") || object.type.equals("bush") || object.type.equals("sunflower"));
     }
     JSONArray objectBag() throws JSONException {
         JSONArray bag=new JSONArray(prefs.getString(OBJECT_BAG_KEY,"[]"));
@@ -560,7 +563,7 @@ final class WorldStore {
         World world=activeWorld();if(world==null)return false;
         House actualHouse=null;SurfaceObject actualSurface=null;
         if(expectedHouse!=null) {for(House h:world.houses)if(sameHouse(h,expectedHouse)){actualHouse=h;break;}if(actualHouse==null || !actualHouse.visible)return false;}
-        else {if(!portableSmall(expectedSurface) && !(world.previewData!=null && isPreviewGrass(expectedSurface)))return false;for(SurfaceObject o:world.surfaces)if(o.raw.equals(expectedSurface.raw)){actualSurface=o;break;}if(actualSurface==null)return false;}
+        else {if(!portableSmall(expectedSurface) && !(world.previewData!=null && (isPreviewGrass(expectedSurface) || isPreviewBush(expectedSurface))))return false;for(SurfaceObject o:world.surfaces)if(o.raw.equals(expectedSurface.raw)){actualSurface=o;break;}if(actualSurface==null)return false;}
         int width=actualHouse==null?1:HouseFootprint.of(actualHouse.design).columns,height=actualHouse==null?1:HouseFootprint.of(actualHouse.design).rows;
         if(column<0 || row<0 || column+width>world.gridSize() || row+height>world.gridSize())return false;
         for(int y=row;y<row+height;y++)for(int x=column;x<column+width;x++) {
@@ -581,7 +584,7 @@ final class WorldStore {
             JSONObject root=new JSONObject(world.previewData.toJson()), data=root.getJSONObject("world");
             if(actualHouse!=null) {
                 JSONObject h=data.getJSONObject("house");h.put("column",column);h.put("row",row);
-            } else if(isPreviewGrass(actualSurface)) {
+            } else if(isPreviewGrass(actualSurface) || isPreviewBush(actualSurface)) {
                 JSONArray objects=data.getJSONArray("orangeTrees");boolean changed=false;
                 for(int i=0;i<objects.length();i++) {
                     JSONObject o=objects.getJSONObject(i);
@@ -606,7 +609,7 @@ final class WorldStore {
         if(!worldId.equals(activeId()) || expected==null)return false;
         World world=activeWorld();if(world==null)return false;
         boolean supported=world.previewData!=null
-                ? isPreviewGrass(expected) || (expected.type.equals("tree") && expected.material.startsWith("conifer"))
+                ? isPreviewGrass(expected) || isPreviewBush(expected) || (expected.type.equals("tree") && expected.material.startsWith("conifer"))
                 : portableSmall(expected);
         if(!supported)return false;
         boolean exists=false;for(SurfaceObject o:world.surfaces)if(o.raw.equals(expected.raw)){exists=true;break;}
@@ -657,7 +660,9 @@ final class WorldStore {
         return false;
     }
     /** Place one tuft in a supported flat portable world, committing only after full revalidation. */
-    boolean placeWildGrass(String worldId,int column,int row) throws JSONException {
+    boolean placeWildGrass(String worldId,int column,int row) throws JSONException {return placePreviewPlant(worldId,column,row,"wild-grass");}
+    boolean placePreviewPlant(String worldId,int column,int row,String kind) throws JSONException {
+        if(!"wild-grass".equals(kind) && !"bush".equals(kind))return false;
         if(!worldId.equals(activeId()))return false;
         List<World> worlds=list();
         for(int i=0;i<worlds.size();i++) {
@@ -670,8 +675,8 @@ final class WorldStore {
             }
             JSONObject root=new JSONObject(w.previewData.toJson()), data=root.getJSONObject("world");
             JSONArray objects=data.has("orangeTrees")?data.getJSONArray("orangeTrees"):new JSONArray();
-            objects.put(new JSONObject().put("column",column).put("row",row).put("kind","wild-grass").put("size",1));
-            data.put("orangeTrees",objects);root.put("version",9);
+            objects.put(new JSONObject().put("column",column).put("row",row).put("kind",kind).put("size",1));
+            data.put("orangeTrees",objects);root.put("version",Math.max(w.previewData.version,"bush".equals(kind)?10:9));
             worlds.set(i,fromPreview(PreviewWorld20.parse(root.toString())));
             return saveWorlds(worlds,worldId);
         }

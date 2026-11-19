@@ -54,10 +54,11 @@
   coniferTreeImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};
   coniferTreeImage.src='./assets/conifer-tree.png?v=1';
   const wildGrassImage=new Image();wildGrassImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};wildGrassImage.src='./assets/wild-grass-selected.png?v=2';
-  const treeSprite=tree=>tree.kind==='wild-grass'?wildGrassImage:tree.kind==='conifer'?coniferTreeImage:orangeTreeImage;
+  const bushImage=new Image();bushImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};bushImage.src='./assets/bush-selected.png?v=1';
+  const treeSprite=tree=>tree.kind==='bush'?bushImage:tree.kind==='wild-grass'?wildGrassImage:tree.kind==='conifer'?coniferTreeImage:orangeTreeImage;
   const treeSize=tree=>tree.size===1?1:2;
-  const treeVisualScale=tree=>tree.kind==='wild-grass'?14/60:treeSize(tree)/2;
-  const treeWidth=tree=>tree.kind==='wild-grass'?28:ORANGE_TREE_WIDTH*treeVisualScale(tree);
+  const treeVisualScale=tree=>tree.kind==='bush'?14.5/60:tree.kind==='wild-grass'?14/60:treeSize(tree)/2;
+  const treeWidth=tree=>tree.kind==='bush'?18.5:tree.kind==='wild-grass'?28:ORANGE_TREE_WIDTH*treeVisualScale(tree);
   const treeHeight=tree=>ORANGE_TREE_HEIGHT*treeVisualScale(tree);
   // Preserve the approved artwork's aspect ratio at a 60-unit height.
   const ORANGE_TREE_HEIGHT=60, ORANGE_TREE_WIDTH=ORANGE_TREE_HEIGHT*512/490;
@@ -1866,7 +1867,7 @@
       ctx.globalAlpha=opacity;ctx.imageSmoothingEnabled=true;
       for(const tree of trees) {
         // A projected blade silhouette separates visually from this short tuft.
-        if(tree.kind==='wild-grass')continue;
+        if(tree.kind==='wild-grass'||tree.kind==='bush')continue;
         const sprite=treeSprite(tree);
         if(!sprite.complete || !sprite.naturalWidth)continue;
         let mask=characterShadowMasks.get(sprite);
@@ -1918,7 +1919,7 @@
     const offset=(treeSize(tree)-1)/2;
     const centre=characterCentre({column:tree.column+offset,row:tree.row+offset,blockHeight:surfaceHeight(tree.column,tree.row)});
     // The foliage base sits slightly forward on its tile, with selection and shadow sharing the same anchor.
-    if(tree.kind==='wild-grass') centre.y+=0.75;
+    if(tree.kind==='wild-grass'||tree.kind==='bush') centre.y+=0.75;
     return centre;
   }
   const treeAlphaBoundsCache=new WeakMap();
@@ -1946,7 +1947,7 @@
     const scale=treeVisualScale(tree),bottom=centre.y, width=treeWidth(tree),height=treeHeight(tree);
     const sway=orangeTreeSway(tree)*scale;
     ctx.save();applyIslandTransform();
-    if(tree.kind==='wild-grass') {
+    if(tree.kind==='wild-grass'||tree.kind==='bush') {
       // A small contact shadow touches the root even when the projected shadow points away.
       ctx.fillStyle='rgba(28,49,35,0.18)';ctx.beginPath();ctx.ellipse(centre.x,bottom,5,0.65,0,0,Math.PI*2);ctx.fill();
     }

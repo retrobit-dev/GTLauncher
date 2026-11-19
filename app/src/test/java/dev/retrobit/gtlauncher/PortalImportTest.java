@@ -367,6 +367,25 @@ public class PortalImportTest {
         assertTrue(nativeStore.deleteSelectedPlant("home",nativeStore.activeWorld().surfaces.get(0)));
         assertEquals(0,nativeStore.activeWorld().surfaces.size());
     }
+    @Test public void bushVersionPlacementMoveAndDeletionAreLossless() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1))));
+        assertTrue(store.placePreviewPlant("home",6,5,"bush"));
+        WorldStore.World w=store.activeWorld();assertEquals(10,w.previewData.version);
+        assertTrue(WorldStore.isPreviewBush(w.surfaces.get(0)));assertFalse(WorldStore.portableSmall(w.surfaces.get(0)));
+        assertFalse(store.placeWildGrass("home",6,5));assertTrue(store.placeWildGrass("home",8,5));
+        w=store.activeWorld();assertEquals(10,w.previewData.version);assertEquals(2,w.surfaces.size());
+        assertTrue(store.moveSelectedObject("home",null,w.surfaces.get(0),7,5));
+        w=store.activeWorld();assertEquals(7,w.surfaces.get(0).column);
+        org.json.JSONObject malformed=new org.json.JSONObject(w.previewData.toJson());malformed.put("version",9);
+        try {WorldStore.parseExport(malformed.toString());fail("bush requires v10");}catch(JSONException expected){}
+        String saved=p.getString("worlds_v1",null);
+        try {store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1)));fail("old import erases bush");}catch(JSONException expected){}
+        assertEquals(saved,p.getString("worlds_v1",null));
+        assertTrue(store.deleteSelectedPlant("home",w.surfaces.get(0)));
+        assertTrue(store.deleteSelectedPlant("home",store.activeWorld().surfaces.get(0)));
+        assertEquals(0,store.activeWorld().surfaces.size());assertEquals(10,store.activeWorld().previewData.version);
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {
