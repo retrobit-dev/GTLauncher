@@ -1959,8 +1959,8 @@
   }
   const sparrowImage=new Image();sparrowImage.src='./assets/pet-sparrow.png?v=1';
   const sparrowFlap=new Image();sparrowFlap.src='./assets/pet-sparrow-flap.png?v=1';
-  const sparrowBack=new Image();sparrowBack.src='./assets/pet-sparrow-back.png?v=1';
-  const sparrowBackFlap=new Image();sparrowBackFlap.src='./assets/pet-sparrow-back-flap.png?v=1';
+  const sparrowBack=new Image();sparrowBack.src='./assets/pet-sparrow-back.png?v=2';
+  const sparrowBackFlap=new Image();sparrowBackFlap.src='./assets/pet-sparrow-back-flap.png?v=2';
   const sparrow=window.SparrowPet.create();
   function drawMainCharacter(motionTime) {
     const world = window.worldManager?.getActive();
@@ -2011,8 +2011,9 @@
       ctx.save();ctx.strokeStyle='rgba(218,250,244,.6)';ctx.lineWidth=.45;ctx.beginPath();ctx.ellipse(x,waterline,Math.min(width*.48,5),1.1,0,0,Math.PI*2);ctx.stroke();ctx.restore();
     } else drawSprite();
     if(cameraMode==='gameplay' && sparrowImage.complete && sparrowImage.naturalWidth) {
-      const p=sparrow.update(performance.now(),world.id,anchor,character.scale,seatWeight,mirror,back,!!gameplayDraft,REDUCED_MOTION);
-      const size=4.4*character.scale;
+      const headY=y-height+seatWeight*(back?2.9:2.1)*character.scale;
+      const p=sparrow.update(performance.now(),world.id,anchor,character.scale,seatWeight,mirror,back,!!gameplayDraft,REDUCED_MOTION,headY);
+      const size=6*character.scale;
       if(p.seat<.5 && depth===0){ctx.fillStyle='rgba(12,23,30,.22)';ctx.beginPath();ctx.ellipse(p.x,anchor.y+.5*character.scale,.9*character.scale,.3*character.scale,0,0,Math.PI*2);ctx.fill();}
       const rest=back?sparrowBack:sparrowImage, flap=back?sparrowBackFlap:sparrowFlap;
       const bird=p.flap && flap.complete && flap.naturalWidth ? flap : rest;
@@ -2277,7 +2278,7 @@
     framePending = true;
     window.requestAnimationFrame(timestamp => {
       framePending = false;
-      if (timestamp - lastAnimatedFrame < 1000 / (gameplayDraft || gameplayCameraMoving || window.worldManager?.getActive()?.orangeTrees?.length ? 30 : 8)) { scheduleFrame(); return; }
+      if (timestamp - lastAnimatedFrame < 1000 / (gameplayDraft || gameplayCameraMoving || window.worldManager?.getActive()?.orangeTrees?.length ? 30 : cameraMode==='gameplay' && window.worldManager?.getCharacter()?.visible ? 20 : 8)) { scheduleFrame(); return; }
       lastAnimatedFrame = timestamp;
       drawFrame();
     });

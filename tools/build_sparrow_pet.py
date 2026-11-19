@@ -22,14 +22,17 @@ flap=image.copy();flap.alpha_composite(wing,(80,28))
 flap_path=root/'preview/assets/pet-sparrow-flap.png';flap.save(flap_path,optimize=True)
 (root/'app/src/main/res/drawable-nodpi/pet_sparrow_flap.png').write_bytes(flap_path.read_bytes())
 
-# Rear poses share one source-space canvas, keeping body and feet fixed across wingbeats.
-back,back_box=extract(root/'preview/assets/character-redraw/sparrow-back-study.png')
-spread,spread_box=extract(root/'preview/assets/character-redraw/sparrow-back-wing-study.png')
-base=Image.new('RGBA',(1024,1024));base.alpha_composite(back,(back_box[0],back_box[1]))
-wings=Image.new('RGBA',(1024,1024));wings.alpha_composite(spread,(spread_box[0],spread_box[1]))
-# Place raised wings behind the original body; the selected rear artwork stays unchanged.
-wings.alpha_composite(base)
-for name,frame in [('pet-sparrow-back.png',base),('pet-sparrow-back-flap.png',wings)]:
-    frame=frame.crop((60,16,952,908)).resize((192,192),Image.Resampling.LANCZOS)
+# Rear three-quarter artwork faces right with its tail pointing left, like the rear player.
+back,back_box=extract(root/'preview/assets/character-redraw/sparrow-back-facing-corrected.png')
+source,source_box=extract(root/'preview/assets/character-redraw/sparrow-back-facing-wing.png')
+base=Image.new('RGBA',(1024,1024));base.alpha_composite(back,back_box[:2])
+wing_source=Image.new('RGBA',(1024,1024));wing_source.alpha_composite(source,source_box[:2])
+mask=Image.new('L',wing_source.size)
+ImageDraw.Draw(mask).polygon([(247,170),(330,72),(425,70),(548,237),(608,338),(626,495),(554,582),(425,621),(315,549),(248,420)],fill=255)
+wing_source.putalpha(ImageChops.multiply(wing_source.getchannel('A'),mask))
+wing=wing_source.crop((240,65,630,625)).resize((340,490),Image.Resampling.LANCZOS)
+flap=base.copy();flap.alpha_composite(wing,(330,108))
+for name,frame in [('pet-sparrow-back.png',base),('pet-sparrow-back-flap.png',flap)]:
+    frame=frame.crop((80,50,900,900)).resize((192,192),Image.Resampling.LANCZOS)
     out=root/'preview/assets'/name;frame.save(out,optimize=True)
     (root/'app/src/main/res/drawable-nodpi'/name.replace('-','_')).write_bytes(out.read_bytes())

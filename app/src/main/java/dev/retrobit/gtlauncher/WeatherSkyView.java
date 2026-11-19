@@ -579,7 +579,7 @@ public final class WeatherSkyView extends View {
     private final CameraFollow gameplayCamera=new CameraFollow();
     private long cameraFrameTime;
     private boolean cameraMoving;
-    void setGameplayMode(boolean value) { if(gameplayMode!=value){sparrowTime=0;playerIdleBow.reset();idleBowAmount=0;idleSitAmount=0;gameplayCamera.reset();cameraFrameTime=0;} gameplayMode=value; invalidate(); }
+    void setGameplayMode(boolean value) { if(gameplayMode!=value){playerIdleBow.reset();idleBowAmount=0;idleSitAmount=0;gameplayCamera.reset();cameraFrameTime=0;} gameplayMode=value; invalidate(); }
     private float mapSourceX() { return gameplayMode && showCharacter
             ? (gameplayCamera.ready()?gameplayCamera.x():SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f) : SCENE_WIDTH/2f; }
     private float mapSourceY() { return gameplayMode && showCharacter
@@ -1103,30 +1103,22 @@ public final class WeatherSkyView extends View {
         }
         return sprite;
     }
-    private float sparrowX, sparrowY;
-    private long sparrowTime;
+    private float sparrowX;
     private void drawSparrowPet(Canvas canvas, double motionTime, float anchorX, float anchorY,
-                                float seat, boolean mirror, boolean back, float depth) {
-        if (!gameplayMode || sparrowPet == null) { sparrowTime=0; return; }
+                                float seat, boolean mirror, boolean back, float depth, float headY) {
+        if (!gameplayMode || sparrowPet == null) return;
         boolean reduced=!animationEnabled || !android.animation.ValueAnimator.areAnimatorsEnabled();
         long now=SystemClock.uptimeMillis();
-        float sx=anchorX+(mirror?-1:1)*.5f*characterScale;
-        float sy=anchorY+(.5f+(800f-(back?778f:725f))/800f*25f*seat-25f*(back?.88f:.915f))*characterScale;
-        boolean hovering=!reduced && !characterStepping && seat<1;
-        float groundX=anchorX+(-7f+(hovering?(float)Math.sin(now/1100.0)*2f:0f))*characterScale;
-        float groundY=anchorY+(.5f+(hovering?-12f+(float)Math.sin(now/600.0):0f))*characterScale;
-        float tx=groundX+(sx-groundX)*seat,ty=groundY+(sy-groundY)*seat;
-        float dt=sparrowTime==0?0:Math.max(0,Math.min(.25f,(now-sparrowTime)/1000f));
-        if(sparrowTime==0 || now<sparrowTime || Math.hypot(tx-sparrowX,ty-sparrowY)>80*characterScale || reduced){sparrowX=tx;sparrowY=ty;}
-        else {float f=(float)(1-Math.exp(-dt*5));sparrowX+=(tx-sparrowX)*f;sparrowY+=(ty-sparrowY)*f;}
-        sparrowTime=now;
-        float hop=!reduced && characterStepping && seat<.1f?(float)Math.abs(Math.sin(now/180.0))*.65f*characterScale:0f;
-        float py=sparrowY-hop,size=4.4f*characterScale;
+        boolean hovering=!reduced && seat<1;
+        float drift=hovering?(float)Math.sin(now/850.0)*1.6f*characterScale:0f;
+        float bob=hovering?(float)Math.sin(now/450.0)*1.2f*characterScale:0f;
+        sparrowX=anchorX+drift*(1-seat)+(mirror?-1:1)*.5f*characterScale*seat;
+        float py=headY+(-3.5f*characterScale+bob)*(1-seat),size=6f*characterScale;
         if(seat<.5f && depth==0){paint.setColor(0x380c171e);canvas.drawOval(new RectF(sparrowX-.9f*characterScale,anchorY+.2f*characterScale,sparrowX+.9f*characterScale,anchorY+.8f*characterScale),paint);}
         paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
-        boolean flying=!reduced && (hovering || characterStepping || Math.hypot(tx-sparrowX,ty-sparrowY)>.7f*characterScale);
+        boolean flying=hovering;
         Bitmap rest=back?sparrowBack:sparrowPet, flap=back?sparrowBackFlap:sparrowFlap;
-        Bitmap bird=flying && (now/160)%2==0 && flap!=null?flap:rest;
+        Bitmap bird=flying && (now/300)%2==0 && flap!=null?flap:rest;
         if(bird!=null){int save=canvas.save();if(mirror)canvas.scale(-1,1,sparrowX,0);
             canvas.drawBitmap(bird,null,new RectF(sparrowX-size/2,py-size,sparrowX+size/2,py),paint);canvas.restoreToCount(save);}
         paint.setFilterBitmap(true);
@@ -1185,7 +1177,8 @@ public final class WeatherSkyView extends View {
             paint.setStyle(Paint.Style.FILL);
         }
         float anchorY=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f;
-        drawSparrowPet(canvas,motionTime,x,anchorY,seatWeight,mirror,back,depth);
+        drawSparrowPet(canvas,motionTime,x,anchorY,seatWeight,mirror,back,depth,
+                y-height+seatWeight*(back?2.9f:2.1f)*characterScale);
     }
 
     private void drawMovingHair(Canvas canvas, Bitmap sprite, int sw, int sh, int top,

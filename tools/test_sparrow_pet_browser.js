@@ -5,10 +5,11 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
  await page.route('**/api.open-meteo.com/**',r=>r.abort());await page.route('**/archive-api.open-meteo.com/**',r=>r.abort());
  await page.goto(process.env.PREVIEW_URL||'http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.petDraws.length>0,null,{timeout:60000});
  await page.waitForFunction(()=>window.flapDraws>0,null,{timeout:60000});
+ if(process.env.SPARROW_IDLE_SCREENSHOT)await page.screenshot({path:process.env.SPARROW_IDLE_SCREENSHOT});
  let ground=await page.evaluate(()=>window.petDraws.at(-1));
  await page.evaluate(()=>{window.clockOffset=34000;window.petDraws=[]});await page.waitForTimeout(1500);await page.waitForFunction(()=>window.petDraws.length>0,null,{timeout:60000});
  if(process.env.SPARROW_SCREENSHOT)await page.screenshot({path:process.env.SPARROW_SCREENSHOT});
- const perched=await page.evaluate(()=>window.petDraws.at(-1));assert.ok(perched[1]<ground[1]-5,'bird perches above ground when player sits');
+ const perched=await page.evaluate(()=>window.petDraws.at(-1));assert.ok(perched[1]>ground[1]+1,'bird descends from above head to perch on cap');
  await page.evaluate(()=>{sceneEditing.setGameplayDraft({...worldManager.getCharacter(),column:24.1,walkPhase:1});window.clockOffset=35000;window.petDraws=[];window.flapDraws=0});await page.waitForFunction(()=>window.flapDraws>0 && window.petDraws.length>0,null,{timeout:60000});
  await page.evaluate(()=>sceneEditing.setGameplayDraft(null));
  for(const [facing,back,mirror] of [['S',false,false],['E',false,true],['N',true,false],['W',true,true]]) {
