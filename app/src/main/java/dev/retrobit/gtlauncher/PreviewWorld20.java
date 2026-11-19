@@ -65,12 +65,17 @@ final class PreviewWorld20 implements StackWater.Terrain {
     private static void facing(JSONObject o, String key) throws JSONException {
         if (!Arrays.asList("N", "E", "S", "W").contains(string(o, key))) throw new JSONException("Invalid " + key);
     }
+    private static int objectOpacity(JSONObject object,int version) throws JSONException {
+        if(!object.has("opacity"))return -1;
+        if(version<19)throw new JSONException("Unsupported object opacity");
+        int value=integer(object,"opacity",0,90);if(value%5!=0)throw new JSONException("Invalid opacity");return value;
+    }
     static PreviewWorld20 parse(String input) throws JSONException {
         JSONObject root = new JSONObject(input);
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 18) throw new JSONException("Unsupported world version");
+        if (version > 19) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         if(w.has("blockStacks") && version<4 || version==4 && !w.has("blockStacks"))throw new JSONException("Invalid block stacks version");
         keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","blockStacks","orangeTrees","fences","bridges");
@@ -122,7 +127,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
             boolean show=bool(w,"showCharacter");
             for(int i=0;i<trees.length();i++) {
                 Object value=trees.get(i);if(!(value instanceof JSONObject)) throw new JSONException("Unsupported object");
-                JSONObject tree=(JSONObject)value;keys(tree,"column","row","kind","size","facing","variant","plantId","plantedAt");
+                JSONObject tree=(JSONObject)value;keys(tree,"column","row","kind","size","facing","variant","plantId","plantedAt","opacity");objectOpacity(tree,version);
                 String kind=tree.has("kind")?string(tree,"kind"):"orange";
                 if(!("orange".equals(kind) && !tree.has("kind")) && !(version>=7 && "conifer".equals(kind)) && !(version>=9 && "wild-grass".equals(kind)) && !(version>=10 && "bush".equals(kind))) throw new JSONException("Unsupported object");
                 if(tree.has("facing") && version<6)throw new JSONException("Unsupported object facing");
@@ -154,7 +159,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
             JSONArray fences=w.getJSONArray("fences");if(fences.length()>size*size*2+size*2)throw new JSONException("Too many fences");
             java.util.Set<String> seen=new java.util.HashSet<>();
             for(int i=0;i<fences.length();i++) {
-                JSONObject f=fences.getJSONObject(i);keys(f,"column","row","edge","material");
+                JSONObject f=fences.getJSONObject(i);keys(f,"column","row","edge","material","opacity");objectOpacity(f,version);
                 int x=integer(f,"column",0,size-1),y=integer(f,"row",0,size-1);
                 String edge=string(f,"edge"),material=string(f,"material");
                 if(!Arrays.asList("N","E","S","W").contains(edge) || (!Arrays.asList("wood","stone","stone-tall").contains(material) || (version<17 && material.equals("stone-tall"))) || tiles[y*size+x]==0 || tiles[y*size+x]==3)throw new JSONException("Invalid fence");
@@ -167,7 +172,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
         if(w.has("bridges")) {
             if(version<15 || !(w.get("bridges") instanceof JSONArray))throw new JSONException("Unsupported bridges");
             JSONArray entries=w.getJSONArray("bridges");if(entries.length()>size*size/3)throw new JSONException("Too many bridges");
-            for(int i=0;i<entries.length();i++) {JSONObject b=entries.getJSONObject(i);keys(b,"column","row","axis","material","length");if(version<16 && b.has("length"))throw new JSONException("Unsupported bridge length");int length=b.has("length")?integer(b,"length",4,5):3;bridges.add(new BridgeGeometry.Bridge(integer(b,"column",0,size-1),integer(b,"row",0,size-1),string(b,"axis"),string(b,"material"),length));}
+            for(int i=0;i<entries.length();i++) {JSONObject b=entries.getJSONObject(i);keys(b,"column","row","axis","material","length","opacity");int opacity=objectOpacity(b,version);if(version<16 && b.has("length"))throw new JSONException("Unsupported bridge length");int length=b.has("length")?integer(b,"length",4,5):3;bridges.add(new BridgeGeometry.Bridge(integer(b,"column",0,size-1),integer(b,"row",0,size-1),string(b,"axis"),string(b,"material"),length,opacity));}
             final boolean[] blocked=new boolean[size*size];
             if(house instanceof JSONObject){JSONObject h=(JSONObject)house;int hc=h.getInt("column"),hr=h.getInt("row");for(int y=hr;y<hr+3;y++)for(int x=hc;x<hc+3;x++)blocked[y*size+x]=true;}
             JSONArray trees=w.optJSONArray("orangeTrees");if(trees!=null)for(int i=0;i<trees.length();i++){JSONObject t=trees.getJSONObject(i);int x=t.getInt("column"),y=t.getInt("row"),n=t.optInt("size",2);for(int dy=0;dy<n;dy++)for(int dx=0;dx<n;dx++)blocked[(y+dy)*size+x+dx]=true;}

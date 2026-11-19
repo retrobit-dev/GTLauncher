@@ -259,6 +259,19 @@ public class PortalImportTest {
         try{store.upsertAndSelect(WorldStore.parseExport(older.toString()));fail("downgrade must not erase transparency");}catch(JSONException expected){}
         assertEquals(40,store.activeWorld().houses.get(0).opacity);
     }
+    @Test public void previewObjectOpacityPersistsAndBlocksDowngrade() throws Exception {
+        JSONObject root=new JSONObject(portableWorld(19,1)),w=root.getJSONObject("world");
+        w.put("orangeTrees",new org.json.JSONArray().put(new JSONObject().put("column",10).put("row",10).put("opacity",30)));
+        w.put("fences",new org.json.JSONArray().put(new JSONObject().put("column",3).put("row",3).put("edge","S").put("material","wood").put("opacity",55)));
+        w.put("bridges",new org.json.JSONArray().put(new JSONObject().put("column",14).put("row",14).put("axis","E").put("material","wood").put("opacity",75)));
+        WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(root.toString())));
+        WorldStore.World world=store.activeWorld();assertEquals(30,world.surfaces.get(0).opacity);assertEquals(55,world.surfaces.get(1).opacity);assertEquals(75,world.previewData.bridges.get(0).opacity);
+        assertTrue(store.moveSelectedObject("home",null,world.surfaces.get(1),4,3));world=store.activeWorld();assertEquals(55,world.surfaces.get(1).opacity);
+        assertTrue(store.editPreviewBridge("home",world.previewData.bridges.get(0),14,16,false));world=store.activeWorld();assertEquals(75,world.previewData.bridges.get(0).opacity);
+        JSONObject old=new JSONObject(world.previewData.toJson());old.put("version",18);for(String key:new String[]{"orangeTrees","fences","bridges"})old.getJSONObject("world").getJSONArray(key).getJSONObject(0).remove("opacity");
+        try{store.upsertAndSelect(WorldStore.parseExport(old.toString()));fail("downgrade must not erase object opacity");}catch(JSONException expected){}
+        assertEquals(75,store.activeWorld().previewData.bridges.get(0).opacity);
+    }
     @Test public void differentSchemasNeverOverwriteAndPreservePreferences() throws JSONException {
         String bush="{\"type\":\"bush\",\"column\":1,\"row\":1,\"variant\":\"tiered\"}";
         SharedPreferences p=prefs();WorldStore store=new WorldStore(p);

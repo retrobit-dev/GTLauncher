@@ -310,14 +310,14 @@ final class WorldStore {
             for(int i=0;i<source.length();i++) {
                 JSONObject tree=source.getJSONObject(i);
                 String kind=tree.optString("kind","");boolean grass="wild-grass".equals(kind), bush="bush".equals(kind);
-                trees.add(new SurfaceObject(grass || bush?"bush":"tree",tree.getInt("column"),tree.getInt("row"),tree.optString("facing","S"),grass?"wild-grass":bush?"preview-bush"+(tree.has("variant")?"-"+tree.getString("variant"):"")+(tree.optInt("size")==2?"-large":""):kind.isEmpty()?"orange":tree.optInt("size",2)==1?"conifer-small":"conifer",tree.toString()));
+                trees.add(new SurfaceObject(grass || bush?"bush":"tree",tree.getInt("column"),tree.getInt("row"),tree.optString("facing","S"),grass?"wild-grass":bush?"preview-bush"+(tree.has("variant")?"-"+tree.getString("variant"):"")+(tree.optInt("size")==2?"-large":""):kind.isEmpty()?"orange":tree.optInt("size",2)==1?"conifer-small":"conifer",tree.toString(),tree.has("opacity")?tree.getInt("opacity"):-1));
             }
         }
         if(w.has("fences")) {
             JSONArray fences=w.getJSONArray("fences");
             for(int i=0;i<fences.length();i++) {
                 JSONObject f=fences.getJSONObject(i);
-                trees.add(new SurfaceObject("fence",f.getInt("column"),f.getInt("row"),f.getString("edge"),"preview-"+f.getString("material"),f.toString()));
+                trees.add(new SurfaceObject("fence",f.getInt("column"),f.getInt("row"),f.getString("edge"),"preview-"+f.getString("material"),f.toString(),f.has("opacity")?f.getInt("opacity"):-1));
             }
         }
         World result=new World(data.id,w.getString("name"),w.getString("description"),w.getString("color"),
@@ -424,6 +424,7 @@ final class WorldStore {
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
                     if(world.previewData.version<4 && old.previewData.hasStacks())throw new JSONException("Older preview format cannot replace stacked terrain");
+                    if(world.previewData.version<19 && (old.surfaces.stream().anyMatch(o->o.opacity>=0) || old.previewData.bridges.stream().anyMatch(b->b.opacity>=0)))throw new JSONException("Older preview format cannot replace object opacity");
                     if(world.previewData.version<18 && old.houses.stream().anyMatch(h->h.opacity>=0))throw new JSONException("Older preview format cannot replace house opacity");
                     if(world.previewData.version<17 && old.surfaces.stream().anyMatch(o->o.type.equals("fence") && o.material.equals("preview-stone-tall")))throw new JSONException("Older preview format cannot replace tall walls");
                     if(world.previewData.version<16 && old.previewData.bridges.stream().anyMatch(b->b.length!=3))throw new JSONException("Older preview format cannot replace bridge length");
@@ -765,7 +766,7 @@ final class WorldStore {
         JSONObject root=new JSONObject(world.previewData.toJson()),data=root.getJSONObject("world");JSONArray before=data.optJSONArray("bridges");if(before==null)return false;
         JSONArray next=new JSONArray();boolean found=false;
         for(int i=0;i<before.length();i++) {JSONObject item=before.getJSONObject(i);
-            if(item.getInt("column")==expected.column && item.getInt("row")==expected.row && item.getString("axis").equals(expected.axis) && item.getString("material").equals(expected.material) && item.optInt("length",3)==expected.length){
+            if(item.getInt("column")==expected.column && item.getInt("row")==expected.row && item.getString("axis").equals(expected.axis) && item.getString("material").equals(expected.material) && item.optInt("length",3)==expected.length && item.optInt("opacity",-1)==expected.opacity){
                 if(found)return false;found=true;if(delete)continue;item.put("column",column);item.put("row",row);
             }
             next.put(item);

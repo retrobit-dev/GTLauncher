@@ -4,9 +4,10 @@ package dev.retrobit.gtlauncher;
 final class BridgeGeometry {
     static final int LENGTH=3;
     static final class Bridge {
-        final int column,row,length;final String axis,material;
+        final int column,row,length,opacity;final String axis,material;
         Bridge(int column,int row,String axis,String material){this(column,row,axis,material,3);}
-        Bridge(int column,int row,String axis,String material,int length){this.column=column;this.row=row;this.axis=axis;this.material=material;this.length=length;}
+        Bridge(int column,int row,String axis,String material,int length){this(column,row,axis,material,length,-1);}
+        Bridge(int column,int row,String axis,String material,int length,int opacity){this.column=column;this.row=row;this.axis=axis;this.material=material;this.length=length;this.opacity=opacity;}
     }
     static int indexAt(Bridge b,int c,int r) {
         if(b==null || b.length<3 || b.length>5 || !("E".equals(b.axis)||"S".equals(b.axis)) || !("wood".equals(b.material)||"stone".equals(b.material)))return -1;

@@ -563,8 +563,9 @@ public final class WeatherSkyView extends View {
             float x=SCENE_WIDTH/2f+(c-r)*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(c+r)*ISLAND_TILE_HEIGHT/2f-elevationAt(b.column,b.row);
             float width=ISLAND_TILE_WIDTH*2.35f,height=ISLAND_TILE_WIDTH*1.56f;int save=canvas.save();canvas.translate(x,y);if(b.axis.equals("E"))canvas.scale(-1,1);
             float k=b.length/3f;android.graphics.Matrix stretch=new android.graphics.Matrix();stretch.setValues(new float[]{(k+1)/2,1-k,0,(1-k)/4,(k+1)/2,0,0,0,1});canvas.concat(stretch);
-            paint.setColor(Color.WHITE);paint.setAlpha(255);canvas.drawBitmap(image,null,new RectF(-width/2,-height*.62f,width/2,height*.38f),paint);canvas.restoreToCount(save);
+            paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,b.opacity))/100f));canvas.drawBitmap(image,null,new RectF(-width/2,-height*.62f,width/2,height*.38f),paint);canvas.restoreToCount(save);
         }
+        paint.setAlpha(255);
     }
     // Only objects painted after the player can hide them. Test opaque pixels rather
     // than tile proximity, and never write this temporary fade into world data.
@@ -948,8 +949,8 @@ public final class WeatherSkyView extends View {
                 int ground=canvas.save();setClipIslandSurface(canvas);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(1.2f);paint.setColor(Color.argb(40,12,23,40));canvas.drawLine(ends[0],ends[1],ends[2],ends[3],paint);canvas.restoreToCount(ground);
                 for(FenceMesh.Face face:FenceMesh.faces(ends[0],ends[1],ends[2],ends[3],stone,tall,fenceJoins.get(o))) {
                     Path path=new Path();path.moveTo(face.points[0],face.points[1]);for(int i=2;i<face.points.length;i+=2)path.lineTo(face.points[i],face.points[i+1]);path.close();
-                    paint.setStyle(Paint.Style.FILL);paint.setColor(face.color);paint.setAlpha(fades?128:255);canvas.drawPath(path,paint);
-                    if(!face.detail){paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.3f);paint.setColor(stone?0xff687666:0xff664936);paint.setAlpha(fades?128:255);canvas.drawPath(path,paint);}
+                    paint.setStyle(Paint.Style.FILL);paint.setColor(face.color);paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f*(fades?.5f:1f)));canvas.drawPath(path,paint);
+                    if(!face.detail){paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.3f);paint.setColor(stone?0xff687666:0xff664936);paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f*(fades?.5f:1f)));canvas.drawPath(path,paint);}
                 }
                 paint.setStyle(Paint.Style.FILL);continue;
             }

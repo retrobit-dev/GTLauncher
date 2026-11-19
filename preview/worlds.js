@@ -17,6 +17,7 @@
   let state = {worlds: [], activeId: 'base'};
   let storageError = '';
   let loadedRaw = null;
+  const validOpacity = value => value === undefined || (Number.isInteger(value) && value >= 0 && value <= 90 && value % 5 === 0);
   const validTile = t => Number.isInteger(t) && t >= 0 && t <= 10;
   const WORLD_KEYS = ['id','name','description','color','showCharacter','characterColumn','characterRow','characterScale','characterFacing','house','gridSize','tiles','blockStacks','orangeTrees','fences','bridges'];
   // The top block mirrors tiles for legacy flat-world consumers. A missing
@@ -32,7 +33,7 @@
     if(!Array.isArray(trees) || trees.length>size*size) return false;
     const occupied=new Set(), ids=new Set();
     for(const tree of trees) {
-      if(!tree || Object.keys(tree).some(k=>!['column','row','facing','kind','size','variant','plantId','plantedAt'].includes(k)) || (tree.facing!==undefined && !['N','E','S','W'].includes(tree.facing)) || (tree.kind!==undefined && !['conifer','wild-grass','bush'].includes(tree.kind)) || (tree.size!==undefined && (!['conifer','wild-grass','bush'].includes(tree.kind) || (tree.size!==1 && !(tree.kind==='bush' && tree.size===2)))) || (['wild-grass','bush'].includes(tree.kind) && tree.size===undefined) || (tree.variant!==undefined && (tree.kind!=='bush' || !['flower','berry'].includes(tree.variant))) || !Number.isInteger(tree.column) || !Number.isInteger(tree.row) || tree.column<0 || tree.row<0 || tree.column+(tree.size||2)>size || tree.row+(tree.size||2)>size) return false;
+      if(!tree || Object.keys(tree).some(k=>!['column','row','facing','kind','size','variant','plantId','plantedAt','opacity'].includes(k)) || !validOpacity(tree.opacity) || (tree.facing!==undefined && !['N','E','S','W'].includes(tree.facing)) || (tree.kind!==undefined && !['conifer','wild-grass','bush'].includes(tree.kind)) || (tree.size!==undefined && (!['conifer','wild-grass','bush'].includes(tree.kind) || (tree.size!==1 && !(tree.kind==='bush' && tree.size===2)))) || (['wild-grass','bush'].includes(tree.kind) && tree.size===undefined) || (tree.variant!==undefined && (tree.kind!=='bush' || !['flower','berry'].includes(tree.variant))) || !Number.isInteger(tree.column) || !Number.isInteger(tree.row) || tree.column<0 || tree.row<0 || tree.column+(tree.size||2)>size || tree.row+(tree.size||2)>size) return false;
       if(tree.plantId!==undefined || tree.plantedAt!==undefined) {
         if(tree.kind!=='bush' || !['flower','berry'].includes(tree.variant) || typeof tree.plantId!=='string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(tree.plantId) || ids.has(tree.plantId) || !Number.isSafeInteger(tree.plantedAt) || tree.plantedAt<0 || tree.plantedAt>253402300799000) return false;
         ids.add(tree.plantId);
@@ -47,7 +48,7 @@
     if(!Array.isArray(fences) || !Array.isArray(tiles) || fences.length>size*size*2+size*2)return false;
     const seen=new Set();
     for(const f of fences) {
-      if(!f || typeof f!=='object' || Array.isArray(f) || Object.keys(f).some(k=>!['column','row','edge','material'].includes(k)) || !Number.isInteger(f.column) || !Number.isInteger(f.row) || f.column<0 || f.row<0 || f.column>=size || f.row>=size || !['N','E','S','W'].includes(f.edge) || !['wood','stone','stone-tall'].includes(f.material))return false;
+      if(!f || typeof f!=='object' || Array.isArray(f) || Object.keys(f).some(k=>!['column','row','edge','material','opacity'].includes(k)) || !validOpacity(f.opacity) || !Number.isInteger(f.column) || !Number.isInteger(f.row) || f.column<0 || f.row<0 || f.column>=size || f.row>=size || !['N','E','S','W'].includes(f.edge) || !['wood','stone','stone-tall'].includes(f.material))return false;
       const i=f.row*size+f.column,key=window.FenceEdges.key(f);
       const h=world.house;
       if(!tiles[i] || tiles[i]===3 || seen.has(key) || (h && f.column>=h.column && f.column<h.column+3 && f.row>=h.row && f.row<h.row+3))return false;
@@ -322,7 +323,7 @@
     const keys = (value, allowed) => record(value) && Object.keys(value).every(key => allowed.includes(key));
     let root;
     try { root = JSON.parse(text.replace(/^\uFEFF/, '')); } catch (_) { return fail(); }
-    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].includes(root.version)) {
+    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19].includes(root.version)) {
       const w = root.world;
       if (!keys(w, WORLD_KEYS) || ![20,25,50,100].includes(w.gridSize) || !Array.isArray(w.tiles) || w.tiles.length !== w.gridSize * w.gridSize
         || w.tiles.some(t => !validTile(t) || (t > (root.version === 1 ? 1 : root.version === 2 ? 5 : root.version < 14 ? 6 : 10)))
@@ -330,6 +331,7 @@
         || (root.version < 13 && w.fences !== undefined) || (root.version < 17 && w.fences?.some(f=>f.material==='stone-tall')) || !validFences(w.fences,w)
         || (root.version < 15 && w.bridges !== undefined) || (root.version < 16 && w.bridges?.some(b=>b.length!==undefined)) || !validBridges(w)
         || (root.version < 14 && Array.isArray(w.blockStacks) && w.blockStacks.some(stack=>Array.isArray(stack) && stack.some(t=>t>6)))
+        || (root.version < 19 && [w.orangeTrees,w.fences,w.bridges].some(items=>items?.some(item=>item.opacity !== undefined)))
         || (root.version < 4 && w.blockStacks !== undefined)
         || (root.version === 4 && !validStacks(w.blockStacks, w.tiles, w.gridSize)) || (root.version >= 5 && w.blockStacks !== undefined && !validStacks(w.blockStacks,w.tiles,w.gridSize)) || typeof w.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(w.id) || w.id === 'base'
         || typeof w.name !== 'string' || !w.name.trim() || w.name.length > 48 || typeof w.description !== 'string' || w.description.length > 160
@@ -402,6 +404,7 @@
       $('world-import-prompt').textContent = `World “${existing.name}” sudah ada dengan ID yang sama. Ganti isinya dengan data dari berkas?`;
       $('world-import-confirm').hidden = false; return;
     }
+    if(existing && (pendingImport.previewVersion ?? 0)<19 && [existing.orangeTrees,existing.fences,existing.bridges].some(items=>items?.some(item=>item.opacity !== undefined))) {cancelImport();render();announce('Berkas lama tidak mendukung transparansi objek; data tidak diubah.');return;}
     if(existing?.house?.opacity !== undefined && (pendingImport.previewVersion ?? 0)<18) {cancelImport();render();announce('Berkas lama tidak mendukung transparansi rumah; data tidak diubah.');return;}
     if(existing && version!==45 && (existing.fences||[]).some(f=>f.material==='stone-tall')) {cancelImport();render();announce('Berkas lama tidak mendukung tembok tinggi; data tidak diubah.');return;}
     if(existing && version!==45 && version!==44 && (existing.bridges||[]).some(b=>b.length!==undefined)) {cancelImport();render();announce('Berkas lama tidak mendukung panjang jembatan; data tidak diubah.');return;}
@@ -592,7 +595,7 @@
         const character = getCharacter(world);
         const snapshot = {...world, showCharacter: character.visible, characterColumn: character.column, characterRow: character.row,
           characterScale: character.scale, characterFacing: character.facing, house: getHouse(world)};
-        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.house?.opacity !== undefined ? 18 : snapshot.fences?.some(f=>f.material==='stone-tall') ? 17 : snapshot.bridges?.some(b=>b.length!==undefined) ? 16 : snapshot.bridges!==undefined ? 15 : (snapshot.tiles.some(t=>t>6) || snapshot.blockStacks?.some(stack=>stack.some(t=>t>6))) ? 14 : snapshot.fences!==undefined ? 13 : snapshot.orangeTrees?.some(t=>t.plantId!==undefined) ? 12 : snapshot.orangeTrees?.some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined)) ? 11 : snapshot.orangeTrees?.some(t=>t.kind==='bush') ? 10 : snapshot.orangeTrees?.some(t=>t.kind==='wild-grass') ? 9 : snapshot.orangeTrees?.some(t=>t.size!==undefined) ? 8 : snapshot.orangeTrees?.some(t=>t.kind!==undefined) ? 7 : snapshot.orangeTrees?.some(t=>t.facing!==undefined) ? 6 : snapshot.orangeTrees !== undefined ? 5 : snapshot.blockStacks ? 4 : snapshot.tiles.some(t => t === 6) ? 3 : snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
+        const json = JSON.stringify({format:'gtlauncher-preview-world',version:[snapshot.orangeTrees,snapshot.fences,snapshot.bridges].some(items=>items?.some(item=>item.opacity!==undefined)) ? 19 : snapshot.house?.opacity !== undefined ? 18 : snapshot.fences?.some(f=>f.material==='stone-tall') ? 17 : snapshot.bridges?.some(b=>b.length!==undefined) ? 16 : snapshot.bridges!==undefined ? 15 : (snapshot.tiles.some(t=>t>6) || snapshot.blockStacks?.some(stack=>stack.some(t=>t>6))) ? 14 : snapshot.fences!==undefined ? 13 : snapshot.orangeTrees?.some(t=>t.plantId!==undefined) ? 12 : snapshot.orangeTrees?.some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined)) ? 11 : snapshot.orangeTrees?.some(t=>t.kind==='bush') ? 10 : snapshot.orangeTrees?.some(t=>t.kind==='wild-grass') ? 9 : snapshot.orangeTrees?.some(t=>t.size!==undefined) ? 8 : snapshot.orangeTrees?.some(t=>t.kind!==undefined) ? 7 : snapshot.orangeTrees?.some(t=>t.facing!==undefined) ? 6 : snapshot.orangeTrees !== undefined ? 5 : snapshot.blockStacks ? 4 : snapshot.tiles.some(t => t === 6) ? 3 : snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
         const blob = new Blob([json], {type:'application/json'});
         const url = URL.createObjectURL(blob);
         const safeName = world.name.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'world';

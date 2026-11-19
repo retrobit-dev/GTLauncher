@@ -25,6 +25,16 @@ public class PreviewWorld20Test {
         assertEquals(40,new JSONObject(PreviewWorld20.parse(root.toString()).toJson()).getJSONObject("world").getJSONObject("house").getInt("opacity"));
         house.put("opacity",41);rejected(root);house.put("opacity",95);rejected(root);house.put("opacity","40");rejected(root);
     }
+    @Test public void objectOpacityRequiresV19AndIsValidated() throws Exception {
+        JSONObject root=sample(),w=root.getJSONObject("world");root.put("version",19);
+        JSONObject tree=new JSONObject().put("column",10).put("row",10).put("opacity",30);
+        JSONObject fence=new JSONObject().put("column",4).put("row",4).put("edge","S").put("material","wood").put("opacity",55);
+        JSONObject bridge=new JSONObject().put("column",14).put("row",14).put("axis","E").put("material","wood").put("opacity",75);
+        w.put("orangeTrees",new JSONArray().put(tree)).put("fences",new JSONArray().put(fence)).put("bridges",new JSONArray().put(bridge));
+        PreviewWorld20 p=PreviewWorld20.parse(root.toString());assertEquals(75,p.bridges.get(0).opacity);assertEquals(30,new JSONObject(p.toJson()).getJSONObject("world").getJSONArray("orangeTrees").getJSONObject(0).getInt("opacity"));
+        root.put("version",18);rejected(root);root.put("version",19);
+        tree.put("opacity",31);rejected(root);tree.put("opacity",30);fence.put("opacity",-5);rejected(root);fence.put("opacity",55);bridge.put("opacity","75");rejected(root);
+    }
     @Test public void allTerrainAndHouseRoundTrip() throws Exception {
         JSONObject root=sample(), w=root.getJSONObject("world");
         w.getJSONArray("tiles").put(399,0).put(398,2).put(397,3).put(396,4).put(395,5);

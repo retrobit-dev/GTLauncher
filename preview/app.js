@@ -1928,7 +1928,7 @@
   }
   function drawBridge(bridge) {
     const image=bridgeSprites[bridge.material];if(!image?.complete || !image.naturalWidth)return;
-    const p=bridgeBounds(bridge);ctx.save();applyIslandTransform();ctx.translate(p.x,p.y);if(bridge.axis==='E')ctx.scale(-1,1);
+    const p=bridgeBounds(bridge);ctx.save();ctx.globalAlpha*=(100-(bridge.opacity ?? 0))/100;applyIslandTransform();ctx.translate(p.x,p.y);if(bridge.axis==='E')ctx.scale(-1,1);
     const k=(bridge.length||3)/3;ctx.transform((k+1)/2,(1-k)/4,1-k,(k+1)/2,0,0);
     ctx.imageSmoothingEnabled=true;ctx.drawImage(image,-p.w/2,-p.h*.62,p.w,p.h);
     if(editingBridgeSelection && editingBridgeSelection.column===bridge.column && editingBridgeSelection.row===bridge.row && editingBridgeSelection.axis===bridge.axis){ctx.strokeStyle='#fff4a8';ctx.lineWidth=.6;ctx.strokeRect(-p.w/2,-p.h*.62,p.w,p.h);}
@@ -2035,7 +2035,7 @@
     if(!wildGrassImage.complete || !wildGrassImage.naturalWidth)return;
     const p=orangeTreeAnchor(a),q=orangeTreeAnchor(b),x=(p.x+q.x)/2,y=(p.y+q.y)/2;
     const sway=(objectSway(a)+objectSway(b))/2;
-    ctx.save();applyIslandTransform();ctx.save();clipIslandSurface();ctx.fillStyle='rgba(28,49,35,.14)';ctx.beginPath();ctx.ellipse(x,y,4.5,.55,0,0,Math.PI*2);ctx.fill();ctx.restore();
+    ctx.save();ctx.globalAlpha*=(100-Math.max(a.opacity ?? 0,b.opacity ?? 0))/100;applyIslandTransform();ctx.save();clipIslandSurface();ctx.fillStyle='rgba(28,49,35,.14)';ctx.beginPath();ctx.ellipse(x,y,4.5,.55,0,0,Math.PI*2);ctx.fill();ctx.restore();
     ctx.translate(x,y);ctx.transform(1,0,-sway/11,1,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     ctx.drawImage(wildGrassImage,-11,-11,22,11);ctx.restore();
   }
@@ -2089,10 +2089,10 @@
     return {a,b};
   }
   function drawFence(f,join) {
-    const g=fenceGeometry(f);ctx.save();applyIslandTransform();
+    const g=fenceGeometry(f);ctx.save();ctx.globalAlpha*=(100-(f.opacity ?? 0))/100;applyIslandTransform();
     ctx.save();clipIslandSurface();ctx.strokeStyle='rgba(12,23,40,.16)';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(g.a.x,g.a.y);ctx.lineTo(g.b.x,g.b.y);ctx.stroke();ctx.restore();
     const player=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
-    if(player?.visible && f.column===Math.round(player.column) && f.row===Math.round(player.row) && (f.edge==='S'||f.edge==='E'))ctx.globalAlpha=.5;
+    if(player?.visible && f.column===Math.round(player.column) && f.row===Math.round(player.row) && (f.edge==='S'||f.edge==='E'))ctx.globalAlpha*=.5;
     const selected=(editingFenceSelection && editingFenceSelection.column===f.column && editingFenceSelection.row===f.row && editingFenceSelection.edge===f.edge) || editingFenceGroup.some(t=>t.column===f.column && t.row===f.row && t.edge===f.edge);
     ctx.lineWidth=.30;ctx.lineJoin='round';
     for(const face of window.FenceMesh.faces(g.a,g.b,f.material,join)) {
@@ -2516,7 +2516,7 @@
     for(const bridge of objectWorld?.bridges||[])drawBridge(bridge);
     const sceneObjects=(objectWorld?.orangeTrees||[]).map(tree=>({depth:tree.column+tree.row+treeSize(tree)-1,draw:()=>{
       const foreground=visiblePlayer?.visible && tree.column+tree.row+treeSize(tree)-1>=visiblePlayer.column+visiblePlayer.row;
-      ctx.save();const t=foreground?orangeTreeAnchor(tree):null,w=foreground?treeWidth(tree):0,h=foreground?treeHeight(tree):0;
+      ctx.save();ctx.globalAlpha*=(100-(tree.opacity ?? 0))/100;const t=foreground?orangeTreeAnchor(tree):null,w=foreground?treeWidth(tree):0,h=foreground?treeHeight(tree):0;
       if(foreground && coversCharacter(visiblePlayer,p=>treeContains(tree,p),{left:t.x-w/2-3,right:t.x+w/2+3,top:t.y-h,bottom:t.y}))ctx.globalAlpha*=.5;
       drawOrangeTree(tree,motionTime,sceneWeather);drawOrangeDrop(tree);ctx.restore();
     }}));

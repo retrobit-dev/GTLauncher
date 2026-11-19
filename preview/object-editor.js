@@ -333,8 +333,8 @@
     canvas.classList.toggle('is-editing', editing);
     status.hidden = !editing;
     const opacityControl=$('house-transparency-control'),opacity=$('house-transparency');
-    opacityControl.hidden=!(editing && selected && selectedType==='house');
-    if(!opacityControl.hidden){opacity.value=String(current()?.opacity ?? 0);$('house-transparency-value').textContent=`${opacity.value}%`;}
+    opacityControl.hidden=!(editing && selected && ['house','tree','fence','bridge'].includes(selectedType));
+    if(!opacityControl.hidden){$('transparency-label').textContent=`Transparansi ${selectedType==='house'?'rumah':selectedType==='tree'?'tanaman':selectedType==='fence'?'pagar':'jembatan'}`;opacity.value=String(current()?.opacity ?? 0);$('house-transparency-value').textContent=`${opacity.value}%`;}
     detailsButton.hidden = !editing || !selected || (selectedType==='tree'||selectedType==='fence'||selectedType==='bridge'||selectedType==='block');
     selectButton.hidden = !editing || (selected && selectedType === 'character') || !window.worldManager.getCharacter().visible;
     selectHouse.hidden = !editing || (selected && selectedType === 'house') || !window.worldManager.getHouse();
@@ -426,10 +426,19 @@
   });
   $('house-transparency').addEventListener('input',event=>{$('house-transparency-value').textContent=`${event.target.value}%`;});
   $('house-transparency').addEventListener('change',event=>{
-    if(!editing || !selected || selectedType!=='house')return;
-    const config=current(),value=Number(event.target.value);
+    if(!editing || !selected || !['house','tree','fence','bridge'].includes(selectedType))return;
+    const config=current(),value=Number(event.target.value);if(!config)return;
     if(value===0)delete config.opacity;else config.opacity=value;
-    if(recordEdit(config)){refresh();syncControls();tell('EDITING · Transparansi rumah disimpan bersama world.');}
+    let saved=false;
+    if(selectedType==='house')saved=recordEdit(config);
+    else {
+      const world=window.worldManager.getActive(),key=selectedType==='tree'?'orangeTrees':selectedType==='fence'?'fences':'bridges';
+      const index=selectedType==='tree'?selectedTreeIndex:selectedType==='fence'?selectedFenceIndex:selectedBridgeIndex;
+      const before=world[key]||[],next=before.map((item,i)=>i===index?config:item);
+      if(index!==null && before[index] && JSON.stringify(before[index])===JSON.stringify(config))saved=true;
+      else if(index!==null && before[index])saved=selectedType==='tree'?saveTrees(before,next):selectedType==='fence'?saveFences(before,next):saveBridges(before,next);
+    }
+    if(saved){refresh();syncControls();tell('EDITING · Transparansi objek disimpan bersama world.');}
     else {syncControls();tell('EDITING · Transparansi tidak dapat disimpan.');}
   });
   $('object-scale').addEventListener('input', syncScale);
