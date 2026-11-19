@@ -1753,7 +1753,8 @@
   function waterDepth(column,row) {
     const world=window.worldManager?.getActive(), size=world?.gridSize;
     if (!world?.tiles || !Number.isInteger(column) || !Number.isInteger(row) || column<0 || row<0 || column>=size || row>=size) return 0;
-    return world.tiles[row*size+column]===3 && !(world.bridges||[]).some(b=>window.BridgeGeometry?.indexAt(b,{column,row})>=0) ? BLOCK_HEIGHT : 0;
+    const ramp=world.ramps?.find(r=>r.column===column && r.row===row);
+    return (ramp ? ramp.material===3 : world.tiles[row*size+column]===3) && !(world.bridges||[]).some(b=>window.BridgeGeometry?.indexAt(b,{column,row})>=0) ? BLOCK_HEIGHT : 0;
   }
   function characterWaterDepth(character) {
     return Number.isFinite(character.waterDepth) ? Math.max(0,Math.min(BLOCK_HEIGHT,character.waterDepth)) : waterDepth(character.column,character.row);
@@ -2333,7 +2334,7 @@
         const ramp=ramps.get(index),rampLevel=stack ? stack.length-1 : 0;
         if(ramp && tileVisible({...tile,y:tile.y-(rampLevel+1)*BLOCK_HEIGHT},BLOCK_HEIGHT)) {
           ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${rampLevel}`)||0))/100;
-          drawRamp({...tile,y:tile.y-rampLevel*BLOCK_HEIGHT},ramp.direction,tileData[index],palette);ctx.restore();
+          drawRamp({...tile,y:tile.y-rampLevel*BLOCK_HEIGHT},ramp.direction,ramp.material ?? tileData[index],palette);ctx.restore();
         }
       }
     } else {

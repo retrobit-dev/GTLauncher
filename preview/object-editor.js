@@ -227,9 +227,9 @@
     return obj ? {...obj} : null;
   }
   function blocks(world) { return world.blockStacks ? world.blockStacks.map(x=>x.slice()) : world.tiles?.map(t=>t?[t]:[]) ?? null; }
-  function snapshot() { return {character: current('character'), house: current('house'), trees:(window.worldManager.getActive().orangeTrees||[]).map(t=>({...t})), fences:(window.worldManager.getActive().fences||[]).map(f=>({...f})), bridges:(window.worldManager.getActive().bridges||[]).map(b=>({...b})), blocks: blocks(window.worldManager.getActive()),blockOpacity:(window.worldManager.getActive().blockOpacity||[]).map(e=>({...e}))}; }
+  function snapshot() { return {character: current('character'), house: current('house'), trees:(window.worldManager.getActive().orangeTrees||[]).map(t=>({...t})), fences:(window.worldManager.getActive().fences||[]).map(f=>({...f})), bridges:(window.worldManager.getActive().bridges||[]).map(b=>({...b})), blocks: blocks(window.worldManager.getActive()),blockOpacity:(window.worldManager.getActive().blockOpacity||[]).map(e=>({...e})),ramps:(window.worldManager.getActive().ramps||[]).map(r=>({...r}))}; }
   function sameBlocks(a,b) { return a===b || (Array.isArray(a) && Array.isArray(b) && a.length===b.length && a.every((v,i)=>v.length===b[i].length && v.every((t,j)=>t===b[i][j]))); }
-  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house) && JSON.stringify(a.trees)===JSON.stringify(b.trees) && JSON.stringify(a.fences)===JSON.stringify(b.fences) && JSON.stringify(a.bridges)===JSON.stringify(b.bridges) && sameBlocks(a.blocks,b.blocks) && JSON.stringify(a.blockOpacity)===JSON.stringify(b.blockOpacity); }
+  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house) && JSON.stringify(a.trees)===JSON.stringify(b.trees) && JSON.stringify(a.fences)===JSON.stringify(b.fences) && JSON.stringify(a.bridges)===JSON.stringify(b.bridges) && sameBlocks(a.blocks,b.blocks) && JSON.stringify(a.blockOpacity)===JSON.stringify(b.blockOpacity) && JSON.stringify(a.ramps)===JSON.stringify(b.ramps); }
   function ensureHistory(id) {
     const state = snapshot();
     let item = histories.get(id);
@@ -280,6 +280,12 @@
       history.last=snapshot();selectedType='house';selected=Boolean(next.value?.visible);draft=null;refresh();syncControls();
       tell(`EDITING · ${label}: penempatan rumah player.`);return;
     }
+    if(next.type==='ramps') {
+      const before=(window.worldManager.getActive().ramps||[]).map(r=>({...r}));applyingHistory=true;let saved;
+      try{saved=window.worldManager.replaceRamps(worldId,before,next.value);}finally{applyingHistory=false;}
+      if(!saved){tell('EDITING · Riwayat ramp tidak dapat diterapkan; periksa tapak.');return;}
+      from.pop();to.push({type:'ramps',value:before});history.last=snapshot();refresh();syncControls();return;
+    }
     if(next.type==='blockOpacity') {
       const before=(window.worldManager.getActive().blockOpacity||[]).map(e=>({...e}));applyingHistory=true;let saved;
       try{saved=window.worldManager.replaceBlockOpacity(worldId,before,next.value);}finally{applyingHistory=false;}
@@ -328,6 +334,17 @@
         history.redo.length=0;history.last=snapshot();
       }
       syncControls();
+    }
+  });
+  window.editorRampHistory=Object.freeze({
+    update(id,next) {
+      if(!editing && document.querySelector('.preview-stage')?.dataset.mode==='editor')editButton.click();
+      if(!editing || !history || id!==worldId || pendingTerrain || pointers.size || dialog.open)return false;
+      const before=(window.worldManager.getActive().ramps||[]).map(r=>({...r}));
+      if(JSON.stringify(before)===JSON.stringify(next))return true;
+      applyingHistory=true;let saved;try{saved=window.worldManager.replaceRamps(id,before,next);}finally{applyingHistory=false;}
+      if(saved){history.undo.push({type:'ramps',value:before});if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();syncControls();}
+      return saved;
     }
   });
   const scene = () => window.sceneEditing;

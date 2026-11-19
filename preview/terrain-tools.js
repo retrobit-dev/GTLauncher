@@ -35,7 +35,7 @@
   document.addEventListener('pointerdown',event=>{if(picker && !picker.contains(event.target))closePicker();},true);
   document.getElementById('mode-gameplay')?.addEventListener('click',()=>closePicker());
   updateBlockPreview();
-  const buttons=Object.fromEntries(['draw','add','erase','pick','fill'].map(name=>[name,document.getElementById('terrain-'+name)]));
+  const buttons=Object.fromEntries(['draw','add','erase','pick','fill','ramp'].map(name=>[name,document.getElementById('terrain-'+name)]));
   if (!stage || !canvas || !material || !status || !pan || !scene?.tileAt || !worlds?.updateTiles || Object.values(buttons).some(x=>!x)) return;
   let tool=null, gesture=null, lastWorld=worlds.getActive().id;
   function select(next) {
@@ -43,7 +43,8 @@
     tool=next; gesture=null;
     for (const [name, button] of Object.entries(buttons)) button.setAttribute('aria-pressed', String(name===tool));
     canvas.classList.toggle('is-terrain-editing',Boolean(tool));
-    const hint={draw:'Ketuk atau seret untuk mengganti block yang sudah ada.',add:'Ketuk atau seret untuk menambah block di atas block atau pada sel kosong.',erase:'Ketuk atau seret untuk menghapus block paling atas.',pick:'Ketuk block untuk mengambil jenisnya.',fill:'Ketuk untuk mengisi area block yang tersambung.'};
+    document.getElementById('terrain-ramp-direction').hidden=tool!=='ramp';
+    const hint={draw:'Ketuk atau seret untuk mengganti block yang sudah ada.',add:'Ketuk atau seret untuk menambah block di atas block atau pada sel kosong.',erase:'Ketuk atau seret untuk menghapus block paling atas.',pick:'Ketuk block untuk mengambil jenisnya.',fill:'Ketuk untuk mengisi area block yang tersambung.',ramp:'Pilih material dan arah naik, lalu ketuk block penyangga. Ketuk ramp yang sama untuk menghapus.'};
     status.textContent=tool ? hint[tool] : '';
   }
   for (const [name,button] of Object.entries(buttons)) button.addEventListener('click',()=>{
@@ -64,6 +65,15 @@
     if(gesture && gesture.visited.has(index)) return;
     if(gesture) gesture.visited.add(index);
     const previous=world.tiles[index], value=Number(material.value);
+    if(tool==='ramp') {
+      if(!previous){status.textContent='Ramp membutuhkan block penyangga.';return;}
+      const direction=document.getElementById('terrain-ramp-direction').value,before=world.ramps||[],existing=before.find(r=>r.column===point.column && r.row===point.row);
+      const next=before.filter(r=>r!==existing).map(r=>({...r}));
+      const removing=existing && existing.direction===direction && existing.material===value;
+      if(!removing)next.push({...point,direction,material:value});
+      status.textContent=window.editorRampHistory?.update(world.id,next) ? (removing?'Ramp dihapus.':'Ramp disimpan. Android belum mendukung ramp.') : 'Ramp tidak disimpan; periksa block, player, dan objek pada tapak.';
+      return;
+    }
     if(tool==='pick') {
       if(previous===0){status.textContent='Tidak ada block untuk diambil.';return;}
       material.value=String(previous);updateBlockPreview();status.textContent='Jenis block diambil.';return;
@@ -100,7 +110,7 @@
   canvas.addEventListener('pointerdown',event=>{
     if(stage.dataset.mode!=='editor'||!tool||gesture||(event.pointerType==='mouse'&&event.button!==0))return;
     event.preventDefault();event.stopImmediatePropagation();
-    if(window.editorBlockHistory && tool!=='pick' && !window.editorBlockHistory.begin()) { status.textContent='Tidak dapat mengubah block pada world ini.';return; }
+    if(window.editorBlockHistory && tool!=='pick' && tool!=='ramp' && !window.editorBlockHistory.begin()) { status.textContent='Tidak dapat mengubah block pada world ini.';return; }
     gesture={id:event.pointerId,visited:new Set()};
     try{canvas.setPointerCapture(event.pointerId);}catch(_){}
     apply(event);
@@ -110,7 +120,7 @@
     event.preventDefault();event.stopPropagation();
     if(tool==='draw'||tool==='add'||tool==='erase')apply(event);
   },{capture:true,passive:false});
-  function end(event){if(gesture&&gesture.id===event.pointerId){if(tool!=='pick')window.editorBlockHistory?.end();gesture=null;}}
+  function end(event){if(gesture&&gesture.id===event.pointerId){if(tool!=='pick' && tool!=='ramp')window.editorBlockHistory?.end();gesture=null;}}
   window.addEventListener('pointerup',end,true);window.addEventListener('pointercancel',end,true);
   canvas.addEventListener('lostpointercapture',end);
 })();
