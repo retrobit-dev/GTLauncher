@@ -983,9 +983,10 @@ public final class WeatherSkyView extends View {
         float ratio = h / (LANGIT_MATAHARI_LIFT - h);
         float dx = (x - light[0]) * ratio;
         float dy = (y - light[1] - LANGIT_MATAHARI_LIFT) * ratio + height * 0.4f;
+        float shadowScale=CharacterShadow.fitAroundAnchor(width,height,dx,dy);
         Matrix transform = new Matrix();
-        transform.setValues(new float[]{1, -dx / height, x - width / 2 + dx,
-                0, -dy / height, y + dy, 0, 0, 1});
+        transform.setValues(new float[]{shadowScale, -shadowScale*dx / height, x + shadowScale*(-width / 2 + dx),
+                0, -shadowScale*dy / height, y + shadowScale*dy, 0, 0, 1});
         int saved = canvas.save();
         canvas.concat(transform);
         if (mirror) { canvas.translate(width, 0); canvas.scale(-1, 1); }
@@ -1021,7 +1022,8 @@ public final class WeatherSkyView extends View {
             float dy=(float)clamp((g.bottom-lightPoint[1]-LANGIT_MATAHARI_LIFT)*ratio,-height*.9,height*.9);
             if(Math.abs(dy)<height*.2f)dy=dy<0?-height*.2f:height*.2f;
             float sway=(float)(orangeTreeSway(tree)*(tree.material.equals("conifer-small")?.5:1));
-            Matrix transform=new Matrix();transform.setValues(new float[]{1,-(dx+sway)/height,g.centerX()-width/2+dx+sway,0,-dy/height,g.bottom+dy,0,0,1});
+            float shadowScale=CharacterShadow.fitScale(width,height,dx+sway,dy);
+            Matrix transform=new Matrix();transform.setValues(new float[]{shadowScale,-shadowScale*(dx+sway)/height,g.centerX()+shadowScale*(-width/2+dx+sway),0,-shadowScale*dy/height,g.bottom+shadowScale*dy,0,0,1});
             int saveTree=canvas.save(),originalAlpha=paint.getAlpha();canvas.concat(transform);
             paint.setAlpha(Math.round(originalAlpha*(100-Math.max(0,tree.opacity))/100f));
             paint.setColorFilter(OBJECT_SHADOW_FILTER);paint.setFilterBitmap(true);
@@ -1038,7 +1040,7 @@ public final class WeatherSkyView extends View {
             if(Math.abs(ray[1])<height*.12f)ray[1]=Math.copySign(height*.12f,ray[1]);
             float strength=(float)Math.min(1,light.altitudeDegrees/10)*(1-.65f*(float)Math.max(0,Math.min(1,cloudCover/100)));
             paint.setColor(Color.argb(Math.round(255*.34f*strength),12,23,40));
-            float shadowScale=Math.min(1f,Math.min(baseWidth/(width+Math.abs(ray[0])),height/Math.abs(ray[1])));
+            float shadowScale=Math.min(1f,Math.min(baseWidth/(width+2*Math.abs(ray[0])),height/(2*Math.abs(ray[1]))));
             Matrix transform=new Matrix();transform.setValues(new float[]{shadowScale,-shadowScale*ray[0]/height,x+shadowScale*(-width/2+ray[0]),0,-shadowScale*ray[1]/height,y+shadowScale*ray[1],0,0,1});
             int shadowSave=canvas.save();canvas.concat(transform);
             if("W".equals(characterFacing)||"E".equals(characterFacing)){canvas.translate(width,0);canvas.scale(-1,1);}

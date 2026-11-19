@@ -13,5 +13,11 @@ final class CharacterShadow {
         return Math.min(1f, Math.min(width / (width + Math.abs(dx)),
                 Math.abs(dy) > 0 ? height / Math.abs(dy) : 1f));
     }
+    // Fit a projected sprite within an anchor-centred box. This also leaves room
+    // for the house's centred contact shadow without increasing the union's bounds.
+    static float fitAroundAnchor(float width,float height,float dx,float dy) {
+        return Math.min(1f, Math.min(width / (width + 2*Math.abs(dx)),
+                Math.abs(dy)>0 ? height / (2*Math.abs(dy)) : 1f));
+    }
     private CharacterShadow() {}
 }

@@ -1826,7 +1826,7 @@
     ctx.save();applyIslandTransform();clipIslandSurface();ctx.globalAlpha=.34*strength;
     // Bound the complete projected silhouette to the character dimensions. Scale around
     // its ground anchor so the feet stay attached and the light direction is preserved.
-    const shadowScale=Math.min(1,baseWidth/(width+Math.abs(ray.x)),height/Math.abs(ray.y));
+    const shadowScale=Math.min(1,baseWidth/(width+2*Math.abs(ray.x)),height/(2*Math.abs(ray.y)));
     ctx.translate(anchor.x,anchor.y);ctx.scale(shadowScale,shadowScale);
     ctx.transform(1,0,-ray.x/height,-ray.y/height,-width/2+ray.x,ray.y);
     if(character.facing==='W'||character.facing==='E'){ctx.translate(width,0);ctx.scale(-1,1);}
@@ -1872,7 +1872,7 @@
         }
         const scale=treeVisualScale(tree),width=ORANGE_TREE_WIDTH*scale,height=ORANGE_TREE_HEIGHT*scale;
         const anchor=orangeTreeAnchor(tree), projection=window.TreeShadow.projection(anchor,lightPoint,width,height,LANGIT_MATAHARI_LIFT,orangeTreeSway(tree)*scale);
-        ctx.save();ctx.translate(anchor.x,anchor.y);ctx.transform(1,0,projection.shear,projection.vertical,0,0);
+        ctx.save();ctx.translate(anchor.x,anchor.y);ctx.scale(projection.scale,projection.scale);ctx.transform(1,0,projection.shear,projection.vertical,0,0);
         if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
         ctx.drawImage(mask,-width/2,-height,width,height);ctx.restore();
       }

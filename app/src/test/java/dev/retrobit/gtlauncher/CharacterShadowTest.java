@@ -19,6 +19,25 @@ public class CharacterShadowTest {
    assertTrue(Math.abs(ray[1])*scale<=height+0.0001f);
   }
  }
+ @Test public void objectAndHouseShadowsFitAtExtremeLightAngles() {
+  for(float factor:new float[]{.5f,1f,1.5f}) for(float dx=-600;dx<=600;dx+=15) for(float dy=-600;dy<=600;dy+=15) {
+   float w=62*factor,h=60*factor,sway=3*factor;
+   float tree=CharacterShadow.fitScale(w,h,dx+sway,dy);
+   assertTrue((w+Math.abs(dx+sway))*tree<=w+.001f);
+   assertTrue(Math.abs(dy)*tree<=h+.001f);
+   float house=CharacterShadow.fitAroundAnchor(w,h,dx,dy);
+   assertTrue((w/2+Math.abs(dx))*house<=w/2+.001f);
+   assertTrue(Math.abs(dy)*house<=h/2+.001f);
+  }
+ }
+ @Test public void widenedIdleSpriteStaysWithinStandingWidth() {
+  float baseWidth=13.5f,renderWidth=baseWidth*1280/432f,height=25f;
+  for(float dx=-100;dx<=100;dx+=2) for(float dy=-100;dy<=100;dy+=2) {
+   float scale=Math.min(1f,Math.min(baseWidth/(renderWidth+2*Math.abs(dx)),dy==0?1f:height/(2*Math.abs(dy))));
+   assertTrue((renderWidth/2+Math.abs(dx))*scale<=baseWidth/2+.001f);
+   assertTrue(Math.abs(dy)*scale<=height/2+.001f);
+  }
+ }
  @Test public void lowSunIsCappedAndFinite() {
   float[] v=CharacterShadow.offset(90,0,25);
   assertTrue(Float.isFinite(v[0])&&Float.isFinite(v[1]));
