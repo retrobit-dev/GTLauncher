@@ -930,7 +930,9 @@ public class HomeActivity extends Activity {
     private void addPlacedCatalogObjects(LinearLayout panel,WorldStore.World world,AlertDialog catalog) throws JSONException {
         TextView title=new TextView(this);title.setText("Objek di world ini");title.setTextColor(Color.rgb(52,75,59));title.setTypeface(null,android.graphics.Typeface.BOLD);title.setPadding(0,dp(16),0,dp(6));panel.addView(title);
         TextView info=new TextView(this);info.setText("Karakter dan rumah tidak dapat diubah melalui daftar ini. Pilih ikon ganti atau hapus pada objek lainnya.");info.setTextColor(Color.rgb(75,95,78));panel.addView(info);
-        if(world.showCharacter)addProtectedCatalogRow(panel,"Karakter",("N".equals(world.characterFacing)||"W".equals(world.characterFacing))?R.drawable.character_original_uhd_back:R.drawable.character_original_uhd_front,"W".equals(world.characterFacing)||"E".equals(world.characterFacing));
+        if(world.showCharacter){ImageView characterIcon=addProtectedCatalogRow(panel,"Karakter",("N".equals(world.characterFacing)||"W".equals(world.characterFacing))?R.drawable.character_original_uhd_back:R.drawable.character_original_uhd_front,skyView.catalogCharacterMirrored());
+            android.graphics.Bitmap sprite=skyView.catalogCharacterSprite();if(sprite!=null)characterIcon.setImageBitmap(sprite);
+        }
         if(world.hasHouse)addProtectedCatalogRow(panel,"Rumah player",R.drawable.simple_house_aligned,false);
         final java.util.List<JSONObject> selectedObjects=new java.util.ArrayList<>();
         LinearLayout bulk=new LinearLayout(this);bulk.setGravity(Gravity.CENTER_VERTICAL);panel.addView(bulk);
@@ -964,8 +966,8 @@ public class HomeActivity extends Activity {
             }
         }
     }
-    private void addProtectedCatalogRow(LinearLayout panel,String label,int resource,boolean mirror) {
-        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);ImageView image=new ImageView(this);image.setImageResource(resource);image.setScaleX(mirror?-1f:1f);image.setScaleType(ImageView.ScaleType.FIT_CENTER);row.addView(image,new LinearLayout.LayoutParams(dp(44),dp(44)));TextView text=new TextView(this);text.setText(label+" · Tidak melalui daftar");text.setTextColor(Color.rgb(52,75,59));row.addView(text);panel.addView(row);
+    private ImageView addProtectedCatalogRow(LinearLayout panel,String label,int resource,boolean mirror) {
+        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);ImageView image=new ImageView(this);image.setImageResource(resource);image.setScaleX(mirror?-1f:1f);image.setScaleType(ImageView.ScaleType.FIT_CENTER);row.addView(image,new LinearLayout.LayoutParams(dp(44),dp(44)));TextView text=new TextView(this);text.setText(label+" · Tidak melalui daftar");text.setTextColor(Color.rgb(52,75,59));row.addView(text);panel.addView(row);return image;
     }
     private void showCatalogReplacement(String worldId,String key,int index,String expected,AlertDialog catalog) {
         try{java.util.List<JSONObject> entries=new java.util.ArrayList<>();entries.add(new JSONObject().put("key",key).put("index",index).put("expected",expected));showCatalogBatchReplacement(worldId,entries,catalog);}catch(JSONException e){Toast.makeText(this,"Objek tidak dapat dibaca.",Toast.LENGTH_LONG).show();}

@@ -44,3 +44,5 @@ Tembok batu tinggi telah dihapus dari katalog penempatan dan pilihan pengganti d
 ## Pilihan banyak objek
 
 Daftar objek preview dan Android menyediakan kotak pilihan untuk penghapusan atau penggantian banyak objek sekaligus. Satu jenis pengganti diterapkan pada posisi masing-masing; semua tapak diperiksa bersama dan seluruh operasi dibatalkan jika tidak aman atau data telah berubah. Identitas dan siklus tanaman baru dimulai ulang. Karakter dan rumah tetap dilindungi. Preview mendukung Undo/Redo; Android subset datar belum menyediakan Undo/Redo dan belum diuji di perangkat.
+
+Ikon karakter pada daftar diambil dari sprite dan pose yang sedang dipakai renderer saat katalog dibuka, termasuk pencerminan arah; bila sprite belum siap, dipakai sprite berdiri untuk arah yang tersimpan. Ini hanya gambar daftar dan tidak mengubah karakter atau data world.

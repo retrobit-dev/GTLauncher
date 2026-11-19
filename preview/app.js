@@ -2710,6 +2710,17 @@
   // canvas bounds and island zoom, so dragging remains correct on different device sizes.
   window.sceneEditing = Object.freeze({
     camera() { return {zoom: editorZoom, renderZoom: islandZoom, panX: cameraPanX, panY: cameraPanY}; },
+    // Capture the same pose and facing that drawMainCharacter currently uses.
+    characterCatalogIcon() {
+      const character=editingDraft || gameplayDraft || window.worldManager?.getCharacter();
+      if(!character?.visible)return null;
+      const sprite=idleBowSprite || activeCharacterSprite(character);
+      const w=sprite?.naturalWidth || sprite?.width, h=sprite?.naturalHeight || sprite?.height;
+      if(!w || !h || (sprite instanceof HTMLImageElement && !sprite.complete))return null;
+      const icon=document.createElement('canvas');icon.width=w;icon.height=h;const c=icon.getContext('2d');
+      c.imageSmoothingEnabled=false;if(character.facing==='W'||character.facing==='E'){c.translate(w,0);c.scale(-1,1);}c.drawImage(sprite,0,0,w,h);
+      return icon.toDataURL();
+    },
     setMode: setPreviewCameraMode,
     resetEditorCamera() {
       const c=defaultEditorCamera();

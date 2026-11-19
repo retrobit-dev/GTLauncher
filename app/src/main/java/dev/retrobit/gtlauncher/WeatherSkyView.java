@@ -1242,6 +1242,9 @@ public final class WeatherSkyView extends View {
         boolean idle=sprite!=null && (sprite==idleFrontTransition || sprite==idleFrontPose || sprite==idleBackTransition || sprite==idleBackPose || sprite==idleBlendBitmap);
         return 13.5f * characterScale * (idle ? sprite.getWidth()/432f : 1f);
     }
+    // The catalog shows the same pose currently used by the scene renderer.
+    Bitmap catalogCharacterSprite() { return currentCharacterSprite(); }
+    boolean catalogCharacterMirrored() { return "W".equals(characterFacing)||"E".equals(characterFacing); }
     private Bitmap currentCharacterSprite() {
         boolean back="N".equals(characterFacing)||"W".equals(characterFacing);
         Bitmap sprite=back?mainCharacterBack:mainCharacter;
