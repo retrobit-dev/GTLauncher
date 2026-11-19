@@ -1740,7 +1740,8 @@
     return Number.isFinite(character.waterDepth) ? Math.max(0,Math.min(BLOCK_HEIGHT,character.waterDepth)) : waterDepth(character.column,character.row);
   }
   function characterCentre(character) {
-    const elevation=Number.isFinite(character.blockHeight) ? character.blockHeight : surfaceHeight(character.column,character.row);
+    const ramp=character.visible && window.worldManager?.getActive()?.ramps?.find(r=>r.column===character.column && r.row===character.row);
+    const elevation=Number.isFinite(character.blockHeight) ? character.blockHeight : surfaceHeight(character.column,character.row)+(ramp?.direction ? .5 : 0);
     return {x: WIDTH / 2 + (character.column - character.row) * ISLAND_TILE_WIDTH / 2,
       y: islandTop + islandTileHeight / 2 + (character.column + character.row) * islandTileHeight / 2 - Math.max(0,elevation-1)*BLOCK_HEIGHT};
   }

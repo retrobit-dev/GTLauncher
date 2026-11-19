@@ -39,5 +39,14 @@
     const x=endpoint(a,edge),y=endpoint(b,opposite[edge]);
     return x!==null && y!==null && x===y;
   }
-  return Object.freeze({DIRECTIONS,fraction,create,canConnect});
+  // Height under the moving character, sampled on the actual tile surface.
+  // The tile boundary lies halfway between two tile centres.
+  function stepHeight(a,b,edge,progress){
+    if(!Number.isFinite(progress) || !canConnect(a,b,edge))return null;
+    const t=Math.max(0,Math.min(1,progress)),delta={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[edge];
+    if(a.direction==null && b.direction==null)return a.height*(1-t)+b.height*t;
+    const first=t<.5,surface=first?a:b,offset=first?t:t-1;
+    return surface.height+(surface.direction==null?0:fraction(surface.direction,.5+delta[0]*offset,.5+delta[1]*offset));
+  }
+  return Object.freeze({DIRECTIONS,fraction,create,canConnect,stepHeight});
 });

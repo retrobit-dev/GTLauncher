@@ -35,6 +35,17 @@ final class RampGeometry {
         long a=endpoint(heightA,directionA,edge),b=endpoint(heightB,directionB,opposite(edge));
         return a>=0 && a==b;
     }
+    /** Height at the character's actual position between adjacent tile centres. */
+    static double stepHeight(int heightA,String directionA,int heightB,String directionB,String edge,double progress) {
+        if(!Double.isFinite(progress) || !canConnect(heightA,directionA,heightB,directionB,edge))return Double.NaN;
+        double t=Math.max(0,Math.min(1,progress));
+        if(directionA==null && directionB==null)return heightA*(1-t)+heightB*t;
+        boolean first=t<.5;int height=first?heightA:heightB;String direction=first?directionA:directionB;
+        if(direction==null)return height;
+        int dx=edge.equals("E")?1:edge.equals("W")?-1:0,dy=edge.equals("S")?1:edge.equals("N")?-1:0;
+        double offset=first?t:t-1;
+        return height+fraction(direction,.5+dx*offset,.5+dy*offset);
+    }
     private static boolean isDirection(String d) {return "N".equals(d)||"E".equals(d)||"S".equals(d)||"W".equals(d);}
     private static String opposite(String d) {switch(d){case "N":return "S";case "E":return "W";case "S":return "N";default:return "E";}}
     private static long endpoint(int height,String direction,String edge) {

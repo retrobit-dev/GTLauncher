@@ -11,6 +11,11 @@ assert.equal(g.create('X',28,14,4),null);assert.equal(g.create('E',28,14,0),null
 const opposite={N:'S',E:'W',S:'N',W:'E'};
 for(const dir of g.DIRECTIONS){
  const ramp={height:2,direction:dir}, low={height:2},high={height:3};
+ for(const t of [0,.25,.5,.75,1]){
+  near(g.stepHeight(low,ramp,dir,t),2+Math.max(0,t-.5));
+  near(g.stepHeight(ramp,high,dir,t),2.5+Math.min(t,.5));
+  near(g.stepHeight(high,ramp,opposite[dir],1-t),g.stepHeight(ramp,high,dir,t));
+ }
  assert(g.canConnect(ramp,high,dir));assert(g.canConnect(high,ramp,opposite[dir]));
  assert(g.canConnect(ramp,low,opposite[dir]));assert(g.canConnect(low,ramp,dir));
  assert(!g.canConnect(ramp,{height:4},dir));assert(!g.canConnect(ramp,{height:1},opposite[dir]));

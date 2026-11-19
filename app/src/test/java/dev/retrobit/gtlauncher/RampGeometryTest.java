@@ -7,6 +7,11 @@ public class RampGeometryTest {
         String[] directions={"N","E","S","W"};
         for(int i=0;i<4;i++) {
             String d=directions[i],opposite=directions[(i+2)%4],side=directions[(i+1)%4];
+            for(double t:new double[]{0,.25,.5,.75,1}) {
+                assertEquals(2+Math.max(0,t-.5),RampGeometry.stepHeight(2,null,2,d,d,t),1e-9);
+                assertEquals(2.5+Math.min(t,.5),RampGeometry.stepHeight(2,d,3,null,d,t),1e-9);
+                assertEquals(RampGeometry.stepHeight(2,d,3,null,d,t),RampGeometry.stepHeight(3,null,2,d,opposite,1-t),1e-9);
+            }
             assertTrue(RampGeometry.canConnect(2,d,3,null,d));assertTrue(RampGeometry.canConnect(3,null,2,d,opposite));
             assertTrue(RampGeometry.canConnect(2,d,2,null,opposite));assertTrue(RampGeometry.canConnect(2,null,2,d,d));
             assertFalse(RampGeometry.canConnect(2,d,4,null,d));assertFalse(RampGeometry.canConnect(2,d,1,null,opposite));assertFalse(RampGeometry.canConnect(2,d,2,null,side));
