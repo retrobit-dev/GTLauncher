@@ -10,5 +10,10 @@
     const scale=Math.min(1,width/(width+2*Math.abs(dx)),height/(2*Math.abs(dy)));
     return {dx,dy,scale};
   }
-  return Object.freeze({projection});
+  // Contact diamond hugs the foundation; a tiny forward inset makes contact visible.
+  function contact(width,depth,scale=1) {
+    return [{x:0,y:-depth/2+1.2*scale},{x:width*.48,y:1.2*scale},
+      {x:0,y:depth/2+1.2*scale},{x:-width*.48,y:1.2*scale}];
+  }
+  return Object.freeze({projection,contact});
 });

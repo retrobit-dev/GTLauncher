@@ -34,7 +34,6 @@
     $('catalog-place-conifer').disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-place-conifer-small').disabled=world.id==='base' || !Array.isArray(world.tiles);
     for(const suffix of ['', '-large','-flower','-flower-large','-berry','-berry-large']) $('catalog-place-bush'+suffix).disabled=world.id==='base' || !Array.isArray(world.tiles);
-    $('catalog-place-fence-stone-tall').disabled=world.id==='base' || !Array.isArray(world.tiles);
     for(const kind of ['wood','stone']) { $('catalog-place-fence-'+kind).disabled=world.id==='base' || !Array.isArray(world.tiles); for(const suffix of ['', '-4','-5']) $('catalog-place-bridge-'+kind+suffix).disabled=world.id==='base' || !Array.isArray(world.tiles); }
     $('catalog-place-wild-grass').disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-house-status').textContent=world.id==='base' ? 'Base World terkunci. Buka world buatan untuk menempatkan rumah.' : exists ? 'World ini sudah memiliki rumah player. Pindahkan rumah yang ada bila diperlukan.' : !Array.isArray(world.tiles) ? 'World lama ini tidak mendukung penempatan rumah.' : 'Pilih tombol, lalu ketuk sudut pertama tapak pada peta.';
@@ -73,7 +72,7 @@
     if(id==='catalog-place-wild-grass')return {key:'trees',object:{...position,kind:'wild-grass',size:1}};
     const bush=id.match(/^catalog-place-bush(?:-(flower|berry))?(-large)?$/);
     if(bush){const variant=bush[1],object={...position,kind:'bush',size:bush[2]?2:1,...(variant?{variant,plantId:(globalThis.crypto.randomUUID?.() || Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('')),plantedAt:Date.now()}:{})};return {key:'trees',object};}
-    const fence=id.match(/^catalog-place-fence-(wood|stone|stone-tall)$/);
+    const fence=id.match(/^catalog-place-fence-(wood|stone)$/);
     if(fence)return {key:'fences',object:{...position,edge:source.key==='fences'?source.object.edge:'S',material:fence[1]}};
     const bridge=id.match(/^catalog-place-bridge-(wood|stone)(?:-(4|5))?$/);
     if(bridge)return {key:'bridges',object:{...position,axis:source.key==='bridges'?source.object.axis:'E',material:bridge[1],...(bridge[2]?{length:Number(bridge[2])}:{})}};
@@ -156,7 +155,7 @@
       tell(`EDITING · Ketuk tile sudut pertama semak ${size}×${size}. Escape untuk batal.`);
     });
   }
-  for(const material of ['wood','stone','stone-tall']) $('catalog-place-fence-'+material).addEventListener('click',()=>{
+  for(const material of ['wood','stone']) $('catalog-place-fence-'+material).addEventListener('click',()=>{
     if(!editing || $('catalog-place-fence-'+material).disabled)return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
     selected=false;selectingObject=false;movingObject=false;draft=null;placingHouse=false;placingFence=null;placingBridge=null;placingOrange=false;placingFence=material;placingFenceEdge='S';placementWorld=window.worldManager.getActive().id;refresh();syncControls();libraryDialog.close();

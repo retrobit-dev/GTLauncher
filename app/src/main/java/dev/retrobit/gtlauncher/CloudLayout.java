@@ -18,6 +18,7 @@ final class CloudLayout {
         double north=((index*.6180339887498949+.5+(jitterNorth-.5)*.12)%1+1)%1;
         return new double[]{east*gridSize,north*gridSize};
     }
+    static double driftSpeed(double kmh) {return Math.min(Math.max(0,Double.isFinite(kmh)?kmh:0)*.15,5.25);}
     static float shadowBlur(double cover,int code) {
         return cover>=65 || code==3 || code==45 || code==48 || code>=51 ? 3f:1.5f;
     }

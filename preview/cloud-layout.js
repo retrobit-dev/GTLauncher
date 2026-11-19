@@ -19,7 +19,9 @@
     const north=((index*.6180339887498949+.5+(jitterNorth-.5)*.12)%1+1)%1;
     return {east:east*gridSize,north:north*gridSize};
   }
+  // Artistic multiplier: 25% faster than the previous preview motion.
+  function driftSpeed(kmh){return Math.min(Math.max(0,Number.isFinite(kmh)?kmh:0)*.0625,5.25);}
   function wet(cover,code){return cover>=65||code===3||code===45||code===48||code>=51;}
   function fade(seconds,animated){return animated?.6+.4*(1+Math.cos(2*Math.PI*seconds/24))/2:1;}
-  return Object.freeze({count,cellSize,seed,wet,fade});
+  return Object.freeze({count,cellSize,seed,driftSpeed,wet,fade});
 });

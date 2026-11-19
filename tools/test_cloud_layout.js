@@ -11,6 +11,7 @@ for(const grid of [9,20,25,50,100])for(const count of [1,3,6,10]) {
  for(const p of positions)assert(p.east>=0 && p.east<grid && p.north>=0 && p.north<grid);
  if(count>=3){assert(positions.some(p=>p.east<grid*.25));assert(positions.some(p=>p.east>grid*.75));assert(positions.some(p=>p.north<grid*.25));assert(positions.some(p=>p.north>grid*.70));}
 }
+assert.equal(c.driftSpeed(0),0);assert.equal(c.driftSpeed(20),20*.05*1.25);assert.equal(c.driftSpeed(1000),5.25);
 assert.equal(c.fade(0,true),1);assert.ok(Math.abs(c.fade(12,true)-.6)<1e-10);assert.equal(c.fade(12,false),1);
 assert.equal(c.wet(20,63),true);assert.equal(c.wet(5,0),false);
 console.log('Weather limits, grid-wide cloud seeds, enlarged shadows and reduced-motion fade: OK');

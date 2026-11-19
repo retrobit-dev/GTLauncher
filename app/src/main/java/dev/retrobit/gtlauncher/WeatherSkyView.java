@@ -132,8 +132,6 @@ public final class WeatherSkyView extends View {
     // degrees. That makes drift speed a function of cloud altitude: a layer at 1200 m needs 0.0118
     // units per second per km/h. Taking that literally would look frozen on a panel this small, so
     // the gain is deliberately faster so gentle wind remains perceptible.
-    private static final double CLOUD_DRIFT_WIND_GAIN = 0.12;
-    private static final double CLOUD_DRIFT_MAX = 4.2;
     private static final float CLOUD_EDGE_INSET = 4.0f;
     // The shadow is a shrunk copy of the cloud, not a same-size one: at full size it covered
     // most of the island and read as a hole rather than as shade.
@@ -1130,16 +1128,17 @@ public final class WeatherSkyView extends View {
             canvas.drawBitmap(sprite,null,new RectF(0,0,width,height),paint);
             paint.setColorFilter(null);canvas.restoreToCount(shadowSave);
         }
-        // Faint contact diamonds stay attached to the ground anchors as objects move or scale.
-        paint.setColor(Color.argb((int) (255 * 0.09), 12, 23, 40));
+        // A soft contact footprint remains attached to the foundation even at noon.
+        paint.setColor(Color.argb((int) (255 * 0.24), 12, 23, 40));
+        paint.setMaskFilter(new BlurMaskFilter(.4f,BlurMaskFilter.Blur.NORMAL));
         for(WorldStore.House house:worldHouses) if(house.visible) {
             boolean wide="wide".equals(house.design);float scale=(float)house.scale;
             float x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
             float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f;
             int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-Math.max(0,house.opacity))/100f));
-            drawObjectContact(canvas,x,y,70*scale*(wide?7f/6:1),ISLAND_TILE_HEIGHT*2.5f*scale);paint.setAlpha(originalAlpha);
+            drawObjectContact(canvas,x,y+1.2f*scale,(wide?70*7f/6:84)*.96f*scale,ISLAND_TILE_HEIGHT*(wide?2.5f:3f)*scale);paint.setAlpha(originalAlpha);
         }
-        canvas.restoreToCount(save);
+        paint.setMaskFilter(null);canvas.restoreToCount(save);
     }
 
     private void drawObjectContact(Canvas canvas, float x, float y, float width, float depth) {
@@ -2769,7 +2768,7 @@ public final class WeatherSkyView extends View {
             double delta = Double.isNaN(cloudLastElapsed) ? 0.0
                     : Math.max(0.0, elapsedSeconds - cloudLastElapsed);
             double axisLength = Math.hypot(ISLAND_TILE_WIDTH, ISLAND_TILE_HEIGHT) / 2.0;
-            double distance = Math.min(windSpeed * CLOUD_DRIFT_WIND_GAIN, CLOUD_DRIFT_MAX)
+            double distance = CloudLayout.driftSpeed(windSpeed)
                     * delta / axisLength;
             cloudEastTravel += Math.sin(Math.toRadians(cloudWindCardinal)) * distance;
             cloudNorthTravel += Math.cos(Math.toRadians(cloudWindCardinal)) * distance;

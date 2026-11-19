@@ -18,6 +18,9 @@ public class CloudLayoutTest {
             if(count>=3)assertTrue(left && right && top && bottom);
         }
     }
+    @Test public void driftIsSlightlyFasterAndStillBounded() {
+        assertEquals(0,CloudLayout.driftSpeed(0),0);assertEquals(20*.12*1.25,CloudLayout.driftSpeed(20),1e-9);assertEquals(5.25,CloudLayout.driftSpeed(1000),0);
+    }
     @Test public void shadowsAreSofterInOvercastWeather() {
         assertEquals(1.5f,CloudLayout.shadowBlur(5,0),0);assertEquals(3f,CloudLayout.shadowBlur(96,3),0);assertEquals(3f,CloudLayout.shadowBlur(95,63),0);assertEquals(3f,CloudLayout.shadowBlur(100,95),0);
     }

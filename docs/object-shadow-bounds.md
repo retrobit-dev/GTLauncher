@@ -23,3 +23,5 @@ baru dipakai di katalog dan renderer kedua platform.
 ## Bayangan rumah sesuai arah cahaya
 
 Preview dan Android memproyeksikan siluet alpha gambar rumah (depan/belakang dan cermin arah), bukan bentuk diamond generik. Arah dan panjang perkiraan mengikuti azimuth dan elevasi sumber cahaya aktif lalu dikecilkan agar tidak melampaui lebar dan tinggi rumah. Bayangan tetap berawal pada fondasi. Ini proyeksi sprite 2D yang dibatasi, bukan simulasi bayangan 3D fisik sempurna. Build Android/perangkat belum diuji.
+
+Kontak rumah menggunakan bayangan lembut pada tapak fondasi 3×3 dan sedikit menjorok ke depan, di bawah proyeksi siluet yang mengikuti cahaya. Ukurannya dibatasi agar gabungan tidak melebihi dimensi rumah.

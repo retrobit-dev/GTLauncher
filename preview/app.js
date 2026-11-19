@@ -159,10 +159,7 @@
   // The frame maps the whole compass — 360 degrees of sky — onto 320 units, so one unit is 1.125
   // degrees. That makes drift speed a function of cloud altitude: a layer at 1200 m needs 0.0118
   // units per second per km/h. Taking that literally would look frozen on a panel this small, so
-  // this gain is about four times faster, which puts the implied cloud layer at 283 m. The trade is
-  // deliberate and the honest figure is the 0.0118 above.
-  const CLOUD_DRIFT_WIND_GAIN = 0.05;
-  const CLOUD_DRIFT_MAX = 4.2;
+  // the gain is intentionally faster for readability; it is not an exact physical speed.
   // A cloud is fully off-screen on the left only once its trail clears the frame with margin.
   const CLOUD_EDGE_INSET = 4;
   // The island's own cast shadow: close to the base, drifting with the light direction.
@@ -850,7 +847,7 @@
       }
       const delta = cloudLastElapsed === null ? 0 : Math.max(0, elapsedSeconds - cloudLastElapsed);
       const axisLength = Math.hypot(ISLAND_TILE_WIDTH, islandTileHeight) / 2;
-      const distance = Math.min(speedKmh * CLOUD_DRIFT_WIND_GAIN, CLOUD_DRIFT_MAX)
+      const distance = window.CloudLayout.driftSpeed(speedKmh)
         * delta / axisLength;
       const angle = cloudWindCardinal * Math.PI / 180;
       cloudEastTravel += Math.sin(angle) * distance;
@@ -1881,6 +1878,13 @@
       ctx.beginPath(); ctx.moveTo(points[0][0], points[0][1]);
       for (const [x, y] of points.slice(1)) ctx.lineTo(x, y);
       ctx.closePath(); ctx.fill();
+    }
+    // A soft contact footprint stays attached to the house base even at noon,
+    // when the directional projection is short and mostly hidden by the sprite.
+    if(house?.visible && window.HouseShadow) {
+      const {centre}=houseProjection(house),points=window.HouseShadow.contact(84*house.scale,islandTileHeight*3*house.scale,house.scale);
+      ctx.save();ctx.fillStyle='rgba(12,23,40,.24)';ctx.filter='blur(.4px)';ctx.beginPath();ctx.moveTo(centre.x+points[0].x,centre.y+points[0].y);
+      for(const p of points.slice(1))ctx.lineTo(centre.x+p.x,centre.y+p.y);ctx.closePath();ctx.fill();ctx.restore();
     }
     // Project the actual roof and walls' alpha, anchored at the house foundation.
     if(house?.visible && houseSprite.complete && houseSprite.naturalWidth && Number.isFinite(light.azimuth) && window.HouseShadow) {

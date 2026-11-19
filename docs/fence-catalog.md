@@ -37,6 +37,6 @@ penempatan. Setiap semak panen baru tetap mendapat identitas tersendiri.
 Tampilan isometrik ini merupakan proyeksi 2.5D, bukan model 3D atau fisika 3D.
 Data world dan format penyimpanan tidak berubah.
 
-## Tembok batu tinggi
+## Tembok batu tinggi (varian dihentikan)
 
-Varian Bangunan **Tembok batu tinggi** memiliki tinggi 127,5 unit (1,5 kali tinggi acuan rumah skala 1 sebesar 85 unit). Segmen tetap independen, menghalangi sisi tile, dan menyatu secara visual dengan segmen tinggi sejenis. Preview menyediakan putar, pindah, hapus serta Undo/Redo; Android menyediakan penempatan, pemindahan dan penghapusan untuk world preview datar yang didukung. Format preview v17 menyimpan material `stone-tall`; impor versi lama tidak dapat menimpa world yang memuatnya. Build dan perangkat Android belum diverifikasi.
+Tembok batu tinggi telah dihapus dari katalog penempatan dan pilihan pengganti di preview dan Android. World lama yang sudah memilikinya tetap dapat dibuka, dirender, diekspor dan diedit; objeknya dapat dihapus melalui daftar. Data tidak dihapus otomatis. Format preview v17 dan guard downgrade tetap didukung supaya world lama tidak hilang. Android belum diuji lewat build/perangkat.
