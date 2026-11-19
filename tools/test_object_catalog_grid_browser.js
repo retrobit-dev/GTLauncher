@@ -14,7 +14,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
       await page.locator('#mode-map-editor').click();await page.locator('#object-library-button').click();
       assert.equal(await page.locator('#catalog-buildings-title').innerText(),'Bangunan');
       assert.equal(await page.locator('#catalog-trees-title').innerText(),'Tanaman dan pohon');
-      assert.equal(await page.locator('#catalog-trees-title + .catalog-grid .catalog-tile').count(),5);
+      assert.equal(await page.locator('#catalog-trees-title + .catalog-grid .catalog-tile').count(),10);
       const geom=await page.evaluate(()=>{
         const dialog=document.querySelector('#object-library-dialog'),a=document.querySelector('#catalog-place-orange').getBoundingClientRect(),b=document.querySelector('#catalog-place-conifer').getBoundingClientRect();
         return {scroll:dialog.scrollWidth,client:dialog.clientWidth,a:{left:a.left,top:a.top,right:a.right,width:a.width},b:{left:b.left,top:b.top,right:b.right,width:b.width}};

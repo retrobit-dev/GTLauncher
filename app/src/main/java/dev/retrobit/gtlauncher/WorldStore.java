@@ -310,7 +310,7 @@ final class WorldStore {
             for(int i=0;i<source.length();i++) {
                 JSONObject tree=source.getJSONObject(i);
                 boolean grass="wild-grass".equals(tree.getString("kind")), bush="bush".equals(tree.getString("kind"));
-                trees.add(new SurfaceObject(grass || bush?"bush":"tree",tree.getInt("column"),tree.getInt("row"),tree.optString("facing","S"),grass?"wild-grass":bush?"preview-bush":tree.optInt("size",2)==1?"conifer-small":"conifer",tree.toString()));
+                trees.add(new SurfaceObject(grass || bush?"bush":"tree",tree.getInt("column"),tree.getInt("row"),tree.optString("facing","S"),grass?"wild-grass":bush?"preview-bush"+(tree.has("variant")?"-"+tree.getString("variant"):"")+(tree.optInt("size")==2?"-large":""):tree.optInt("size",2)==1?"conifer-small":"conifer",tree.toString()));
             }
         }
         World result=new World(data.id,w.getString("name"),w.getString("description"),w.getString("color"),
@@ -515,7 +515,7 @@ final class WorldStore {
         for(int i=0;i<worlds.size();i++) { World w=worlds.get(i); if(w.id.equals(worldId) && w.showCharacter) {
             if(!w.tileExists(column,row) || (houseCovers(w.houses,column,row) && (column!=w.characterColumn || row!=w.characterRow))) return false;
             if(w.previewData!=null) for(SurfaceObject object:w.surfaces) {
-                int size=object.type.equals("tree")?treeFootprint(object):1;
+                int size=surfaceFootprint(object);
                 if(column>=object.column && row>=object.row && column<object.column+size && row<object.row+size)return false;
             }
             if(w.previewData!=null) {
@@ -531,11 +531,15 @@ final class WorldStore {
     static int treeFootprint(SurfaceObject object) {
         return object.material.equals("banana") || object.material.equals("palm") || object.material.equals("conifer-small")?1:2;
     }
+    static int surfaceFootprint(SurfaceObject object) {
+        if(object.type.equals("tree"))return treeFootprint(object);
+        return isPreviewBush(object) && object.material.endsWith("-large")?2:1;
+    }
     static boolean isPreviewGrass(SurfaceObject object) {
         return object!=null && object.type.equals("bush") && object.material.equals("wild-grass") && object.edge!=null;
     }
     static boolean isPreviewBush(SurfaceObject object) {
-        return object!=null && object.type.equals("bush") && object.material.equals("preview-bush") && object.edge!=null;
+        return object!=null && object.type.equals("bush") && object.material.startsWith("preview-bush") && object.edge!=null;
     }
     static boolean portableSmall(SurfaceObject object) {
         return object!=null && !isPreviewGrass(object) && !isPreviewBush(object) && (object.type.equals("flower") || object.type.equals("bush") || object.type.equals("sunflower"));
@@ -564,7 +568,7 @@ final class WorldStore {
         House actualHouse=null;SurfaceObject actualSurface=null;
         if(expectedHouse!=null) {for(House h:world.houses)if(sameHouse(h,expectedHouse)){actualHouse=h;break;}if(actualHouse==null || !actualHouse.visible)return false;}
         else {if(!portableSmall(expectedSurface) && !(world.previewData!=null && (isPreviewGrass(expectedSurface) || isPreviewBush(expectedSurface))))return false;for(SurfaceObject o:world.surfaces)if(o.raw.equals(expectedSurface.raw)){actualSurface=o;break;}if(actualSurface==null)return false;}
-        int width=actualHouse==null?1:HouseFootprint.of(actualHouse.design).columns,height=actualHouse==null?1:HouseFootprint.of(actualHouse.design).rows;
+        int width=actualHouse==null?surfaceFootprint(actualSurface):HouseFootprint.of(actualHouse.design).columns,height=actualHouse==null?surfaceFootprint(actualSurface):HouseFootprint.of(actualHouse.design).rows;
         if(column<0 || row<0 || column+width>world.gridSize() || row+height>world.gridSize())return false;
         for(int y=row;y<row+height;y++)for(int x=column;x<column+width;x++) {
             if(!world.tileExists(x,y) || (world.previewData!=null && world.previewData.tile(x,y)==3)
@@ -572,7 +576,7 @@ final class WorldStore {
             for(House h:world.houses)if(h!=actualHouse && h.covers(x,y))return false;
             for(SurfaceObject o:world.surfaces) {
                 if(o==actualSurface)continue;
-                int size=o.type.equals("tree")?treeFootprint(o):1;
+                int size=surfaceFootprint(o);
                 if(x>=o.column && x<o.column+size && y>=o.row && y<o.row+size)return false;
             }
             for(PortalTravel.Portal portal:world.portals)if(portal.tile.column==x && portal.tile.row==y)return false;
@@ -649,7 +653,7 @@ final class WorldStore {
                     || Math.abs(world.characterColumn-column)+Math.abs(world.characterRow-row)!=1
                     || houseCovers(world.houses,column,row)) return false;
             for(SurfaceObject object:world.surfaces) {
-                int size=object.type.equals("tree")?treeFootprint(object):1;
+                int size=surfaceFootprint(object);
                 if(column>=object.column && row>=object.row && column<object.column+size && row<object.row+size)return false;
             }
             int tile=world.previewData.tile(column,row);if(tile!=1 && tile!=2)return false;
@@ -661,22 +665,28 @@ final class WorldStore {
     }
     /** Place one tuft in a supported flat portable world, committing only after full revalidation. */
     boolean placeWildGrass(String worldId,int column,int row) throws JSONException {return placePreviewPlant(worldId,column,row,"wild-grass");}
-    boolean placePreviewPlant(String worldId,int column,int row,String kind) throws JSONException {
+    boolean placePreviewPlant(String worldId,int column,int row,String kind) throws JSONException {return placePreviewPlant(worldId,column,row,kind,1,null);}
+    boolean placePreviewPlant(String worldId,int column,int row,String kind,int size,String variant) throws JSONException {
         if(!"wild-grass".equals(kind) && !"bush".equals(kind))return false;
+        if(size<1 || size>2 || ("wild-grass".equals(kind) && (size!=1 || variant!=null)) || (variant!=null && !java.util.Arrays.asList("flower","berry").contains(variant)))return false;
         if(!worldId.equals(activeId()))return false;
         List<World> worlds=list();
         for(int i=0;i<worlds.size();i++) {
             World w=worlds.get(i);if(!worldId.equals(w.id))continue;
-            if(w.previewData==null || !w.tileExists(column,row) || w.previewData.tile(column,row)==3
-                    || (w.showCharacter && w.characterColumn==column && w.characterRow==row) || houseCovers(w.houses,column,row))return false;
-            for(SurfaceObject object:w.surfaces) {
-                int size=object.type.equals("tree")?treeFootprint(object):1;
-                if(column>=object.column && row>=object.row && column<object.column+size && row<object.row+size)return false;
+            if(w.previewData==null || column<0 || row<0 || column+size>w.gridSize() || row+size>w.gridSize())return false;
+            for(int y=row;y<row+size;y++)for(int x=column;x<column+size;x++) {
+                if(!w.tileExists(x,y) || w.previewData.tile(x,y)==3 || (w.showCharacter && w.characterColumn==x && w.characterRow==y) || houseCovers(w.houses,x,y))return false;
+                for(SurfaceObject object:w.surfaces) {
+                    int footprint=surfaceFootprint(object);
+                    if(x>=object.column && y>=object.row && x<object.column+footprint && y<object.row+footprint)return false;
+                }
             }
             JSONObject root=new JSONObject(w.previewData.toJson()), data=root.getJSONObject("world");
             JSONArray objects=data.has("orangeTrees")?data.getJSONArray("orangeTrees"):new JSONArray();
-            objects.put(new JSONObject().put("column",column).put("row",row).put("kind",kind).put("size",1));
-            data.put("orangeTrees",objects);root.put("version",Math.max(w.previewData.version,"bush".equals(kind)?10:9));
+            JSONObject plant=new JSONObject().put("column",column).put("row",row).put("kind",kind).put("size",size);
+            if(variant!=null)plant.put("variant",variant);objects.put(plant);
+            int required="bush".equals(kind)?(size==2 || variant!=null?11:10):9;
+            data.put("orangeTrees",objects);root.put("version",Math.max(w.previewData.version,required));
             worlds.set(i,fromPreview(PreviewWorld20.parse(root.toString())));
             return saveWorlds(worlds,worldId);
         }

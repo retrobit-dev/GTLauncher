@@ -4,7 +4,7 @@ home=(root/'HomeActivity.java').read_text();view=(root/'WeatherSkyView.java').re
 assert 'setPositiveButton("Katalog objek"' in home
 assert 'GridLayout grid=new GridLayout(this)' in home and 'setText("Tanaman dan pohon")' in home
 assert 'placeWildGrassAt(event.getX(),event.getY())' in home
-assert 'worldStore.placePreviewPlant(id,tile.column,tile.row,placingPlantKind)' in home
+assert 'worldStore.placePreviewPlant(id,tile.column,tile.row,placingPlantKind,placingPlantSize,placingPlantVariant)' in home
 assert 'WorldStore.isPreviewGrass(object)' in home
 assert 'R.drawable.wild_grass_selected' in view
 assert 'boolean placeWildGrass(String worldId,int column,int row)' in store

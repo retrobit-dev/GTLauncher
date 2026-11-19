@@ -386,6 +386,24 @@ public class PortalImportTest {
         assertTrue(store.deleteSelectedPlant("home",store.activeWorld().surfaces.get(0)));
         assertEquals(0,store.activeWorld().surfaces.size());assertEquals(10,store.activeWorld().previewData.version);
     }
+    @Test public void largeAndVariantBushesValidateFullFootprint() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1))));
+        assertTrue(store.placePreviewPlant("home",7,7,"bush",2,"flower"));
+        WorldStore.World w=store.activeWorld();assertEquals(11,w.previewData.version);WorldStore.SurfaceObject bush=w.surfaces.get(0);
+        assertEquals(2,WorldStore.surfaceFootprint(bush));assertEquals("preview-bush-flower-large",bush.material);
+        assertFalse(store.moveCharacter("home",8,8,"S"));assertFalse(store.placeWildGrass("home",8,8));
+        assertFalse(store.placePreviewPlant("home",19,19,"bush",2,"berry"));
+        assertFalse(store.placePreviewPlant("home",8,8,"bush",1,"berry"));
+        assertTrue(store.placePreviewPlant("home",11,11,"bush",1,"berry"));
+        assertFalse(store.moveSelectedObject("home",null,bush,10,10));
+        assertTrue(store.moveSelectedObject("home",null,bush,13,13));
+        w=store.activeWorld();assertEquals(2,w.surfaces.size());assertEquals(13,w.surfaces.get(0).column);
+        org.json.JSONObject old=new org.json.JSONObject(w.previewData.toJson());old.put("version",10);
+        try{WorldStore.parseExport(old.toString());fail("v10 cannot hold new variants");}catch(JSONException expected){}
+        assertTrue(store.deleteSelectedPlant("home",w.surfaces.get(0)));assertEquals(1,store.activeWorld().surfaces.size());
+        assertEquals("preview-bush-berry",store.activeWorld().surfaces.get(0).material);
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {

@@ -174,7 +174,8 @@ public class HomeActivity extends Activity {
     private int selectedTool = -1;
     private String movingObjectWorld;
     private String placingWildGrassWorld;
-    private String placingPlantKind="wild-grass";
+    private String placingPlantKind="wild-grass",placingPlantVariant=null;
+    private int placingPlantSize=1;
     private WorldStore.House movingHouse;
     private WorldStore.SurfaceObject movingSurface;
     private WorldStore worldStore;
@@ -499,7 +500,7 @@ public class HomeActivity extends Activity {
     }
     private WorldStore.SurfaceObject frontSurface(WorldStore.World world,PortalTravel.Tile front) {
         for(WorldStore.SurfaceObject object:world.surfaces) {
-            int size=object.type.equals("tree")?WorldStore.treeFootprint(object):1;
+            int size=WorldStore.surfaceFootprint(object);
             if(front.column>=object.column && front.column<object.column+size && front.row>=object.row && front.row<object.row+size)return object;
         }
         return null;
@@ -548,7 +549,7 @@ public class HomeActivity extends Activity {
         } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }
     private void showHandObjectMenu(String worldId,WorldStore.House house,WorldStore.SurfaceObject object,PortalTravel.Portal portal) {
-        boolean small=WorldStore.portableSmall(object),movable=house!=null || small || WorldStore.isPreviewGrass(object) || WorldStore.isPreviewBush(object) || WorldStore.isPreviewBush(object);
+        boolean small=WorldStore.portableSmall(object),movable=house!=null || small || WorldStore.isPreviewGrass(object) || WorldStore.isPreviewBush(object);
         java.util.List<String> actions=new java.util.ArrayList<>();
         actions.add(small?"Ambil ke tas (belum bisa ditaruh kembali)":"Ambil — tidak tersedia");
         actions.add(movable?"Pindahkan":"Pindahkan — tidak tersedia");
@@ -821,19 +822,21 @@ public class HomeActivity extends Activity {
             LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(16),dp(8),dp(16),dp(8));
             TextView group=new TextView(this);group.setText("Tanaman dan pohon");group.setTextColor(Color.rgb(52,75,59));group.setTypeface(null,android.graphics.Typeface.BOLD);panel.addView(group);
             GridLayout grid=new GridLayout(this);grid.setColumnCount(2);panel.addView(grid);
-            AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Katalog objek").setView(panel).setNegativeButton("Batal",null).create();
-            String[] names={"Rumput liar","Semak"}, kinds={"wild-grass","bush"};
-            int[] images={R.drawable.wild_grass_selected,R.drawable.bush_selected};
+            ScrollView scroll=new ScrollView(this);scroll.addView(panel);
+            AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Katalog objek").setView(scroll).setNegativeButton("Batal",null).create();
+            String[] names={"Rumput liar","Semak","Semak","Semak bunga","Semak bunga","Semak beri","Semak beri"};
+            String[] kinds={"wild-grass","bush","bush","bush","bush","bush","bush"}, variants={null,null,null,"flower","flower","berry","berry"};
+            int[] sizes={1,1,2,1,2,1,2}, images={R.drawable.wild_grass_selected,R.drawable.bush_selected,R.drawable.bush_selected,R.drawable.bush_flower_selected,R.drawable.bush_flower_selected,R.drawable.bush_berry_selected,R.drawable.bush_berry_selected};
             for(int i=0;i<names.length;i++) {
-                final String name=names[i],kind=kinds[i];
+                final String name=names[i],kind=kinds[i],variant=variants[i];final int size=sizes[i];
                 LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);
                 card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundResource(R.drawable.bg_portal_button);
-                card.setFocusable(true);card.setClickable(true);card.setContentDescription("Tempatkan "+name+", tapak satu kali satu");
+                card.setFocusable(true);card.setClickable(true);card.setContentDescription("Tempatkan "+name+", tapak "+size+" kali "+size);
                 ImageView image=new ImageView(this);image.setImageResource(images[i]);image.setScaleType(ImageView.ScaleType.FIT_CENTER);
                 card.addView(image,new LinearLayout.LayoutParams(dp(96),dp(64)));
-                TextView caption=new TextView(this);caption.setText(name+" · 1×1");caption.setTextColor(Color.rgb(52,75,59));caption.setGravity(Gravity.CENTER);card.addView(caption);
+                TextView caption=new TextView(this);caption.setText(name+" · "+size+"×"+size);caption.setTextColor(Color.rgb(52,75,59));caption.setGravity(Gravity.CENTER);card.addView(caption);
                 GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(140);cell.height=GridLayout.LayoutParams.WRAP_CONTENT;cell.setMargins(0,dp(8),dp(8),0);grid.addView(card,cell);
-                card.setOnClickListener(v->{dialog.dismiss();applyActiveWorld();placingPlantKind=kind;placingWildGrassWorld=world.id;closeDrawer();
+                card.setOnClickListener(v->{dialog.dismiss();applyActiveWorld();placingPlantKind=kind;placingPlantVariant=variant;placingPlantSize=size;placingWildGrassWorld=world.id;closeDrawer();
                     Toast.makeText(this,"Ketuk tile kering untuk menempatkan "+name+". Buka World untuk membatalkan.",Toast.LENGTH_LONG).show();});
             }
             dialog.show();
@@ -847,7 +850,7 @@ public class HomeActivity extends Activity {
         if(!id.equals(worldStore.activeId())) {placingWildGrassWorld=null;return;}
         PortalTravel.Tile tile=skyView.groundTileAt(x,y);
         try {
-            if(tile==null || !worldStore.placePreviewPlant(id,tile.column,tile.row,placingPlantKind)) {
+            if(tile==null || !worldStore.placePreviewPlant(id,tile.column,tile.row,placingPlantKind,placingPlantSize,placingPlantVariant)) {
                 Toast.makeText(this,"Pilih tile kering yang kosong, tanpa rumah atau player.",Toast.LENGTH_LONG).show();return;
             }
             placingWildGrassWorld=null;applyActiveWorld();
@@ -921,7 +924,7 @@ public class HomeActivity extends Activity {
                 for(WorldStore.House house:world.houses)
                     if(house.covers(c,r) && !house.covers(world.characterColumn,world.characterRow)) return false;
                 for(WorldStore.SurfaceObject o:world.surfaces) {
-                    if(o.type.equals("tree") && c>=o.column && c<o.column+WorldStore.treeFootprint(o) && r>=o.row && r<o.row+WorldStore.treeFootprint(o)) return false;
+                    if((o.type.equals("tree") || WorldStore.isPreviewBush(o)) && c>=o.column && c<o.column+WorldStore.surfaceFootprint(o) && r>=o.row && r<o.row+WorldStore.surfaceFootprint(o)) return false;
                     if((o.type.equals("bush")||o.type.equals("sunflower")||o.type.equals("mailbox")||o.type.equals("storage-box")||o.type.equals("selling-box")||(o.type.equals("road") && "water".equals(o.material))) && o.column==c && o.row==r)return false;
                 }
                 return true;

@@ -275,7 +275,7 @@ public final class WeatherSkyView extends View {
     private Bitmap treeDormant,treeBananaFruitless,treeCoconutFruitless;
     private TreePhenology.Result treePhenology;
     private java.util.Set<String> harvestedTrees=java.util.Collections.emptySet();
-    private Bitmap bushSelected,coniferTree,bushSpiky,bushTiered,bushRound,bushFlower,bushBerry,wildGrass,treeApple,treeOrange,treePear,treeGuava,treeStarfruit,treeMango,treeBanana,treeCoconut,sunflowerFront,sunflowerBack,sellingBoxClosed,sellingBoxOpen,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
+    private Bitmap bushSelected,bushFlowerSelected,bushBerrySelected,coniferTree,bushSpiky,bushTiered,bushRound,bushFlower,bushBerry,wildGrass,treeApple,treeOrange,treePear,treeGuava,treeStarfruit,treeMango,treeBanana,treeCoconut,sunflowerFront,sunflowerBack,sellingBoxClosed,sellingBoxOpen,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
     private final java.util.Set<String> openStorage = new java.util.HashSet<>();
     private final java.util.Map<String,Long> sellingOpenedAt = new java.util.HashMap<>();
     private String surfaceWorldId="";
@@ -404,7 +404,7 @@ public final class WeatherSkyView extends View {
         bushRound=BitmapFactory.decodeResource(getResources(),R.drawable.bush_round);bushFlower=BitmapFactory.decodeResource(getResources(),R.drawable.bush_flower);bushBerry=BitmapFactory.decodeResource(getResources(),R.drawable.bush_berry);
         treeDormant=BitmapFactory.decodeResource(getResources(),R.drawable.tree_dormant);treeBananaFruitless=BitmapFactory.decodeResource(getResources(),R.drawable.tree_banana_fruitless);treeCoconutFruitless=BitmapFactory.decodeResource(getResources(),R.drawable.tree_coconut_fruitless);
         treeApple=BitmapFactory.decodeResource(getResources(),R.drawable.tree_apple);treeOrange=BitmapFactory.decodeResource(getResources(),R.drawable.orange_tree_pixel);treePear=BitmapFactory.decodeResource(getResources(),R.drawable.tree_pear);treeGuava=BitmapFactory.decodeResource(getResources(),R.drawable.tree_guava);treeStarfruit=BitmapFactory.decodeResource(getResources(),R.drawable.tree_starfruit);
-        bushSelected=BitmapFactory.decodeResource(getResources(),R.drawable.bush_selected);wildGrass=BitmapFactory.decodeResource(getResources(),R.drawable.wild_grass_selected);bushSpiky=BitmapFactory.decodeResource(getResources(),R.drawable.bush_spiky);bushTiered=BitmapFactory.decodeResource(getResources(),R.drawable.bush_tiered);
+        bushSelected=BitmapFactory.decodeResource(getResources(),R.drawable.bush_selected);bushFlowerSelected=BitmapFactory.decodeResource(getResources(),R.drawable.bush_flower_selected);bushBerrySelected=BitmapFactory.decodeResource(getResources(),R.drawable.bush_berry_selected);wildGrass=BitmapFactory.decodeResource(getResources(),R.drawable.wild_grass_selected);bushSpiky=BitmapFactory.decodeResource(getResources(),R.drawable.bush_spiky);bushTiered=BitmapFactory.decodeResource(getResources(),R.drawable.bush_tiered);
         treeBanana=BitmapFactory.decodeResource(getResources(),R.drawable.tree_banana_simple);treeCoconut=BitmapFactory.decodeResource(getResources(),R.drawable.tree_coconut_small);sunflowerFront=BitmapFactory.decodeResource(getResources(),R.drawable.sunflower_front);sunflowerBack=BitmapFactory.decodeResource(getResources(),R.drawable.sunflower_back);treeMango=BitmapFactory.decodeResource(getResources(),R.drawable.tree_mango);mailboxBirdhouse=BitmapFactory.decodeResource(getResources(),R.drawable.mailbox_birdhouse);
         sellingBoxClosed=BitmapFactory.decodeResource(getResources(),R.drawable.selling_box_closed);sellingBoxOpen=BitmapFactory.decodeResource(getResources(),R.drawable.selling_box_open);storageClosed=BitmapFactory.decodeResource(getResources(),R.drawable.storage_closed);storageOpen=BitmapFactory.decodeResource(getResources(),R.drawable.storage_open);
         storageBackClosed=BitmapFactory.decodeResource(getResources(),R.drawable.storage_back_closed);storageBackOpen=BitmapFactory.decodeResource(getResources(),R.drawable.storage_back_open);
@@ -503,15 +503,18 @@ public final class WeatherSkyView extends View {
                     boolean small=o.material.equals("banana") || o.material.equals("palm");width=small?24:(o.material.equals("orange") && "ripe".equals(treeStage(o.material)) && !isHarvested(o)?60f*512f/490f:48);height=small?30:60;bottom=y+ISLAND_TILE_HEIGHT*(small?.275f:o.material.equals("orange")?.5f:1.05f);
                 } break;
             case "sunflower": width=15;height=23;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
-            case "bush": width=o.material.equals("wild-grass")?28f:18.5f;height=o.material.equals("wild-grass")?14f:14.5f;bottom=y+(o.material.equals("wild-grass") || o.material.equals("preview-bush")?.75f:ISLAND_TILE_HEIGHT*.325f);break;
+            case "bush":
+                int plantSize=WorldStore.surfaceFootprint(o);
+                width=o.material.equals("wild-grass")?28f:18.5f*plantSize;height=o.material.equals("wild-grass")?14f:14.5f*plantSize;
+                bottom=y+(WorldStore.isPreviewBush(o)?ISLAND_TILE_HEIGHT*(plantSize-1)*.5f+.75f:o.material.equals("wild-grass")?.75f:ISLAND_TILE_HEIGHT*.325f);break;
             case "mailbox": width=13;height=30;bottom=y+ISLAND_TILE_HEIGHT*.15f;break;
             default: width=18;height=18;bottom=y+ISLAND_TILE_HEIGHT*.15f;
         }
         return new RectF(x-width/2,bottom-height,x+width/2,bottom);
     }
     private double plantSway(WorldStore.SurfaceObject o,double factor) {
-        if(weather==null)return 0;
-        return factor*PlantMotion.sway(animationEnabled,weather.windSpeedKmh,weather.windDirectionDegrees,
+        double speed=weather==null?4:weather.windSpeedKmh,direction=weather==null?90:weather.windDirectionDegrees;
+        return factor*PlantMotion.sway(animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled(),speed,direction,
                 headingDegrees,plantMotionSeconds,o.column,o.row,o.type,o.material);
     }
     private double orangeTreeSway(WorldStore.SurfaceObject o) {
@@ -521,13 +524,13 @@ public final class WeatherSkyView extends View {
     private void drawSurfaceSprites(Canvas canvas,boolean front) {
         for(WorldStore.SurfaceObject o:worldSurfaces) {
             if(o.type.equals("road") || o.type.equals("fence") || o.type.equals("flower")) continue;
-            float depth=o.column+o.row+(o.type.equals("tree")?WorldStore.treeFootprint(o)-1:0f);
+            float depth=o.column+o.row+WorldStore.surfaceFootprint(o)-1;
             if(showCharacter && (depth>=visualColumn()+visualRow())!=front) continue;
             if(!showCharacter && front) continue;
             Bitmap image; boolean mirror=false;
             if(o.type.equals("tree")) {image=treeImage(o);mirror=o.material.startsWith("conifer") && ("W".equals(o.edge)||"E".equals(o.edge));}
             else if(o.type.equals("sunflower")) { image=(o.material.equals("N")||o.material.equals("W"))?sunflowerBack:sunflowerFront;mirror=o.material.equals("N")||o.material.equals("E"); }
-            else if(o.type.equals("bush")) {image=o.material.equals("preview-bush")?bushSelected:o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:o.material.equals("tiered")?bushTiered:o.material.equals("flower")?bushFlower:o.material.equals("berry")?bushBerry:bushRound;mirror=(o.material.equals("wild-grass") || o.material.equals("preview-bush")) && ("W".equals(o.edge)||"E".equals(o.edge));}
+            else if(o.type.equals("bush")) {image=o.material.startsWith("preview-bush-flower")?bushFlowerSelected:o.material.startsWith("preview-bush-berry")?bushBerrySelected:o.material.startsWith("preview-bush")?bushSelected:o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:o.material.equals("tiered")?bushTiered:o.material.equals("flower")?bushFlower:o.material.equals("berry")?bushBerry:bushRound;mirror=(o.material.equals("wild-grass") || o.material.startsWith("preview-bush")) && ("W".equals(o.edge)||"E".equals(o.edge));}
             else if(o.type.equals("mailbox")) image=mailboxBirdhouse;
             else {boolean back=o.material.equals("N")||o.material.equals("W"),opened=openStorage.contains(o.column+","+o.row);
                 mirror=o.material.equals("N")||o.material.equals("E");
@@ -536,15 +539,17 @@ public final class WeatherSkyView extends View {
             if(image==null)continue;RectF g=surfaceSpriteBounds(o);
             int alpha=Math.round(255*(100-Math.max(0,o.opacity))/100f);
             if(!(o.type.equals("tree") && (o.material.equals("orange") || o.material.startsWith("conifer")))) {
-                boolean grass=o.type.equals("bush") && (o.material.equals("wild-grass") || o.material.equals("preview-bush"));
+                boolean grass=o.type.equals("bush") && (o.material.equals("wild-grass") || o.material.startsWith("preview-bush"));
                 paint.setColor(grass?Color.argb(Math.round(46*alpha/255f),28,49,35):Color.argb(Math.round(35*alpha/255f),12,23,40));paint.setStyle(Paint.Style.FILL);
-                float contactWidth=grass?5f:g.width()*.3f,contactDepth=grass?.65f:1f;
+                float contactWidth=grass?5f*WorldStore.surfaceFootprint(o):g.width()*.3f,contactDepth=grass?.65f*WorldStore.surfaceFootprint(o):1f;
                 canvas.drawOval(new RectF(g.centerX()-contactWidth,g.bottom-contactDepth,g.centerX()+contactWidth,g.bottom+contactDepth),paint);
             }
             paint.setColor(Color.WHITE);paint.setAlpha(alpha);paint.setFilterBitmap(true);int saved=canvas.save();
             if(o.type.equals("tree") && (o.material.equals("orange") || o.material.startsWith("conifer"))) {
                 double sway=orangeTreeSway(o)*(o.material.equals("conifer-small")?.5:1);
                 canvas.translate(g.centerX(),g.bottom);canvas.skew((float)(-sway/g.height()),0);canvas.translate(-g.centerX(),-g.bottom);
+            } else if(o.type.equals("bush") && (o.material.equals("wild-grass") || WorldStore.isPreviewBush(o))) {
+                double sway=plantSway(o,1.0);canvas.translate(g.centerX(),g.bottom);canvas.skew((float)(-sway/g.height()),0);canvas.translate(-g.centerX(),-g.bottom);
             } else if(o.type.equals("sunflower") || o.type.equals("tree") || o.type.equals("bush")) {
                 double sway=plantSway(o,1.0);
                 canvas.rotate((float)Math.toDegrees(Math.atan2(sway,g.height())),g.centerX(),g.bottom);
@@ -649,12 +654,14 @@ public final class WeatherSkyView extends View {
         boolean conifer=o.type.equals("tree") && o.material.startsWith("conifer");
         if(o.type.equals("tree") && (o.material.equals("orange") || conifer)) {
             x+=(y-g.bottom)*(float)(orangeTreeSway(o)*(o.material.equals("conifer-small")?.5:1)/g.height());
+        } else if(o.type.equals("bush") && (o.material.equals("wild-grass") || WorldStore.isPreviewBush(o))) {
+            x+=(y-g.bottom)*(float)(plantSway(o,1.0)/g.height());
         } else if(o.type.equals("bush") || o.type.equals("sunflower") || o.type.equals("tree")) {
             double angle=Math.atan2(plantSway(o,1.0),g.height()), dx=x-g.centerX(),dy=y-g.bottom;
             x=(float)(g.centerX()+Math.cos(angle)*dx+Math.sin(angle)*dy);
             y=(float)(g.bottom-Math.sin(angle)*dx+Math.cos(angle)*dy);
         }
-        boolean mirror=(conifer || (o.type.equals("bush") && (o.material.equals("wild-grass") || o.material.equals("preview-bush")))) && ("W".equals(o.edge)||"E".equals(o.edge));
+        boolean mirror=(conifer || (o.type.equals("bush") && (o.material.equals("wild-grass") || o.material.startsWith("preview-bush")))) && ("W".equals(o.edge)||"E".equals(o.edge));
         if(o.type.equals("sunflower") || o.type.equals("storage-box") || o.type.equals("selling-box"))mirror="N".equals(o.material)||"E".equals(o.material);
         return opaqueAt(image,g,x,y,mirror);
     }
@@ -763,7 +770,7 @@ public final class WeatherSkyView extends View {
     private Bitmap surfaceImage(WorldStore.SurfaceObject o) {
         if(o.type.equals("tree"))return treeImage(o);
         if(o.type.equals("sunflower"))return o.material.equals("N")||o.material.equals("W")?sunflowerBack:sunflowerFront;
-        if(o.type.equals("bush"))return o.material.equals("preview-bush")?bushSelected:o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:o.material.equals("tiered")?bushTiered:o.material.equals("flower")?bushFlower:o.material.equals("berry")?bushBerry:bushRound;
+        if(o.type.equals("bush"))return o.material.startsWith("preview-bush-flower")?bushFlowerSelected:o.material.startsWith("preview-bush-berry")?bushBerrySelected:o.material.startsWith("preview-bush")?bushSelected:o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:o.material.equals("tiered")?bushTiered:o.material.equals("flower")?bushFlower:o.material.equals("berry")?bushBerry:bushRound;
         if(o.type.equals("mailbox"))return mailboxBirdhouse;
         if(o.type.equals("storage-box") || o.type.equals("selling-box")) {
             boolean back=o.material.equals("N")||o.material.equals("W"),opened=openStorage.contains(o.column+","+o.row);
@@ -839,7 +846,7 @@ public final class WeatherSkyView extends View {
             } else if(front) {
                 Bitmap sprite=surfaceImage(o);if(sprite==null)continue;
                 boolean flipped=((o.type.equals("sunflower") || o.type.equals("storage-box") || o.type.equals("selling-box")) && (o.material.equals("N")||o.material.equals("E")))
-                        || ((o.type.equals("tree") && o.material.startsWith("conifer") || o.type.equals("bush") && (o.material.equals("wild-grass") || o.material.equals("preview-bush"))) && ("W".equals(o.edge)||"E".equals(o.edge)));
+                        || ((o.type.equals("tree") && o.material.startsWith("conifer") || o.type.equals("bush") && (o.material.equals("wild-grass") || o.material.startsWith("preview-bush"))) && ("W".equals(o.edge)||"E".equals(o.edge)));
                 if(fenceOverlaps(image,f,mirror,sprite,surfaceSpriteBounds(o),flipped))return true;
             }
         }

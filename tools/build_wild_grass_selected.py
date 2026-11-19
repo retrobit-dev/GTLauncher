@@ -4,9 +4,11 @@ from pathlib import Path
 import colorsys
 from PIL import Image
 from build_player_idle_selected import extract
+from clean_plant_ground import clean_ground_shadow
 
 root=Path(__file__).resolve().parents[1]
 art,_=extract(root/'preview/assets/character-redraw/wild-grass-new-concept.png')
+art=clean_ground_shadow(art)
 # Match the island's softer sage-green palette while retaining the chosen blade
 # shapes, highlights and alpha. Do this before scaling so edges are softened once.
 pixels=art.load()

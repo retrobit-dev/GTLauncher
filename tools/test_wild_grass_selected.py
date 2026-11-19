@@ -19,6 +19,6 @@ print('Selected wild-grass sprite: transparency, grounding, asset parity and old
 
 preview=(root/'preview/app.js').read_text()
 assert "if(tree.kind==='wild-grass'||tree.kind==='bush') centre.y+=0.75" in preview
-assert "ctx.ellipse(centre.x,bottom,5,0.65" in preview
-assert 'o.material.equals("preview-bush")?.75f' in view and 'contactWidth=grass?5f' in view
+assert "ctx.ellipse(centre.x,bottom,tree.kind==='bush'?5*treeSize(tree):5" in preview
+assert 'o.material.equals("wild-grass")?.75f' in view and 'contactWidth=grass?5f' in view
 assert "if(tree.kind==='wild-grass'||tree.kind==='bush')continue" in preview
