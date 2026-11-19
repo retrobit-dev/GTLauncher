@@ -595,12 +595,14 @@
         const url = URL.createObjectURL(blob);
         const safeName = world.name.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'world';
         showExport(url, `gtlauncher-preview-${safeName}.json`, false, json, true);
-        const androidConifers = !snapshot.bridges && !snapshot.blockStacks && (snapshot.fences?.length || snapshot.orangeTrees?.length) && (!snapshot.orangeTrees || snapshot.orangeTrees.every(t=>t.kind==='conifer'||t.kind==='wild-grass'||t.kind==='bush'));
-        if(snapshot.bridges) $('world-export-help').textContent=snapshot.blockStacks ? 'JSON jembatan bertingkat hanya dapat diimpor di preview; Android belum mendukung block bertingkat.' : 'JSON jembatan datar dapat diimpor Android versi terbaru jika semua objek didukung.';
-        else if(androidConifers) $('world-export-help').textContent = 'JSON pagar/cemara/rumput/semak datar dapat diimpor Android versi terbaru. World Android dan preview tetap terpisah.';
-        else if(snapshot.orangeTrees !== undefined) $('world-export-help').textContent = 'JSON pohon ini hanya dapat diimpor di preview; Android belum mendukung seluruh datanya.';
-        else if(snapshot.blockStacks) $('world-export-help').textContent = 'JSON block bertingkat ini hanya dapat diimpor di preview; Android belum mendukung block bertingkat.';
-        announce(snapshot.bridges ? (snapshot.blockStacks ? 'JSON jembatan bertingkat siap untuk preview.' : 'JSON jembatan datar siap untuk preview dan Android terbaru jika seluruh objek didukung.') : androidConifers ? 'JSON pagar/cemara/rumput/semak datar siap untuk preview dan Android versi terbaru.' : snapshot.orangeTrees !== undefined ? 'JSON pohon siap untuk preview; Android belum mendukung seluruh datanya.' : snapshot.blockStacks ? 'JSON block bertingkat siap untuk preview; Android belum mendukung format ini.' : 'JSON world siap untuk preview dan Android versi terbaru.'); return;
+        if(snapshot.blockStacks) {
+          $('world-export-help').textContent='JSON block bertingkat ini belum didukung Android dan tetap dapat diimpor di preview.';
+          announce('JSON world bertingkat siap untuk preview; Android belum mendukung format ini.');
+        } else {
+          $('world-export-help').textContent='JSON world datar dapat dicoba di Android versi terbaru. World Android dan preview tersimpan terpisah; impor tetap memvalidasi seluruh data.';
+          announce('JSON world datar siap untuk preview dan dapat dicoba di Android terbaru.');
+        }
+        return;
       }
       // Stable world ID and the supported character object are portable to Android.
       if (!/^[a-zA-Z0-9_-]{1,128}$/.test(world.id) || world.id === 'base') {

@@ -1,18 +1,16 @@
 # Kompatibilitas world Android
 
-Penyimpanan browser dan Android terpisah; tidak ada sinkronisasi otomatis. Android dapat mengimpor JSON `gtlauncher-preview-world` datar versi 1–3 yang seluruh field-nya didukung dan lulus validasi. Impor menggunakan pemilih berkas Android dan meminta konfirmasi bila ID sudah ada. Android tidak menyediakan ekspor tambahan atau mengubah inventaris selama impor.
+Penyimpanan browser dan Android terpisah; tidak ada sinkronisasi otomatis. Android menyediakan pemilih world dan impor, bukan editor atau katalog penempatan. Aksi gameplay seperti pergerakan dan interaksi tetap tersedia. World dan inventaris yang sudah ada tidak dihapus.
 
-World preview bertingkat versi 4–12 dan world berpohon jeruk belum didukung Android. Pengecualian: JSON v7/v8 world datar yang berisi cemara 1×1 atau 2×2, v9 world datar yang berisi cemara dan/atau rumput liar, v10 world datar yang juga dapat berisi semak, v11 world datar dengan variasi semak dan tapak 2×2, serta v12 world datar dengan identitas dan waktu tanam semak dapat diimpor; cemara memakai gambar, goyangan dan tabrakan di Android. Berkas yang belum didukung ditolak sebelum penyimpanan; field yang tidak dikenal juga ditolak. Jangan mengubah nomor versi untuk memaksa impor: data tidak dapat ditampilkan atau dimainkan secara benar.
+Android dapat membaca world preview **datar** versi 1–3 dan 5–17, termasuk pohon jeruk, cemara, rumput, semak, pagar, jembatan dan block beratap rumput yang sesuai versinya. Nomor versi 4 mensyaratkan block bertingkat. World bertingkat (`blockStacks`) semua versi masih ditolak tanpa menyimpan, bukan diratakan atau menghilangkan data. Tampilan dan interaksi Android tidak dijamin identik dengan preview, dan build/perangkat belum diuji. Jangan mengganti nomor versi untuk memaksa impor.
 
-Format `gtlauncher-world` lama dan `gtlauncher-preview-world` adalah skema berbeda. Impor salah satu tidak dapat menggantikan world dengan ID yang sama dalam skema lainnya, karena terrain atau objek dan portal dapat hilang. Impor preview versi lama juga tidak boleh menggantikan terrain yang memuat jenis tile yang versi tersebut tidak dapat menyimpan. Penolakan tidak mengubah world aktif atau data tersimpan. Impor dengan ID baru tetap tersedia; pergantian dalam skema yang sama tetap meminta konfirmasi dan dapat mengganti isi sesuai berkas.
-
-Pengujian mencakup impor terbatas cemara datar dan penolakan data v4–v12 yang belum didukung dan penggantian lintas skema, pelestarian data dan ID aktif, serta perubahan terrain yang tidak dapat diekspresikan versi lama. Belum ada build atau uji perangkat Android; dukungan penuh v4–v12, katalog/editor, cemara dan sinkronisasi masih perlu dikerjakan.
+Format `gtlauncher-world` lama dan `gtlauncher-preview-world` adalah skema berbeda. Impor salah satu tidak dapat menggantikan world dengan ID yang sama dalam skema lainnya, karena terrain atau objek dan portal dapat hilang. Guard downgrade menjaga data yang format lama tidak bisa menyimpan. Impor dengan ID baru tetap tersedia; penggantian dalam skema yang sama meminta konfirmasi.
 
 ## Fondasi terrain bertingkat
 
 Android sekarang memiliki model `BlockTerrain` immutable yang memvalidasi daftar block per sel (maksimum 32, nilai 1–6 dan permukaan sesuai `tiles`), menyediakan ketinggian dan aturan langkah naik/turun satu tingkat, serta memperlakukan world lama tanpa stack sebagai terrain datar. Rute Android untuk world preview datar menggunakan aturan yang sama; uji Java mencakup tanjakan, tebing, jalan memutar, data tidak valid dan perubahan input setelah pembacaan.
 
-Ini **belum** mengaktifkan impor world bertingkat: parser world Android masih menolak stack v4–v12. Renderer, posisi player dan objek berdasarkan tinggi, penyimpanan/editing, validasi objek dan pohon, serta interaksi perlu diselesaikan dan diuji sebelum format dibuka. Model tersebut belum tersambung ke data v4–v12 dalam aplikasi yang berjalan.
+Ini **belum** mengaktifkan impor world bertingkat: parser world Android masih menolak stack semua versi. Renderer, posisi player dan objek berdasarkan tinggi, penyimpanan/editing, validasi objek dan pohon, serta interaksi perlu diselesaikan dan diuji sebelum format dibuka. Model tersebut belum tersambung ke data stack dalam aplikasi yang berjalan.
 
 
 ### Block beratap rumput (preview v14)

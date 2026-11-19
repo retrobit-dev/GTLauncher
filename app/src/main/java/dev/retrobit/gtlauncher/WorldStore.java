@@ -309,8 +309,8 @@ final class WorldStore {
             JSONArray source=w.getJSONArray("orangeTrees");
             for(int i=0;i<source.length();i++) {
                 JSONObject tree=source.getJSONObject(i);
-                boolean grass="wild-grass".equals(tree.getString("kind")), bush="bush".equals(tree.getString("kind"));
-                trees.add(new SurfaceObject(grass || bush?"bush":"tree",tree.getInt("column"),tree.getInt("row"),tree.optString("facing","S"),grass?"wild-grass":bush?"preview-bush"+(tree.has("variant")?"-"+tree.getString("variant"):"")+(tree.optInt("size")==2?"-large":""):tree.optInt("size",2)==1?"conifer-small":"conifer",tree.toString()));
+                String kind=tree.optString("kind","");boolean grass="wild-grass".equals(kind), bush="bush".equals(kind);
+                trees.add(new SurfaceObject(grass || bush?"bush":"tree",tree.getInt("column"),tree.getInt("row"),tree.optString("facing","S"),grass?"wild-grass":bush?"preview-bush"+(tree.has("variant")?"-"+tree.getString("variant"):"")+(tree.optInt("size")==2?"-large":""):kind.isEmpty()?"orange":tree.optInt("size",2)==1?"conifer-small":"conifer",tree.toString()));
             }
         }
         if(w.has("fences")) {

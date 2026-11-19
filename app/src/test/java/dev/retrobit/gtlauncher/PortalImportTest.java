@@ -268,15 +268,24 @@ public class PortalImportTest {
         assertEquals(before,p.getString("worlds_v1",null));assertEquals(6,store.activeWorld().previewData.tile(0,0));
         assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1))));
     }
-    @Test public void newerPortableVersionsAreRejectedWithoutChangingStoredWorld() throws JSONException {
-        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
-        assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,6))));
+    @Test public void unsupportedStackedWorldsLeaveStoredWorldUntouched() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,6))));
         String before=p.getString("worlds_v1",null),active=store.activeId();
-        for(int version=4;version<=8;version++) {
-            try {store.upsertAndSelect(WorldStore.parseExport(portableWorld(version,1)));fail("unsupported version");}
-            catch(JSONException expected) {assertEquals("Unsupported world version",expected.getMessage());}
+        for(int version:new int[]{4,5,6,17}) {JSONObject root=new JSONObject(portableWorld(version,1));org.json.JSONArray stacks=new org.json.JSONArray();for(int i=0;i<400;i++)stacks.put(new org.json.JSONArray().put(1));root.getJSONObject("world").put("blockStacks",stacks);
+            try {store.upsertAndSelect(WorldStore.parseExport(root.toString()));fail("stacked world is not ready");} catch(JSONException expected) {}
             assertEquals(before,p.getString("worlds_v1",null));assertEquals(active,store.activeId());
         }
+    }
+    @Test public void portableOrangeTreeVersionsRoundTripWithoutLosingData() throws JSONException {
+        for(int version:new int[]{5,6,7,13,17}){
+            JSONObject root=new JSONObject(portableWorld(version,1));JSONObject tree=new JSONObject().put("column",6).put("row",5);if(version>=6)tree.put("facing","W");root.getJSONObject("world").put("orangeTrees",new org.json.JSONArray().put(tree));
+            WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(root.toString())));WorldStore.World restored=store.activeWorld();
+            assertEquals(1,restored.surfaces.size());WorldStore.SurfaceObject object=restored.surfaces.get(0);assertEquals("orange",object.material);assertEquals(2,WorldStore.surfaceFootprint(object));assertEquals(version>=6?"W":"S",object.edge);
+            assertEquals(tree.toString(),new JSONObject(restored.previewData.toJson()).getJSONObject("world").getJSONArray("orangeTrees").getJSONObject(0).toString());
+            try{store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1)));fail("older world cannot erase tree");}catch(JSONException expected){}
+        }
+        JSONObject invalid=new JSONObject(portableWorld(5,1));invalid.getJSONObject("world").put("orangeTrees",new org.json.JSONArray().put(new JSONObject().put("column",6).put("row",5).put("facing","N")));try{WorldStore.parseExport(invalid.toString());fail("v5 has no facing");}catch(JSONException expected){}
+        invalid.put("version",6);invalid.getJSONObject("world").getJSONArray("orangeTrees").getJSONObject(0).put("kind","orange");try{WorldStore.parseExport(invalid.toString());fail("explicit orange is not a preview kind");}catch(JSONException expected){}
     }
     private String coniferWorld() throws JSONException {
         org.json.JSONObject root=new org.json.JSONObject(portableWorld(3,1));root.put("version",8);

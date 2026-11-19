@@ -863,7 +863,6 @@ public class HomeActivity extends Activity {
                         Toast.makeText(this, "Pilihan world tidak dapat disimpan.", Toast.LENGTH_LONG).show();
                     }
                 }).setNeutralButton("Impor world", (dialog, which) -> chooseWorldFile())
-                .setPositiveButton("Katalog objek", (dialog, which) -> showObjectCatalog())
                 .setNegativeButton("Tutup", null).show();
     }
 
@@ -1051,6 +1050,7 @@ public class HomeActivity extends Activity {
                 // Do not imply that a newer, intact world is corrupt or silently strip its objects.
                 final boolean unsupportedVersion = error instanceof JSONException
                         && "Unsupported world version".equals(error.getMessage());
+                final boolean unsupportedStacks = error instanceof JSONException && "Unsupported block stacks".equals(error.getMessage());
                 final boolean unsupportedObjects = error instanceof JSONException
                         && ("Unsupported object".equals(error.getMessage()) || "Unsupported objects".equals(error.getMessage())
                         || (error.getMessage()!=null && error.getMessage().startsWith("Unsupported field:")));
@@ -1058,6 +1058,7 @@ public class HomeActivity extends Activity {
                     if (!isFinishing() && !isDestroyed())
                         Toast.makeText(this, unsupportedVersion
                                 ? "Versi world ini belum didukung Android. Data tidak diubah."
+                                : unsupportedStacks ? "Block bertingkat belum didukung Android. Data tidak diubah."
                                 : unsupportedObjects ? "World berisi objek yang belum didukung Android. Data tidak diubah."
                                 : "Berkas world tidak valid atau tidak dapat dibaca.", Toast.LENGTH_LONG).show();
                 });
