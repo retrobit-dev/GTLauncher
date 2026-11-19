@@ -16,11 +16,14 @@ final class FenceJoins {
         switch(f.edge){case "N":return new int[][]{{c-1,r-1},{c+1,r-1}};case "E":return new int[][]{{c+1,r+1},{c+1,r-1}};case "S":return new int[][]{{c-1,r+1},{c+1,r+1}};case "W":return new int[][]{{c-1,r+1},{c-1,r-1}};default:throw new IllegalArgumentException("Invalid edge");}
     }
     static Map<WorldStore.SurfaceObject,Join> plan(List<WorldStore.SurfaceObject> objects) {
+        return plan(objects,o->0);
+    }
+    static Map<WorldStore.SurfaceObject,Join> plan(List<WorldStore.SurfaceObject> objects, java.util.function.ToIntFunction<WorldStore.SurfaceObject> level) {
         Map<WorldStore.SurfaceObject,Join> out=new IdentityHashMap<>();Map<String,List<Entry>> groups=new HashMap<>();
         for(int i=0;i<objects.size();i++) {
             WorldStore.SurfaceObject f=objects.get(i);if(!f.type.equals("fence") || !f.material.startsWith("preview-"))continue;
             out.put(f,new Join());int[][] vertices=vertices(f);
-            for(int e=0;e<2;e++){String key=f.material+":"+vertices[e][0]+","+vertices[e][1];groups.computeIfAbsent(key,k->new ArrayList<>()).add(new Entry(f,e,i));}
+            for(int e=0;e<2;e++){String key=level.applyAsInt(f)+":"+f.material+":"+vertices[e][0]+","+vertices[e][1];groups.computeIfAbsent(key,k->new ArrayList<>()).add(new Entry(f,e,i));}
         }
         for(List<Entry> group:groups.values()) {
             if(group.size()<2)continue;

@@ -1,25 +1,13 @@
 # Kompatibilitas world Android
 
-Penyimpanan browser dan Android terpisah; tidak ada sinkronisasi otomatis. Android menyediakan pemilih world dan impor, bukan editor atau katalog penempatan. Aksi gameplay seperti pergerakan dan interaksi tetap tersedia. World dan inventaris yang sudah ada tidak dihapus.
+Penyimpanan browser dan Android terpisah; tidak ada sinkronisasi otomatis. Editor dan katalog penempatan tetap berada di preview; Android menyediakan pemilih world dan impor untuk gameplay. Impor menggunakan pemilih berkas Android dan meminta konfirmasi bila ID sudah ada.
 
-Android dapat membaca world preview **datar** versi 1–3 dan 5–17, termasuk pohon jeruk, cemara, rumput, semak, pagar, jembatan dan block beratap rumput yang sesuai versinya. Nomor versi 4 mensyaratkan block bertingkat. World bertingkat (`blockStacks`) semua versi masih ditolak tanpa menyimpan, bukan diratakan atau menghilangkan data. Tampilan dan interaksi Android tidak dijamin identik dengan preview, dan build/perangkat belum diuji. Jangan mengganti nomor versi untuk memaksa impor.
+Android menerima `gtlauncher-preview-world` v1–v17 yang valid, termasuk `blockStacks` sampai 32 block per sel pada grid 20, 25, 50 dan 100. Block, permukaan, rumah, pohon jeruk/cemara, rumput, semak, pagar dan jembatan dipertahankan dalam JSON world. Parser memeriksa versi, material, konsistensi permukaan, tapak rata, tabrakan dan jembatan sebelum menyimpan. Data tidak dikenal atau tidak valid ditolak tanpa menimpa world atau inventaris. Batas berkas 16 MiB mengakomodasi world besar; jangan ubah nomor versi untuk memaksa impor.
 
-Format `gtlauncher-world` lama dan `gtlauncher-preview-world` adalah skema berbeda. Impor salah satu tidak dapat menggantikan world dengan ID yang sama dalam skema lainnya, karena terrain atau objek dan portal dapat hilang. Guard downgrade menjaga data yang format lama tidak bisa menyimpan. Impor dengan ID baru tetap tersedia; penggantian dalam skema yang sama meminta konfirmasi.
+Format `gtlauncher-world` lama dan `gtlauncher-preview-world` berbeda dan tidak saling menimpa dengan ID sama. Guard downgrade mencegah format lama menghapus block bertingkat, block baru atau objek yang tidak bisa direpresentasikan. Saat terrain digarap, hanya block teratas yang diubah; lapisan bawah tetap utuh.
 
-## Fondasi terrain bertingkat
+## Gameplay terrain bertingkat
 
-Android sekarang memiliki model `BlockTerrain` immutable yang memvalidasi daftar block per sel (maksimum 32, nilai 1–6 dan permukaan sesuai `tiles`), menyediakan ketinggian dan aturan langkah naik/turun satu tingkat, serta memperlakukan world lama tanpa stack sebagai terrain datar. Rute Android untuk world preview datar menggunakan aturan yang sama; uji Java mencakup tanjakan, tebing, jalan memutar, data tidak valid dan perubahan input setelah pembacaan.
+Renderer Android menggambar kolom per level dan menempatkan player, rumah, tanaman, pagar, jembatan, rute, kontak bayangan dan kamera pada tinggi permukaannya. Tap memilih permukaan atau sisi block yang terlihat. Ketinggian gerak dianimasikan antara dua tile; rute membatasi perbedaan tinggi satu block dan mempertahankan aturan jembatan/pagar. Sambungan rumput dan pagar hanya dibentuk pada ketinggian yang sama. Air memakai tetangga pada level sama dan air terjun visual mengalir dari air yang lebih tinggi ke yang lebih rendah. Bayangan awan diklip pada permukaan yang ditinggikan.
 
-Ini **belum** mengaktifkan impor world bertingkat: parser world Android masih menolak stack semua versi. Renderer, posisi player dan objek berdasarkan tinggi, penyimpanan/editing, validasi objek dan pohon, serta interaksi perlu diselesaikan dan diuji sebelum format dibuka. Model tersebut belum tersambung ke data stack dalam aplikasi yang berjalan.
-
-
-### Block beratap rumput (preview v14)
-Preview menyediakan block tanah, batu, pasir, dan tanah garapan dengan permukaan atas rumput; sisi tetap memakai bahan asal. Air tidak memiliki varian ini. ID 7–10 tersimpan sebagai jenis block terpisah, termasuk bila berada di bawah block lain, sehingga ekspor yang memuatnya menggunakan format preview v14. Format lama tidak dapat mengganti world yang mengandung ID tersebut.
-
-Android menerima dan menggambar v14 **datar** pada versi aplikasi yang diperbarui, dengan batasan impor objek yang sama seperti sebelumnya. Block bertingkat belum didukung Android dan ditolak tanpa mengganti data. Pemilih block dan editor terrain Android belum tersedia; aplikasi Android lama tidak mendukung v14.
-
-## Kemajuan validasi world bertingkat
-
-Model internal kini dapat memvalidasi contoh format bertingkat v4–v17 tanpa meratakan kolom: setiap material dan permukaan disimpan utuh, tapak rumah dan pohon harus rata, jembatan memakai tinggi sebenarnya, dan aturan langkah membatasi beda tinggi satu block. Model proyeksi terpisah mencakup posisi permukaan, interpolasi tinggi, pemilihan top diamond dan jumlah sisi yang terekspos. Tes model Java mencakup format lama/baru, data salah, tapak tidak rata dan tebing.
-
-Ini **belum mengaktifkan impor di aplikasi**. `parseStackedForValidation` hanya untuk pengembangan/tes. Renderer, picking sebenarnya (termasuk sisi block), urutan kedalaman objek, air dan air terjun, bayangan, kamera, serta penyimpanan dan interaksi masih harus disambungkan dan diuji secara menyeluruh; sementara itu parser impor tetap menolak world bertingkat tanpa menimpa data. Belum ada build atau uji perangkat Android.
+Tes Java mencakup data bertingkat, versi, penyimpanan, garap, downgrade, pergerakan, jembatan, picking, ketinggian, sambungan dan aturan air. Seluruh sumber Java dikompilasi terhadap stub API Android 35 dan R buatan untuk pemeriksaan tipe; ini **bukan build APK**. Renderer, performa world besar, tampilan air/bayangan, sentuhan dan kamera belum diuji di emulator atau perangkat Android dan mungkin masih memerlukan penyesuaian visual/performa.

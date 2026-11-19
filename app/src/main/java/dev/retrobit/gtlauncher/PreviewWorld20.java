@@ -10,7 +10,7 @@ import java.util.Set;
 
 /** Strict, lossless reader for the preview's portable 20x20, 25x25, 50x50 and 100x100 formats.
  */
-final class PreviewWorld20 {
+final class PreviewWorld20 implements StackWater.Terrain {
     final int size, version;
     private final String json;
     final String id;
@@ -31,8 +31,10 @@ final class PreviewWorld20 {
     boolean canStep(int fromColumn,int fromRow,int toColumn,int toRow) {
         return terrain.canStep(fromColumn,fromRow,toColumn,toRow) && BridgeGeometry.permitsStep(bridges,fromColumn,fromRow,toColumn,toRow);
     }
-    int height(int c,int r) { return terrain.height(c,r); }
-    int block(int c,int r,int level) { return terrain.block(c,r,level); }
+    public int height(int c,int r) { return terrain.height(c,r); }
+    public int block(int c,int r,int level) { return terrain.block(c,r,level); }
+    public int size() { return size; }
+    boolean hasStacks() { return terrain.hasStacks(); }
     boolean onBridge(int c,int r) {for(BridgeGeometry.Bridge bridge:bridges)if(BridgeGeometry.indexAt(bridge,c,r)>=0)return true;return false;}
     String toJson() { return json; }
     private static void keys(JSONObject object, String... allowed) throws JSONException {
@@ -63,19 +65,13 @@ final class PreviewWorld20 {
     private static void facing(JSONObject o, String key) throws JSONException {
         if (!Arrays.asList("N", "E", "S", "W").contains(string(o, key))) throw new JSONException("Invalid " + key);
     }
-    static PreviewWorld20 parse(String input) throws JSONException { return parse(input,false); }
-    // Validation/model entry point only. Android import stays gated until the scene renderer,
-    // picking, camera and object anchoring understand elevated surfaces.
-    static PreviewWorld20 parseStackedForValidation(String input) throws JSONException { return parse(input,true); }
-    private static PreviewWorld20 parse(String input, boolean allowStacks) throws JSONException {
+    static PreviewWorld20 parse(String input) throws JSONException {
         JSONObject root = new JSONObject(input);
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 17 || (version == 4 && !allowStacks)) throw new JSONException("Unsupported world version");
+        if (version > 17) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
-        // Never flatten unsupported stacks or claim the file is corrupt.
-        if(w.has("blockStacks") && !allowStacks)throw new JSONException("Unsupported block stacks");
         if(w.has("blockStacks") && version<4 || version==4 && !w.has("blockStacks"))throw new JSONException("Invalid block stacks version");
         keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","blockStacks","orangeTrees","fences","bridges");
         if(version<5 && w.has("orangeTrees")) throw new JSONException("Unsupported field: orangeTrees");

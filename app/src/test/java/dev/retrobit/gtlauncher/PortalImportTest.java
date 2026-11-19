@@ -268,13 +268,24 @@ public class PortalImportTest {
         assertEquals(before,p.getString("worlds_v1",null));assertEquals(6,store.activeWorld().previewData.tile(0,0));
         assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1))));
     }
-    @Test public void unsupportedStackedWorldsLeaveStoredWorldUntouched() throws JSONException {
-        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,6))));
-        String before=p.getString("worlds_v1",null),active=store.activeId();
-        for(int version:new int[]{4,5,6,17}) {JSONObject root=new JSONObject(portableWorld(version,1));org.json.JSONArray stacks=new org.json.JSONArray();for(int i=0;i<400;i++)stacks.put(new org.json.JSONArray().put(1));root.getJSONObject("world").put("blockStacks",stacks);
-            try {store.upsertAndSelect(WorldStore.parseExport(root.toString()));fail("stacked world is not ready");} catch(JSONException expected) {}
-            assertEquals(before,p.getString("worlds_v1",null));assertEquals(active,store.activeId());
-        }
+    @Test public void stackedImportMovementTillingAndDowngradeAreSafe() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);JSONObject root=new JSONObject(portableWorld(4,1)),w=root.getJSONObject("world");
+        org.json.JSONArray stacks=new org.json.JSONArray();for(int i=0;i<400;i++)stacks.put(new org.json.JSONArray().put(1));
+        stacks.getJSONArray(5*20+6).put(2);w.getJSONArray("tiles").put(5*20+6,2);w.put("blockStacks",stacks);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(root.toString())));assertEquals(2,store.activeWorld().previewData.height(6,5));
+        assertTrue(store.tillTile("home",6,5));assertEquals(6,store.activeWorld().previewData.block(6,5,1));assertEquals(1,store.activeWorld().previewData.block(6,5,0));
+        assertTrue(store.moveCharacter("home",6,5,"E"));assertEquals(2,store.activeWorld().previewData.height(6,5));
+        String before=p.getString("worlds_v1",null),active=store.activeId();try{store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1)));fail("older version cannot erase stacks");}catch(JSONException expected){}
+        assertEquals(before,p.getString("worlds_v1",null));assertEquals(active,store.activeId());
+        JSONObject malformed=new JSONObject(root.toString());malformed.getJSONObject("world").getJSONArray("blockStacks").getJSONArray(0).put(7);try {store.upsertAndSelect(WorldStore.parseExport(malformed.toString()));fail("invalid stack");}catch(JSONException expected){}
+        assertEquals(before,p.getString("worlds_v1",null));
+    }
+    @Test public void downgradeDoesNotEraseHiddenGrassTopBlocks() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);JSONObject root=new JSONObject(portableWorld(14,1)),w=root.getJSONObject("world");org.json.JSONArray stacks=new org.json.JSONArray();
+        for(int i=0;i<400;i++)stacks.put(new org.json.JSONArray().put(1));stacks.getJSONArray(100).put(7).put(1);w.put("blockStacks",stacks);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(root.toString())));String before=p.getString("worlds_v1",null);
+        JSONObject older=new JSONObject(portableWorld(13,1));try{store.upsertAndSelect(WorldStore.parseExport(older.toString()));fail("hidden material must not disappear");}catch(JSONException expected){}
+        assertEquals(before,p.getString("worlds_v1",null));assertEquals(7,store.activeWorld().previewData.block(0,5,1));
     }
     @Test public void portableOrangeTreeVersionsRoundTripWithoutLosingData() throws JSONException {
         for(int version:new int[]{5,6,7,13,17}){

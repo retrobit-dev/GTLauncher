@@ -23,4 +23,17 @@ public class ElevatedTerrainGeometryTest {
         assertTrue(ElevatedTerrainGeometry.topContains(160,100,160,100,28,14));
         assertFalse(ElevatedTerrainGeometry.topContains(175,100,160,100,28,14));
     }
+    @Test public void exposedWallsArePickableAndForegroundWins() {
+        ElevatedTerrainGeometry.Heights h=(c,r)->c==0&&r==0?3:0;
+        float cx=ElevatedTerrainGeometry.centreX(0,0,160,28),cy=ElevatedTerrainGeometry.centreY(0,0,3,100,14,8);
+        assertEquals(new PortalTravel.Tile(0,0),ElevatedTerrainGeometry.tileAt(cx-7,cy+12,2,h,160,100,28,14,8,20));
+        assertEquals(null,ElevatedTerrainGeometry.tileAt(cx-7,cy+60,2,h,160,100,28,14,8,20));
+    }
+    @Test public void fenceJunctionsOnlyMergeAtEqualElevation() {
+        WorldStore.SurfaceObject a=new WorldStore.SurfaceObject("fence",0,0,"S","preview-wood","{}"), b=new WorldStore.SurfaceObject("fence",1,0,"S","preview-wood","{}");
+        java.util.List<WorldStore.SurfaceObject> fences=java.util.Arrays.asList(a,b);
+        java.util.Map<WorldStore.SurfaceObject,FenceJoins.Join> flat=FenceJoins.plan(fences,o->1),stepped=FenceJoins.plan(fences,o->o==a?1:2);
+        assertTrue(flat.get(a).linkB || flat.get(a).linkA);assertTrue(flat.get(b).linkA || flat.get(b).linkB);
+        assertFalse(stepped.get(a).linkA || stepped.get(a).linkB);assertFalse(stepped.get(b).linkA || stepped.get(b).linkB);
+    }
 }

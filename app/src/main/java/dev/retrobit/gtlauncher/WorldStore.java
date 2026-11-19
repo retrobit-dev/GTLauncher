@@ -423,14 +423,16 @@ final class WorldStore {
                 if ((old.previewData==null)!=(world.previewData==null))
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
+                    if(world.previewData.version<4 && old.previewData.hasStacks())throw new JSONException("Older preview format cannot replace stacked terrain");
                     if(world.previewData.version<17 && old.surfaces.stream().anyMatch(o->o.type.equals("fence") && o.material.equals("preview-stone-tall")))throw new JSONException("Older preview format cannot replace tall walls");
                     if(world.previewData.version<16 && old.previewData.bridges.stream().anyMatch(b->b.length!=3))throw new JSONException("Older preview format cannot replace bridge length");
                     if(!old.previewData.bridges.isEmpty() && world.previewData.version<15)throw new JSONException("Older preview format cannot replace bridges");
                     if(!old.surfaces.isEmpty()) throw new JSONException("Older preview format cannot replace trees");
-                    int maxTile=world.previewData.version==1?1:world.previewData.version==2?5:6;
-                    for(int row=0;row<old.previewData.size;row++) for(int col=0;col<old.previewData.size;col++)
-                        if(old.previewData.tile(col,row)>maxTile)
-                            throw new JSONException("Older preview format cannot replace newer terrain");
+                    int maxTile=world.previewData.version==1?1:world.previewData.version==2?5:world.previewData.version<14?6:10;
+                    for(int row=0;row<old.previewData.size;row++) for(int col=0;col<old.previewData.size;col++) {
+                        if(old.previewData.tile(col,row)>maxTile)throw new JSONException("Older preview format cannot replace newer terrain");
+                        if(world.previewData.version<14)for(int level=0;level<old.previewData.height(col,row);level++)if(old.previewData.block(col,row,level)>maxTile)throw new JSONException("Older preview format cannot replace newer terrain");
+                    }
                 }
                 if(world.formatVersion<21 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("flower") && !java.util.Arrays.asList("rose","tulip","lavender","daisy","marigold","bluebell").contains(o.material)))throw new JSONException("Legacy export cannot replace flower variant");
                 if(world.formatVersion<21 && hasOverlappingFlowers(existing.get(i).surfaces))throw new JSONException("Legacy export cannot replace overlapping flowers");
@@ -697,7 +699,7 @@ final class WorldStore {
         for(int i=0;i<worlds.size();i++) {
             World world=worlds.get(i); if(!world.id.equals(worldId))continue;
             if(world.previewData==null || !world.showCharacter || !world.tileExists(column,row)
-                    || Math.abs(world.characterColumn-column)+Math.abs(world.characterRow-row)!=1
+                    || !world.previewData.canStep(world.characterColumn,world.characterRow,column,row)
                     || houseCovers(world.houses,column,row)) return false;
             for(SurfaceObject object:world.surfaces) {
                 int size=surfaceFootprint(object);
@@ -705,7 +707,8 @@ final class WorldStore {
             }
             int tile=world.previewData.tile(column,row);if(tile!=1 && tile!=2)return false;
             JSONObject root=new JSONObject(world.previewData.toJson());
-            root.put("version",Math.max(3,world.previewData.version));root.getJSONObject("world").getJSONArray("tiles").put(row*world.gridSize()+column,6);
+            root.put("version",Math.max(3,world.previewData.version));JSONObject data=root.getJSONObject("world");int index=row*world.gridSize()+column;data.getJSONArray("tiles").put(index,6);
+            if(data.has("blockStacks")){JSONArray stack=data.getJSONArray("blockStacks").getJSONArray(index);stack.put(stack.length()-1,6);}
             worlds.set(i,fromPreview(PreviewWorld20.parse(root.toString())));return saveWorlds(worlds,worldId);
         }
         return false;

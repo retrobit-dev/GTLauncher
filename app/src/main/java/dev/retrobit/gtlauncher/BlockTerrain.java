@@ -38,6 +38,7 @@ final class BlockTerrain {
         }
         return new BlockTerrain(size,columns,flat);
     }
+    boolean hasStacks() { return columns!=null; }
     private int index(int column,int row) {
         if(column<0 || row<0 || column>=size || row>=size) throw new IndexOutOfBoundsException();
         return row*size+column;

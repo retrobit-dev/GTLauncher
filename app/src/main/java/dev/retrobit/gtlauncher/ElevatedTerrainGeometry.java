@@ -1,6 +1,6 @@
 package dev.retrobit.gtlauncher;
 
-/** Scene-space projection of preview block heights. Does not enable Android import by itself. */
+/** Scene-space projection and hit testing for preview block heights. */
 final class ElevatedTerrainGeometry {
     interface Heights { int height(int column,int row); }
     static float elevation(int height,float blockHeight) { return Math.max(0,height-1)*blockHeight; }
@@ -15,12 +15,22 @@ final class ElevatedTerrainGeometry {
     static boolean topContains(float x,float y,float cx,float cy,float tileWidth,float tileHeight) {
         return Math.abs(x-cx)/(tileWidth/2f)+Math.abs(y-cy)/(tileHeight/2f)<=1f;
     }
-    /** Frontmost top diamond at this scene point, or null for a hole/outside. */
+    /** Frontmost visible top or exposed front wall, in the same diagonal order as terrain. */
     static PortalTravel.Tile topAt(float x,float y,int size,Heights heights,float originX,float originY,float tileWidth,float tileHeight,float blockHeight) {
+        return tileAt(x,y,size,heights,originX,originY,tileWidth,tileHeight,blockHeight,0);
+    }
+    static PortalTravel.Tile tileAt(float x,float y,int size,Heights heights,float originX,float originY,float tileWidth,float tileHeight,float blockHeight,float baseDepth) {
         if(heights==null || size<1 || tileWidth<=0 || tileHeight<=0 || blockHeight<=0 || !Float.isFinite(x) || !Float.isFinite(y))return null;
-        for(int diagonal=2*size-2;diagonal>=0;diagonal--)for(int row=Math.min(size-1,diagonal);row>=0;row--) {
+        for(int diagonal=2*size-2;diagonal>=0;diagonal--)for(int row=size-1;row>=0;row--) {
             int col=diagonal-row;if(col<0 || col>=size)continue;int h=heights.height(col,row);if(h<=0)continue;
-            if(topContains(x,y,centreX(col,row,originX,tileWidth),centreY(col,row,h,originY,tileHeight,blockHeight),tileWidth,tileHeight))return new PortalTravel.Tile(col,row);
+            float cx=centreX(col,row,originX,tileWidth),cy=centreY(col,row,h,originY,tileHeight,blockHeight),dx=x-cx,hw=tileWidth/2f,hh=tileHeight/2f;
+            if(topContains(x,y,cx,cy,tileWidth,tileHeight))return new PortalTravel.Tile(col,row);
+            if(Math.abs(dx)<=hw) {
+                int nc=col+(dx>=0?1:0),nr=row+(dx<0?1:0),neighbor=nc>=size || nr>=size?0:heights.height(nc,nr);
+                float face=exposedLevels(h,neighbor)*blockHeight+(neighbor==0?Math.max(0,baseDepth-blockHeight):0);
+                float edgeY=cy+hh*(1-Math.abs(dx)/hw);
+                if(face>0 && y>=edgeY && y<=edgeY+face)return new PortalTravel.Tile(col,row);
+            }
         }
         return null;
     }

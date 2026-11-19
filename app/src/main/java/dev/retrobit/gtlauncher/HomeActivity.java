@@ -78,7 +78,7 @@ public class HomeActivity extends Activity {
     private static final int COLOR_TEXT = Color.rgb(244, 246, 244);
     private static final int LOCATION_PERMISSION_REQUEST = 721;
     private static final int IMPORT_WORLD_REQUEST = 722;
-    private static final int MAX_WORLD_BYTES = 256 * 1024;
+    private static final int MAX_WORLD_BYTES = 16 * 1024 * 1024;
     private static final String WEATHER_SETTINGS_PREFS = "weather_settings";
     private static final long WEATHER_REFRESH_INTERVAL_MS = 10L * 60L * 1000L;
     private static final long WEATHER_CACHE_MAX_AGE_MS = 6L * 60L * 60L * 1000L;

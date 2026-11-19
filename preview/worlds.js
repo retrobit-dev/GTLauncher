@@ -595,13 +595,8 @@
         const url = URL.createObjectURL(blob);
         const safeName = world.name.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'world';
         showExport(url, `gtlauncher-preview-${safeName}.json`, false, json, true);
-        if(snapshot.blockStacks) {
-          $('world-export-help').textContent='JSON block bertingkat ini belum didukung Android dan tetap dapat diimpor di preview.';
-          announce('JSON world bertingkat siap untuk preview; Android belum mendukung format ini.');
-        } else {
-          $('world-export-help').textContent='JSON world datar dapat dicoba di Android versi terbaru. World Android dan preview tersimpan terpisah; impor tetap memvalidasi seluruh data.';
-          announce('JSON world datar siap untuk preview dan dapat dicoba di Android terbaru.');
-        }
+        $('world-export-help').textContent='JSON world dapat dicoba di Android versi terbaru. World Android dan preview tersimpan terpisah; impor tetap memvalidasi seluruh data. Tampilan Android belum diuji di perangkat.';
+        announce('JSON world siap untuk preview dan dapat dicoba di Android terbaru.');
         return;
       }
       // Stable world ID and the supported character object are portable to Android.
