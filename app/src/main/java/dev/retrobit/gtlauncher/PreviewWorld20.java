@@ -64,9 +64,12 @@ final class PreviewWorld20 {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 3) throw new JSONException("Unsupported world version");
+        if (version > 3 && version != 7 && version != 8) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
-        keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles");
+        if(version>=7 && !w.has("orangeTrees")) throw new JSONException("Unsupported world version");
+        // Flat conifer-only worlds are supported. Stacks and other tree kinds remain rejected.
+        keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","orangeTrees");
+        if(version<7 && w.has("orangeTrees")) throw new JSONException("Unsupported field: orangeTrees");
         String id=string(w,"id"), name=string(w,"name"), description=string(w,"description"), color=string(w,"color");
         if (!id.matches("[A-Za-z0-9_-]{1,128}") || id.equals("base") || name.trim().isEmpty() || name.length()>48
                 || description.length()>160 || !color.matches("#[0-9a-fA-F]{6}")) throw new JSONException("Invalid world fields");
@@ -90,6 +93,30 @@ final class PreviewWorld20 {
             int hc=integer(h,"column",0,size-3), hr=integer(h,"row",0,size-3);
             if (h.has("scale")) scale(h,"scale"); if (h.has("facing")) facing(h,"facing"); if (h.has("visible")) bool(h,"visible");
             for (int y=hr;y<hr+3;y++) for (int x=hc;x<hc+3;x++) if (tiles[y*size+x]==0) throw new JSONException("House on empty tile");
+        }
+        if(version>=7) {
+            Object treeValue=w.get("orangeTrees");
+            if(!(treeValue instanceof JSONArray)) throw new JSONException("Unsupported object");
+            JSONArray trees=(JSONArray)treeValue;
+            if(trees.length()==0 || trees.length()>size*size) throw new JSONException("Unsupported object");
+            boolean[] occupied=new boolean[size*size];
+            boolean show=bool(w,"showCharacter");
+            for(int i=0;i<trees.length();i++) {
+                Object value=trees.get(i);if(!(value instanceof JSONObject)) throw new JSONException("Unsupported object");
+                JSONObject tree=(JSONObject)value;keys(tree,"column","row","kind","size","facing");
+                if(!"conifer".equals(string(tree,"kind"))) throw new JSONException("Unsupported object");
+                int footprint=2;
+                if(tree.has("size")) {if(version<8 || integer(tree,"size",1,1)!=1)throw new JSONException("Unsupported object");footprint=1;}
+                if(tree.has("facing"))facing(tree,"facing");
+                int tc=integer(tree,"column",0,size-footprint),tr=integer(tree,"row",0,size-footprint);
+                for(int y=tr;y<tr+footprint;y++)for(int x=tc;x<tc+footprint;x++) {
+                    int index=y*size+x;
+                    if(occupied[index] || tiles[index]==0 || tiles[index]==3 || (show && x==c && y==r))throw new JSONException("Object collision");
+                    if(house instanceof JSONObject) {JSONObject h=(JSONObject)house;int hc=h.getInt("column"),hr=h.getInt("row");
+                        if(x>=hc && x<hc+3 && y>=hr && y<hr+3)throw new JSONException("Object collision");}
+                    occupied[index]=true;
+                }
+            }
         }
         return new PreviewWorld20(root.toString(),id,size,version,BlockTerrain.parse(size,source,null));
     }

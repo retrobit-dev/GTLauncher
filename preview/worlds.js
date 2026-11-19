@@ -527,9 +527,11 @@
         const url = URL.createObjectURL(blob);
         const safeName = world.name.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'world';
         showExport(url, `gtlauncher-preview-${safeName}.json`, false, json, true);
-        if(snapshot.orangeTrees !== undefined) $('world-export-help').textContent = 'JSON pohon ini hanya dapat diimpor di preview; Android belum mendukung format ini.';
+        const androidConifers = !snapshot.blockStacks && snapshot.orangeTrees?.length && snapshot.orangeTrees.every(t=>t.kind==='conifer');
+        if(androidConifers) $('world-export-help').textContent = 'JSON cemara datar dapat diimpor Android versi terbaru. World Android dan preview tetap terpisah.';
+        else if(snapshot.orangeTrees !== undefined) $('world-export-help').textContent = 'JSON pohon ini hanya dapat diimpor di preview; Android belum mendukung seluruh datanya.';
         else if(snapshot.blockStacks) $('world-export-help').textContent = 'JSON versi 4 ini hanya dapat diimpor di preview; Android belum mendukung block bertingkat.';
-        announce(snapshot.orangeTrees !== undefined ? 'JSON pohon siap untuk preview; Android belum mendukung format ini.' : snapshot.blockStacks ? 'JSON block bertingkat siap untuk preview; Android belum mendukung format ini.' : 'JSON world siap untuk preview dan Android versi terbaru.'); return;
+        announce(androidConifers ? 'JSON cemara datar siap untuk preview dan Android versi terbaru.' : snapshot.orangeTrees !== undefined ? 'JSON pohon siap untuk preview; Android belum mendukung seluruh datanya.' : snapshot.blockStacks ? 'JSON block bertingkat siap untuk preview; Android belum mendukung format ini.' : 'JSON world siap untuk preview dan Android versi terbaru.'); return;
       }
       // Stable world ID and the supported character object are portable to Android.
       if (!/^[a-zA-Z0-9_-]{1,128}$/.test(world.id) || world.id === 'base') {

@@ -277,6 +277,48 @@ public class PortalImportTest {
             assertEquals(before,p.getString("worlds_v1",null));assertEquals(active,store.activeId());
         }
     }
+    private String coniferWorld() throws JSONException {
+        org.json.JSONObject root=new org.json.JSONObject(portableWorld(3,1));root.put("version",8);
+        root.getJSONObject("world").put("orangeTrees",new org.json.JSONArray()
+                .put(new org.json.JSONObject().put("column",6).put("row",5).put("kind","conifer").put("size",1).put("facing","E"))
+                .put(new org.json.JSONObject().put("column",10).put("row",10).put("kind","conifer")));
+        return root.toString();
+    }
+    @Test public void oldLargeConiferFormatRemainsSupported() throws JSONException {
+        org.json.JSONObject root=new org.json.JSONObject(coniferWorld());root.put("version",7);
+        root.getJSONObject("world").getJSONArray("orangeTrees").getJSONObject(0).remove("size");
+        WorldStore.World world=WorldStore.parseExport(root.toString());
+        assertEquals(2,WorldStore.treeFootprint(world.surfaces.get(0)));assertEquals(7,world.previewData.version);
+    }
+    @Test public void flatConifersSurviveImportMovementAndTilling() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(coniferWorld())));
+        WorldStore.World w=store.activeWorld();assertEquals(2,w.surfaces.size());
+        assertEquals("conifer-small",w.surfaces.get(0).material);assertEquals("E",w.surfaces.get(0).edge);
+        assertEquals(1,WorldStore.treeFootprint(w.surfaces.get(0)));assertEquals(2,WorldStore.treeFootprint(w.surfaces.get(1)));
+        assertFalse(store.moveCharacter("home",6,5,"E"));assertFalse(store.moveCharacter("home",11,11,"E"));
+        assertFalse(store.tillTile("home",6,5));assertTrue(store.tillTile("home",5,6));
+        assertTrue(store.moveCharacter("home",6,6,"E"));w=store.activeWorld();
+        assertEquals(6,w.previewData.tile(5,6));assertEquals(8,w.previewData.version);assertEquals(2,w.surfaces.size());
+        org.json.JSONObject saved=new org.json.JSONObject(w.previewData.toJson());
+        assertEquals(1,saved.getJSONObject("world").getJSONArray("orangeTrees").getJSONObject(0).getInt("size"));
+        String before=p.getString("worlds_v1",null);
+        try {store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1)));fail("old file cannot replace trees");}catch(JSONException expected){}
+        assertEquals(before,p.getString("worlds_v1",null));
+    }
+    @Test public void unsupportedTreeFieldsOrTerrainAreNeverDropped() throws JSONException {
+        org.json.JSONObject root=new org.json.JSONObject(coniferWorld());
+        for(int scenario=0;scenario<6;scenario++) {
+            org.json.JSONObject copy=new org.json.JSONObject(root.toString()), w=copy.getJSONObject("world"), t=w.getJSONArray("orangeTrees").getJSONObject(0);
+            if(scenario==0)copy.put("version",7);
+            if(scenario==1)t.put("kind","orange");
+            if(scenario==2)t.put("extra",true);
+            if(scenario==3)w.put("blockStacks",new org.json.JSONArray());
+            if(scenario==4){t.put("column",5);t.put("row",5);}
+            if(scenario==5){t.put("column",10);t.put("row",10);}
+            try {WorldStore.parseExport(copy.toString());fail("must reject unsupported, invalid or colliding data");}catch(JSONException expected){}
+        }
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {

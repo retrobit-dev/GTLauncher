@@ -495,7 +495,7 @@ public class HomeActivity extends Activity {
     }
     private WorldStore.SurfaceObject frontSurface(WorldStore.World world,PortalTravel.Tile front) {
         for(WorldStore.SurfaceObject object:world.surfaces) {
-            int size=object.type.equals("tree") && !object.material.equals("banana") && !object.material.equals("palm")?2:1;
+            int size=object.type.equals("tree")?WorldStore.treeFootprint(object):1;
             if(front.column>=object.column && front.column<object.column+size && front.row>=object.row && front.row<object.row+size)return object;
         }
         return null;
@@ -546,7 +546,7 @@ public class HomeActivity extends Activity {
         java.util.List<String> actions=new java.util.ArrayList<>();
         actions.add(small?"Ambil ke tas (belum bisa ditaruh kembali)":"Ambil — tidak tersedia");
         actions.add(movable?"Pindahkan":"Pindahkan — tidak tersedia");
-        if(object!=null && object.type.equals("tree"))actions.add("Panen pohon");
+        if(object!=null && object.type.equals("tree") && !object.material.startsWith("conifer"))actions.add("Panen pohon");
         else if(object!=null && (object.type.equals("storage-box") || object.type.equals("selling-box")))actions.add("Buka box");
         else if(portal!=null)actions.add("Gunakan portal");
         String label=house!=null?"Rumah":object!=null?object.type:"Portal";
@@ -566,7 +566,7 @@ public class HomeActivity extends Activity {
                         if(!movable){Toast.makeText(this,"Objek ini belum dapat dipindahkan.",Toast.LENGTH_SHORT).show();return;}
                         movingObjectWorld=worldId;movingHouse=house;movingSurface=object;
                         Toast.makeText(this,house!=null?"Ketuk tile sudut kiri atas tapak rumah. Ketuk ikon tangan untuk batal.":"Ketuk tile tujuan. Ketuk ikon tangan untuk batal.",Toast.LENGTH_LONG).show();
-                    } else if(object!=null && object.type.equals("tree"))interactTree(object);
+                    } else if(object!=null && object.type.equals("tree") && !object.material.startsWith("conifer"))interactTree(object);
                     else if(object!=null)showSellingPlaceholder(object);
                     else if(portal!=null)walkToPortal(portal.id);
             }).setNegativeButton("Batal",null).show();
@@ -856,7 +856,7 @@ public class HomeActivity extends Activity {
                 for(WorldStore.House house:world.houses)
                     if(house.covers(c,r) && !house.covers(world.characterColumn,world.characterRow)) return false;
                 for(WorldStore.SurfaceObject o:world.surfaces) {
-                    if(o.type.equals("tree") && c>=o.column && c<o.column+((o.material.equals("banana") || o.material.equals("palm"))?1:2) && r>=o.row && r<o.row+((o.material.equals("banana") || o.material.equals("palm"))?1:2)) return false;
+                    if(o.type.equals("tree") && c>=o.column && c<o.column+WorldStore.treeFootprint(o) && r>=o.row && r<o.row+WorldStore.treeFootprint(o)) return false;
                     if((o.type.equals("bush")||o.type.equals("sunflower")||o.type.equals("mailbox")||o.type.equals("storage-box")||o.type.equals("selling-box")||(o.type.equals("road") && "water".equals(o.material))) && o.column==c && o.row==r)return false;
                 }
                 return true;

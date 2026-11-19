@@ -304,10 +304,18 @@ final class WorldStore {
         List<House> houses=new ArrayList<>();
         if(h!=null) houses.add(new House(h.getInt("column"),h.getInt("row"),h.optDouble("scale",1),h.optString("facing","S"),h.optBoolean("visible",true),null,null,-1));
         House first=houses.isEmpty()?null:houses.get(0);
+        List<SurfaceObject> trees=new ArrayList<>();
+        if(w.has("orangeTrees")) {
+            JSONArray source=w.getJSONArray("orangeTrees");
+            for(int i=0;i<source.length();i++) {
+                JSONObject tree=source.getJSONObject(i);
+                trees.add(new SurfaceObject("tree",tree.getInt("column"),tree.getInt("row"),tree.optString("facing","S"),tree.optInt("size",2)==1?"conifer-small":"conifer",tree.toString()));
+            }
+        }
         World result=new World(data.id,w.getString("name"),w.getString("description"),w.getString("color"),
                 w.getBoolean("showCharacter"),w.getInt("characterColumn"),w.getInt("characterRow"),w.getDouble("characterScale"),w.getString("characterFacing"),
                 first!=null,first!=null && first.visible,first==null?0:first.column,first==null?0:first.row,first==null?1:first.scale,
-                first==null?"S":first.facing,null,null,-1,32,new ArrayList<>(),new ArrayList<>(),houses);
+                first==null?"S":first.facing,null,null,-1,32,new ArrayList<>(),trees,houses);
         result.previewData=data; return result;
     }
 
@@ -407,6 +415,7 @@ final class WorldStore {
                 if ((old.previewData==null)!=(world.previewData==null))
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
+                    if(!old.surfaces.isEmpty()) throw new JSONException("Older preview format cannot replace trees");
                     int maxTile=world.previewData.version==1?1:world.previewData.version==2?5:6;
                     for(int row=0;row<old.previewData.size;row++) for(int col=0;col<old.previewData.size;col++)
                         if(old.previewData.tile(col,row)>maxTile)
@@ -504,6 +513,7 @@ final class WorldStore {
         List<World> worlds=list();
         for(int i=0;i<worlds.size();i++) { World w=worlds.get(i); if(w.id.equals(worldId) && w.showCharacter) {
             if(!w.tileExists(column,row) || (houseCovers(w.houses,column,row) && (column!=w.characterColumn || row!=w.characterRow))) return false;
+            if(w.previewData!=null) for(SurfaceObject tree:w.surfaces)if(tree.type.equals("tree") && column>=tree.column && row>=tree.row && column<tree.column+treeFootprint(tree) && row<tree.row+treeFootprint(tree))return false;
             if(w.previewData!=null) {
                 JSONObject root=new JSONObject(w.previewData.toJson()), data=root.getJSONObject("world");
                 data.put("characterColumn",column); data.put("characterRow",row); data.put("characterFacing",facing);
@@ -514,6 +524,9 @@ final class WorldStore {
         return false;
     }
     /** Only objects without coordinate-keyed storage, harvest history or portal links are portable. */
+    static int treeFootprint(SurfaceObject object) {
+        return object.material.equals("banana") || object.material.equals("palm") || object.material.equals("conifer-small")?1:2;
+    }
     static boolean portableSmall(SurfaceObject object) {
         return object!=null && (object.type.equals("flower") || object.type.equals("bush") || object.type.equals("sunflower"));
     }
@@ -549,7 +562,7 @@ final class WorldStore {
             for(House h:world.houses)if(h!=actualHouse && h.covers(x,y))return false;
             for(SurfaceObject o:world.surfaces) {
                 if(o==actualSurface)continue;
-                int size=o.type.equals("tree") && !o.material.equals("banana") && !o.material.equals("palm")?2:1;
+                int size=o.type.equals("tree")?treeFootprint(o):1;
                 if(x>=o.column && x<o.column+size && y>=o.row && y<o.row+size)return false;
             }
             for(PortalTravel.Portal portal:world.portals)if(portal.tile.column==x && portal.tile.row==y)return false;
@@ -594,9 +607,10 @@ final class WorldStore {
             if(world.previewData==null || !world.showCharacter || !world.tileExists(column,row)
                     || Math.abs(world.characterColumn-column)+Math.abs(world.characterRow-row)!=1
                     || houseCovers(world.houses,column,row)) return false;
+            for(SurfaceObject tree:world.surfaces) if(tree.type.equals("tree") && column>=tree.column && row>=tree.row && column<tree.column+treeFootprint(tree) && row<tree.row+treeFootprint(tree))return false;
             int tile=world.previewData.tile(column,row);if(tile!=1 && tile!=2)return false;
             JSONObject root=new JSONObject(world.previewData.toJson());
-            root.put("version",3);root.getJSONObject("world").getJSONArray("tiles").put(row*world.gridSize()+column,6);
+            root.put("version",Math.max(3,world.previewData.version));root.getJSONObject("world").getJSONArray("tiles").put(row*world.gridSize()+column,6);
             worlds.set(i,fromPreview(PreviewWorld20.parse(root.toString())));return saveWorlds(worlds,worldId);
         }
         return false;
