@@ -642,7 +642,7 @@
         const url = URL.createObjectURL(blob);
         const safeName = world.name.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'world';
         showExport(url, `gtlauncher-preview-${safeName}.json`, false, json, true);
-        $('world-export-help').textContent=snapshot.ramps?.length ? 'Ramp belum didukung Android; simpan JSON ini untuk preview. Android akan menolak impor agar data tidak hilang.' : 'JSON world dapat dicoba di Android versi terbaru. World Android dan preview tersimpan terpisah; impor tetap memvalidasi seluruh data. Tampilan Android belum diuji di perangkat.';
+        $('world-export-help').textContent=snapshot.ramps?.length ? 'Ramp membutuhkan Android dengan dukungan format world v21; versi lama akan menolak impor agar data tidak hilang. Tampilan belum diuji pada perangkat.' : 'JSON world dapat dicoba di Android versi terbaru. World Android dan preview tersimpan terpisah; impor tetap memvalidasi seluruh data. Tampilan Android belum diuji di perangkat.';
         announce('JSON world siap untuk preview dan dapat dicoba di Android terbaru.');
         return;
       }

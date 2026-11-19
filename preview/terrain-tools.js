@@ -71,7 +71,7 @@
       const next=before.filter(r=>r!==existing).map(r=>({...r}));
       const removing=existing && existing.direction===direction && existing.material===value;
       if(!removing)next.push({...point,direction,material:value});
-      status.textContent=window.editorRampHistory?.update(world.id,next) ? (removing?'Ramp dihapus.':'Ramp disimpan. Android belum mendukung ramp.') : 'Ramp tidak disimpan; periksa block, player, dan objek pada tapak.';
+      status.textContent=window.editorRampHistory?.update(world.id,next) ? (removing?'Ramp dihapus.':'Ramp disimpan. Android memerlukan versi dengan dukungan world v21.') : 'Ramp tidak disimpan; periksa block, player, dan objek pada tapak.';
       return;
     }
     if(tool==='pick') {

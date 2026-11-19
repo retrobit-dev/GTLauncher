@@ -322,7 +322,7 @@ public final class WeatherSkyView extends View {
     private float waterDepthAt(int column, int row) {
         if (worldTerrain == null || column < 0 || row < 0 || column >= ISLAND_GRID_SIZE || row >= ISLAND_GRID_SIZE) return 0f;
         for(BridgeGeometry.Bridge bridge:worldTerrain.bridges)if(BridgeGeometry.indexAt(bridge,column,row)>=0)return 0f;
-        return worldTerrain.tile(column,row)==3 ? BLOCK_HEIGHT : 0f;
+        return worldTerrain.surfaceMaterial(column,row)==3 ? BLOCK_HEIGHT : 0f;
     }
     private float visualWaterDepth() {
         float target=waterDepthAt(characterColumn,characterRow);
@@ -500,8 +500,23 @@ public final class WeatherSkyView extends View {
         return worldTerrain==null?1:column<0||row<0||column>=worldTerrain.size||row>=worldTerrain.size?0:worldTerrain.height(column,row);
     }
     private float elevationAt(int column,int row) {return ElevatedTerrainGeometry.elevation(terrainHeight(column,row),BLOCK_HEIGHT);}
-    private float visualElevation() {float target=elevationAt(characterColumn,characterRow);return characterStepping?elevationAt(stepFromColumn,stepFromRow)*(1-stepProgress())+target*stepProgress():target;}
-    private float visualJump() {return characterStepping && animationEnabled ? ElevatedTerrainGeometry.jumpHeight(terrainHeight(stepFromColumn,stepFromRow),terrainHeight(characterColumn,characterRow),stepProgress(),BLOCK_HEIGHT) : 0;}
+    private float visualElevation() {
+        String toRamp=worldTerrain==null?null:worldTerrain.rampDirection(characterColumn,characterRow);
+        float target=elevationAt(characterColumn,characterRow)+(toRamp==null?0:BLOCK_HEIGHT*.5f);
+        if(!characterStepping)return target;
+        String fromRamp=worldTerrain==null?null:worldTerrain.rampDirection(stepFromColumn,stepFromRow);
+        if(fromRamp!=null || toRamp!=null) {
+            String edge=characterColumn>stepFromColumn?"E":characterColumn<stepFromColumn?"W":characterRow>stepFromRow?"S":"N";
+            double level=RampGeometry.stepHeight(terrainHeight(stepFromColumn,stepFromRow),fromRamp,terrainHeight(characterColumn,characterRow),toRamp,edge,stepProgress());
+            if(Double.isFinite(level))return (float)Math.max(0,(level-1)*BLOCK_HEIGHT);
+        }
+        return elevationAt(stepFromColumn,stepFromRow)*(1-stepProgress())+target*stepProgress();
+    }
+    private float visualJump() {
+        if(!characterStepping || !animationEnabled)return 0;
+        if(worldTerrain!=null && (worldTerrain.rampDirection(stepFromColumn,stepFromRow)!=null || worldTerrain.rampDirection(characterColumn,characterRow)!=null))return 0;
+        return characterStepping && animationEnabled ? ElevatedTerrainGeometry.jumpHeight(terrainHeight(stepFromColumn,stepFromRow),terrainHeight(characterColumn,characterRow),stepProgress(),BLOCK_HEIGHT) : 0;
+    }
     void setWorldTerrain(PreviewWorld20 terrain) {
         worldTerrain=terrain;updateSurfaceJoins();
         pondLife=terrain==null ? null : PondLife.build(terrain.size,terrain::tile);
@@ -695,7 +710,7 @@ public final class WeatherSkyView extends View {
     PortalTravel.Tile groundTileAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;
         float x=islandX(sx), y=islandY(sy);
-        if(worldTerrain!=null && worldTerrain.hasStacks())return ElevatedTerrainGeometry.tileAt(x,y,worldTerrain.size,worldTerrain::height,SCENE_WIDTH/2f,ISLAND_TOP+ISLAND_TILE_HEIGHT/2f,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,BLOCK_HEIGHT,ISLAND_DEPTH);
+        if(worldTerrain!=null && (worldTerrain.hasStacks() || worldTerrain.hasRamps()))return ElevatedTerrainGeometry.tileAt(x,y,worldTerrain.size,worldTerrain::height,worldTerrain::rampDirection,SCENE_WIDTH/2f,ISLAND_TOP+ISLAND_TILE_HEIGHT/2f,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,BLOCK_HEIGHT,ISLAND_DEPTH);
         float dx=(x-SCENE_WIDTH/2f)/(ISLAND_TILE_WIDTH/2f);
         float dy=(y-ISLAND_TOP-ISLAND_TILE_HEIGHT/2f)/(ISLAND_TILE_HEIGHT/2f);
         float c=(dx+dy)/2f, r=(dy-dx)/2f;
@@ -1889,7 +1904,7 @@ public final class WeatherSkyView extends View {
             float x=SCENE_WIDTH/2f+(column-row)*ISLAND_TILE_WIDTH/2f;
             float baseY=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(column+row)*ISLAND_TILE_HEIGHT/2f;
             float hw=ISLAND_TILE_WIDTH/2f,hh=ISLAND_TILE_HEIGHT/2f;
-            if(canvas.quickReject(x-hw,baseY-(height-1)*BLOCK_HEIGHT-hh,x+hw,baseY+hh+ISLAND_DEPTH,Canvas.EdgeType.AA))continue;
+            if(canvas.quickReject(x-hw,baseY-(height-1)*BLOCK_HEIGHT-hh-(worldTerrain.rampDirection(column,row)==null?0:BLOCK_HEIGHT),x+hw,baseY+hh+ISLAND_DEPTH,Canvas.EdgeType.AA))continue;
             for(int level=0;level<height;level++) {
             int material=worldTerrain.block(column,row,level);float y=baseY-level*BLOCK_HEIGHT;
             int opacity=worldTerrain.blockOpacity(column,row,level),layer=-1;
@@ -1983,7 +1998,36 @@ public final class WeatherSkyView extends View {
                 drawWaterfalls(canvas,column,row,x,baseY-(height-1)*BLOCK_HEIGHT,hw,hh);
                 if(layer!=-1)canvas.restoreToCount(layer);
             }
+            String rampDirection=worldTerrain.rampDirection(column,row);
+            if(rampDirection!=null) {
+                float y=baseY-(height-1)*BLOCK_HEIGHT;
+                int opacity=worldTerrain.blockOpacity(column,row,height-1),layer=-1;
+                if(opacity>0)layer=canvas.saveLayerAlpha(x-hw-3,y-hh-BLOCK_HEIGHT-3,x+hw+3,y+hh+3,Math.round(255*(100-opacity)/100f),Canvas.ALL_SAVE_FLAG);
+                drawRamp(canvas,x,y,column,row,height,rampDirection,worldTerrain.rampMaterial(column,row),palette);
+                if(layer!=-1)canvas.restoreToCount(layer);
+            }
         }
+    }
+    private void drawRampFace(Canvas canvas,RampGeometry.Vertex[] vertices,float x,float y,int color) {
+        Path face=new Path();for(int i=0;i<vertices.length;i++){float px=x+(float)vertices[i].x,py=y+(float)vertices[i].y;if(i==0)face.moveTo(px,py);else face.lineTo(px,py);}face.close();
+        islandPolyPaint.setShader(null);islandPolyPaint.setStyle(Paint.Style.FILL);islandPolyPaint.setColor(color);canvas.drawPath(face,islandPolyPaint);
+        islandPolyPaint.setStyle(Paint.Style.STROKE);islandPolyPaint.setStrokeWidth(.35f);islandPolyPaint.setColor(blend(color,Color.BLACK,.12));canvas.drawPath(face,islandPolyPaint);islandPolyPaint.setStyle(Paint.Style.FILL);
+    }
+    private void drawRamp(Canvas canvas,float x,float y,int column,int row,int height,String direction,int material,IslandPalette palette) {
+        RampGeometry.Shape shape=RampGeometry.create(direction,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,BLOCK_HEIGHT);if(shape==null)return;
+        boolean grassTop=material>=7 && material<=10,light=(column+row+height)%2==0;
+        int base=grassTop?(material==7?2:material==8?4:material==9?5:6):material;
+        int[] colors={0,0,0xffae8b68,0xff75cbd0,0xffb8b2a7,0xffdac695,0xffbd7549};
+        int side=base==1?(light?palette.grassTileSoftFern:palette.grassTileFernSage):base==2?blend(palette.soilLight,0xffd49d65,.4):base==4?blend(colors[4],palette.soilDark,.08):blend(colors[base],palette.grassDark,.12);
+        if(base!=1 && !light)side=blend(side,Color.BLACK,.06);
+        int top=grassTop?(light?palette.grassTileSoftFern:palette.grassTileFernSage):side;
+        int save=material==3?canvas.saveLayerAlpha(x-ISLAND_TILE_WIDTH/2-2,y-ISLAND_TILE_HEIGHT/2-BLOCK_HEIGHT-2,x+ISLAND_TILE_WIDTH/2+2,y+ISLAND_TILE_HEIGHT/2+2,163,Canvas.ALL_SAVE_FLAG):-1;
+        for(RampGeometry.Vertex[] face:shape.sides) {
+            boolean u=true,v=true;for(RampGeometry.Vertex vertex:face){u&=vertex.u==1;v&=vertex.v==1;}
+            if(u||v)drawRampFace(canvas,face,x,y,blend(side,Color.BLACK,v?.15:.23));
+        }
+        if(direction.equals("E")||direction.equals("S"))drawRampFace(canvas,shape.highFace,x,y,blend(side,Color.BLACK,direction.equals("S")?.15:.23));
+        drawRampFace(canvas,shape.top,x,y,top);if(save!=-1)canvas.restoreToCount(save);
     }
 
     /**

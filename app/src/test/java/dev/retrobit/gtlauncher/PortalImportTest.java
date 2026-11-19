@@ -280,6 +280,17 @@ public class PortalImportTest {
         try{store.upsertAndSelect(WorldStore.parseExport(old.toString()));fail("downgrade must not erase object opacity");}catch(JSONException expected){}
         assertEquals(75,store.activeWorld().previewData.bridges.get(0).opacity);
     }
+    @Test public void rampsPersistAndDowngradeCannotEraseWorldOrInventory() throws Exception {
+        JSONObject root=new JSONObject(portableWorld(21,1)),w=root.getJSONObject("world");
+        w.put("ramps",new org.json.JSONArray().put(new JSONObject().put("column",5).put("row",6).put("direction","E").put("material",5)));
+        SharedPreferences prefs=prefs();InventoryStore bag=new InventoryStore(prefs);assertTrue(bag.changeBag("Batu",4));String inventory=prefs.getString("items_v1",null);
+        WorldStore store=new WorldStore(prefs);assertTrue(store.upsertAndSelect(WorldStore.parseExport(root.toString())));
+        assertEquals("E",store.activeWorld().previewData.rampDirection(5,6));String before=prefs.getString("worlds_v1",null);
+        JSONObject old=new JSONObject(store.activeWorld().previewData.toJson());old.put("version",20);old.getJSONObject("world").remove("ramps");
+        try{store.upsertAndSelect(WorldStore.parseExport(old.toString()));fail("downgrade must not erase ramps");}catch(JSONException expected){}
+        assertEquals(before,prefs.getString("worlds_v1",null));assertEquals(inventory,prefs.getString("items_v1",null));
+        assertEquals("E",new WorldStore(prefs).activeWorld().previewData.rampDirection(5,6));
+    }
     @Test public void previewBlockOpacityPreservedAndDowngradeRejected() throws Exception {
         JSONObject root=new JSONObject(portableWorld(20,1)),w=root.getJSONObject("world");
         w.put("blockOpacity",new org.json.JSONArray().put(new JSONObject().put("column",5).put("row",6).put("level",0).put("opacity",40)));

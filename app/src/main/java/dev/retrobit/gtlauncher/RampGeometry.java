@@ -1,6 +1,6 @@
 package dev.retrobit.gtlauncher;
 
-/** Geometry only. No terrain or movement changes are made by this class. */
+/** Shared wedge geometry, visible-face picking and ramp connectivity. */
 final class RampGeometry {
     static final class Vertex {
         final double u,v,z,x,y;
@@ -26,6 +26,24 @@ final class RampGeometry {
         int[] a=ends[0],b=ends[1];
         Vertex[] highFace={new Vertex(a[2],a[3],0,width,depth,height),new Vertex(b[2],b[3],0,width,depth,height),new Vertex(b[2],b[3],1,width,depth,height),new Vertex(a[2],a[3],1,width,depth,height)};
         return new Shape(top,sides,highFace);
+    }
+    static boolean hit(String direction,double width,double depth,double height,double x,double y) {
+        Shape shape=create(direction,width,depth,height);if(shape==null || !Double.isFinite(x) || !Double.isFinite(y))return false;
+        if(contains(shape.top,x,y) || (("E".equals(direction)||"S".equals(direction)) && contains(shape.highFace,x,y)))return true;
+        for(Vertex[] side:shape.sides) {
+            boolean u=true,v=true;for(Vertex p:side){u&=p.u==1;v&=p.v==1;}
+            if((u||v) && contains(side,x,y))return true;
+        }
+        return false;
+    }
+    private static boolean contains(Vertex[] face,double x,double y) {
+        boolean inside=false;
+        for(int i=0,j=face.length-1;i<face.length;j=i++) {
+            Vertex a=face[j],b=face[i];double cross=(x-a.x)*(b.y-a.y)-(y-a.y)*(b.x-a.x);
+            if(Math.abs(cross)<1e-9 && x>=Math.min(a.x,b.x)-1e-9 && x<=Math.max(a.x,b.x)+1e-9 && y>=Math.min(a.y,b.y)-1e-9 && y<=Math.max(a.y,b.y)+1e-9)return true;
+            if((a.y>y)!=(b.y>y) && x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x)inside=!inside;
+        }
+        return inside;
     }
     // Null direction means flat; a ramp rises from height to height + 1.
     // Its triangular sides do not connect to paths.

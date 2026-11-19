@@ -22,6 +22,11 @@ public class RampGeometryTest {
     @Test public void fourDirectionsHaveContinuousInclineAndTriangularSides() {
         for(String direction:new String[]{"N","E","S","W"})for(double width:new double[]{20,28})for(double depth:new double[]{8,14})for(double height:new double[]{4,9}) {
             RampGeometry.Shape shape=RampGeometry.create(direction,width,depth,height);assertEquals(4,shape.top.length);assertEquals(2,shape.sides.length);
+            for(RampGeometry.Vertex[] face:shape.sides) {
+                boolean u=true,v=true;double x=0,y=0;for(RampGeometry.Vertex point:face){u&=point.u==1;v&=point.v==1;x+=point.x/face.length;y+=point.y/face.length;}
+                if(u||v)assertTrue(RampGeometry.hit(direction,width,depth,height,x,y));
+            }
+            double x=0,y=0;for(RampGeometry.Vertex point:shape.top){x+=point.x/4;y+=point.y/4;}assertTrue(RampGeometry.hit(direction,width,depth,height,x,y));assertFalse(RampGeometry.hit(direction,width,depth,height,10000,10000));
             for(RampGeometry.Vertex p:shape.top){assertEquals(RampGeometry.fraction(direction,p.u,p.v),p.z,1e-9);assertEquals((p.u-p.v)*width/2,p.x,1e-9);assertEquals((p.u+p.v-1)*depth/2-p.z*height,p.y,1e-9);}
             for(RampGeometry.Vertex[] side:shape.sides){RampGeometry.Vertex a=side[0],b=side[1],c=side[2];assertEquals(0,a.z,1e-9);assertEquals(0,b.z,1e-9);assertEquals(1,c.z,1e-9);assertEquals(b.u,c.u,1e-9);assertEquals(b.v,c.v,1e-9);assertEquals(1,Math.abs(a.u-b.u)+Math.abs(a.v-b.v),1e-9);assertEquals(0,RampGeometry.fraction(direction,a.u,a.v),1e-9);assertEquals(1,RampGeometry.fraction(direction,c.u,c.v),1e-9);}
             RampGeometry.Vertex a=shape.highFace[0],b=shape.highFace[1],c=shape.highFace[2],d=shape.highFace[3];

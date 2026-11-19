@@ -3,6 +3,7 @@ package dev.retrobit.gtlauncher;
 /** Scene-space projection and hit testing for preview block heights. */
 final class ElevatedTerrainGeometry {
     interface Heights { int height(int column,int row); }
+    interface Ramps { String direction(int column,int row); }
     static float elevation(int height,float blockHeight) { return Math.max(0,height-1)*blockHeight; }
     static float stepElevation(int fromHeight,int toHeight,float progress,float blockHeight) {
         float p=Math.max(0,Math.min(1,progress));
@@ -24,10 +25,15 @@ final class ElevatedTerrainGeometry {
         return tileAt(x,y,size,heights,originX,originY,tileWidth,tileHeight,blockHeight,0);
     }
     static PortalTravel.Tile tileAt(float x,float y,int size,Heights heights,float originX,float originY,float tileWidth,float tileHeight,float blockHeight,float baseDepth) {
+        return tileAt(x,y,size,heights,null,originX,originY,tileWidth,tileHeight,blockHeight,baseDepth);
+    }
+    static PortalTravel.Tile tileAt(float x,float y,int size,Heights heights,Ramps ramps,float originX,float originY,float tileWidth,float tileHeight,float blockHeight,float baseDepth) {
         if(heights==null || size<1 || tileWidth<=0 || tileHeight<=0 || blockHeight<=0 || !Float.isFinite(x) || !Float.isFinite(y))return null;
         for(int diagonal=2*size-2;diagonal>=0;diagonal--)for(int row=size-1;row>=0;row--) {
             int col=diagonal-row;if(col<0 || col>=size)continue;int h=heights.height(col,row);if(h<=0)continue;
             float cx=centreX(col,row,originX,tileWidth),cy=centreY(col,row,h,originY,tileHeight,blockHeight),dx=x-cx,hw=tileWidth/2f,hh=tileHeight/2f;
+            String direction=ramps==null?null:ramps.direction(col,row);
+            if(direction!=null && RampGeometry.hit(direction,tileWidth,tileHeight,blockHeight,x-cx,y-cy))return new PortalTravel.Tile(col,row);
             if(topContains(x,y,cx,cy,tileWidth,tileHeight))return new PortalTravel.Tile(col,row);
             if(Math.abs(dx)<=hw) {
                 int nc=col+(dx>=0?1:0),nr=row+(dx<0?1:0),neighbor=nc>=size || nr>=size?0:heights.height(nc,nr);

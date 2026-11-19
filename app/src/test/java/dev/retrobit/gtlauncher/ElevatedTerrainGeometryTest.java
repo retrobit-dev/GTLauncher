@@ -32,6 +32,19 @@ public class ElevatedTerrainGeometryTest {
         assertTrue(ElevatedTerrainGeometry.topContains(160,100,160,100,28,14));
         assertFalse(ElevatedTerrainGeometry.topContains(175,100,160,100,28,14));
     }
+    @Test public void rampFacesArePickedWithAndWithoutStackedTerrain() {
+        for(String direction:new String[]{"N","E","S","W"})for(int height:new int[]{1,2}) {
+            RampGeometry.Shape shape=RampGeometry.create(direction,28,14,4);
+            java.util.List<RampGeometry.Vertex[]> faces=new java.util.ArrayList<>();faces.add(shape.top);
+            for(RampGeometry.Vertex[] face:shape.sides){boolean u=true,v=true;for(RampGeometry.Vertex p:face){u&=p.u==1;v&=p.v==1;}if(u||v)faces.add(face);}
+            if(direction.equals("E")||direction.equals("S"))faces.add(shape.highFace);
+            for(RampGeometry.Vertex[] face:faces) {
+                float x=ElevatedTerrainGeometry.centreX(1,1,160,28),y=ElevatedTerrainGeometry.centreY(1,1,height,100,14,4);
+                for(RampGeometry.Vertex p:face){x+=(float)p.x/face.length;y+=(float)p.y/face.length;}
+                assertEquals(new PortalTravel.Tile(1,1),ElevatedTerrainGeometry.tileAt(x,y,3,(c,r)->c==1&&r==1?height:0,(c,r)->c==1&&r==1?direction:null,160,100,28,14,4,20));
+            }
+        }
+    }
     @Test public void exposedWallsArePickableAndForegroundWins() {
         ElevatedTerrainGeometry.Heights h=(c,r)->c==0&&r==0?3:0;
         float cx=ElevatedTerrainGeometry.centreX(0,0,160,28),cy=ElevatedTerrainGeometry.centreY(0,0,3,100,14,8);

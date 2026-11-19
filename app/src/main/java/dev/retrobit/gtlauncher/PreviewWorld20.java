@@ -16,10 +16,11 @@ final class PreviewWorld20 implements StackWater.Terrain {
     final String id;
     private final BlockTerrain terrain;
     private final int[] blockOpacity;
+    private final byte[] rampDirections,rampMaterials;
     final java.util.List<BridgeGeometry.Bridge> bridges;
 
-    private PreviewWorld20(String json, String id, int size, int version, BlockTerrain terrain,java.util.List<BridgeGeometry.Bridge> bridges,int[] blockOpacity) {
-        this.json = json; this.id = id; this.size = size; this.version = version; this.terrain = terrain;this.blockOpacity=blockOpacity;this.bridges=java.util.Collections.unmodifiableList(new java.util.ArrayList<>(bridges));
+    private PreviewWorld20(String json, String id, int size, int version, BlockTerrain terrain,java.util.List<BridgeGeometry.Bridge> bridges,int[] blockOpacity,byte[] rampDirections,byte[] rampMaterials) {
+        this.json = json; this.id = id; this.size = size; this.version = version; this.terrain = terrain;this.blockOpacity=blockOpacity;this.rampDirections=rampDirections;this.rampMaterials=rampMaterials;this.bridges=java.util.Collections.unmodifiableList(new java.util.ArrayList<>(bridges));
     }
     int tile(int column, int row) {
         if (column < 0 || row < 0 || column >= size || row >= size) throw new IndexOutOfBoundsException();
@@ -30,8 +31,14 @@ final class PreviewWorld20 implements StackWater.Terrain {
         int tile = tile(column, row); return tile != 0;
     }
     boolean canStep(int fromColumn,int fromRow,int toColumn,int toRow) {
-        return terrain.canStep(fromColumn,fromRow,toColumn,toRow) && BridgeGeometry.permitsStep(bridges,fromColumn,fromRow,toColumn,toRow);
+        if(!canStand(fromColumn,fromRow) || !canStand(toColumn,toRow) || Math.abs(fromColumn-toColumn)+Math.abs(fromRow-toRow)!=1)return false;
+        String edge=toColumn>fromColumn?"E":toColumn<fromColumn?"W":toRow>fromRow?"S":"N";
+        return RampGeometry.canConnect(height(fromColumn,fromRow),rampDirection(fromColumn,fromRow),height(toColumn,toRow),rampDirection(toColumn,toRow),edge) && BridgeGeometry.permitsStep(bridges,fromColumn,fromRow,toColumn,toRow);
     }
+    String rampDirection(int c,int r) {if(c<0 || r<0 || c>=size || r>=size)return null;int value=rampDirections[r*size+c];return value==0?null:new String[]{"N","E","S","W"}[value-1];}
+    int rampMaterial(int c,int r) {return rampMaterials[r*size+c];}
+    int surfaceMaterial(int c,int r) {int material=rampMaterial(c,r);return material==0?tile(c,r):material;}
+    boolean hasRamps() {for(byte value:rampDirections)if(value!=0)return true;return false;}
     int blockOpacity(int c,int r,int level) {return blockOpacity[(r*size+c)*32+level];}
     boolean hasBlockOpacity() {for(int value:blockOpacity)if(value>0)return true;return false;}
     public int height(int c,int r) { return terrain.height(c,r); }
@@ -78,10 +85,10 @@ final class PreviewWorld20 implements StackWater.Terrain {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 20) throw new JSONException("Unsupported world version");
+        if (version > 21) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         if(w.has("blockStacks") && version<4 || version==4 && !w.has("blockStacks"))throw new JSONException("Invalid block stacks version");
-        keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","blockStacks","blockOpacity","orangeTrees","fences","bridges");
+        keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","blockStacks","blockOpacity","ramps","orangeTrees","fences","bridges");
         if(version<5 && w.has("orangeTrees")) throw new JSONException("Unsupported field: orangeTrees");
         String id=string(w,"id"), name=string(w,"name"), description=string(w,"description"), color=string(w,"color");
         if (!id.matches("[A-Za-z0-9_-]{1,128}") || id.equals("base") || name.trim().isEmpty() || name.length()>48
@@ -193,6 +200,24 @@ final class PreviewWorld20 implements StackWater.Terrain {
             BridgeGeometry.Terrain ground=new BridgeGeometry.Terrain(){public int size(){return size;}public int tile(int c,int r){return tiles[r*size+c];}public int height(int c,int r){return terrain.height(c,r);}public boolean obstructed(int c,int r){return blocked[r*size+c];}};
             if(!BridgeGeometry.valid(bridges,ground))throw new JSONException("Invalid bridge footprint");
         }
-        return new PreviewWorld20(root.toString(),id,size,version,terrain,bridges,opacityByBlock);
+        byte[] directions=new byte[size*size],materials=new byte[size*size];
+        if(w.has("ramps")) {
+            if(version<21 || !(w.get("ramps") instanceof JSONArray))throw new JSONException("Unsupported ramps");
+            JSONArray ramps=w.getJSONArray("ramps");if(ramps.length()>size*size)throw new JSONException("Too many ramps");
+            boolean[] blocked=new boolean[size*size];
+            if(house instanceof JSONObject){JSONObject h=(JSONObject)house;int hc=h.getInt("column"),hr=h.getInt("row");for(int y=hr;y<hr+3;y++)for(int x=hc;x<hc+3;x++)blocked[y*size+x]=true;}
+            JSONArray trees=w.optJSONArray("orangeTrees");if(trees!=null)for(int j=0;j<trees.length();j++){JSONObject t=trees.getJSONObject(j);int tc=t.getInt("column"),tr=t.getInt("row"),n=t.optInt("size",2);for(int dy=0;dy<n;dy++)for(int dx=0;dx<n;dx++)blocked[(tr+dy)*size+tc+dx]=true;}
+            JSONArray fences=w.optJSONArray("fences");if(fences!=null)for(int j=0;j<fences.length();j++){JSONObject f=fences.getJSONObject(j);blocked[f.getInt("row")*size+f.getInt("column")]=true;}
+            for(BridgeGeometry.Bridge bridge:bridges)for(int j=0;j<bridge.length;j++){int x=bridge.column+(bridge.axis.equals("E")?j:0),y=bridge.row+(bridge.axis.equals("S")?j:0);blocked[y*size+x]=true;}
+            for(int i=0;i<ramps.length();i++) {
+                JSONObject ramp=ramps.getJSONObject(i);keys(ramp,"column","row","direction","material");
+                int x=integer(ramp,"column",0,size-1),y=integer(ramp,"row",0,size-1),index=y*size+x,material=integer(ramp,"material",1,10);
+                int dir=Arrays.asList("N","E","S","W").indexOf(string(ramp,"direction"));
+                if(dir<0 || directions[index]!=0 || terrain.height(x,y)<1 || terrain.height(x,y)>=32)throw new JSONException("Invalid ramp");
+                if(blocked[index])throw new JSONException("Ramp overlaps object");
+                directions[index]=(byte)(dir+1);materials[index]=(byte)material;
+            }
+        }
+        return new PreviewWorld20(root.toString(),id,size,version,terrain,bridges,opacityByBlock,directions,materials);
     }
 }

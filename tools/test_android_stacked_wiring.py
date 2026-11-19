@@ -13,6 +13,9 @@ assert 'FenceJoins.plan(worldSurfaces,o->terrainHeight(o.column,o.row))' in view
 assert 'worldTerrain::height' in view
 assert 'data.has("blockStacks")' in store and 'stack.put(stack.length()-1,6)' in store
 assert 'Older preview format cannot replace stacked terrain' in store
-assert 'return new PreviewWorld20(root.toString(),id,size,version,terrain,bridges,opacityByBlock)' in reader
+assert 'return new PreviewWorld20(root.toString(),id,size,version,terrain,bridges,opacityByBlock,directions,materials)' in reader
+assert 'drawRamp(canvas,' in view and 'worldTerrain::rampDirection' in view
+assert 'RampGeometry.stepHeight(' in view and 'RampGeometry.canConnect(' in reader
+assert 'Older preview format cannot replace ramps' in store
 assert 'MAX_WORLD_BYTES = 16 * 1024 * 1024' in home
 print('Android stacked terrain rendering, object anchors, picking, water, shadow, camera and persistence wiring: static checks OK')

@@ -423,6 +423,7 @@ final class WorldStore {
                 if ((old.previewData==null)!=(world.previewData==null))
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
+                    if(world.previewData.version<21 && old.previewData.hasRamps())throw new JSONException("Older preview format cannot replace ramps");
                     if(world.previewData.version<4 && old.previewData.hasStacks())throw new JSONException("Older preview format cannot replace stacked terrain");
                     if(world.previewData.version<20 && old.previewData.hasBlockOpacity())throw new JSONException("Older preview format cannot replace block opacity");
                     if(world.previewData.version<19 && (old.surfaces.stream().anyMatch(o->o.opacity>=0) || old.previewData.bridges.stream().anyMatch(b->b.opacity>=0)))throw new JSONException("Older preview format cannot replace object opacity");
@@ -708,6 +709,7 @@ final class WorldStore {
                 int size=surfaceFootprint(object);
                 if(column>=object.column && row>=object.row && column<object.column+size && row<object.row+size)return false;
             }
+            if(world.previewData.rampDirection(column,row)!=null)return false;
             int tile=world.previewData.tile(column,row);if(tile!=1 && tile!=2)return false;
             JSONObject root=new JSONObject(world.previewData.toJson());
             root.put("version",Math.max(3,world.previewData.version));JSONObject data=root.getJSONObject("world");int index=row*world.gridSize()+column;data.getJSONArray("tiles").put(index,6);

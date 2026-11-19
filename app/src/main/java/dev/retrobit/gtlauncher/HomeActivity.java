@@ -688,12 +688,12 @@ public class HomeActivity extends Activity {
         try {
             WorldStore.World world=worldStore.activeWorld();
             if(world==null || !world.showCharacter || !world.id.equals(worldId) || world.characterColumn!=column
-                    || world.characterRow!=row || world.previewData==null || (world.previewData.tile(column,row)!=3 || world.previewData.onBridge(column,row))) return;
+                    || world.characterRow!=row || world.previewData==null || (world.previewData.surfaceMaterial(column,row)!=3 || world.previewData.onBridge(column,row))) return;
             PortalTravel.Terrain normal=portalTerrain(world);
             PortalTravel.DryTerrain terrain=new PortalTravel.DryTerrain() {
                 public boolean canStand(int c,int r) { return normal.canStand(c,r); }
                 public boolean canStep(int a,int b,int c,int d) { return normal.canStep(a,b,c,d); }
-                public boolean isDry(int c,int r) { return world.previewData.tile(c,r)!=3 || world.previewData.onBridge(c,r); }
+                public boolean isDry(int c,int r) { return world.previewData.surfaceMaterial(c,r)!=3 || world.previewData.onBridge(c,r); }
             };
             java.util.List<PortalTravel.Tile> route=PortalTravel.pathToNearestDry(new PortalTravel.Tile(column,row),terrain,world.gridSize());
             if(route==null || route.size()<2) return;

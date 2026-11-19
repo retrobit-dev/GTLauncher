@@ -19,11 +19,20 @@ public class PreviewWorld20Test {
         try { PreviewWorld20.parse(o.toString()); fail("invalid or unsupported data must be rejected"); }
         catch (org.json.JSONException expected) { }
     }
-    @Test public void rampsAreRejectedInsteadOfSilentlyDropped() throws Exception {
-        JSONObject root=sample(),world=root.getJSONObject("world");
-        world.put("ramps",new JSONArray().put(new JSONObject().put("column",10).put("row",10).put("direction","E").put("material",5)));
-        root.put("version",21);rejected(root);
-        root.put("version",20);rejected(root);
+    @Test public void rampImportRoutingAndValidation() throws Exception {
+        JSONObject root=stacked(21),world=root.getJSONObject("world"),ramp=new JSONObject().put("column",10).put("row",10).put("direction","E").put("material",5);
+        JSONArray ramps=new JSONArray().put(ramp);world.put("ramps",ramps);
+        world.getJSONArray("blockStacks").getJSONArray(10*20+11).put(1);
+        PreviewWorld20 p=PreviewWorld20.parse(root.toString());assertTrue(p.hasRamps());assertEquals("E",p.rampDirection(10,10));assertEquals(5,p.rampMaterial(10,10));assertEquals(5,p.surfaceMaterial(10,10));
+        assertTrue(p.canStep(9,10,10,10));assertTrue(p.canStep(10,10,9,10));assertTrue(p.canStep(10,10,11,10));assertTrue(p.canStep(11,10,10,10));
+        assertFalse(p.canStep(10,10,10,9));assertFalse(p.canStep(10,9,10,10));assertEquals(21,new JSONObject(p.toJson()).getInt("version"));
+        root.put("version",20);rejected(root);root.put("version",21);
+        ramp.put("direction","bad");rejected(root);ramp.put("direction","E");ramp.put("material",11);rejected(root);ramp.put("material",5);
+        ramps.put(new JSONObject(ramp.toString()));rejected(root);ramps.remove(1);
+        ramp.put("column",0);ramp.put("row",0);rejected(root);ramp.put("column",10);ramp.put("row",10);
+        world.put("fences",new JSONArray().put(new JSONObject().put("column",10).put("row",10).put("edge","S").put("material","wood")));rejected(root);world.remove("fences");
+        world.put("orangeTrees",new JSONArray().put(new JSONObject().put("column",10).put("row",10)));rejected(root);world.remove("orangeTrees");
+        world.getJSONArray("blockStacks").getJSONArray(10*20+11).put(1);p=PreviewWorld20.parse(root.toString());assertFalse(p.canStep(10,10,11,10));
     }
     @Test public void houseTransparencyRequiresV18AndRoundTrips() throws Exception {
         JSONObject root=sample(),house=root.getJSONObject("world").getJSONObject("house");house.put("opacity",40);
