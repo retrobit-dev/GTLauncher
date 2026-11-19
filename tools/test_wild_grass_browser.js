@@ -13,6 +13,12 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
  assert.equal(await page.evaluate(()=>GameplayPath.find(worldManager.getActive(),worldManager.getCharacter(),{column:26,row:27},null)),null);
  assert.notEqual(await page.evaluate(()=>GameplayPath.find(worldManager.getActive(),worldManager.getCharacter(),{column:27,row:27},null)),null);
  await page.waitForFunction(()=>{const t=worldManager.getActive().orangeTrees[0],a=sceneEditing.orangeTreeAnchor(t);return sceneEditing.orangeTreeAt({x:a.x,y:a.y-7})===0},null,{timeout:60000});
+ const point=await page.evaluate(()=>{const t=worldManager.getActive().orangeTrees[0],a=sceneEditing.orangeTreeAnchor(t),r=document.querySelector('#sky-canvas').getBoundingClientRect(),o=sceneEditing.toLocal(r.left,r.top),z=sceneEditing.camera().renderZoom;for(let y=a.y-13;y<a.y;y+=.5)for(let x=a.x-14;x<a.x+14;x+=.5){const sx=r.left+(x-o.x)*z*r.width/320,sy=r.top+(y-o.y)*z*r.height/200;if(sceneEditing.orangeTreeAt({x,y})===0&&!sceneEditing.hit({x,y},worldManager.getCharacter())&&document.elementFromPoint(sx,sy)?.id==='sky-canvas')return {x:sx,y:sy};}return null});
+ assert(point,'opaque grass selection point');await page.mouse.click(point.x,point.y);assert.equal(await page.locator('#object-tool-delete').isEnabled(),true);
+ page.once('dialog',d=>d.accept());await page.locator('#object-tool-delete').click();assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees||[]),[]);
+ await page.locator('#object-undo').click();assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees),expected);
+ await page.locator('#object-redo').click();assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees||[]),[]);
+ await page.locator('#object-undo').click();assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees),expected);
  await page.locator('#object-undo').click();assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees||[]),[]);await page.locator('#object-redo').click();assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees),expected);
  await page.reload({waitUntil:'domcontentloaded'});assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees),expected);
  await page.locator('#world-button').click();await page.locator('button[data-action="export"][data-id="grass"]').click();const payload=JSON.parse(await page.locator('#world-export-json').inputValue());assert.equal(payload.version,9);assert.deepEqual(payload.world.orangeTrees,expected);

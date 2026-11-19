@@ -350,6 +350,23 @@ public class PortalImportTest {
         assertEquals("wild-grass",w.surfaces.get(2).material);assertFalse(store.placeWildGrass("home",11,11));
         assertEquals(3,WorldStore.parseExport(w.previewData.toJson()).surfaces.size());
     }
+    @Test public void deletePlantPreservesWorldAndRejectsStaleSelection() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(coniferWorld())));
+        assertTrue(store.placeWildGrass("home",7,5));
+        WorldStore.World before=store.activeWorld();WorldStore.SurfaceObject grass=before.surfaces.get(2);
+        assertFalse(store.deleteSelectedPlant("other",grass));
+        assertTrue(store.deleteSelectedPlant("home",grass));
+        assertFalse(store.deleteSelectedPlant("home",grass));
+        WorldStore.World after=store.activeWorld();assertEquals(2,after.surfaces.size());
+        assertEquals(9,after.previewData.version);assertEquals(before.characterColumn,after.characterColumn);
+        assertTrue(store.deleteSelectedPlant("home",after.surfaces.get(0)));
+        assertEquals(1,store.activeWorld().surfaces.size());
+        String bush="{\"type\":\"bush\",\"column\":1,\"row\":2,\"variant\":\"wild-grass\"}";
+        WorldStore nativeStore=new WorldStore(prefs());assertTrue(nativeStore.upsertAndSelect(WorldStore.parseExport(world(bush).replace("\"version\":28","\"version\":29"))));
+        assertTrue(nativeStore.deleteSelectedPlant("home",nativeStore.activeWorld().surfaces.get(0)));
+        assertEquals(0,nativeStore.activeWorld().surfaces.size());
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {

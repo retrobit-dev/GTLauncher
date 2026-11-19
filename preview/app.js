@@ -1865,6 +1865,8 @@
     if(trees.length && window.TreeShadow) {
       ctx.globalAlpha=opacity;ctx.imageSmoothingEnabled=true;
       for(const tree of trees) {
+        // A projected blade silhouette separates visually from this short tuft.
+        if(tree.kind==='wild-grass')continue;
         const sprite=treeSprite(tree);
         if(!sprite.complete || !sprite.naturalWidth)continue;
         let mask=characterShadowMasks.get(sprite);
@@ -1919,6 +1921,18 @@
     if(tree.kind==='wild-grass') centre.y+=0.75;
     return centre;
   }
+  const treeAlphaBoundsCache=new WeakMap();
+  function treeAlphaBounds(sprite) {
+    if(treeAlphaBoundsCache.has(sprite))return treeAlphaBoundsCache.get(sprite);
+    const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;
+    const c=canvas.getContext('2d',{willReadFrequently:true});c.drawImage(sprite,0,0,128,128);
+    const pixels=c.getImageData(0,0,128,128).data;let left=128,top=128,right=0,bottom=0;
+    for(let y=0;y<128;y++)for(let x=0;x<128;x++)if(pixels[(y*128+x)*4+3]>32) {
+      left=Math.min(left,x);right=Math.max(right,x+1);top=Math.min(top,y);bottom=Math.max(bottom,y+1);
+    }
+    const bounds=left<right?{left:left/128,top:top/128,right:right/128,bottom:bottom/128}:null;
+    treeAlphaBoundsCache.set(sprite,bounds);return bounds;
+  }
   let editingTreeSelection=null;
   let orangeTreeMotionState={time:0,speed:0,direction:90,heading:0};
   function orangeTreeSway(tree) {
@@ -1934,14 +1948,20 @@
     ctx.save();applyIslandTransform();
     if(tree.kind==='wild-grass') {
       // A small contact shadow touches the root even when the projected shadow points away.
-      ctx.fillStyle='rgba(28,49,35,0.28)';ctx.beginPath();ctx.ellipse(centre.x,bottom,8,1.5,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(28,49,35,0.18)';ctx.beginPath();ctx.ellipse(centre.x,bottom,5,0.65,0,0,Math.PI*2);ctx.fill();
     }
     ctx.translate(centre.x,bottom);ctx.transform(1,0,-sway/height,1,0,0);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
     ctx.drawImage(sprite,-width/2,-height,width,height);ctx.restore();
     if(editingTreeSelection && tree.column===editingTreeSelection.column && tree.row===editingTreeSelection.row) {
-      ctx.save();applyIslandTransform();ctx.strokeStyle='#fff4a8';ctx.lineWidth=1;ctx.strokeRect(centre.x-width/2-6.5,bottom-height-2,width+13,height+4);ctx.restore();
+      const b=treeAlphaBounds(sprite);
+      if(b) {
+        ctx.save();applyIslandTransform();ctx.translate(centre.x,bottom);ctx.transform(1,0,-sway/height,1,0,0);
+        if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
+        ctx.strokeStyle='#fff4a8';ctx.lineWidth=.6;
+        ctx.strokeRect(-width/2+b.left*width,-height+b.top*height,(b.right-b.left)*width,(b.bottom-b.top)*height);ctx.restore();
+      }
     }
   }
 
@@ -2658,9 +2678,21 @@
     hit(point, character) {
       if (!character.visible) return false;
       const {x, y: surfaceY} = characterCentre(character);
-      const y=surfaceY+characterWaterDepth(character)+(idleBowSprite?(800-(character.facing==='N'||character.facing==='W'?778:725))/800*PLAYER_HEIGHT*character.scale*window.PlayerIdleBow.seatGroundWeight(idleSitAmount):0);
-      return Math.abs(point.x - x) <= PLAYER_WIDTH * character.scale * (idleBowSprite ? (idleBowSprite.naturalWidth||idleBowSprite.width)/432 : 1) / 2 + 4
-        && point.y >= y - PLAYER_HEIGHT * character.scale - 4.5 && point.y <= y + 4;
+      const y=surfaceY+.5*character.scale+characterWaterDepth(character)+(idleBowSprite?(800-(character.facing==='N'||character.facing==='W'?778:725))/800*PLAYER_HEIGHT*character.scale*window.PlayerIdleBow.seatGroundWeight(idleSitAmount):0);
+      const sprite=idleBowSprite || activeCharacterSprite(character);
+      const width=PLAYER_WIDTH*character.scale*(idleBowSprite?(idleBowSprite.naturalWidth||idleBowSprite.width)/432:1),height=PLAYER_HEIGHT*character.scale;
+      let u=(point.x-x)/width+.5,v=(point.y-y+height)/height;
+      if(u<0||u>=1||v<0||v>=1)return false;
+      if(character.facing==='W'||character.facing==='E')u=1-u;
+      try {
+        let data=houseHitCache.get(sprite);
+        if(!data || !(sprite instanceof HTMLImageElement)) {
+          const c=document.createElement('canvas');c.width=128;c.height=128;const h=c.getContext('2d',{willReadFrequently:true});
+          h.drawImage(sprite,0,0,128,128);data=h.getImageData(0,0,128,128).data;
+          if(sprite instanceof HTMLImageElement)houseHitCache.set(sprite,data);
+        }
+        return data[(Math.min(127,Math.floor(v*128))*128+Math.min(127,Math.floor(u*128)))*4+3]>32;
+      } catch (_) { return false; }
     },
     tileAt(point) {
       const world=window.worldManager?.getActive();

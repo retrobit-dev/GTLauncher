@@ -527,8 +527,10 @@ public class HomeActivity extends Activity {
             WorldStore.SurfaceObject object=frontSurface(world,front);WorldStore.House house=frontHouse(world,front);
             PortalTravel.Portal portal=null;for(PortalTravel.Portal p:world.portals)if(p.tile.equals(front)){portal=p;break;}
             boolean frontHit=front.equals(target);
-            boolean characterHit=!frontHit && skyView.characterAt(x,y);
-            if(selectedTool!=-1 && (characterHit || (frontHit && selectedTool==R.id.dock_tool_hand && (house!=null || object!=null || portal!=null)))) {
+            boolean spriteHit=object!=null && skyView.surfaceObjectAt(object,x,y);
+            boolean characterHit=!frontHit && !spriteHit && skyView.characterAt(x,y);
+            boolean handTarget=portal!=null && frontHit || house!=null && frontHit || object!=null && (spriteHit || (frontHit && (object.type.equals("road") || object.type.equals("fence") || object.type.equals("flower"))));
+            if(selectedTool!=-1 && (characterHit || (selectedTool==R.id.dock_tool_hand && handTarget))) {
                 if(selectedTool==R.id.dock_tool_hand) {
                     if(house!=null || object!=null || portal!=null)showHandObjectMenu(world.id,house,object,portal);
                     else Toast.makeText(this,"Tidak ada objek di depan karakter.",Toast.LENGTH_SHORT).show();
@@ -549,6 +551,8 @@ public class HomeActivity extends Activity {
         java.util.List<String> actions=new java.util.ArrayList<>();
         actions.add(small?"Ambil ke tas (belum bisa ditaruh kembali)":"Ambil — tidak tersedia");
         actions.add(movable?"Pindahkan":"Pindahkan — tidak tersedia");
+        boolean deletable=object!=null && (small || WorldStore.isPreviewGrass(object) || (object.type.equals("tree") && object.material.startsWith("conifer") && object.edge!=null));
+        if(deletable)actions.add("Hapus");
         if(object!=null && object.type.equals("tree") && !object.material.startsWith("conifer"))actions.add("Panen pohon");
         else if(object!=null && (object.type.equals("storage-box") || object.type.equals("selling-box")))actions.add("Buka box");
         else if(portal!=null)actions.add("Gunakan portal");
@@ -569,6 +573,15 @@ public class HomeActivity extends Activity {
                         if(!movable){Toast.makeText(this,"Objek ini belum dapat dipindahkan.",Toast.LENGTH_SHORT).show();return;}
                         movingObjectWorld=worldId;movingHouse=house;movingSurface=object;
                         Toast.makeText(this,house!=null?"Ketuk tile sudut kiri atas tapak rumah. Ketuk ikon tangan untuk batal.":"Ketuk tile tujuan. Ketuk ikon tangan untuk batal.",Toast.LENGTH_LONG).show();
+                    } else if(deletable && which==2) {
+                        new AlertDialog.Builder(this).setTitle("Hapus objek?")
+                            .setMessage("Objek akan dihapus dari world, bukan dimasukkan ke tas. Tindakan ini tidak dapat di-undo di Android.")
+                            .setPositiveButton("Hapus",(confirm,button)->{
+                                try {
+                                    if(!worldStore.deleteSelectedPlant(worldId,object))throw new JSONException("Object changed");
+                                    applyActiveWorld();Toast.makeText(this,"Objek dihapus.",Toast.LENGTH_SHORT).show();
+                                } catch(JSONException | ClassCastException error){Toast.makeText(this,"Objek tidak berubah; periksa data world.",Toast.LENGTH_LONG).show();}
+                            }).setNegativeButton("Batal",null).show();
                     } else if(object!=null && object.type.equals("tree") && !object.material.startsWith("conifer"))interactTree(object);
                     else if(object!=null)showSellingPlaceholder(object);
                     else if(portal!=null)walkToPortal(portal.id);

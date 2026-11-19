@@ -601,6 +601,28 @@ final class WorldStore {
         }
         return prefs.edit().putString(WORLDS_KEY,all.toString()).commit();
     }
+    /** Delete only stateless plants; storage, harvest and portal records must never be discarded here. */
+    boolean deleteSelectedPlant(String worldId,SurfaceObject expected) throws JSONException {
+        if(!worldId.equals(activeId()) || expected==null)return false;
+        World world=activeWorld();if(world==null)return false;
+        boolean supported=world.previewData!=null
+                ? isPreviewGrass(expected) || (expected.type.equals("tree") && expected.material.startsWith("conifer"))
+                : portableSmall(expected);
+        if(!supported)return false;
+        boolean exists=false;for(SurfaceObject o:world.surfaces)if(o.raw.equals(expected.raw)){exists=true;break;}
+        if(!exists)return false;
+        JSONArray all=new JSONArray(prefs.getString(WORLDS_KEY,"[]"));JSONObject stored=null;
+        for(int i=0;i<all.length();i++)if(worldId.equals(all.getJSONObject(i).optString("id"))){stored=all.getJSONObject(i);break;}
+        if(stored==null)return false;
+        JSONObject root=world.previewData!=null?new JSONObject(world.previewData.toJson()):null;
+        JSONArray objects=root!=null?root.getJSONObject("world").getJSONArray("orangeTrees"):stored.getJSONArray("objects");
+        boolean removed=false;
+        for(int i=0;i<objects.length();i++)if(objects.getJSONObject(i).toString().equals(expected.raw)){objects.remove(i);removed=true;break;}
+        if(!removed)return false;
+        if(root!=null)stored.put("previewExport",PreviewWorld20.parse(root.toString()).toJson());
+        else parseWorld(stored,worldId,storedVersion(stored));
+        return prefs.edit().putString(WORLDS_KEY,all.toString()).commit();
+    }
     /** World removal and bag addition share one preferences commit, so neither half can be lost. */
     boolean takeSelectedObject(String worldId,SurfaceObject expected) throws JSONException {
         if(!worldId.equals(activeId()) || !portableSmall(expected))return false;

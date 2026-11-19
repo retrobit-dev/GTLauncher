@@ -537,8 +537,8 @@ public final class WeatherSkyView extends View {
             int alpha=Math.round(255*(100-Math.max(0,o.opacity))/100f);
             if(!(o.type.equals("tree") && (o.material.equals("orange") || o.material.startsWith("conifer")))) {
                 boolean grass=o.type.equals("bush") && o.material.equals("wild-grass");
-                paint.setColor(grass?Color.argb(Math.round(71*alpha/255f),28,49,35):Color.argb(Math.round(35*alpha/255f),12,23,40));paint.setStyle(Paint.Style.FILL);
-                float contactWidth=grass?8f:g.width()*.3f,contactDepth=grass?1.5f:1f;
+                paint.setColor(grass?Color.argb(Math.round(46*alpha/255f),28,49,35):Color.argb(Math.round(35*alpha/255f),12,23,40));paint.setStyle(Paint.Style.FILL);
+                float contactWidth=grass?5f:g.width()*.3f,contactDepth=grass?.65f:1f;
                 canvas.drawOval(new RectF(g.centerX()-contactWidth,g.bottom-contactDepth,g.centerX()+contactWidth,g.bottom+contactDepth),paint);
             }
             paint.setColor(Color.WHITE);paint.setAlpha(alpha);paint.setFilterBitmap(true);int saved=canvas.save();
@@ -640,6 +640,23 @@ public final class WeatherSkyView extends View {
     WorldStore.SurfaceObject storageBoxAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;float x=islandX(sx),y=islandY(sy);
         for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if((o.type.equals("storage-box")||o.type.equals("selling-box")) && opaqueAt(surfaceImage(o),surfaceSpriteBounds(o),x,y,o.material.equals("N")||o.material.equals("E")))return o;}return null;
+    }
+    /** Hit only visible sprite pixels of the object in front of the player. */
+    boolean surfaceObjectAt(WorldStore.SurfaceObject o,float sx,float sy) {
+        if(o==null || getWidth()<=0 || getHeight()<=0)return false;
+        Bitmap image=surfaceImage(o);if(image==null)return false;
+        RectF g=surfaceSpriteBounds(o);float x=islandX(sx),y=islandY(sy);
+        boolean conifer=o.type.equals("tree") && o.material.startsWith("conifer");
+        if(o.type.equals("tree") && (o.material.equals("orange") || conifer)) {
+            x+=(y-g.bottom)*(float)(orangeTreeSway(o)*(o.material.equals("conifer-small")?.5:1)/g.height());
+        } else if(o.type.equals("bush") || o.type.equals("sunflower") || o.type.equals("tree")) {
+            double angle=Math.atan2(plantSway(o,1.0),g.height()), dx=x-g.centerX(),dy=y-g.bottom;
+            x=(float)(g.centerX()+Math.cos(angle)*dx+Math.sin(angle)*dy);
+            y=(float)(g.bottom-Math.sin(angle)*dx+Math.cos(angle)*dy);
+        }
+        boolean mirror=(conifer || (o.type.equals("bush") && o.material.equals("wild-grass"))) && ("W".equals(o.edge)||"E".equals(o.edge));
+        if(o.type.equals("sunflower") || o.type.equals("storage-box") || o.type.equals("selling-box"))mirror="N".equals(o.material)||"E".equals(o.material);
+        return opaqueAt(image,g,x,y,mirror);
     }
     WorldStore.SurfaceObject treeAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;float x=islandX(sx),y=islandY(sy);

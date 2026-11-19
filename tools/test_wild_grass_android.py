@@ -11,3 +11,8 @@ assert 'boolean placeWildGrass(String worldId,int column,int row)' in store
 assert 'PreviewWorld20.parse(root.toString())' in store
 assert 'version>=9 && "wild-grass".equals(kind)' in parser
 print('Android wild-grass catalog, placement and safe parser wiring: static checks OK')
+
+assert 'deleteSelectedPlant(worldId,object)' in home and 'setPositiveButton("Hapus"' in home
+assert 'skyView.surfaceObjectAt(object,x,y)' in home
+assert 'boolean surfaceObjectAt(WorldStore.SurfaceObject o,float sx,float sy)' in view
+assert 'boolean deleteSelectedPlant(String worldId,SurfaceObject expected)' in store
