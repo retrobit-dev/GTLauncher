@@ -9,7 +9,7 @@
     // Legacy worlds without this field keep their existing flat routing behavior.
     const stacks=world?.blockStacks;
     if (stacks !== undefined && (!Array.isArray(stacks) || stacks.length!==size*size ||
-      stacks.some(s=>!Array.isArray(s) || s.length>32 || s.some(v=>!Number.isInteger(v)||v<1||v>6)))) return null;
+      stacks.some(s=>!Array.isArray(s) || s.length>32 || s.some(v=>!Number.isInteger(v)||v<1||v>10)))) return null;
     const height=p=>stacks ? stacks[keyOf(p)].length : (!world.tiles || world.tiles[keyOf(p)]!==0 ? 1 : 0);
     const inHouse=p=>house?.visible && p.column>=house.column && p.column<house.column+3 && p.row>=house.row && p.row<house.row+3;
     const escaping=inside(start) && inHouse(start);

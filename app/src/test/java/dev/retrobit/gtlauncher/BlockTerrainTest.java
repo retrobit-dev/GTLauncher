@@ -42,6 +42,18 @@ public class BlockTerrainTest {
         try {BlockTerrain.parse(1,new JSONArray().put(1.5),null);fail("fractional tile");}catch(JSONException expected){}
         try {BlockTerrain.parse(2,new JSONArray().put(1),null);fail("incorrect size");}catch(JSONException expected){}
     }
+    @Test public void bridgeFootprintAndRailingsAreDirectional() {
+        for(String axis:new String[]{"E","S"})for(String material:new String[]{"wood","stone"}) {
+            BridgeGeometry.Bridge b=new BridgeGeometry.Bridge(5,5,axis,material);
+            java.util.List<BridgeGeometry.Bridge> group=java.util.Collections.singletonList(b);
+            int dc=axis.equals("E")?1:0,dr=axis.equals("S")?1:0;
+            assertEquals(0,BridgeGeometry.indexAt(b,5,5));assertEquals(2,BridgeGeometry.indexAt(b,5+dc*2,5+dr*2));
+            assertTrue(BridgeGeometry.permitsStep(group,5-dc,5-dr,5,5));
+            assertTrue(BridgeGeometry.permitsStep(group,5+dc,5+dr,5+dc*2,5+dr*2));
+            assertTrue(BridgeGeometry.permitsStep(group,5+dc*2,5+dr*2,5+dc*3,5+dr*3));
+            assertFalse(BridgeGeometry.permitsStep(group,5+dc,5+dr,5+dc+dr,5+dr+dc));
+        }
+    }
     @Test public void flatWorldCompatibility() throws JSONException {
         BlockTerrain g=BlockTerrain.parse(2,new JSONArray().put(1).put(3).put(0).put(6),null);
         assertEquals(1,g.height(0,0));assertEquals(0,g.height(0,1));assertEquals(3,g.top(1,0));
