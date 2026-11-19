@@ -1230,12 +1230,14 @@
     const falls=world?.blockStacks && material===3 && level===top ? waterFalls(tile.column,tile.row,world) : {};
     if(borders && falls.left) borders.left=false;
     if(borders && falls.right) borders.right=false;
+    const grassTop=material>=7 && material<=10;
+    const baseMaterial=grassTop ? ({7:2,8:4,9:5,10:6})[material] : material;
     const lightTile = tile.variant === 0;
     const terrain = {2:'#ae8b68', 3:'#75cbd0', 4:'#b8b2a7', 5:'#dac695', 6:'#805e43'};
-    const fill = material === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
-      : material === 2 ? blendColor(palette.soilLight, '#d49d65', 0.4)
-      : material === 4 ? blendColor(terrain[4],palette.soilDark,0.08)
-      : blendColor(terrain[material] || terrain[2], palette.grassDark, 0.12);
+    const fill = baseMaterial === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
+      : baseMaterial === 2 ? blendColor(palette.soilLight, '#d49d65', 0.4)
+      : baseMaterial === 4 ? blendColor(terrain[4],palette.soilDark,0.08)
+      : blendColor(terrain[baseMaterial] || terrain[2], palette.grassDark, 0.12);
     const halfWidth = ISLAND_TILE_WIDTH / 2 - (material===3 ? 0 : 0.05);
     const halfHeight = islandTileHeight / 2 - (material===3 ? 0 : 0.025);
     const cornerRadius = material===3 ? 0 : 1.4;
@@ -1261,7 +1263,7 @@
 
     // Each top stays solid; direct sunlight adds only a uniform, subtle color lift.
     drawSunlitIslandDiamond(tile.x, tile.y, halfWidth, halfHeight,
-      cornerRadius, fill, sunlight);
+      cornerRadius, grassTop ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage) : fill, sunlight);
     if (material === 3) {
       ctx.restore();
       // Exposed faces are solid earthen banks, not merely an outline. Adjacent
@@ -1301,7 +1303,7 @@
     }
     // Stable sparse variants match Android's sheet and hash; no world data is changed.
     const variant = grassDetailVariant(tile.column, tile.row);
-    if (material === 1 && variant && grassDetailImage.complete && grassDetailImage.naturalWidth === 1280) {
+    if ((material === 1 || grassTop) && variant && grassDetailImage.complete && grassDetailImage.naturalWidth === 1280) {
       ctx.save();
       ctx.globalAlpha *= 0.45 + 0.55 * clamp(sunlight.strength * 2, 0, 1);
       ctx.imageSmoothingEnabled = true;

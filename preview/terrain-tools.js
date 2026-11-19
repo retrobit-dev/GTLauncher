@@ -5,7 +5,7 @@
   const stage=document.querySelector('.preview-stage'), canvas=document.getElementById('sky-canvas');
   const material=document.getElementById('terrain-material'), status=document.getElementById('terrain-status');
   const pan=document.getElementById('editor-pan'), scene=window.sceneEditing, worlds=window.worldManager;
-  const blockPreviews={'1':document.getElementById('grass-block-preview'),'2':document.getElementById('dirt-block-preview'),'3':document.getElementById('water-block-preview'),'4':document.getElementById('stone-block-preview'),'5':document.getElementById('sand-block-preview')};
+  const blockPreviews={'1':document.getElementById('grass-block-preview'),'2':document.getElementById('dirt-block-preview'),'3':document.getElementById('water-block-preview'),'4':document.getElementById('stone-block-preview'),'5':document.getElementById('sand-block-preview'),...Object.fromEntries([6,7,8,9,10].map(n=>[String(n),document.getElementById('block-preview-'+n)]))};
   const picker=document.getElementById('block-picker'), trigger=document.getElementById('block-picker-trigger');
   const pickerList=document.getElementById('block-picker-list'), pickerValue=document.getElementById('block-picker-value');
   const options=pickerList ? [...pickerList.querySelectorAll('[role="option"]')] : [];

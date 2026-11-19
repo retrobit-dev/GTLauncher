@@ -22,7 +22,7 @@ final class BlockTerrain {
         byte[][] columns=stacks==null?null:new byte[size*size][];
         byte[] flat=stacks==null?new byte[size*size]:null;
         for(int i=0;i<size*size;i++) {
-            int top=material(tiles.get(i),0,6);
+            int top=material(tiles.get(i),0,10);
             if(stacks==null) {
                 flat[i]=(byte)top;
             } else {
@@ -31,7 +31,7 @@ final class BlockTerrain {
                 JSONArray stack=(JSONArray)value;
                 if(stack.length()>32) throw new JSONException("Block stack too tall");
                 byte[] blocks=new byte[stack.length()];
-                for(int n=0;n<blocks.length;n++) blocks[n]=(byte)material(stack.get(n),1,6);
+                for(int n=0;n<blocks.length;n++) blocks[n]=(byte)material(stack.get(n),1,10);
                 if((blocks.length==0?0:blocks[blocks.length-1])!=top) throw new JSONException("Block surface mismatch");
                 columns[i]=blocks;
             }

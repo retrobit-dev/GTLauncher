@@ -1847,8 +1847,10 @@ public final class WeatherSkyView extends View {
                 drawSmoothIslandQuad(canvas,x,y+hh,x+hw,y,x+hw,y+ISLAND_DEPTH,x,y+hh+ISLAND_DEPTH,palette.soilDark,palette.soilDark,0,0f);
             if(material==1) drawGrassTile(canvas,x,y,(column+row)%2==0,column,row,palette,sunlight);
             else {
+                boolean grassTop=material>=7 && material<=10;
+                int baseMaterial=grassTop ? (material==7?2:material==8?4:material==9?5:6) : material;
                 int[] colors={0,0,0xffae8b68,0xff75cbd0,0xffb8b2a7,0xffdac695,0xff805e43};
-                int fill=material==2 ? blend(palette.soilLight,0xffd49d65,0.4) : material==4 ? blend(colors[material],palette.soilDark,0.08) : blend(colors[material],palette.grassDark,0.12);
+                int fill=baseMaterial==2 ? blend(palette.soilLight,0xffd49d65,0.4) : baseMaterial==4 ? blend(colors[baseMaterial],palette.soilDark,0.08) : blend(colors[baseMaterial],palette.grassDark,0.12);
                 boolean leftWater = material==3 && row+1<ISLAND_GRID_SIZE && worldTerrain.tile(column,row+1)==3;
                 boolean rightWater = material==3 && column+1<ISLAND_GRID_SIZE && worldTerrain.tile(column+1,row)==3;
                 if (material==3) {
@@ -1859,7 +1861,7 @@ public final class WeatherSkyView extends View {
                 }
                 if (!leftWater) drawGrassTileSide(canvas,x,y,hw,hh,material==3?0:1.4f,ISLAND_TILE_SIDE_DEPTH,fill,true);
                 if (!rightWater) drawGrassTileSide(canvas,x,y,hw,hh,material==3?0:1.4f,ISLAND_TILE_SIDE_DEPTH,fill,false);
-                drawSunlitIslandDiamond(canvas,x,y,material==3?hw:hw-0.05f,material==3?hh:hh-0.025f,material==3?0:1.4f,fill,sunlight);
+                drawSunlitIslandDiamond(canvas,x,y,material==3?hw:hw-0.05f,material==3?hh:hh-0.025f,material==3?0:1.4f,grassTop ? ((column+row)%2==0?palette.grassTileSoftFern:palette.grassTileFernSage) : fill,sunlight);
                 if (material==3) {
                     canvas.restore();
                     // Solid exposed soil walls frame the water; shared water edges stay open.

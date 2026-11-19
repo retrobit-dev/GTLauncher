@@ -718,7 +718,7 @@ final class WorldStore {
             int x=column+(edge.equals("E")?1:edge.equals("W")?-1:0),y=row+(edge.equals("S")?1:edge.equals("N")?-1:0);
             for(SurfaceObject f:w.surfaces)if(f.type.equals("fence") && FenceEdges.blocks(f.column,f.row,f.edge,column,row,x,y))return false;
             fences.put(new JSONObject().put("column",column).put("row",row).put("edge",edge).put("material",material));
-            data.put("fences",fences);root.put("version",13);
+            data.put("fences",fences);root.put("version",Math.max(13,w.previewData.version));
             worlds.set(i,fromPreview(PreviewWorld20.parse(root.toString())));return saveWorlds(worlds,worldId);
         }
         return false;

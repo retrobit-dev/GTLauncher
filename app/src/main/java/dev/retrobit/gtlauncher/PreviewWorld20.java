@@ -64,7 +64,7 @@ final class PreviewWorld20 {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 3 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13) throw new JSONException("Unsupported world version");
+        if (version > 3 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         if(version>=7 && version<13 && !w.has("orangeTrees")) throw new JSONException("Unsupported world version");
         // Flat conifer-only worlds are supported. Stacks and other tree kinds remain rejected.
@@ -80,7 +80,7 @@ final class PreviewWorld20 {
             Object v=source.get(i);
             if (!(v instanceof Number)) throw new JSONException("Invalid tile");
             double n=((Number)v).doubleValue();
-            if (!Double.isFinite(n) || n!=Math.rint(n) || n<0 || n>(version==1?1:version==2?5:6)) throw new JSONException("Invalid tile");
+            if (!Double.isFinite(n) || n!=Math.rint(n) || n<0 || n>(version==1?1:version==2?5:version<14?6:10)) throw new JSONException("Invalid tile");
             tiles[i]=(int)n;
         }
         bool(w,"showCharacter"); int c=integer(w,"characterColumn",0,size-1), r=integer(w,"characterRow",0,size-1);

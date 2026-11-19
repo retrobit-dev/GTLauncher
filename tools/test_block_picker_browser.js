@@ -8,7 +8,7 @@ const {chromium}=require('playwright-core');
   for(const width of [1000,800,500,420,400,280]) {
    await page.setViewportSize({width,height:700});
    const trigger=page.locator('#block-picker-trigger');await trigger.click();assert.equal(await trigger.getAttribute('aria-expanded'),'true');
-   for(const [value,name] of [['1','Rumput'],['2','Tanah'],['3','Air'],['4','Batu'],['5','Pasir']]) {
+   for(const [value,name] of [['1','Rumput'],['2','Tanah'],['3','Air'],['4','Batu'],['5','Pasir'],['6','Tanah garapan'],['7','Tanah atas rumput'],['8','Batu atas rumput'],['9','Pasir atas rumput'],['10','Tanah garapan atas rumput']]) {
     let option=page.locator(`[data-block-value="${value}"]`);await option.scrollIntoViewIfNeeded();
     assert(await option.isVisible());assert.equal(await option.locator('span').first().textContent(),name);
     const bounds=await option.evaluate(el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right}});

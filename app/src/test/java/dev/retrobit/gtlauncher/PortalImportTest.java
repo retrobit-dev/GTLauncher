@@ -319,6 +319,16 @@ public class PortalImportTest {
             try {WorldStore.parseExport(copy.toString());fail("must reject unsupported, invalid or colliding data");}catch(JSONException expected){}
         }
     }
+    @Test public void grassToppedBlocksRoundTripAndRejectOldImports() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
+        org.json.JSONObject root=new org.json.JSONObject(portableWorld(14,7));org.json.JSONArray tiles=root.getJSONObject("world").getJSONArray("tiles");tiles.put(1,8);tiles.put(2,9);tiles.put(3,10);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(root.toString())));for(int i=0;i<4;i++)assertEquals(7+i,store.activeWorld().previewData.tile(i,0));
+        assertTrue(store.placePreviewFence("home",8,8,"S","wood"));assertEquals(14,store.activeWorld().previewData.version);
+        String before=p.getString("worlds_v1",null);try{store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1)));fail("old format cannot replace new terrain");}catch(JSONException expected){}assertEquals(before,p.getString("worlds_v1",null));
+        root.put("version",13);try{WorldStore.parseExport(root.toString());fail("new tiles require v14");}catch(JSONException expected){}
+        root.put("version",14);root.getJSONObject("world").put("blockStacks",new org.json.JSONArray());try{WorldStore.parseExport(root.toString());fail("Android does not yet support stacks");}catch(JSONException expected){}root.getJSONObject("world").remove("blockStacks");
+        tiles.put(0,11);try{WorldStore.parseExport(root.toString());fail("unknown tile");}catch(JSONException expected){}
+    }
     @Test public void previewFencePlacementImportAndDeletionAreLossless() throws JSONException {
         SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
         assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1))));
