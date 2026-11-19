@@ -8,7 +8,7 @@ assert max(im.size)==192 and im.getpixel((0,0))[3]==0 and im.getchannel('A').get
 flap=root/'preview/assets/pet-sparrow-flap.png'
 assert flap.read_bytes()==(root/'app/src/main/res/drawable-nodpi/pet_sparrow_flap.png').read_bytes()
 f=Image.open(flap).convert('RGBA')
-assert f.size==im.size and f.crop((0,0,75,192)).tobytes()==im.crop((0,0,75,192)).tobytes() and f.tobytes()!=im.tobytes()
+assert f.size==im.size and f.crop((0,0,65,192)).tobytes()==im.crop((0,0,65,192)).tobytes() and f.tobytes()!=im.tobytes()
 for name in ('pet-sparrow-back.png','pet-sparrow-back-flap.png'):
     file=root/'preview/assets'/name
     assert file.read_bytes()==(root/'app/src/main/res/drawable-nodpi'/name.replace('-','_')).read_bytes()

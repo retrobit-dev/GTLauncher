@@ -1958,9 +1958,9 @@
     ctx.moveTo(x,y-hh);ctx.lineTo(x+hw,y);ctx.lineTo(x,y+hh);ctx.lineTo(x-hw,y);ctx.closePath();ctx.stroke();ctx.restore();
   }
   const sparrowImage=new Image();sparrowImage.src='./assets/pet-sparrow.png?v=1';
-  const sparrowFlap=new Image();sparrowFlap.src='./assets/pet-sparrow-flap.png?v=1';
+  const sparrowFlap=new Image();sparrowFlap.src='./assets/pet-sparrow-flap.png?v=2';
   const sparrowBack=new Image();sparrowBack.src='./assets/pet-sparrow-back.png?v=2';
-  const sparrowBackFlap=new Image();sparrowBackFlap.src='./assets/pet-sparrow-back-flap.png?v=2';
+  const sparrowBackFlap=new Image();sparrowBackFlap.src='./assets/pet-sparrow-back-flap.png?v=3';
   const sparrow=window.SparrowPet.create();
   function drawMainCharacter(motionTime) {
     const world = window.worldManager?.getActive();
