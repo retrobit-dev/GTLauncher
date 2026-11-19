@@ -648,8 +648,12 @@ public final class WeatherSkyView extends View {
             boolean mirror=h.facing.equals("N")||h.facing.equals("E"),wide="wide".equals(h.design);
             float scale=(float)h.scale,cx=SCENE_WIDTH/2f+(h.column-h.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
             float bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(h.column+h.row+2)*ISLAND_TILE_HEIGHT/2f+1.25f*ISLAND_TILE_HEIGHT*scale;
-            float width=70*scale*(wide?7f/6:1),height=(wide?100:74)*scale;
-            if(opaqueAt(houseArtwork(h),new RectF(cx-width/2,bottom-height,cx+width/2,bottom),x,y,mirror))return h;
+            if(!wide) {
+                if(projectedHouseOpaque(h,x,y)) return h;
+            } else {
+                float width=70*scale*7f/6,height=100*scale;
+                if(opaqueAt(houseArtwork(h),new RectF(cx-width/2,bottom-height,cx+width/2,bottom),x,y,mirror))return h;
+            }
         }
         return null;
     }
@@ -717,6 +721,10 @@ public final class WeatherSkyView extends View {
         if(bitmap==null || bounds.width()<=0 || bounds.height()<=0)return false;
         float u=(x-bounds.left)/bounds.width(),v=(y-bounds.top)/bounds.height();if(u<0 || u>=1 || v<0 || v>=1)return false;
         if(mirror)u=1f-u-0.000001f;
+        return opaqueBitmapUv(bitmap,u,v);
+    }
+    private boolean opaqueBitmapUv(Bitmap bitmap,float u,float v) {
+        if(bitmap==null || u<0 || u>=1 || v<0 || v>=1)return false;
         int px=Math.max(0,Math.min(bitmap.getWidth()-1,(int)(u*bitmap.getWidth()))),py=Math.max(0,Math.min(bitmap.getHeight()-1,(int)(v*bitmap.getHeight())));
         int[] pixels=occlusionPixels.get(bitmap);if(pixels==null){pixels=new int[bitmap.getWidth()*bitmap.getHeight()];bitmap.getPixels(pixels,0,bitmap.getWidth(),0,0,bitmap.getWidth(),bitmap.getHeight());occlusionPixels.put(bitmap,pixels);}
         return Color.alpha(pixels[py*bitmap.getWidth()+px])>=32;
@@ -740,13 +748,55 @@ public final class WeatherSkyView extends View {
         if(!"wide".equals(house.design))return back?houseBackImage:houseImage;
         return back?(mirror?houseWideBackMirrorImage:houseWideBackImage):(mirror?houseWideMirrorImage:houseWideImage);
     }
+    private float houseCentreX(WorldStore.House house) {
+        return SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f;
+    }
+    private float houseBottom(WorldStore.House house,HouseGeometry geometry) {
+        return ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f+geometry.halfDepth;
+    }
+    private boolean projectedHouseOpaque(WorldStore.House house,float x,float y) {
+        HouseGeometry geometry=new HouseGeometry(ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,(float)house.scale);
+        return projectedHouseOpaque(house,geometry,x,y);
+    }
+    private boolean projectedHouseOpaque(WorldStore.House house,HouseGeometry geometry,float x,float y) {
+        boolean mirror=house.facing.equals("N")||house.facing.equals("E");
+        float localX=(x-houseCentreX(house))*(mirror?-1:1),localY=y-houseBottom(house,geometry);
+        float[] p=geometry.unproject(localX,localY);
+        return opaqueBitmapUv(houseArtwork(house),p[0]/HouseGeometry.WIDTH,p[1]/HouseGeometry.HEIGHT);
+    }
+    private RectF projectedHouseBounds(WorldStore.House house) {
+        HouseGeometry geometry=new HouseGeometry(ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,(float)house.scale);
+        boolean mirror=house.facing.equals("N")||house.facing.equals("E");
+        float[] b=geometry.bounds(mirror);float x=houseCentreX(house),y=houseBottom(house,geometry);
+        return new RectF(x+b[0],y+b[1],x+b[2],y+b[3]);
+    }
+    private void drawProjectedHouse(Canvas canvas,WorldStore.House house,Bitmap sprite,boolean mirror) {
+        HouseGeometry g=new HouseGeometry(ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,(float)house.scale);
+        int save=canvas.save();canvas.translate(houseCentreX(house),houseBottom(house,g));if(mirror)canvas.scale(-1,1);
+        for(int i=0;i<2;i++) {
+            boolean left=i==0;int from=left?0:256,to=left?256:512;
+            float sx=g.sx(left),shear=g.shear(left);
+            Matrix m=new Matrix();m.setValues(new float[]{sx,0,-HouseGeometry.PIVOT_X*sx,
+                    shear,g.sy,-HouseGeometry.PIVOT_X*shear-HouseGeometry.PIVOT_Y*g.sy,0,0,1});
+            int side=canvas.save();canvas.concat(m);
+            canvas.drawBitmap(sprite,new Rect(from,0,to,490),new RectF(from,0,to,490),paint);
+            canvas.restoreToCount(side);
+        }
+        canvas.restoreToCount(save);
+    }
     private boolean fenceCoversEarlierObject(Bitmap image,RectF f,boolean mirror,boolean front) {
         for(WorldStore.House house:worldHouses) if(house.visible && (front || !showCharacter || house.column+house.row+2<visualColumn()+visualRow())) {
             boolean back=house.facing.equals("N")||house.facing.equals("W"),wide="wide".equals(house.design);
             Bitmap sprite=houseArtwork(house);float scale=(float)house.scale;
             float x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0),bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f+1.25f*ISLAND_TILE_HEIGHT*scale;
             float width=70*scale*(wide?7f/6:1),height=(wide?100:74)*scale;
-            if(fenceOverlaps(image,f,mirror,sprite,new RectF(x-width/2,bottom-height,x+width/2,bottom),house.facing.equals("N")||house.facing.equals("E")))return true;
+            if(wide) {
+                if(fenceOverlaps(image,f,mirror,sprite,new RectF(x-width/2,bottom-height,x+width/2,bottom),house.facing.equals("N")||house.facing.equals("E")))return true;
+            } else if(sprite!=null) {
+                HouseGeometry geometry=new HouseGeometry(ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,scale);
+                if(FenceOcclusion.overlaps(occlusionBounds(f),(px,py)->opaqueAt(image,f,px,py,mirror),
+                        occlusionBounds(projectedHouseBounds(house)),(px,py)->projectedHouseOpaque(house,geometry,px,py)))return true;
+            }
         }
         if(front && showCharacter) {
             float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f+visualWaterDepth(),width=13.5f*characterScale,height=25*characterScale;
@@ -1017,8 +1067,11 @@ public final class WeatherSkyView extends View {
             float bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f+1.25f*ISLAND_TILE_HEIGHT*scale;
             float width=70*scale*(wide?7f/6:1),height=(wide?100:74)*scale;
             paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,house.opacity))/100f));paint.setFilterBitmap(true);
-            int save=canvas.save();if(mirror)canvas.scale(-1,1,x,0);
-            canvas.drawBitmap(sprite,null,new RectF(x-width/2,bottom-height,x+width/2,bottom),paint);canvas.restoreToCount(save);
+            if(!wide) drawProjectedHouse(canvas,house,sprite,mirror);
+            else {
+                int save=canvas.save();if(mirror)canvas.scale(-1,1,x,0);
+                canvas.drawBitmap(sprite,null,new RectF(x-width/2,bottom-height,x+width/2,bottom),paint);canvas.restoreToCount(save);
+            }
         }
         paint.setAlpha(255);
     }
