@@ -1959,6 +1959,8 @@
   }
   const sparrowImage=new Image();sparrowImage.src='./assets/pet-sparrow.png?v=1';
   const sparrowFlap=new Image();sparrowFlap.src='./assets/pet-sparrow-flap.png?v=1';
+  const sparrowBack=new Image();sparrowBack.src='./assets/pet-sparrow-back.png?v=1';
+  const sparrowBackFlap=new Image();sparrowBackFlap.src='./assets/pet-sparrow-back-flap.png?v=1';
   const sparrow=window.SparrowPet.create();
   function drawMainCharacter(motionTime) {
     const world = window.worldManager?.getActive();
@@ -2012,7 +2014,12 @@
       const p=sparrow.update(performance.now(),world.id,anchor,character.scale,seatWeight,mirror,back,!!gameplayDraft,REDUCED_MOTION);
       const size=4.4*character.scale;
       if(p.seat<.5 && depth===0){ctx.fillStyle='rgba(12,23,30,.22)';ctx.beginPath();ctx.ellipse(p.x,anchor.y+.5*character.scale,.9*character.scale,.3*character.scale,0,0,Math.PI*2);ctx.fill();}
-      ctx.imageSmoothingEnabled=false;ctx.drawImage(p.flap && sparrowFlap.complete && sparrowFlap.naturalWidth ? sparrowFlap : sparrowImage,p.x-size/2,p.y-size,size,size);
+      const rest=back?sparrowBack:sparrowImage, flap=back?sparrowBackFlap:sparrowFlap;
+      const bird=p.flap && flap.complete && flap.naturalWidth ? flap : rest;
+      if(bird.complete && bird.naturalWidth) {
+        ctx.imageSmoothingEnabled=false;ctx.save();ctx.translate(p.x,p.y);if(mirror)ctx.scale(-1,1);
+        ctx.drawImage(bird,-size/2,-size,size,size);ctx.restore();
+      }
     } else if(cameraMode!=='gameplay')sparrow.reset();
     if (editingSelected) {
       ctx.strokeStyle = '#fff4a8';

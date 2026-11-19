@@ -9,7 +9,11 @@ flap=root/'preview/assets/pet-sparrow-flap.png'
 assert flap.read_bytes()==(root/'app/src/main/res/drawable-nodpi/pet_sparrow_flap.png').read_bytes()
 f=Image.open(flap).convert('RGBA')
 assert f.size==im.size and f.crop((0,0,75,192)).tobytes()==im.crop((0,0,75,192)).tobytes() and f.tobytes()!=im.tobytes()
+for name in ('pet-sparrow-back.png','pet-sparrow-back-flap.png'):
+    file=root/'preview/assets'/name
+    assert file.read_bytes()==(root/'app/src/main/res/drawable-nodpi'/name.replace('-','_')).read_bytes()
+    frame=Image.open(file).convert('RGBA');assert frame.size==(192,192) and frame.getpixel((0,0))[3]==0
 s=(root/'app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java').read_text()
-for text in ['R.drawable.pet_sparrow','R.drawable.pet_sparrow_flap','drawSparrowPet(canvas,motionTime','seatWeight,mirror,back,depth','!android.animation.ValueAnimator.areAnimatorsEnabled()']:
+for text in ['R.drawable.pet_sparrow','R.drawable.pet_sparrow_flap','R.drawable.pet_sparrow_back','R.drawable.pet_sparrow_back_flap','drawSparrowPet(canvas,motionTime','seatWeight,mirror,back,depth','!android.animation.ValueAnimator.areAnimatorsEnabled()']:
     assert text in s
 print('Sparrow sprite parity and Android wiring: OK (static)')
