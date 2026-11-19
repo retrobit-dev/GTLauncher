@@ -1218,6 +1218,25 @@
       ctx.restore();
     }
   }
+  // In-memory ramp rendering; persistence/editor integration is not enabled yet.
+  // Faces use the same material palette as blocks and only front-facing sides.
+  function drawRamp(tile, direction, material, palette) {
+    const shape=window.RampGeometry?.create(direction,ISLAND_TILE_WIDTH,islandTileHeight,BLOCK_HEIGHT);
+    if(!shape)return;
+    const grassTop=material>=7 && material<=10, base=grassTop?({7:2,8:4,9:5,10:6})[material]:material;
+    const terrain={3:'#75cbd0',4:'#b8b2a7',5:'#dac695',6:'#bd7549'};
+    const side=base===1?(tile.variant===0?palette.grassTileSoftFern:palette.grassTileFernSage):base===2?blendColor(palette.soilLight,'#d49d65',.4):base===4?blendColor(terrain[4],palette.soilDark,.08):blendColor(terrain[base]||'#ae8b68',palette.grassDark,.12);
+    const top=grassTop?(tile.variant===0?palette.grassTileSoftFern:palette.grassTileFernSage):side;
+    const polygon=(face,color)=>drawSmoothIslandPolygon(face.map(p=>[tile.x+p.x,tile.y+p.y]),color,color);
+    ctx.save();if(material===3)ctx.globalAlpha*=.64;
+    for(const face of shape.sideFaces) {
+      const u=face.every(p=>p.u===1),v=face.every(p=>p.v===1);
+      if(u || v)polygon(face,blendColor(side,'#000000',v?.15:.23));
+    }
+    if(direction==='S' || direction==='E')polygon(shape.highFace,blendColor(side,'#000000',direction==='S'?.15:.23));
+    polygon(shape.topFace,top);ctx.restore();
+  }
+
   function drawGrassTile(tile, palette, sunlight, material = 1, level = 0) {
     const raised = level > 0;
     const borders = material === 3 ? waterBorders(tile.column,tile.row,level) : null;
@@ -2282,8 +2301,9 @@
     const activeWorld = window.worldManager?.getActive();
     const tileData = activeWorld?.tiles, stacks=activeWorld?.blockStacks;
     const blockOpacity=new Map((activeWorld?.blockOpacity||[]).map(e=>[`${e.row*ISLAND_GRID_SIZE+e.column}:${e.level}`,e.opacity]));
+    const ramps=new Map((activeWorld?.ramps||[]).map(r=>[r.row*ISLAND_GRID_SIZE+r.column,r]));
     const pond=pondLayout(activeWorld);updatePondWind(motionTime,sceneWeather);
-    if (tileData && (stacks || blockOpacity.size || tileData.some(value => value !== 1))) {
+    if (tileData && (stacks || blockOpacity.size || ramps.size || tileData.some(value => value !== 1))) {
       for (const tile of ISLAND_TILES) {
         const index=tile.row * ISLAND_GRID_SIZE + tile.column, stack=stacks?.[index];
         if (!tileData[index]) continue;
@@ -2309,6 +2329,11 @@
           const level=stack ? stack.length-1 : 0;
           const falls=waterFalls(tile.column,tile.row,activeWorld);
           if(Object.keys(falls).length){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawWaterfalls(tile,level,falls,motionTime);ctx.restore();}
+        }
+        const ramp=ramps.get(index),rampLevel=stack ? stack.length-1 : 0;
+        if(ramp && tileVisible({...tile,y:tile.y-(rampLevel+1)*BLOCK_HEIGHT},BLOCK_HEIGHT)) {
+          ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${rampLevel}`)||0))/100;
+          drawRamp({...tile,y:tile.y-rampLevel*BLOCK_HEIGHT},ramp.direction,tileData[index],palette);ctx.restore();
         }
       }
     } else {
