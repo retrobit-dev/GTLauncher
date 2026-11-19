@@ -1,0 +1,5 @@
+# Pet burung pipit
+
+Konsep pipit yang dipilih digunakan sebagai pet kosmetik otomatis di gameplay. Burung mengikuti dekat player dengan posisi yang dihaluskan dan gerak kecil ketika player berjalan. Ketika player duduk, burung berpindah dan bertengger di atas topi; ketika player bergerak, burung kembali mengikuti. Di map editor pet tidak ditampilkan. Reduced motion menghentikan gerak kecil dan langsung menempatkan pet di posisi tujuan.
+
+Ini adalah pendamping visual awal, bukan sistem peliharaan penuh: belum ada pilihan/penyimpanan pet, interaksi, tabrakan atau pathfinding mandiri dan animasi sayap. Posisi burung mengikuti koordinat visual player, bukan tile tersimpan. Sprite transparan dibangun dari konsep terpilih dengan `tools/build_sparrow_pet.py` dan dibagikan oleh preview dan Android. Android memakai implementasi visual serupa tetapi belum diuji build atau perangkat. Perpindahan otomatis dari air masih hanya tersedia di preview, seperti dijelaskan di `player-idle-bow.md`.

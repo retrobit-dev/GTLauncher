@@ -268,7 +268,7 @@ public final class WeatherSkyView extends View {
     private boolean animationEnabled = true;
     private double plantMotionSeconds;
     private Integer worldIslandTint;
-    private Bitmap mainCharacter, mainCharacterBack, idleFrontTransition, idleFrontPose, idleBackTransition, idleBackPose, idleFrontSitting, idleBackSitting, idleFrontSitLowering, idleBackSitLowering, idleFrontSitNearly, idleBackSitNearly, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
+    private Bitmap sparrowPet, mainCharacter, mainCharacterBack, idleFrontTransition, idleFrontPose, idleBackTransition, idleBackPose, idleFrontSitting, idleBackSitting, idleFrontSitLowering, idleBackSitLowering, idleFrontSitNearly, idleBackSitNearly, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
     private final Bitmap[] walkFront=new Bitmap[12], walkBack=new Bitmap[12], runFront=new Bitmap[12], runBack=new Bitmap[12];
     private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron;
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
@@ -362,6 +362,7 @@ public final class WeatherSkyView extends View {
         renderBitmapPaint.setFilterBitmap(true);
         renderBitmapPaint.setDither(false);
         grassDetail = BitmapFactory.decodeResource(getResources(), R.drawable.island_grass_detail);
+        sparrowPet = BitmapFactory.decodeResource(getResources(), R.drawable.pet_sparrow);
         mainCharacter = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_uhd_front);
         mainCharacterBack = BitmapFactory.decodeResource(getResources(), R.drawable.character_original_uhd_back);
         idleFrontTransition=BitmapFactory.decodeResource(getResources(),R.drawable.player_idle_front_transition);
@@ -575,7 +576,7 @@ public final class WeatherSkyView extends View {
     private final CameraFollow gameplayCamera=new CameraFollow();
     private long cameraFrameTime;
     private boolean cameraMoving;
-    void setGameplayMode(boolean value) { if(gameplayMode!=value){playerIdleBow.reset();idleBowAmount=0;idleSitAmount=0;gameplayCamera.reset();cameraFrameTime=0;} gameplayMode=value; invalidate(); }
+    void setGameplayMode(boolean value) { if(gameplayMode!=value){sparrowTime=0;playerIdleBow.reset();idleBowAmount=0;idleSitAmount=0;gameplayCamera.reset();cameraFrameTime=0;} gameplayMode=value; invalidate(); }
     private float mapSourceX() { return gameplayMode && showCharacter
             ? (gameplayCamera.ready()?gameplayCamera.x():SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f) : SCENE_WIDTH/2f; }
     private float mapSourceY() { return gameplayMode && showCharacter
@@ -1099,6 +1100,29 @@ public final class WeatherSkyView extends View {
         }
         return sprite;
     }
+    private float sparrowX, sparrowY;
+    private long sparrowTime;
+    private void drawSparrowPet(Canvas canvas, double motionTime, float anchorX, float anchorY,
+                                float seat, boolean mirror, boolean back, float depth) {
+        if (!gameplayMode || sparrowPet == null) { sparrowTime=0; return; }
+        boolean reduced=!animationEnabled || !android.animation.ValueAnimator.areAnimatorsEnabled();
+        long now=SystemClock.uptimeMillis();
+        float sx=anchorX+(mirror?-1:1)*.5f*characterScale;
+        float sy=anchorY+(.5f+(800f-(back?778f:725f))/800f*25f*seat-25f*(back?.88f:.915f))*characterScale;
+        float groundX=anchorX-7f*characterScale, groundY=anchorY+.5f*characterScale;
+        float tx=groundX+(sx-groundX)*seat,ty=groundY+(sy-groundY)*seat;
+        float dt=sparrowTime==0?0:Math.max(0,Math.min(.25f,(now-sparrowTime)/1000f));
+        if(sparrowTime==0 || now<sparrowTime || Math.hypot(tx-sparrowX,ty-sparrowY)>80*characterScale || reduced){sparrowX=tx;sparrowY=ty;}
+        else {float f=(float)(1-Math.exp(-dt*5));sparrowX+=(tx-sparrowX)*f;sparrowY+=(ty-sparrowY)*f;}
+        sparrowTime=now;
+        float hop=!reduced && characterStepping && seat<.1f?(float)Math.abs(Math.sin(now/180.0))*.65f*characterScale:0f;
+        float py=sparrowY-hop,size=4.4f*characterScale;
+        if(seat<.5f && depth==0){paint.setColor(0x380c171e);canvas.drawOval(new RectF(sparrowX-.9f*characterScale,py-.3f*characterScale,sparrowX+.9f*characterScale,py+.3f*characterScale),paint);}
+        paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
+        canvas.drawBitmap(sparrowPet,null,new RectF(sparrowX-size/2,py-size,sparrowX+size/2,py),paint);
+        paint.setFilterBitmap(true);
+    }
+
     private void drawMainCharacter(Canvas canvas, double motionTime) {
         boolean back = "N".equals(characterFacing) || "W".equals(characterFacing);
         boolean mirror = "W".equals(characterFacing) || "E".equals(characterFacing);
@@ -1151,6 +1175,8 @@ public final class WeatherSkyView extends View {
             canvas.drawOval(new RectF(x-radius,y-depth-1.1f,x+radius,y-depth+1.1f),paint);
             paint.setStyle(Paint.Style.FILL);
         }
+        float anchorY=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f;
+        drawSparrowPet(canvas,motionTime,x,anchorY,seatWeight,mirror,back,depth);
     }
 
     private void drawMovingHair(Canvas canvas, Bitmap sprite, int sw, int sh, int top,
