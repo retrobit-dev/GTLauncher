@@ -500,6 +500,7 @@ public final class WeatherSkyView extends View {
     }
     private float elevationAt(int column,int row) {return ElevatedTerrainGeometry.elevation(terrainHeight(column,row),ISLAND_GRASS_BAND_DEPTH);}
     private float visualElevation() {float target=elevationAt(characterColumn,characterRow);return characterStepping?elevationAt(stepFromColumn,stepFromRow)*(1-stepProgress())+target*stepProgress():target;}
+    private float visualJump() {return characterStepping && animationEnabled ? ElevatedTerrainGeometry.jumpHeight(terrainHeight(stepFromColumn,stepFromRow),terrainHeight(characterColumn,characterRow),stepProgress(),ISLAND_GRASS_BAND_DEPTH) : 0;}
     void setWorldTerrain(PreviewWorld20 terrain) {
         worldTerrain=terrain;updateSurfaceJoins();
         pondLife=terrain==null ? null : PondLife.build(terrain.size,terrain::tile);
@@ -571,7 +572,7 @@ public final class WeatherSkyView extends View {
     // than tile proximity, and never write this temporary fade into world data.
     private RectF visibleCharacterBounds() {
         float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f;
-        float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f-visualElevation()+visualWaterDepth();
+        float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f-visualElevation()+visualWaterDepth()-visualJump();
         float width=13.5f*characterScale;
         return new RectF(x-width/2,y-25*characterScale,x+width/2,y);
     }
@@ -706,7 +707,7 @@ public final class WeatherSkyView extends View {
         if(!showCharacter || getWidth()<=0 || getHeight()<=0)return false;
         Bitmap sprite=currentCharacterSprite();
         float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f;
-        float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f-visualElevation()+visualWaterDepth();
+        float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f-visualElevation()+visualWaterDepth()-visualJump();
         if(sprite==idleBlendBitmap)y+=((800f-((characterFacing.equals("N")||characterFacing.equals("W"))?778f:725f))/800f)*25f*characterScale*PlayerIdleBow.seatGroundWeight(idleSitAmount);
         float width=characterSpriteWidth(sprite);
         return opaqueAt(sprite,new RectF(x-width/2,y-25*characterScale,x+width/2,y),islandX(sx),islandY(sy),characterFacing.equals("W")||characterFacing.equals("E"));
@@ -913,7 +914,7 @@ public final class WeatherSkyView extends View {
             }
         }
         if(front && showCharacter) {
-            float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f-visualElevation()+visualWaterDepth(),width=13.5f*characterScale,height=25*characterScale;
+            float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f-visualElevation()+visualWaterDepth()-visualJump(),width=13.5f*characterScale,height=25*characterScale;
             boolean back=characterFacing.equals("N")||characterFacing.equals("W");
             if(fenceOverlaps(image,f,mirror,back?mainCharacterBack:mainCharacter,new RectF(x-width/2,y-height,x+width/2,y),characterFacing.equals("W")||characterFacing.equals("E")))return true;
         }
@@ -1340,6 +1341,8 @@ public final class WeatherSkyView extends View {
                 }
             }
         }
+        float waterline=y-depth;
+        y-=visualJump();
         // Keep the dimensions fixed while moving; bounce translates rather than stretches.
         paint.setColor(Color.WHITE);
         paint.setAlpha(255);
@@ -1349,20 +1352,20 @@ public final class WeatherSkyView extends View {
         // Use the same gait frame, compositing the submerged portion over water.
         RectF destination=new RectF(x-width/2,y-height,x+width/2,y);
         if (depth>0) {
-            int upper=canvas.save();canvas.clipRect(x-width/2-2,y-height-2,x+width/2+2,y-depth);
+            int upper=canvas.save();canvas.clipRect(x-width/2-2,y-height-2,x+width/2+2,waterline);
             canvas.drawBitmap(sprite,null,destination,paint);canvas.restoreToCount(upper);
             int lower=canvas.save();
-            Path waterFootprint=new Path();waterFootprint.moveTo(x-ISLAND_TILE_WIDTH/2f,y-depth);
-            waterFootprint.lineTo(x,y-depth-ISLAND_TILE_HEIGHT/2f);waterFootprint.lineTo(x+ISLAND_TILE_WIDTH/2f,y-depth);
-            waterFootprint.lineTo(x,y-depth+ISLAND_TILE_HEIGHT/2f);waterFootprint.close();canvas.clipPath(waterFootprint);
-            canvas.clipRect(x-width/2-2,y-depth,x+width/2+2,y+2);
+            Path waterFootprint=new Path();waterFootprint.moveTo(x-ISLAND_TILE_WIDTH/2f,waterline);
+            waterFootprint.lineTo(x,waterline-ISLAND_TILE_HEIGHT/2f);waterFootprint.lineTo(x+ISLAND_TILE_WIDTH/2f,waterline);
+            waterFootprint.lineTo(x,waterline+ISLAND_TILE_HEIGHT/2f);waterFootprint.close();canvas.clipPath(waterFootprint);
+            canvas.clipRect(x-width/2-2,waterline,x+width/2+2,Math.max(waterline,y+2));
             paint.setAlpha(89);canvas.drawBitmap(sprite,null,destination,paint);paint.setAlpha(255);canvas.restoreToCount(lower);
         } else canvas.drawBitmap(sprite,null,destination,paint);
         canvas.restoreToCount(save);
         if(depth>0) {
             paint.setColor(0x99dafaf4);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.45f);
             float radius=Math.min(width*.48f,5f);
-            canvas.drawOval(new RectF(x-radius,y-depth-1.1f,x+radius,y-depth+1.1f),paint);
+            canvas.drawOval(new RectF(x-radius,waterline-1.1f,x+radius,waterline+1.1f),paint);
             paint.setStyle(Paint.Style.FILL);
         }
         float anchorY=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f-visualElevation();

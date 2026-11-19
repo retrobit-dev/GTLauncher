@@ -8,6 +8,10 @@ final class ElevatedTerrainGeometry {
         float p=Math.max(0,Math.min(1,progress));
         return elevation(fromHeight,blockHeight)*(1-p)+elevation(toHeight,blockHeight)*p;
     }
+    static float jumpHeight(int fromHeight,int toHeight,float progress,float blockHeight) {
+        if(fromHeight<1 || toHeight<1 || Math.abs(fromHeight-toHeight)!=1 || !Float.isFinite(progress) || !Float.isFinite(blockHeight) || blockHeight<=0)return 0;
+        float p=Math.max(0,Math.min(1,progress));return (float)Math.sin(Math.PI*p)*blockHeight*.75f;
+    }
     static float centreX(int c,int r,float originX,float tileWidth) { return originX+(c-r)*tileWidth/2f; }
     static float centreY(int c,int r,int height,float originY,float tileHeight,float blockHeight) {
         return originY+(c+r)*tileHeight/2f-elevation(height,blockHeight);

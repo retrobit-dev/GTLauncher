@@ -8,6 +8,15 @@ public class ElevatedTerrainGeometryTest {
         assertEquals(16,ElevatedTerrainGeometry.stepElevation(2,3,3,8),0);
         assertEquals(0,ElevatedTerrainGeometry.exposedLevels(1,3));assertEquals(2,ElevatedTerrainGeometry.exposedLevels(3,1));
     }
+    @Test public void jumpOnlyForOneLevelAndArcIsReversible() {
+        for(int[] heights:new int[][]{{1,2},{2,1},{10,11},{11,10}}) {
+            assertEquals(0,ElevatedTerrainGeometry.jumpHeight(heights[0],heights[1],0,8),1e-5);
+            assertEquals(6,ElevatedTerrainGeometry.jumpHeight(heights[0],heights[1],.5f,8),1e-5);
+            assertEquals(0,ElevatedTerrainGeometry.jumpHeight(heights[0],heights[1],1,8),1e-5);
+            for(float t:new float[]{.1f,.3f,.7f,.9f})assertEquals(ElevatedTerrainGeometry.jumpHeight(heights[0],heights[1],t,8),ElevatedTerrainGeometry.jumpHeight(heights[1],heights[0],1-t,8),1e-5);
+        }
+        assertEquals(0,ElevatedTerrainGeometry.jumpHeight(1,3,.5f,8),0);assertEquals(0,ElevatedTerrainGeometry.jumpHeight(2,2,.5f,8),0);
+    }
     @Test public void picksElevatedTopAndSkipsHoles() {
         int[][] h={{1,0,1},{1,2,1},{1,1,3}};
         ElevatedTerrainGeometry.Heights heights=(c,r)->h[r][c];

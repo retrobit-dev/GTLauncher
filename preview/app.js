@@ -2044,7 +2044,7 @@
   function coversCharacter(player, hit, bounds) {
     if(!player?.visible || !window.sceneEditing)return false;
     const anchor=characterCentre(player), scale=player.scale || 1;
-    const bottom=anchor.y+.5*scale+characterWaterDepth(player), height=PLAYER_HEIGHT*scale, width=PLAYER_WIDTH*scale;
+    const bottom=anchor.y+.5*scale+characterWaterDepth(player)-(player.jumpHeight||0), height=PLAYER_HEIGHT*scale, width=PLAYER_WIDTH*scale;
     if(bounds && (anchor.x+width/2<=bounds.left || anchor.x-width/2>=bounds.right || bottom<=bounds.top || bottom-height>=bounds.bottom))return false;
     for(let yi=1;yi<10;yi++)for(let xi=1;xi<6;xi++) {
       const p={x:anchor.x-width/2+width*xi/6,y:bottom-height+height*yi/10};
@@ -2158,7 +2158,8 @@
     const seatWeight=idleBowSprite ? window.PlayerIdleBow.seatGroundWeight(idleSitAmount) : 0;
     // Put the hips, rather than the frontmost boot, on the tile's surface.
     const seatY=back?778:725;
-    const y=anchor.y + .5 * character.scale + depth + (800-seatY)/800 * PLAYER_HEIGHT * character.scale * seatWeight;
+    const groundY=anchor.y + .5 * character.scale + depth + (800-seatY)/800 * PLAYER_HEIGHT * character.scale * seatWeight;
+    const y=groundY-(character.jumpHeight||0);
     const width = PLAYER_WIDTH * character.scale * (idleBowSprite ? (idleBowSprite.naturalWidth||idleBowSprite.width)/432 : 1);
     // Breathing changes height only, never the ground anchor. With reduced motion time is zero.
     const idle = Math.sin(motionTime * Math.PI / 1.2) > 0.5 ? 0.5 : 0;
@@ -2168,7 +2169,7 @@
     // The intact sprite avoids exposed seams until independently drawn gait frames exist.
     if(depth===0) {
       ctx.fillStyle='rgba(12,23,30,.38)';ctx.globalAlpha=1-seatWeight;
-      ctx.beginPath();ctx.ellipse(x,y-.45*character.scale,4.6*character.scale,.8*character.scale,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(x,groundY-.45*character.scale,4.6*character.scale,.8*character.scale,0,0,Math.PI*2);ctx.fill();
       if(seatWeight>0) {
         // Contact patches follow the illustrated hip and supporting palms, including mirrors.
         const contacts=back?[[600,778,2.5],[395,774,1.3],[780,795,1.3]]:[[680,725,2.5],[850,751,1.3]];
@@ -2185,12 +2186,12 @@
     function drawSprite() {ctx.save();ctx.translate(x,y);if (mirror) ctx.scale(-1,1);ctx.drawImage(drawnSprite,-width/2,-height,width,height);ctx.restore();}
     if(depth>0) {
       // The portion below the surface is translucent against the already drawn water.
-      const waterline=y-depth;
-      ctx.save();ctx.beginPath();ctx.rect(x-width/2-2,y-height-2,width+4,height-depth+2);ctx.clip();drawSprite();ctx.restore();
+      const waterline=groundY-depth;
+      ctx.save();ctx.beginPath();ctx.rect(x-width/2-2,y-height-2,width+4,Math.max(0,waterline-(y-height-2)));ctx.clip();drawSprite();ctx.restore();
       ctx.save();ctx.beginPath();
       ctx.moveTo(x-ISLAND_TILE_WIDTH/2,waterline);ctx.lineTo(x,waterline-islandTileHeight/2);
       ctx.lineTo(x+ISLAND_TILE_WIDTH/2,waterline);ctx.lineTo(x,waterline+islandTileHeight/2);ctx.closePath();ctx.clip();
-      ctx.beginPath();ctx.rect(x-width/2-2,waterline,width+4,depth+2);ctx.clip();ctx.globalAlpha*=0.35;drawSprite();ctx.restore();
+      ctx.beginPath();ctx.rect(x-width/2-2,waterline,width+4,Math.max(0,y-waterline+2));ctx.clip();ctx.globalAlpha*=0.35;drawSprite();ctx.restore();
       ctx.save();ctx.strokeStyle='rgba(218,250,244,.6)';ctx.lineWidth=.45;ctx.beginPath();ctx.ellipse(x,waterline,Math.min(width*.48,5),1.1,0,0,Math.PI*2);ctx.stroke();ctx.restore();
     } else drawSprite();
     if(cameraMode==='gameplay' && sparrowImage.complete && sparrowImage.naturalWidth) {
@@ -2877,7 +2878,7 @@
     hit(point, character) {
       if (!character.visible) return false;
       const {x, y: surfaceY} = characterCentre(character);
-      const y=surfaceY+.5*character.scale+characterWaterDepth(character)+(idleBowSprite?(800-(character.facing==='N'||character.facing==='W'?778:725))/800*PLAYER_HEIGHT*character.scale*window.PlayerIdleBow.seatGroundWeight(idleSitAmount):0);
+      const y=surfaceY+.5*character.scale+characterWaterDepth(character)-(character.jumpHeight||0)+(idleBowSprite?(800-(character.facing==='N'||character.facing==='W'?778:725))/800*PLAYER_HEIGHT*character.scale*window.PlayerIdleBow.seatGroundWeight(idleSitAmount):0);
       const sprite=idleBowSprite || activeCharacterSprite(character);
       const width=PLAYER_WIDTH*character.scale*(idleBowSprite?(idleBowSprite.naturalWidth||idleBowSprite.width)/432:1),height=PLAYER_HEIGHT*character.scale;
       let u=(point.x-x)/width+.5,v=(point.y-y+height)/height;
