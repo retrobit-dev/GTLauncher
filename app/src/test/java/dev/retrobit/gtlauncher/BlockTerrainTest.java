@@ -54,6 +54,17 @@ public class BlockTerrainTest {
             assertFalse(BridgeGeometry.permitsStep(group,5+dc,5+dr,5+dc+dr,5+dr+dc));
         }
     }
+    @Test public void bridgePlacementRequiresClearLevelDryEnds() {
+        final int[][] tiles=new int[5][5], heights=new int[5][5];for(int y=0;y<5;y++)for(int x=0;x<5;x++){tiles[y][x]=1;heights[y][x]=1;}
+        final boolean[][] blocked=new boolean[5][5];
+        BridgeGeometry.Terrain terrain=new BridgeGeometry.Terrain(){public int size(){return 5;}public int tile(int c,int r){return tiles[r][c];}public int height(int c,int r){return heights[r][c];}public boolean obstructed(int c,int r){return blocked[r][c];}};
+        BridgeGeometry.Bridge bridge=new BridgeGeometry.Bridge(1,2,"E","wood");java.util.List<BridgeGeometry.Bridge> items=java.util.Collections.singletonList(bridge);
+        tiles[2][2]=3;assertTrue(BridgeGeometry.valid(items,terrain));
+        tiles[2][1]=3;assertFalse(BridgeGeometry.valid(items,terrain));tiles[2][1]=1;
+        heights[2][2]=2;assertFalse(BridgeGeometry.valid(items,terrain));heights[2][2]=1;
+        blocked[2][2]=true;assertFalse(BridgeGeometry.valid(items,terrain));blocked[2][2]=false;
+        assertFalse(BridgeGeometry.valid(java.util.Arrays.asList(bridge,bridge),terrain));
+    }
     @Test public void flatWorldCompatibility() throws JSONException {
         BlockTerrain g=BlockTerrain.parse(2,new JSONArray().put(1).put(3).put(0).put(6),null);
         assertEquals(1,g.height(0,0));assertEquals(0,g.height(0,1));assertEquals(3,g.top(1,0));

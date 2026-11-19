@@ -13,6 +13,28 @@ final class BridgeGeometry {
         if("S".equals(b.axis) && c==b.column && r>=b.row && r<b.row+LENGTH)return r-b.row;
         return -1;
     }
+    interface Terrain {
+        int size();
+        int tile(int column,int row);
+        int height(int column,int row);
+        boolean obstructed(int column,int row);
+    }
+    static boolean valid(java.util.List<Bridge> bridges,Terrain terrain) {
+        if(bridges==null || terrain==null || terrain.size()<1 || terrain.size()>100)return false;
+        java.util.Set<Integer> seen=new java.util.HashSet<>();
+        for(Bridge b:bridges){
+            if(b==null || indexAt(b,b.column,b.row)!=0)return false;
+            int level=-1;
+            for(int i=0;i<LENGTH;i++){
+                int c=b.column+("E".equals(b.axis)?i:0),r=b.row+("S".equals(b.axis)?i:0);
+                if(c<0 || r<0 || c>=terrain.size() || r>=terrain.size())return false;
+                int tile=terrain.tile(c,r),height=terrain.height(c,r);
+                if(tile==0 || height<=0 || (i!=1 && tile==3) || (level>=0 && level!=height) || terrain.obstructed(c,r) || !seen.add(r*terrain.size()+c))return false;
+                level=height;
+            }
+        }
+        return true;
+    }
     static boolean permitsStep(java.util.List<Bridge> bridges,int fromC,int fromR,int toC,int toR) {
         if(Math.abs(fromC-toC)+Math.abs(fromR-toR)!=1)return false;
         for(Bridge b:bridges){int a=indexAt(b,fromC,fromR),z=indexAt(b,toC,toR);if(a<0 && z<0)continue;
