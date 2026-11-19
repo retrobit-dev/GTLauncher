@@ -1110,7 +1110,9 @@ public final class WeatherSkyView extends View {
         long now=SystemClock.uptimeMillis();
         float sx=anchorX+(mirror?-1:1)*.5f*characterScale;
         float sy=anchorY+(.5f+(800f-(back?778f:725f))/800f*25f*seat-25f*(back?.88f:.915f))*characterScale;
-        float groundX=anchorX-7f*characterScale, groundY=anchorY+.5f*characterScale;
+        boolean hovering=!reduced && !characterStepping && seat<1;
+        float groundX=anchorX+(-7f+(hovering?(float)Math.sin(now/1100.0)*2f:0f))*characterScale;
+        float groundY=anchorY+(.5f+(hovering?-12f+(float)Math.sin(now/600.0):0f))*characterScale;
         float tx=groundX+(sx-groundX)*seat,ty=groundY+(sy-groundY)*seat;
         float dt=sparrowTime==0?0:Math.max(0,Math.min(.25f,(now-sparrowTime)/1000f));
         if(sparrowTime==0 || now<sparrowTime || Math.hypot(tx-sparrowX,ty-sparrowY)>80*characterScale || reduced){sparrowX=tx;sparrowY=ty;}
@@ -1118,9 +1120,9 @@ public final class WeatherSkyView extends View {
         sparrowTime=now;
         float hop=!reduced && characterStepping && seat<.1f?(float)Math.abs(Math.sin(now/180.0))*.65f*characterScale:0f;
         float py=sparrowY-hop,size=4.4f*characterScale;
-        if(seat<.5f && depth==0){paint.setColor(0x380c171e);canvas.drawOval(new RectF(sparrowX-.9f*characterScale,py-.3f*characterScale,sparrowX+.9f*characterScale,py+.3f*characterScale),paint);}
+        if(seat<.5f && depth==0){paint.setColor(0x380c171e);canvas.drawOval(new RectF(sparrowX-.9f*characterScale,anchorY+.2f*characterScale,sparrowX+.9f*characterScale,anchorY+.8f*characterScale),paint);}
         paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
-        boolean flying=!reduced && (characterStepping || Math.hypot(tx-sparrowX,ty-sparrowY)>.7f*characterScale);
+        boolean flying=!reduced && (hovering || characterStepping || Math.hypot(tx-sparrowX,ty-sparrowY)>.7f*characterScale);
         Bitmap bird=flying && (now/160)%2==0 && sparrowFlap!=null?sparrowFlap:sparrowPet;
         canvas.drawBitmap(bird,null,new RectF(sparrowX-size/2,py-size,sparrowX+size/2,py),paint);
         paint.setFilterBitmap(true);
