@@ -25,14 +25,13 @@ for view in ('front','back'):
                   'back':{'sitting':'sit-redraw-final-back.png','nearly':'sit-redraw-near-back.png'}}[view][frame]
             if view=='front':
                 # The near arm remains behind the hip. The far shoulder and a
-                # short upper-arm section are visible on the opposite side;
-                # only fingertips emerge from beneath the hip/leg.
+                # short upper-arm section are visible on the opposite side.
+                # The far hand is occluded by the legs, not duplicated under the bag.
                 original=Image.open(ART/'sit-front-hands-corrected.png').convert('RGB')
                 arm=Image.open(ART/'sit-front-hand-back-study.png').convert('RGB')
                 far=Image.open(ART/'sit-front-far-hand-side-study-v3.png').convert('RGB')
-                fingertips=Image.open(ART/'sit-front-far-hand-side-study.png').convert('RGB')
                 pose=Image.open(ART/file).convert('RGB')
-                if any(im.size!=original.size for im in (pose,arm,far,fingertips)):raise ValueError('front study coordinates differ')
+                if any(im.size!=original.size for im in (pose,arm,far)):raise ValueError('front study coordinates differ')
                 mask=Image.new('L',pose.size)
                 ImageDraw.Draw(mask).polygon([(740,420),(900,420),(1020,520),(1020,760),(740,760)],fill=255)
                 pose.paste(arm,(0,0),mask)
@@ -43,16 +42,6 @@ for view in ('front','back'):
                     # The raised knee covers the lower part of the far arm.
                     points=[(518,466),(571,442),(569,530),(548,537),(517,535)]
                 ImageDraw.Draw(side).polygon(points,fill=255);pose.paste(far,(0,0),side)
-                # Reveal only the hand through background gaps, behind the
-                # overalls and foreground arm rather than cutting a wrist off.
-                def background(rgb):
-                    r,g,b=rgb
-                    return r>210 and g>195 and b>175 and abs(r-g)<35 and abs(g-b)<40
-                dst=pose.load();source=fingertips.load()
-                for yy in range(635,735):
-                    for xx in range(730,810):
-                        if background(dst[xx,yy]) and not background(source[xx,yy]):
-                            dst[xx,yy]=source[xx,yy]
                 tmp=ART/'.front-arm-corrected.png';pose.save(tmp)
                 try: im,box=extract(tmp)
                 finally: tmp.unlink()

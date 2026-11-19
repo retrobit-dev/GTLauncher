@@ -46,7 +46,7 @@ def skin(pixel):
 for pose in ('sitting','sit-nearly'):
     im=Image.open(root/f'preview/assets/player-idle-front-{pose}.png').convert('RGBA')
     assert sum(map(skin,im.crop((925,560,960,715)).getdata()))==0, 'duplicate far forearm must be occluded'
-    assert sum(map(skin,im.crop((720,675,790,738)).getdata()))>500, 'far hand should emerge beside the hip'
+    assert sum(map(skin,im.crop((720,675,790,738)).getdata()))<100, 'no extra hand should appear under the bag'
     assert sum(map(skin,im.crop((480,535,530,630)).getdata()))>200, 'a small section of the far arm should remain visible'
     assert not any(a and r>210 and g>195 and b>175 and abs(r-g)<35 and abs(g-b)<40 for r,g,b,a in im.crop((730,665,800,735)).getdata()), 'no trapped cream background around the hand'
 # The near supporting hand must move backward on the image, without shifting
