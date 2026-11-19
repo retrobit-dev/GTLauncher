@@ -52,11 +52,11 @@
   orangeTreeImage.src = './assets/orange-tree-pixel.png?v=1';
   const coniferTreeImage = new Image();
   coniferTreeImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};
-  coniferTreeImage.src='./assets/conifer-tree.png?v=1';
+  coniferTreeImage.src='./assets/cemara-laut.png?v=1';
   const wildGrassImage=new Image();wildGrassImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};wildGrassImage.src='./assets/wild-grass-selected.png?v=3';
   const bushImage=new Image();bushImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};bushImage.src='./assets/bush-selected.png?v=1';
-  const bushFlowerImage=new Image(),bushBerryImage=new Image();for(const [image,path] of [[bushFlowerImage,'flower'],[bushBerryImage,'berry']]){image.onload=()=>{if(REDUCED_MOTION)drawFrame();};image.src=`./assets/bush-${path}.png?v=1`;}
-  const treeSprite=tree=>tree.kind==='bush'?(tree.variant==='flower'?bushFlowerImage:tree.variant==='berry'?bushBerryImage:bushImage):tree.kind==='wild-grass'?wildGrassImage:tree.kind==='conifer'?coniferTreeImage:orangeTreeImage;
+  const bushFlowerImage=new Image(),bushBerryImage=new Image();for(const [image,path] of [[bushFlowerImage,'jasmine'],[bushBerryImage,'mulberry']]){image.onload=()=>{if(REDUCED_MOTION)drawFrame();};image.src=`./assets/bush-${path}.png?v=1`;}
+  const treeSprite=tree=>tree.kind==='bush'?(window.BushHarvest?.ready(window.worldManager?.getActive(),tree)?(tree.variant==='flower'?bushFlowerImage:bushBerryImage):bushImage):tree.kind==='wild-grass'?wildGrassImage:tree.kind==='conifer'?coniferTreeImage:orangeTreeImage;
   const treeSize=tree=>tree.size===1?1:2;
   const treeVisualScale=tree=>tree.kind==='bush'?14.5/60*treeSize(tree):tree.kind==='wild-grass'?14/60:treeSize(tree)/2;
   const treeWidth=tree=>tree.kind==='bush'?18.5*treeSize(tree):tree.kind==='wild-grass'?28:ORANGE_TREE_WIDTH*treeVisualScale(tree);
@@ -2497,6 +2497,7 @@
   };
   window.addEventListener('gameplaytoolchange',()=>{if(REDUCED_MOTION)drawFrame();});
   window.addEventListener('orangefruitupdate',()=>{if(REDUCED_MOTION)drawFrame();});
+  window.addEventListener('bushharvestchange',()=>{if(REDUCED_MOTION)drawFrame();});
   window.addEventListener('worldchange', () => {
     const nextWorldId = window.worldManager?.getActive()?.id, previousWorldId = cameraWorldId;
     if (nextWorldId !== cameraWorldId) {

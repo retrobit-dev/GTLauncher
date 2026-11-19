@@ -11,3 +11,7 @@ Penebangan, hasil kayu/resin, pertumbuhan, belum diterapkan; penempatan lewat ka
 Pilihan **Pohon cemara · Tapak 1×1** ditambahkan terpisah di katalog preview; cemara 2×2 yang sudah ada tidak diubah. Sprite yang sama ditampilkan pada setengah skala dengan akar di tengah tile, dan bayangan, goyangan, seleksi siluet, rute serta validasi tapak mengikuti ukuran itu. Cemara tetap bukan pohon buah. Penempatan, rotasi dan Undo/Redo memakai editor yang ada.
 
 World yang mengandung cemara 1×1 diekspor sebagai JSON preview v8 dengan `kind: "conifer", size: 1`; world dengan cemara 2×2 saja tetap v7. Impor versi lama tidak dapat menggantikan world dengan ukuran baru. Android mendukung impor world datar v8 yang hanya berisi cemara 1×1 atau 2×2; world bertingkat atau yang juga memiliki pohon jeruk masih ditolak tanpa mengubah data. Penempatan melalui katalog Android dan pemindahan cemara Android belum tersedia. Build atau uji perangkat Android belum dilakukan.
+
+## Kesesuaian dataran rendah
+
+Siluet `conifer` kini memakai artwork cemara laut tropis; nama data tetap `conifer` untuk kompatibilitas. Sprite sebelumnya tetap disimpan. Lihat `docs/tanaman-dataran-rendah.md`.

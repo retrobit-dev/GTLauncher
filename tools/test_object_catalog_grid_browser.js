@@ -24,7 +24,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
       assert(geom.a.width>=44 && geom.b.width>=44,'cards have touch-friendly target sizes');
       const house=page.getByRole('button',{name:'Tempatkan rumah player, tapak 3 kali 3'});
       assert(await house.isEnabled());
-      const tree=page.getByRole('button',{name:'Tempatkan pohon cemara, tapak 2 kali 2'});
+      const tree=page.getByRole('button',{name:'Tempatkan pohon cemara laut, tapak 2 kali 2'});
       await tree.focus();await page.keyboard.press('Enter');
       assert.equal(await page.locator('#object-library-dialog').evaluate(e=>e.open),false,'keyboard selection begins placement');
       assert.match(await page.locator('#edit-status').innerText(),/pohon cemara/);

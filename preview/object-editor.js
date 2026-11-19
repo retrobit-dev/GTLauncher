@@ -30,7 +30,7 @@
     if (character.visible) objects.push(`Karakter · ${columnLabel(character.column)}${character.row + 1}`);
     const house = window.worldManager.getHouse?.();
     if (house) objects.push(`Rumah player · ${columnLabel(house.column)}${house.row + 1}–${columnLabel(house.column + 2)}${house.row + 3}${house.visible ? '' : ' (tersembunyi)'}`);
-    for(const tree of world.orangeTrees||[]) objects.push(`${tree.kind==='bush'?(tree.variant==='flower'?'Semak bunga':tree.variant==='berry'?'Semak beri':'Semak'):tree.kind==='wild-grass'?'Rumput liar':tree.kind==='conifer'?'Pohon cemara':'Pohon jeruk'} · ${columnLabel(tree.column)}${tree.row+1}–${columnLabel(tree.column+(tree.size||2)-1)}${tree.row+(tree.size||2)}`);
+    for(const tree of world.orangeTrees||[]) objects.push(`${tree.kind==='bush'?(tree.variant==='flower'?'Semak melati':tree.variant==='berry'?'Semak murbei':'Semak'):tree.kind==='wild-grass'?'Rumput liar':tree.kind==='conifer'?'Pohon cemara laut':'Pohon jeruk'} · ${columnLabel(tree.column)}${tree.row+1}–${columnLabel(tree.column+(tree.size||2)-1)}${tree.row+(tree.size||2)}`);
     if (!objects.length) objects.push('Belum ada objek yang ditampilkan.');
     for (const label of objects) {
       const row = document.createElement('div');
@@ -74,13 +74,13 @@
     if($('catalog-place-conifer').disabled || !editing)return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
     selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingOrange='conifer';placementWorld=window.worldManager.getActive().id;libraryDialog.close();
-    tell('EDITING · Ketuk sudut pertama pohon cemara 2×2. Escape untuk batal.');
+    tell('EDITING · Ketuk sudut pertama pohon cemara laut 2×2. Escape untuk batal.');
   });
   $('catalog-place-conifer-small').addEventListener('click',()=>{
     if($('catalog-place-conifer-small').disabled || !editing)return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
     selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingOrange='conifer-small';placementWorld=window.worldManager.getActive().id;libraryDialog.close();
-    tell('EDITING · Ketuk tile pohon cemara 1×1. Escape untuk batal.');
+    tell('EDITING · Ketuk tile pohon cemara laut 1×1. Escape untuk batal.');
   });
   $('catalog-place-wild-grass').addEventListener('click',()=>{
     if($('catalog-place-wild-grass').disabled || !editing)return;
@@ -103,9 +103,9 @@
     if(placingOrange) {
       const before=window.worldManager.getActive().orangeTrees||[];
       applyingHistory=true;let saved=false;
-      try {if(tile)saved=window.worldManager.replaceOrangeTrees(placementWorld,before,[...before,typeof placingOrange==='object'?{...tile,...placingOrange}:placingOrange==='wild-grass'?{...tile,kind:'wild-grass',size:1}:placingOrange==='conifer-small'?{...tile,kind:'conifer',size:1}:placingOrange==='conifer'?{...tile,kind:'conifer'}:tile]);} finally {applyingHistory=false;}
+      try {if(tile)saved=window.worldManager.replaceOrangeTrees(placementWorld,before,[...before,typeof placingOrange==='object'?{...tile,...placingOrange,...(placingOrange.variant?{plantId:(globalThis.crypto.randomUUID?.() || Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('')),plantedAt:Date.now()}:{})}:placingOrange==='wild-grass'?{...tile,kind:'wild-grass',size:1}:placingOrange==='conifer-small'?{...tile,kind:'conifer',size:1}:placingOrange==='conifer'?{...tile,kind:'conifer'}:tile]);} finally {applyingHistory=false;}
       if(!saved) {tell(`EDITING · Pilih area ${typeof placingOrange==='object'?`${placingOrange.size}×${placingOrange.size}`:placingOrange==='conifer-small' || placingOrange==='wild-grass'?'1×1':'2×2'} rata tanpa air, lubang, rumah, pohon, atau player.`);return;}
-      const treeLabel=typeof placingOrange==='object'?'Semak':placingOrange==='wild-grass'?'Rumput liar':placingOrange==='conifer' || placingOrange==='conifer-small'?'Pohon cemara':'Pohon jeruk';
+      const treeLabel=typeof placingOrange==='object'?'Semak':placingOrange==='wild-grass'?'Rumput liar':placingOrange==='conifer' || placingOrange==='conifer-small'?'Pohon cemara laut':'Pohon jeruk';
       placingOrange=false;placementWorld=null;history.undo.push({type:'orangeTrees',value:before.map(t=>({...t}))});
       if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();syncControls();tell(`EDITING · ${treeLabel} ditempatkan.`);return;
     }

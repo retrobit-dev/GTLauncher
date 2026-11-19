@@ -363,6 +363,7 @@ public class HomeActivity extends Activity {
         updateDefaultLauncherButton();
         refreshApps();
         if (skyView != null) skyView.setAnimationEnabled(true);
+        mainHandler.removeCallbacks(bushRefresh);bushRefresh.run();
         registerOrientationSensor();
         if (precisePermissionKnown) {
             boolean preciseNow = hasPreciseLocationPermission();
@@ -384,7 +385,7 @@ public class HomeActivity extends Activity {
         portalWalkGeneration++;
         if (skyView != null) { skyView.setPortalWalkActive(false); applyActiveWorld(); }
         mainHandler.removeCallbacks(dayNightRefresh);
-        mainHandler.removeCallbacks(periodicWeatherRefresh);
+        mainHandler.removeCallbacks(periodicWeatherRefresh);mainHandler.removeCallbacks(bushRefresh);
         if (sensorManager != null) sensorManager.unregisterListener(orientationListener);
         if (skyView != null) skyView.setAnimationEnabled(false);
         super.onPause();
@@ -555,6 +556,7 @@ public class HomeActivity extends Activity {
         actions.add(movable?"Pindahkan":"Pindahkan — tidak tersedia");
         boolean deletable=object!=null && (small || WorldStore.isPreviewGrass(object) || WorldStore.isPreviewBush(object) || (object.type.equals("tree") && object.material.startsWith("conifer") && object.edge!=null));
         if(deletable)actions.add("Hapus");
+        if(BushPhenology.harvestable(object))actions.add("Panen "+BushPhenology.item(object));
         if(object!=null && object.type.equals("tree") && !object.material.startsWith("conifer"))actions.add("Panen pohon");
         else if(object!=null && (object.type.equals("storage-box") || object.type.equals("selling-box")))actions.add("Buka box");
         else if(portal!=null)actions.add("Gunakan portal");
@@ -584,7 +586,8 @@ public class HomeActivity extends Activity {
                                     applyActiveWorld();Toast.makeText(this,"Objek dihapus.",Toast.LENGTH_SHORT).show();
                                 } catch(JSONException | ClassCastException error){Toast.makeText(this,"Objek tidak berubah; periksa data world.",Toast.LENGTH_LONG).show();}
                             }).setNegativeButton("Batal",null).show();
-                    } else if(object!=null && object.type.equals("tree") && !object.material.startsWith("conifer"))interactTree(object);
+                    } else if(BushPhenology.harvestable(object) && actions.get(which).startsWith("Panen "))harvestBush(worldId,object);
+                    else if(object!=null && object.type.equals("tree") && !object.material.startsWith("conifer"))interactTree(object);
                     else if(object!=null)showSellingPlaceholder(object);
                     else if(portal!=null)walkToPortal(portal.id);
             }).setNegativeButton("Batal",null).show();
@@ -824,9 +827,9 @@ public class HomeActivity extends Activity {
             GridLayout grid=new GridLayout(this);grid.setColumnCount(2);panel.addView(grid);
             ScrollView scroll=new ScrollView(this);scroll.addView(panel);
             AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Katalog objek").setView(scroll).setNegativeButton("Batal",null).create();
-            String[] names={"Rumput liar","Semak","Semak","Semak bunga","Semak bunga","Semak beri","Semak beri"};
+            String[] names={"Rumput liar","Semak","Semak","Semak melati","Semak melati","Semak murbei","Semak murbei"};
             String[] kinds={"wild-grass","bush","bush","bush","bush","bush","bush"}, variants={null,null,null,"flower","flower","berry","berry"};
-            int[] sizes={1,1,2,1,2,1,2}, images={R.drawable.wild_grass_selected,R.drawable.bush_selected,R.drawable.bush_selected,R.drawable.bush_flower_selected,R.drawable.bush_flower_selected,R.drawable.bush_berry_selected,R.drawable.bush_berry_selected};
+            int[] sizes={1,1,2,1,2,1,2}, images={R.drawable.wild_grass_selected,R.drawable.bush_selected,R.drawable.bush_selected,R.drawable.bush_jasmine,R.drawable.bush_jasmine,R.drawable.bush_mulberry,R.drawable.bush_mulberry};
             for(int i=0;i<names.length;i++) {
                 final String name=names[i],kind=kinds[i],variant=variants[i];final int size=sizes[i];
                 LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);
@@ -941,9 +944,10 @@ public class HomeActivity extends Activity {
             }
         };
     }
+    private final Runnable bushRefresh=new Runnable() {public void run(){refreshHarvestDisplay();mainHandler.postDelayed(this,1000);}};
     private void refreshHarvestDisplay() {
         try {refreshHarvestDisplay(worldStore.activeWorld());}
-        catch(JSONException | ClassCastException e){skyView.setHarvestedTrees(java.util.Collections.emptySet());}
+        catch(JSONException | ClassCastException e){skyView.setHarvestedTrees(java.util.Collections.emptySet());skyView.setReadyBushes(java.util.Collections.emptySet());}
     }
     private void refreshHarvestDisplay(WorldStore.World world) {
         java.util.Set<String> harvested=new java.util.HashSet<>();
@@ -952,9 +956,33 @@ public class HomeActivity extends Activity {
             if(cycle!=null)try {if(inventoryStore().wasHarvested(key,cycle))harvested.add(key);}catch(JSONException | ClassCastException e){harvested.add(key);}
         }
         skyView.setHarvestedTrees(harvested);
+        java.util.Set<String> ready=new java.util.HashSet<>();long now=System.currentTimeMillis();
+        if(world!=null)try {
+            JSONObject history=inventoryStore().harvestHistory();
+            for(WorldStore.SurfaceObject plant:world.surfaces)if(BushPhenology.harvestable(plant)) {
+                if(!BushPhenology.inSeason(plant,now))continue;
+                String key=BushPhenology.key(world.id,plant),cycle=BushPhenology.cycle(plant,now);
+                if(!history.has(key) || history.getString(key).compareTo(cycle)<0)ready.add(key);
+            }
+        } catch(JSONException | ClassCastException ignored) {ready.clear();} // Fail closed if inventory cannot be validated.
+
+        skyView.setReadyBushes(ready);
     }
     private String fruitName(String species) {
         switch(species){case "apple":return "Apel";case "pear":return "Pir";case "orange":return "Jeruk";case "mango":return "Mangga";case "guava":return "Jambu biji";case "starfruit":return "Belimbing";case "banana":return "Pisang";case "palm":return "Kelapa";default:return null;}
+    }
+    private void harvestBush(String worldId,WorldStore.SurfaceObject expected) {
+        try {
+            WorldStore.World world=worldStore.activeWorld();if(world==null || !world.id.equals(worldId) || !world.showCharacter)throw new JSONException("World changed");
+            WorldStore.SurfaceObject plant=null;for(WorldStore.SurfaceObject o:world.surfaces)if(o.raw.equals(expected.raw)){plant=o;break;}
+            if(plant==null || !BushPhenology.harvestable(plant))throw new JSONException("Plant changed");
+            PortalTravel.Tile front=GameplayTarget.front(world.characterColumn,world.characterRow,world.characterFacing);int size=WorldStore.surfaceFootprint(plant);
+            if(front==null || front.column<plant.column || front.column>=plant.column+size || front.row<plant.row || front.row>=plant.row+size)throw new JSONException("Not facing plant");
+            long now=System.currentTimeMillis();if(!BushPhenology.inSeason(plant,now)){Toast.makeText(this,"Tanaman belum siap dipanen.",Toast.LENGTH_SHORT).show();return;}
+            String key=BushPhenology.key(worldId,plant),cycle=BushPhenology.cycle(plant,now);
+            if(!inventoryStore().harvest(key,cycle,BushPhenology.item(plant)))throw new JSONException("Save failed");
+            refreshHarvestDisplay(world);Toast.makeText(this,BushPhenology.item(plant)+" masuk ke tas.",Toast.LENGTH_SHORT).show();
+        } catch(JSONException | ClassCastException e){Toast.makeText(this,"Panen gagal, sudah dipanen, atau data berubah; tas tidak diubah.",Toast.LENGTH_LONG).show();}
     }
     private void interactTree(WorldStore.SurfaceObject tree) {
         try {

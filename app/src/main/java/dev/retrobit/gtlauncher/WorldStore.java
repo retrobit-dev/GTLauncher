@@ -684,8 +684,8 @@ final class WorldStore {
             JSONObject root=new JSONObject(w.previewData.toJson()), data=root.getJSONObject("world");
             JSONArray objects=data.has("orangeTrees")?data.getJSONArray("orangeTrees"):new JSONArray();
             JSONObject plant=new JSONObject().put("column",column).put("row",row).put("kind",kind).put("size",size);
-            if(variant!=null)plant.put("variant",variant);objects.put(plant);
-            int required="bush".equals(kind)?(size==2 || variant!=null?11:10):9;
+            if(variant!=null)plant.put("variant",variant).put("plantId",java.util.UUID.randomUUID().toString()).put("plantedAt",System.currentTimeMillis());objects.put(plant);
+            int required="bush".equals(kind)?(variant!=null?12:size==2?11:10):9;
             data.put("orangeTrees",objects);root.put("version",Math.max(w.previewData.version,required));
             worlds.set(i,fromPreview(PreviewWorld20.parse(root.toString())));
             return saveWorlds(worlds,worldId);

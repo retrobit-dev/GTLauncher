@@ -98,7 +98,8 @@
     }
     if(button.dataset.dock==='bag' && window.OrangeDrops) {
       const oranges=window.OrangeDrops.count();title.textContent='Tas';
-      message.textContent=oranges===null?'Data tas jeruk tidak dapat dibaca; data tidak diubah.':`Jeruk: ${oranges}. Tas preview saat ini hanya menyimpan jeruk; inventaris lengkap belum tersedia.`;
+      const plants=window.BushHarvest?.counts();
+      message.textContent=oranges===null || !plants?'Data tas jeruk tidak dapat dibaca; data tidak diubah.':`Jeruk: ${oranges} · Melati: ${plants.flower} · Murbei: ${plants.berry}. Inventaris preview lengkap belum tersedia.`;
       if(!dialog.open)dialog.showModal();return;
     }
     const entry=info[button.dataset.dock] || [button.getAttribute('title').split(' — ')[0], 'Fungsi alat ini belum dipulihkan di preview.'];title.textContent=entry[0];message.textContent=entry[1];if(!dialog.open)dialog.showModal();

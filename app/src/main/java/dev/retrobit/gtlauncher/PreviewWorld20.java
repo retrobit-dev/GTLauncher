@@ -64,7 +64,7 @@ final class PreviewWorld20 {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 3 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11) throw new JSONException("Unsupported world version");
+        if (version > 3 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         if(version>=7 && !w.has("orangeTrees")) throw new JSONException("Unsupported world version");
         // Flat conifer-only worlds are supported. Stacks and other tree kinds remain rejected.
@@ -100,10 +100,11 @@ final class PreviewWorld20 {
             JSONArray trees=(JSONArray)treeValue;
             if(trees.length()>size*size) throw new JSONException("Unsupported object");
             boolean[] occupied=new boolean[size*size];
+            java.util.Set<String> plantIds=new java.util.HashSet<>();
             boolean show=bool(w,"showCharacter");
             for(int i=0;i<trees.length();i++) {
                 Object value=trees.get(i);if(!(value instanceof JSONObject)) throw new JSONException("Unsupported object");
-                JSONObject tree=(JSONObject)value;keys(tree,"column","row","kind","size","facing","variant");
+                JSONObject tree=(JSONObject)value;keys(tree,"column","row","kind","size","facing","variant","plantId","plantedAt");
                 String kind=string(tree,"kind");
                 if(!"conifer".equals(kind) && !(version>=9 && "wild-grass".equals(kind)) && !(version>=10 && "bush".equals(kind))) throw new JSONException("Unsupported object");
                 int footprint=2;
@@ -111,6 +112,12 @@ final class PreviewWorld20 {
                 if(("wild-grass".equals(kind) || "bush".equals(kind)) && !tree.has("size")) throw new JSONException("Unsupported object");
                 if("wild-grass".equals(kind) && footprint!=1)throw new JSONException("Unsupported object");
                 if(tree.has("variant") && (version<11 || !"bush".equals(kind) || !Arrays.asList("flower","berry").contains(string(tree,"variant"))))throw new JSONException("Unsupported object");
+                if(tree.has("plantId") || tree.has("plantedAt")) {
+                    if(version<12 || !"bush".equals(kind) || !tree.has("variant") || !tree.has("plantId") || !tree.has("plantedAt"))throw new JSONException("Unsupported object");
+                    String plantId=string(tree,"plantId");if(!plantId.matches("[A-Za-z0-9_-]{1,80}") || !plantIds.add(plantId))throw new JSONException("Invalid plant identity");
+                    Object valueTime=tree.get("plantedAt");if(!(valueTime instanceof Number))throw new JSONException("Invalid plant time");
+                    double time=((Number)valueTime).doubleValue();if(!Double.isFinite(time) || time<0 || time>253402300799000d || time!=Math.floor(time))throw new JSONException("Invalid plant time");
+                }
                 if(tree.has("facing"))facing(tree,"facing");
                 int tc=integer(tree,"column",0,size-footprint),tr=integer(tree,"row",0,size-footprint);
                 for(int y=tr;y<tr+footprint;y++)for(int x=tc;x<tc+footprint;x++) {

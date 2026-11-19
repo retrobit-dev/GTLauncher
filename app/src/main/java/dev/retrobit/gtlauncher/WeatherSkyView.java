@@ -275,7 +275,14 @@ public final class WeatherSkyView extends View {
     private Bitmap treeDormant,treeBananaFruitless,treeCoconutFruitless;
     private TreePhenology.Result treePhenology;
     private java.util.Set<String> harvestedTrees=java.util.Collections.emptySet();
-    private Bitmap bushSelected,bushFlowerSelected,bushBerrySelected,coniferTree,bushSpiky,bushTiered,bushRound,bushFlower,bushBerry,wildGrass,treeApple,treeOrange,treePear,treeGuava,treeStarfruit,treeMango,treeBanana,treeCoconut,sunflowerFront,sunflowerBack,sellingBoxClosed,sellingBoxOpen,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
+    private java.util.Set<String> readyBushes=java.util.Collections.emptySet();
+    void setReadyBushes(java.util.Set<String> bushes) {readyBushes=new java.util.HashSet<>(bushes);invalidate();}
+    private Bitmap previewBushImage(WorldStore.SurfaceObject o) {
+        try {if(BushPhenology.harvestable(o) && readyBushes.contains(BushPhenology.key(surfaceWorldId,o)))return BushPhenology.item(o).equals("Melati")?bushJasmine:bushMulberry;}
+        catch(org.json.JSONException ignored) {}
+        return bushSelected;
+    }
+    private Bitmap bushSelected,bushFlowerSelected,bushBerrySelected,bushJasmine,bushMulberry,coniferTree,bushSpiky,bushTiered,bushRound,bushFlower,bushBerry,wildGrass,treeApple,treeOrange,treePear,treeGuava,treeStarfruit,treeMango,treeBanana,treeCoconut,sunflowerFront,sunflowerBack,sellingBoxClosed,sellingBoxOpen,mailboxBirdhouse,storageClosed,storageOpen,storageBackClosed,storageBackOpen;
     private final java.util.Set<String> openStorage = new java.util.HashSet<>();
     private final java.util.Map<String,Long> sellingOpenedAt = new java.util.HashMap<>();
     private String surfaceWorldId="";
@@ -383,7 +390,7 @@ public final class WeatherSkyView extends View {
         for(int i=0;i<12;i++) {walkFront[i]=BitmapFactory.decodeResource(getResources(),frontFrames[i]);walkBack[i]=BitmapFactory.decodeResource(getResources(),backFrames[i]);}
         int[] runFrontFrames={R.drawable.character_run_front_00, R.drawable.character_run_front_01, R.drawable.character_run_front_02, R.drawable.character_run_front_03, R.drawable.character_run_front_04, R.drawable.character_run_front_05, R.drawable.character_run_front_06, R.drawable.character_run_front_07, R.drawable.character_run_front_08, R.drawable.character_run_front_09, R.drawable.character_run_front_10, R.drawable.character_run_front_11},runBackFrames={R.drawable.character_run_back_00, R.drawable.character_run_back_01, R.drawable.character_run_back_02, R.drawable.character_run_back_03, R.drawable.character_run_back_04, R.drawable.character_run_back_05, R.drawable.character_run_back_06, R.drawable.character_run_back_07, R.drawable.character_run_back_08, R.drawable.character_run_back_09, R.drawable.character_run_back_10, R.drawable.character_run_back_11};
         for(int i=0;i<12;i++) {runFront[i]=BitmapFactory.decodeResource(getResources(),runFrontFrames[i]);runBack[i]=BitmapFactory.decodeResource(getResources(),runBackFrames[i]);}
-        coniferTree = BitmapFactory.decodeResource(getResources(),R.drawable.conifer_tree);
+        coniferTree = BitmapFactory.decodeResource(getResources(),R.drawable.cemara_laut);
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.simple_house_aligned);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.simple_house_back_aligned);
         houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_back);
@@ -404,7 +411,7 @@ public final class WeatherSkyView extends View {
         bushRound=BitmapFactory.decodeResource(getResources(),R.drawable.bush_round);bushFlower=BitmapFactory.decodeResource(getResources(),R.drawable.bush_flower);bushBerry=BitmapFactory.decodeResource(getResources(),R.drawable.bush_berry);
         treeDormant=BitmapFactory.decodeResource(getResources(),R.drawable.tree_dormant);treeBananaFruitless=BitmapFactory.decodeResource(getResources(),R.drawable.tree_banana_fruitless);treeCoconutFruitless=BitmapFactory.decodeResource(getResources(),R.drawable.tree_coconut_fruitless);
         treeApple=BitmapFactory.decodeResource(getResources(),R.drawable.tree_apple);treeOrange=BitmapFactory.decodeResource(getResources(),R.drawable.orange_tree_pixel);treePear=BitmapFactory.decodeResource(getResources(),R.drawable.tree_pear);treeGuava=BitmapFactory.decodeResource(getResources(),R.drawable.tree_guava);treeStarfruit=BitmapFactory.decodeResource(getResources(),R.drawable.tree_starfruit);
-        bushSelected=BitmapFactory.decodeResource(getResources(),R.drawable.bush_selected);bushFlowerSelected=BitmapFactory.decodeResource(getResources(),R.drawable.bush_flower_selected);bushBerrySelected=BitmapFactory.decodeResource(getResources(),R.drawable.bush_berry_selected);wildGrass=BitmapFactory.decodeResource(getResources(),R.drawable.wild_grass_selected);bushSpiky=BitmapFactory.decodeResource(getResources(),R.drawable.bush_spiky);bushTiered=BitmapFactory.decodeResource(getResources(),R.drawable.bush_tiered);
+        bushSelected=BitmapFactory.decodeResource(getResources(),R.drawable.bush_selected);bushJasmine=BitmapFactory.decodeResource(getResources(),R.drawable.bush_jasmine);bushMulberry=BitmapFactory.decodeResource(getResources(),R.drawable.bush_mulberry);bushFlowerSelected=BitmapFactory.decodeResource(getResources(),R.drawable.bush_flower_selected);bushBerrySelected=BitmapFactory.decodeResource(getResources(),R.drawable.bush_berry_selected);wildGrass=BitmapFactory.decodeResource(getResources(),R.drawable.wild_grass_selected);bushSpiky=BitmapFactory.decodeResource(getResources(),R.drawable.bush_spiky);bushTiered=BitmapFactory.decodeResource(getResources(),R.drawable.bush_tiered);
         treeBanana=BitmapFactory.decodeResource(getResources(),R.drawable.tree_banana_simple);treeCoconut=BitmapFactory.decodeResource(getResources(),R.drawable.tree_coconut_small);sunflowerFront=BitmapFactory.decodeResource(getResources(),R.drawable.sunflower_front);sunflowerBack=BitmapFactory.decodeResource(getResources(),R.drawable.sunflower_back);treeMango=BitmapFactory.decodeResource(getResources(),R.drawable.tree_mango);mailboxBirdhouse=BitmapFactory.decodeResource(getResources(),R.drawable.mailbox_birdhouse);
         sellingBoxClosed=BitmapFactory.decodeResource(getResources(),R.drawable.selling_box_closed);sellingBoxOpen=BitmapFactory.decodeResource(getResources(),R.drawable.selling_box_open);storageClosed=BitmapFactory.decodeResource(getResources(),R.drawable.storage_closed);storageOpen=BitmapFactory.decodeResource(getResources(),R.drawable.storage_open);
         storageBackClosed=BitmapFactory.decodeResource(getResources(),R.drawable.storage_back_closed);storageBackOpen=BitmapFactory.decodeResource(getResources(),R.drawable.storage_back_open);
@@ -530,7 +537,7 @@ public final class WeatherSkyView extends View {
             Bitmap image; boolean mirror=false;
             if(o.type.equals("tree")) {image=treeImage(o);mirror=o.material.startsWith("conifer") && ("W".equals(o.edge)||"E".equals(o.edge));}
             else if(o.type.equals("sunflower")) { image=(o.material.equals("N")||o.material.equals("W"))?sunflowerBack:sunflowerFront;mirror=o.material.equals("N")||o.material.equals("E"); }
-            else if(o.type.equals("bush")) {image=o.material.startsWith("preview-bush-flower")?bushFlowerSelected:o.material.startsWith("preview-bush-berry")?bushBerrySelected:o.material.startsWith("preview-bush")?bushSelected:o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:o.material.equals("tiered")?bushTiered:o.material.equals("flower")?bushFlower:o.material.equals("berry")?bushBerry:bushRound;mirror=(o.material.equals("wild-grass") || o.material.startsWith("preview-bush")) && ("W".equals(o.edge)||"E".equals(o.edge));}
+            else if(o.type.equals("bush")) {image=(WorldStore.isPreviewBush(o) || BushPhenology.harvestable(o))?previewBushImage(o):o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:o.material.equals("tiered")?bushTiered:o.material.equals("flower")?bushFlower:o.material.equals("berry")?bushBerry:bushRound;mirror=(o.material.equals("wild-grass") || o.material.startsWith("preview-bush")) && ("W".equals(o.edge)||"E".equals(o.edge));}
             else if(o.type.equals("mailbox")) image=mailboxBirdhouse;
             else {boolean back=o.material.equals("N")||o.material.equals("W"),opened=openStorage.contains(o.column+","+o.row);
                 mirror=o.material.equals("N")||o.material.equals("E");
@@ -770,7 +777,7 @@ public final class WeatherSkyView extends View {
     private Bitmap surfaceImage(WorldStore.SurfaceObject o) {
         if(o.type.equals("tree"))return treeImage(o);
         if(o.type.equals("sunflower"))return o.material.equals("N")||o.material.equals("W")?sunflowerBack:sunflowerFront;
-        if(o.type.equals("bush"))return o.material.startsWith("preview-bush-flower")?bushFlowerSelected:o.material.startsWith("preview-bush-berry")?bushBerrySelected:o.material.startsWith("preview-bush")?bushSelected:o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:o.material.equals("tiered")?bushTiered:o.material.equals("flower")?bushFlower:o.material.equals("berry")?bushBerry:bushRound;
+        if(o.type.equals("bush"))return (WorldStore.isPreviewBush(o) || BushPhenology.harvestable(o))?previewBushImage(o):o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:o.material.equals("tiered")?bushTiered:o.material.equals("flower")?bushFlower:o.material.equals("berry")?bushBerry:bushRound;
         if(o.type.equals("mailbox"))return mailboxBirdhouse;
         if(o.type.equals("storage-box") || o.type.equals("selling-box")) {
             boolean back=o.material.equals("N")||o.material.equals("W"),opened=openStorage.contains(o.column+","+o.row);

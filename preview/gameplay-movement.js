@@ -165,6 +165,14 @@
       window.OrangeDrops.collect(world.id,fruit,stamp).then(result=>tell(result.message));
       return;
     }
+    if(selected==='hand' && !walk && window.BushHarvest) {
+      const world=worlds.getActive(),index=scene.orangeTreeAt?.(local),hit=index==null?null:world.orangeTrees?.[index];
+      const bush=(world.orangeTrees||[]).find(t=>t.kind==='bush' && t.variant && front.column>=t.column && front.column<t.column+t.size && front.row>=t.row && front.row<t.row+t.size);
+      const tappedCharacter=scene.hit?.(local,character);
+      if(bush && ((hit && hit===bush) || tappedCharacter)) {
+        window.BushHarvest.collect(world.id,bush).then(result=>tell(result.message));return;
+      }
+    }
     // A second tap on any tile while moving requests a run, even with a tool selected.
     if(walk && tile){move(tile);return;}
     const frontHouse=house?.visible && front.column>=house.column && front.column<house.column+3 && front.row>=house.row && front.row<house.row+3;

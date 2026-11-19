@@ -43,8 +43,15 @@ final class InventoryStore {
     JSONArray box(String key) throws JSONException {validateBoxKey(key);JSONObject boxes=readState().getJSONObject("boxes");return boxes.has(key)?boxes.getJSONArray(key):new JSONArray();}
     static String treeKey(String worldId,int column,int row,String species){return boxKey(worldId,column,row)+":"+species;}
     private static boolean validCycle(String cycle) {
-        if(cycle==null || !cycle.matches("\\d{4}-\\d{2}-\\d{2}"))return false;
-        try{return java.time.LocalDate.parse(cycle).toString().equals(cycle);}catch(java.time.DateTimeException e){return false;}
+        if(cycle==null)return false;
+        try {
+            if(cycle.matches("\\d{4}-\\d{2}-\\d{2}"))return java.time.LocalDate.parse(cycle).toString().equals(cycle);
+            if(cycle.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z"))return java.time.Instant.parse(cycle).toString().equals(cycle);
+            return false;
+        } catch(java.time.DateTimeException e){return false;}
+    }
+    JSONObject harvestHistory() throws JSONException {
+        JSONObject state=readState();return state.getInt("version")==3?state.getJSONObject("harvests"):new JSONObject();
     }
     boolean wasHarvested(String key,String cycle) throws JSONException {
         validateBoxKey(key);if(!validCycle(cycle))throw new JSONException("Invalid cycle");JSONObject state=readState();

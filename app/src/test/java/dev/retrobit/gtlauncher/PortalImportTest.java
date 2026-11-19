@@ -390,7 +390,7 @@ public class PortalImportTest {
         SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
         assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1))));
         assertTrue(store.placePreviewPlant("home",7,7,"bush",2,"flower"));
-        WorldStore.World w=store.activeWorld();assertEquals(11,w.previewData.version);WorldStore.SurfaceObject bush=w.surfaces.get(0);
+        WorldStore.World w=store.activeWorld();assertEquals(12,w.previewData.version);WorldStore.SurfaceObject bush=w.surfaces.get(0);
         assertEquals(2,WorldStore.surfaceFootprint(bush));assertEquals("preview-bush-flower-large",bush.material);
         assertFalse(store.moveCharacter("home",8,8,"S"));assertFalse(store.placeWildGrass("home",8,8));
         assertFalse(store.placePreviewPlant("home",19,19,"bush",2,"berry"));
@@ -401,8 +401,46 @@ public class PortalImportTest {
         w=store.activeWorld();assertEquals(2,w.surfaces.size());assertEquals(13,w.surfaces.get(0).column);
         org.json.JSONObject old=new org.json.JSONObject(w.previewData.toJson());old.put("version",10);
         try{WorldStore.parseExport(old.toString());fail("v10 cannot hold new variants");}catch(JSONException expected){}
+        org.json.JSONObject legacy=new org.json.JSONObject(w.previewData.toJson());legacy.put("version",11);
+        org.json.JSONArray plants=legacy.getJSONObject("world").getJSONArray("orangeTrees");
+        for(int i=0;i<plants.length();i++){plants.getJSONObject(i).remove("plantId");plants.getJSONObject(i).remove("plantedAt");}
+        String before=p.getString("worlds_v1",null);
+        try{store.upsertAndSelect(WorldStore.parseExport(legacy.toString()));fail("v11 cannot replace identified plants");}catch(JSONException expected){}
+        assertEquals(before,p.getString("worlds_v1",null));
+        org.json.JSONObject duplicate=new org.json.JSONObject(w.previewData.toJson());org.json.JSONArray duplicatePlants=duplicate.getJSONObject("world").getJSONArray("orangeTrees");
+        duplicatePlants.getJSONObject(1).put("plantId",duplicatePlants.getJSONObject(0).getString("plantId"));
+        try{WorldStore.parseExport(duplicate.toString());fail("duplicate identity");}catch(JSONException expected){}
+
         assertTrue(store.deleteSelectedPlant("home",w.surfaces.get(0)));assertEquals(1,store.activeWorld().surfaces.size());
         assertEquals("preview-bush-berry",store.activeWorld().surfaces.get(0).material);
+    }
+    @Test public void bushHarvestCyclePreservesExistingInventory() throws JSONException {
+        WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1))));
+        assertTrue(store.placePreviewPlant("home",6,5,"bush",1,"flower"));
+        WorldStore.SurfaceObject plant=store.activeWorld().surfaces.get(0);long born=BushPhenology.born(plant);
+        assertFalse(BushPhenology.inSeason(plant,born));assertFalse(BushPhenology.inSeason(plant,born+179999));
+        assertTrue(BushPhenology.inSeason(plant,born+180000));String key=BushPhenology.key("home",plant),cycle=BushPhenology.cycle(plant,born+180000);
+        SharedPreferences p=prefs();InventoryStore bag=new InventoryStore(p);assertTrue(bag.changeBag("Batu",4));
+        assertTrue(bag.harvest(key,cycle,BushPhenology.item(plant)));assertTrue(bag.wasHarvested(key,cycle));
+        assertEquals(2,bag.bag().length());String saved=p.getString("items_v1",null);
+        try{bag.harvest(key,cycle,"Melati");fail("duplicate harvest");}catch(JSONException expected){}
+        assertEquals(saved,p.getString("items_v1",null));
+        assertTrue(bag.harvest(key,BushPhenology.cycle(plant,born+480000),"Melati"));
+        assertEquals(4,bag.bag().getJSONObject(0).getInt("quantity"));
+        String id=new org.json.JSONObject(plant.raw).getString("plantId");
+        assertTrue(store.moveSelectedObject("home",null,plant,7,5));
+        assertEquals(id,new org.json.JSONObject(store.activeWorld().surfaces.get(0).raw).getString("plantId"));
+        assertEquals(key,BushPhenology.key("home",store.activeWorld().surfaces.get(0)));
+    }
+    @Test public void legacyFlowerAndBerryRemainAvailableWithoutChangingWorld() throws JSONException {
+        String flower="{\"type\":\"bush\",\"column\":1,\"row\":2,\"variant\":\"flower\"}";
+        String berry="{\"type\":\"bush\",\"column\":3,\"row\":4,\"variant\":\"berry\"}";
+        WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(world(flower+","+berry))));
+        WorldStore.SurfaceObject a=store.activeWorld().surfaces.get(0),b=store.activeWorld().surfaces.get(1);
+        assertTrue(BushPhenology.harvestable(a));assertTrue(BushPhenology.harvestable(b));
+        assertEquals("Melati",BushPhenology.item(a));assertEquals("Murbei",BushPhenology.item(b));
+        assertEquals("home:bush:legacy-flower",BushPhenology.key("home",a));
+        assertEquals("home:bush:legacy-berry",BushPhenology.key("home",b));
     }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();

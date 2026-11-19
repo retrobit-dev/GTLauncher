@@ -7,7 +7,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
  await page.locator('#object-library-button').click();assert.equal(await page.locator('#catalog-trees-title').innerText(),'Tanaman dan pohon');await page.locator('#catalog-place-bush-flower-large').click();
  await clickTile({column:24,row:24});assert.equal(await page.evaluate(()=>worldManager.getActive().orangeTrees),undefined);
  await clickTile({column:27,row:24});assert.equal(await page.evaluate(()=>worldManager.getActive().orangeTrees),undefined);
- await clickTile({column:26,row:27});const expected=[{column:26,row:27,kind:'bush',size:2,variant:'flower'}];assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees),expected);
+ await clickTile({column:26,row:27});const expected=await page.evaluate(()=>worldManager.getActive().orangeTrees);assert.equal(expected[0].variant,'flower');assert.equal(expected[0].size,2);assert(expected[0].plantId && Number.isSafeInteger(expected[0].plantedAt));
  assert.equal(await page.evaluate(()=>{const t=worldManager.getActive().orangeTrees[0];return sceneEditing.orangeTreeAnchor(t).y-sceneEditing.centre({column:t.column+.5,row:t.row+.5}).y}),0.75,'grass base is planted on the tile');
  assert.equal(await page.evaluate(()=>OrangeDrops.available(worldManager.getActive(),worldManager.getActive().orangeTrees[0],Date.now())),false,'no fruit');
  assert.equal(await page.evaluate(()=>GameplayPath.find(worldManager.getActive(),worldManager.getCharacter(),{column:26,row:27},null)),null);
@@ -28,12 +28,12 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
  await page.locator('#object-undo').click();assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees),expected);
  await page.locator('#object-undo').click();assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees||[]),[]);await page.locator('#object-redo').click();assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees),expected);
  await page.reload({waitUntil:'domcontentloaded'});assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees),expected);
- await page.locator('#world-button').click();await page.locator('button[data-action="export"][data-id="grass"]').click();const payload=JSON.parse(await page.locator('#world-export-json').inputValue());assert.equal(payload.version,11);assert.deepEqual(payload.world.orangeTrees,expected);
- const invalid={...payload,version:10};await page.locator('#world-import-file').setInputFiles({name:'old.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(invalid))});await page.waitForFunction(()=>document.querySelector('#world-message').textContent.includes('tidak valid'));
- const legacy={...payload,version:10,world:{...payload.world,orangeTrees:[{column:26,row:27,kind:'bush',size:1}]}};
+ await page.locator('#world-button').click();await page.locator('button[data-action="export"][data-id="grass"]').click();const payload=JSON.parse(await page.locator('#world-export-json').inputValue());assert.equal(payload.version,12);assert.deepEqual(payload.world.orangeTrees,expected);
+ const invalid={...payload,version:11};await page.locator('#world-import-file').setInputFiles({name:'old.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(invalid))});await page.waitForFunction(()=>document.querySelector('#world-message').textContent.includes('tidak valid'));
+ const legacy={...payload,version:11,world:{...payload.world,orangeTrees:[{column:26,row:27,kind:'bush',size:1}]}};
  await page.locator('#world-import-file').setInputFiles({name:'legacy.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(legacy))});
- await page.locator('#world-import-replace').click();await page.waitForFunction(()=>document.querySelector('#world-message').textContent.includes('variasi semak'));
+ await page.locator('#world-import-replace').click();await page.waitForFunction(()=>document.querySelector('#world-message').textContent.includes('identitas tanaman'));
  assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees),expected,'old version cannot overwrite new variants');
  payload.world.id='grass-copy';payload.world.name='Garden copy';await page.locator('#world-import-file').setInputFiles({name:'grass.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(payload))});await page.waitForFunction(()=>worldManager.getActive().id==='grass-copy');assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees),expected);
- assert.deepEqual(errors,[]);console.log('Bush catalog, placement, routing, history and v11 large flower export/import: OK');
+ assert.deepEqual(errors,[]);console.log('Bush catalog, placement, routing, history and v12 large flower export/import: OK');
  }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});
