@@ -27,5 +27,20 @@ final class RampGeometry {
         Vertex[] highFace={new Vertex(a[2],a[3],0,width,depth,height),new Vertex(b[2],b[3],0,width,depth,height),new Vertex(b[2],b[3],1,width,depth,height),new Vertex(a[2],a[3],1,width,depth,height)};
         return new Shape(top,sides,highFace);
     }
+    // Null direction means flat; a ramp rises from height to height + 1.
+    // Its triangular sides do not connect to paths.
+    static boolean canConnect(int heightA,String directionA,int heightB,String directionB,String edge) {
+        if(heightA<1 || heightB<1 || !isDirection(edge) || directionA!=null && !isDirection(directionA) || directionB!=null && !isDirection(directionB))return false;
+        if(directionA==null && directionB==null)return Math.abs((long)heightA-heightB)<=1;
+        long a=endpoint(heightA,directionA,edge),b=endpoint(heightB,directionB,opposite(edge));
+        return a>=0 && a==b;
+    }
+    private static boolean isDirection(String d) {return "N".equals(d)||"E".equals(d)||"S".equals(d)||"W".equals(d);}
+    private static String opposite(String d) {switch(d){case "N":return "S";case "E":return "W";case "S":return "N";default:return "E";}}
+    private static long endpoint(int height,String direction,String edge) {
+        if(direction==null)return height;
+        if(direction.equals(edge))return (long)height+1;
+        return opposite(direction).equals(edge)?height:-1;
+    }
     private RampGeometry(){}
 }

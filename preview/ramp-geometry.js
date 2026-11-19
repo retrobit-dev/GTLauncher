@@ -22,5 +22,22 @@
     const highFace=[vertex(a[2],a[3],0),vertex(b[2],b[3],0),vertex(b[2],b[3],1),vertex(a[2],a[3],1)];
     return {topFace,sideFaces,highFace};
   }
-  return Object.freeze({DIRECTIONS,fraction,create});
+  // A ramp occupies one tile above its supporting stack. Its high edge is one
+  // level above its low edge. Side edges are deliberately not traversable.
+  // Ordinary flat-to-flat steps keep their existing one-level jump rule.
+  function canConnect(a,b,edge){
+    if(!DIRECTIONS.includes(edge) || !a || !b || !Number.isInteger(a.height) || !Number.isInteger(b.height) || a.height<1 || b.height<1 ||
+       (a.direction != null && !DIRECTIONS.includes(a.direction)) || (b.direction != null && !DIRECTIONS.includes(b.direction)))return false;
+    const opposite={N:'S',E:'W',S:'N',W:'E'};
+    function endpoint(surface,side){
+      if(surface.direction==null)return surface.height;
+      if(side===surface.direction)return surface.height+1;
+      if(side===opposite[surface.direction])return surface.height;
+      return null;
+    }
+    if(a.direction==null && b.direction==null)return Math.abs(a.height-b.height)<=1;
+    const x=endpoint(a,edge),y=endpoint(b,opposite[edge]);
+    return x!==null && y!==null && x===y;
+  }
+  return Object.freeze({DIRECTIONS,fraction,create,canConnect});
 });

@@ -3,6 +3,17 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class RampGeometryTest {
+    @Test public void connectionOnlyAtMatchingStraightEndpoints() {
+        String[] directions={"N","E","S","W"};
+        for(int i=0;i<4;i++) {
+            String d=directions[i],opposite=directions[(i+2)%4],side=directions[(i+1)%4];
+            assertTrue(RampGeometry.canConnect(2,d,3,null,d));assertTrue(RampGeometry.canConnect(3,null,2,d,opposite));
+            assertTrue(RampGeometry.canConnect(2,d,2,null,opposite));assertTrue(RampGeometry.canConnect(2,null,2,d,d));
+            assertFalse(RampGeometry.canConnect(2,d,4,null,d));assertFalse(RampGeometry.canConnect(2,d,1,null,opposite));assertFalse(RampGeometry.canConnect(2,d,2,null,side));
+            assertTrue(RampGeometry.canConnect(2,d,3,d,d));assertFalse(RampGeometry.canConnect(2,d,2,d,d));
+        }
+        assertTrue(RampGeometry.canConnect(2,null,3,null,"E"));assertFalse(RampGeometry.canConnect(2,null,4,null,"E"));assertFalse(RampGeometry.canConnect(0,null,1,null,"E"));assertFalse(RampGeometry.canConnect(2,"bad",2,null,"E"));
+    }
     @Test public void fourDirectionsHaveContinuousInclineAndTriangularSides() {
         for(String direction:new String[]{"N","E","S","W"})for(double width:new double[]{20,28})for(double depth:new double[]{8,14})for(double height:new double[]{4,9}) {
             RampGeometry.Shape shape=RampGeometry.create(direction,width,depth,height);assertEquals(4,shape.top.length);assertEquals(2,shape.sides.length);

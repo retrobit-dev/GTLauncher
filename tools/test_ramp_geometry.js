@@ -8,4 +8,14 @@ for(const direction of g.DIRECTIONS)for(const width of [20,28])for(const depth o
  for(let i=0;i<=10;i++) {const t=i/10; const uv=direction==='E'?[t,.5]:direction==='W'?[1-t,.5]:direction==='S'?[.5,t]:[.5,1-t];near(g.fraction(direction,...uv),t);}
 }
 assert.equal(g.create('X',28,14,4),null);assert.equal(g.create('E',28,14,0),null);assert.equal(g.fraction('E',1.1,0),null);
+const opposite={N:'S',E:'W',S:'N',W:'E'};
+for(const dir of g.DIRECTIONS){
+ const ramp={height:2,direction:dir}, low={height:2},high={height:3};
+ assert(g.canConnect(ramp,high,dir));assert(g.canConnect(high,ramp,opposite[dir]));
+ assert(g.canConnect(ramp,low,opposite[dir]));assert(g.canConnect(low,ramp,dir));
+ assert(!g.canConnect(ramp,{height:4},dir));assert(!g.canConnect(ramp,{height:1},opposite[dir]));
+ for(const side of g.DIRECTIONS.filter(x=>x!==dir&&x!==opposite[dir]))assert(!g.canConnect(ramp,low,side));
+ assert(g.canConnect(ramp,{height:3,direction:dir},dir));assert(!g.canConnect(ramp,{height:2,direction:dir},dir));
+}
+assert(g.canConnect({height:2},{height:3},'E'));assert(!g.canConnect({height:2},{height:4},'E'));assert(!g.canConnect({height:0},{height:1},'E'));assert(!g.canConnect({height:2,direction:'bad'},{height:2},'E'));
 console.log('Ramp wedge geometry: four directions, planar incline, exact triangular sides and endpoints OK');
