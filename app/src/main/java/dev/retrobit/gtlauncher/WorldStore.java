@@ -628,6 +628,30 @@ final class WorldStore {
         }
         return prefs.edit().putString(WORLDS_KEY,all.toString()).commit();
     }
+    /** Atomic group edit for supported flat preview objects. No partial writes on invalid destinations. */
+    boolean editPreviewObjectGroup(String worldId,List<SurfaceObject> selected,int dc,int dr,boolean delete) throws JSONException {
+        if(worldId==null || !worldId.equals(activeId()) || selected==null || selected.isEmpty())return false;
+        World world=activeWorld();if(world==null || world.previewData==null)return false;
+        java.util.Set<String> wantedTrees=new java.util.HashSet<>(),wantedFences=new java.util.HashSet<>();
+        for(SurfaceObject o:selected){if(o==null)return false;boolean found=false;for(SurfaceObject actual:world.surfaces)if(actual.raw.equals(o.raw) && actual.type.equals(o.type)){found=true;break;}if(!found)return false;
+            if(o.type.equals("fence") && o.material.startsWith("preview-")){if(!wantedFences.add(o.raw))return false;}
+            else if(isPreviewGrass(o) || isPreviewBush(o) || (o.type.equals("tree") && o.material.startsWith("conifer"))){if(!wantedTrees.add(o.raw))return false;}
+            else return false;
+        }
+        JSONObject root=new JSONObject(world.previewData.toJson()),data=root.getJSONObject("world");
+        String[] keys={"orangeTrees","fences"};java.util.List<java.util.Set<String>> sets=java.util.Arrays.asList(wantedTrees,wantedFences);
+        for(int n=0;n<keys.length;n++){
+            JSONArray source=data.optJSONArray(keys[n]);if(source==null)source=new JSONArray();JSONArray updated=new JSONArray();int found=0;
+            for(int i=0;i<source.length();i++){JSONObject item=source.getJSONObject(i);if(sets.get(n).contains(item.toString())){found++;if(delete)continue;item.put("column",item.getInt("column")+dc);item.put("row",item.getInt("row")+dr);
+                    if(n==0 && world.showCharacter){int size=item.optInt("size",2),c=item.getInt("column"),r=item.getInt("row");if(world.characterColumn>=c && world.characterColumn<c+size && world.characterRow>=r && world.characterRow<r+size)return false;}}
+                updated.put(item);
+            }
+            if(found!=sets.get(n).size())return false;if(updated.length()==0)data.remove(keys[n]);else data.put(keys[n],updated);
+        }
+        try{PreviewWorld20.parse(root.toString());}catch(JSONException invalid){return false;}
+        JSONArray all=new JSONArray(prefs.getString(WORLDS_KEY,"[]"));JSONObject stored=null;for(int i=0;i<all.length();i++)if(worldId.equals(all.getJSONObject(i).optString("id"))){stored=all.getJSONObject(i);break;}if(stored==null)return false;
+        stored.put("previewExport",root.toString());return prefs.edit().putString(WORLDS_KEY,all.toString()).commit();
+    }
     /** Delete only stateless plants; storage, harvest and portal records must never be discarded here. */
     boolean deleteSelectedPlant(String worldId,SurfaceObject expected) throws JSONException {
         if(!worldId.equals(activeId()) || expected==null)return false;

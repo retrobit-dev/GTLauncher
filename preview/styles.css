@@ -463,3 +463,6 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 
 .editor-top-tools #object-placement-cancel[hidden] { display:none; }
 .editor-top-tools #object-placement-cancel { font:700 20px system-ui; padding:0; }
+
+.object-selection-area { position:absolute; z-index:20; pointer-events:none; border:1px dashed #fff; background:rgba(255,255,255,.14); box-shadow:0 0 0 1px rgba(0,0,0,.45); }
+.object-selection-area[hidden] { display:none; }

@@ -1934,7 +1934,7 @@
     const bounds=left<right?{left:left/128,top:top/128,right:right/128,bottom:bottom/128}:null;
     treeAlphaBoundsCache.set(sprite,bounds);return bounds;
   }
-  let editingTreeSelection=null;
+  let editingTreeSelection=null, editingTreeGroup=[], editingFenceGroup=[];
   let orangeTreeMotionState={time:0,speed:0,direction:90,heading:0};
   function orangeTreeSway(tree) {
     const m=orangeTreeMotionState;
@@ -1963,7 +1963,7 @@
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
     ctx.drawImage(sprite,-width/2,-height,width,height);ctx.restore();
-    if(editingTreeSelection && tree.column===editingTreeSelection.column && tree.row===editingTreeSelection.row) {
+    if((editingTreeSelection && tree.column===editingTreeSelection.column && tree.row===editingTreeSelection.row) || editingTreeGroup.some(t=>tree.column===t.column && tree.row===t.row)) {
       const b=treeAlphaBounds(sprite);
       if(b) {
         ctx.save();applyIslandTransform();ctx.translate(centre.x,bottom);ctx.transform(1,0,-sway/height,1,0,0);
@@ -2016,7 +2016,7 @@
     ctx.save();clipIslandSurface();ctx.strokeStyle='rgba(12,23,40,.16)';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(g.a.x,g.a.y);ctx.lineTo(g.b.x,g.b.y);ctx.stroke();ctx.restore();
     const player=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
     if(player?.visible && f.column===Math.round(player.column) && f.row===Math.round(player.row) && (f.edge==='S'||f.edge==='E'))ctx.globalAlpha=.5;
-    const selected=editingFenceSelection && editingFenceSelection.column===f.column && editingFenceSelection.row===f.row && editingFenceSelection.edge===f.edge;
+    const selected=(editingFenceSelection && editingFenceSelection.column===f.column && editingFenceSelection.row===f.row && editingFenceSelection.edge===f.edge) || editingFenceGroup.some(t=>t.column===f.column && t.row===f.row && t.edge===f.edge);
     ctx.lineWidth=.30;ctx.lineJoin='round';
     for(const face of window.FenceMesh.faces(g.a,g.b,f.material,join)) {
       ctx.beginPath();ctx.moveTo(face.points[0].x,face.points[0].y);for(const p of face.points.slice(1))ctx.lineTo(p.x,p.y);ctx.closePath();
@@ -2710,6 +2710,7 @@
       }
       if(REDUCED_MOTION)drawFrame();
     },
+    setObjectGroup(trees,fences) {editingTreeGroup=trees||[];editingFenceGroup=fences||[];if(REDUCED_MOTION)drawFrame();},
     setSelectedFence(f) {editingFenceSelection=f;if(REDUCED_MOTION)drawFrame();},
     surfaceHeight,
     waterDepth,

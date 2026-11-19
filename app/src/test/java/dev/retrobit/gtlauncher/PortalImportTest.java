@@ -335,6 +335,15 @@ public class PortalImportTest {
         assertTrue(store.deleteSelectedPlant("home",w.surfaces.get(0)));assertEquals(1,store.activeWorld().surfaces.size());
         assertTrue(store.deleteSelectedPlant("home",store.activeWorld().surfaces.get(0)));assertEquals(0,store.activeWorld().surfaces.size());
     }
+    @Test public void previewGroupEditsAreAtomicAndPreserveObjects() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1))));
+        assertTrue(store.placeWildGrass("home",10,10));assertTrue(store.placePreviewFence("home",11,10,"S","wood"));
+        WorldStore.World before=store.activeWorld();java.util.List<WorldStore.SurfaceObject> selected=new java.util.ArrayList<>(before.surfaces);
+        String saved=p.getString("worlds_v1",null);assertFalse(store.editPreviewObjectGroup("home",selected,100,0,false));assertEquals(saved,p.getString("worlds_v1",null));
+        assertTrue(store.editPreviewObjectGroup("home",selected,1,0,false));WorldStore.World moved=store.activeWorld();assertEquals(11,moved.surfaces.get(0).column);assertEquals(12,moved.surfaces.get(1).column);
+        assertFalse(store.editPreviewObjectGroup("home",selected,0,0,true));assertTrue(store.editPreviewObjectGroup("home",moved.surfaces,0,0,true));assertEquals(0,store.activeWorld().surfaces.size());
+    }
     @Test public void portableFenceSolidsHaveDepthAndAccurateHitGeometry() {
         for(String edge:new String[]{"N","E","S","W"}) {
             float[] p=FenceMesh.endpoints(100,100,28,14,edge);

@@ -60,6 +60,17 @@
     if(id==='base' || world.id!==id || JSON.stringify(world.fences||[])!==JSON.stringify(expected) || !validFences(next,world))return false;
     return commit({...state,worlds:state.worlds.map(w=>{if(w.id!==id)return w;const copy={...w};if(next.length)copy.fences=next.map(f=>({...f}));else delete copy.fences;return copy;})});
   }
+  // Replace both object collections in one storage transaction; used by group edits and history.
+  function replaceObjectGroup(id,expected,next) {
+    const world=activeWorld(),size=world.gridSize;
+    if(id==='base' || world.id!==id || !Array.isArray(world.tiles) ||
+      JSON.stringify(world.orangeTrees||[])!==JSON.stringify(expected.trees) || JSON.stringify(world.fences||[])!==JSON.stringify(expected.fences) ||
+      !validOrangeTrees(next.trees,size) || !validFences(next.fences,world)) return false;
+    const candidate={...world,orangeTrees:next.trees},player=getCharacter(world),house=getHouse(world);
+    if(!validTreeGround(candidate,world.tiles) || (player.visible && (solidTreeAt(candidate,player.column,player.row) || (treeAt(candidate,player.column,player.row) && !treeAt(world,player.column,player.row)))))return false;
+    if(house)for(let r=house.row;r<house.row+3;r++)for(let c=house.column;c<house.column+3;c++)if(treeAt(candidate,c,r))return false;
+    return commit({...state,worlds:state.worlds.map(w=>{if(w.id!==id)return w;const copy={...w};if(next.trees.length)copy.orangeTrees=next.trees.map(t=>({...t}));else delete copy.orangeTrees;if(next.fences.length)copy.fences=next.fences.map(f=>({...f}));else delete copy.fences;return copy;})});
+  }
   function treeAt(world,column,row) { return (world.orangeTrees||[]).some(t=>column>=t.column && column<t.column+(t.size||2) && row>=t.row && row<t.row+(t.size||2)); }
   function solidTreeAt(world,column,row) { return (world.orangeTrees||[]).some(t=>t.kind!=='wild-grass' && t.kind!=='bush' && column>=t.column && column<t.column+(t.size||2) && row>=t.row && row<t.row+(t.size||2)); }
   function validTreeGround(world, tiles, stacks=world.blockStacks) {
@@ -691,7 +702,7 @@
     const tiles=world.tiles.slice();tiles[index]=6;
     return updateTiles(id,tiles);
   }
-  window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, replacePlayerHouse, replaceOrangeTrees, replaceFences, updateTiles, updateBlockStacks, tillTile});
+  window.worldManager = Object.freeze({getActive: activeWorld, replaceObjectGroup, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, replacePlayerHouse, replaceOrangeTrees, replaceFences, updateTiles, updateBlockStacks, tillTile});
   render();
   if (homeUpgraded) announce('Home diperbarui menjadi 25×25. Cadangan sebelum perubahan tersedia untuk diunduh.');
   else if (storageError) announce(storageError);

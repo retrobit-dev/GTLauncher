@@ -40,7 +40,7 @@
     }
   }
   $('object-library-button').addEventListener('click', () => {
-    renderLibrary(); if (!libraryDialog.open) libraryDialog.showModal();
+    if(editing){clearGroup();selected=false;refresh();syncControls();} renderLibrary(); if (!libraryDialog.open) libraryDialog.showModal();
   });
   $('object-library-close').addEventListener('click', () => libraryDialog.close());
   window.addEventListener('worldchange', () => { if (libraryDialog.open) renderLibrary(); });
@@ -52,7 +52,14 @@
   let editing = false, selected = false, selectedType = 'character', worldId = null, draft = null;
   let selectedTreeIndex=null, selectedFenceIndex=null, placingFence=null, placingFenceEdge='S', selectingObject=false, movingObject=false, objectPointer=null;
   let dragOffset = null, pinch = null, suppressDrag = false, objectDrag=null;
+  let group=null, areaGesture=null;
+  const areaBox=document.createElement('div');areaBox.className='object-selection-area';areaBox.hidden=true;canvas.parentElement.append(areaBox);
   const pointers = new Map();
+  function clearGroup(){group=null;areaGesture=null;areaBox.hidden=true;scene()?.setObjectGroup?.([],[]);}
+  function groupSnapshot(){const w=window.worldManager.getActive();return {trees:(w.orangeTrees||[]).map(t=>({...t})),fences:(w.fences||[]).map(f=>({...f}))};}
+  function saveGroup(before,next){applyingHistory=true;let ok;try{ok=window.worldManager.replaceObjectGroup(worldId,before,next);}finally{applyingHistory=false;}if(ok){history.undo.push({type:'group',value:before});if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();}return ok;}
+  function showGroup(){const w=window.worldManager.getActive();scene()?.setObjectGroup?.(group?.trees.map(i=>w.orangeTrees[i])||[],group?.fences.map(i=>w.fences[i])||[]);}
+
   // History is local to a world and this browser tab; reopening Edit keeps it until reload.
   const histories = new Map();
   const HISTORY_LIMIT = 50;
@@ -177,6 +184,7 @@
   function stepHistory(from, to, label) {
     if (!editing || !history || pendingTerrain || pointers.size || dialog.open || !from.length) return;
     const next = from[from.length - 1];
+    if(next.type==='group') {const before=groupSnapshot();applyingHistory=true;let saved;try{saved=window.worldManager.replaceObjectGroup(worldId,before,next.value);}finally{applyingHistory=false;}if(!saved){tell('EDITING · Riwayat grup tidak dapat diterapkan.');return;}from.pop();to.push({type:'group',value:before});history.last=snapshot();clearGroup();selected=false;movingObject=false;refresh();syncControls();tell(`EDITING · ${label}: grup objek.`);return;}
     if(next.type==='fences') {
       const before=(window.worldManager.getActive().fences||[]).map(f=>({...f}));
       applyingHistory=true;let saved;try{saved=window.worldManager.replaceFences(worldId,before,next.value);}finally{applyingHistory=false;}
@@ -256,18 +264,18 @@
     undoButton.disabled = !editing || !history || !history.undo.length || pointers.size > 0 || Boolean(pendingTerrain) || Boolean(objectDrag?.started);
     redoButton.disabled = !editing || !history || !history.redo.length || pointers.size > 0 || Boolean(pendingTerrain) || Boolean(objectDrag?.started);
     rotateControls.hidden = !editing;
-    rotateLeft.disabled = (!selected && !placingFence) || pointers.size > 0;
-    rotateRight.disabled = (!selected && !placingFence) || pointers.size > 0;
+    rotateLeft.disabled = Boolean(group) || (!selected && !placingFence) || pointers.size > 0;
+    rotateRight.disabled = Boolean(group) || (!selected && !placingFence) || pointers.size > 0;
     $('object-placement-cancel').hidden=!editing || !(placingHouse || placingOrange || placingFence);
     $('object-tool-select').setAttribute('aria-pressed',String(selectingObject));
-    $('object-tool-move').disabled=!editing || !selected;
+    $('object-tool-move').disabled=!editing || (!selected && !group);
     $('object-tool-move').setAttribute('aria-pressed',String(movingObject));
-    $('object-tool-delete').disabled=!editing || !selected || selectedType==='character';
+    $('object-tool-delete').disabled=!editing || (!group && (!selected || selectedType==='character'));
     $('rotate-direction').textContent = directionNames[placingFence ? placingFenceEdge : (draft || current() || {}).facing] || 'Selatan';
   }
   function finishEditing() {
     if(pendingTerrain) window.editorBlockHistory.end();
-    selectingObject=false;movingObject=false;selectedTreeIndex=null;selectedFenceIndex=null;placingFence=null;placingHouse=false; placingOrange=false; placementWorld=null; pendingTerrain = null; editing = false; selected = false; worldId = null; draft = null; history = null;
+    clearGroup();selectingObject=false;movingObject=false;selectedTreeIndex=null;selectedFenceIndex=null;placingFence=null;placingHouse=false; placingOrange=false; placementWorld=null; pendingTerrain = null; editing = false; selected = false; worldId = null; draft = null; history = null;
     pointers.clear(); dragOffset = null; pinch = null; suppressDrag = false;objectPointer=null;objectDrag=null;scene()?.setObjectDrag?.(null,0,null);
     scene()?.update(null, false); scene()?.setSelectedTree?.(null);scene()?.setSelectedFence?.(null); syncControls();
   }
@@ -371,14 +379,15 @@
     return saved;
   }
   $('object-tool-select').addEventListener('click',()=>{
-    if(!editing)return;deactivateTerrain();selectingObject=!selectingObject;movingObject=false;syncControls();tell(selectingObject?'EDITING · Ketuk objek untuk memilih.':'EDITING · Pilih objek dinonaktifkan.');
+    if(!editing)return;deactivateTerrain();clearGroup();selected=false;selectingObject=!selectingObject;movingObject=false;refresh();syncControls();tell(selectingObject?'EDITING · Seret area untuk memilih pagar dan tanaman. Ketuk untuk memilih satu objek.':'EDITING · Pilih objek dinonaktifkan.');
   });
   $('object-tool-move').addEventListener('click',()=>{
-    if(!editing || !selected)return;deactivateTerrain();selectingObject=false;movingObject=!movingObject;syncControls();
+    if(!editing || (!selected && !group))return;deactivateTerrain();selectingObject=false;movingObject=!movingObject;syncControls();
     tell(movingObject?'EDITING · Ketuk tile tujuan untuk objek. Escape untuk batal.':'EDITING · Pindahkan dibatalkan.');
   });
   $('object-tool-delete').addEventListener('click',()=>{
-    if(!editing || !selected || selectedType==='character' || !window.confirm('Hapus objek yang dipilih dari world?'))return;
+    if(!editing || (!group && (!selected || selectedType==='character')) || !window.confirm('Hapus objek yang dipilih dari world?'))return;
+    if(group){const before=groupSnapshot(),next={trees:before.trees.filter((_,i)=>!group.trees.includes(i)),fences:before.fences.filter((_,i)=>!group.fences.includes(i))};if(saveGroup(before,next)){clearGroup();selected=false;movingObject=false;refresh();syncControls();tell('EDITING · Grup dihapus. Undo untuk memulihkan.');}else tell('EDITING · Grup tidak dapat dihapus.');return;}
     let saved=false;
     if(selectedType==='fence') {const before=window.worldManager.getActive().fences||[];saved=saveFences(before,before.filter((_,i)=>i!==selectedFenceIndex));}
     else if(selectedType==='tree') {
@@ -390,6 +399,48 @@
     if(saved){deactivateTerrain();selected=false;selectedTreeIndex=null;movingObject=false;draft=null;refresh();syncControls();tell('EDITING · Objek dihapus. Undo untuk memulihkan.');}
     else tell('EDITING · Objek tidak dapat dihapus.');
   });
+  function moveGroupBy(dc,dr){
+    const before=groupSnapshot(),next={trees:before.trees.map((o,i)=>group.trees.includes(i)?{...o,column:o.column+dc,row:o.row+dr}:o),fences:before.fences.map((o,i)=>group.fences.includes(i)?{...o,column:o.column+dc,row:o.row+dr}:o)};
+    if(dc===0 && dr===0)return true;
+    if(!saveGroup(before,next))return false;group.anchor={column:group.anchor.column+dc,row:group.anchor.row+dr};showGroup();return true;
+  }
+  // Selection area is measured in screen coordinates; object anchors decide inclusion.
+  canvas.addEventListener('pointerdown',event=>{
+    if(!editing || event.button!==0)return;
+    if(areaGesture){areaGesture=null;areaBox.hidden=true;event.preventDefault();event.stopImmediatePropagation();return;}
+    const local=scene().toLocal(event.clientX,event.clientY);
+    if(group && !movingObject && !selectingObject && !placingHouse && !placingOrange && !placingFence && !document.querySelector('.terrain-tools button[aria-pressed="true"]') && $('editor-pan').getAttribute('aria-pressed')!=='true') {
+      const fi=scene().fenceAt(local),ti=scene().orangeTreeAt(local);
+      if(group.fences.includes(fi) || group.trees.includes(ti)) {areaGesture={id:event.pointerId,x:event.clientX,y:event.clientY,local,drag:true,start:scene().tileAt(local)};event.preventDefault();event.stopImmediatePropagation();try{canvas.setPointerCapture(event.pointerId);}catch(_){}return;}
+      clearGroup();
+    }
+    if(!selectingObject && !(group && movingObject))return;
+    if(group && movingObject){
+      event.preventDefault();event.stopImmediatePropagation();objectPointer=event.pointerId;
+      const tile=scene().tileAt(local);if(!tile){tell('EDITING · Pilih tile tujuan dalam world.');return;}
+      const dc=tile.column-group.anchor.column,dr=tile.row-group.anchor.row;
+      if(moveGroupBy(dc,dr)){movingObject=false;tell('EDITING · Grup dipindahkan. Undo untuk membatalkan.');}else tell('EDITING · Tujuan tidak valid; grup tidak berubah.');syncControls();return;
+    }
+    areaGesture={id:event.pointerId,x:event.clientX,y:event.clientY,local};
+    event.preventDefault();event.stopImmediatePropagation();try{canvas.setPointerCapture(event.pointerId);}catch(_){}
+  },true);
+  canvas.addEventListener('pointermove',event=>{
+    if(!areaGesture || areaGesture.id!==event.pointerId)return;
+    event.preventDefault();event.stopImmediatePropagation();if(areaGesture.drag)return;const r=canvas.getBoundingClientRect(),x=Math.min(areaGesture.x,event.clientX),y=Math.min(areaGesture.y,event.clientY);
+    areaBox.hidden=false;Object.assign(areaBox.style,{left:(x-r.left)+'px',top:(y-r.top)+'px',width:Math.abs(event.clientX-areaGesture.x)+'px',height:Math.abs(event.clientY-areaGesture.y)+'px'});
+  },true);
+  for(const type of ['pointerup','pointercancel'])canvas.addEventListener(type,event=>{
+    if(!areaGesture || areaGesture.id!==event.pointerId)return;
+    event.preventDefault();event.stopImmediatePropagation();const g=areaGesture;areaGesture=null;areaBox.hidden=true;
+    if(type==='pointercancel'){tell('EDITING · Seleksi area dibatalkan.');return;}
+    const end=scene().toLocal(event.clientX,event.clientY),w=window.worldManager.getActive();
+    if(g.drag){const dest=scene().tileAt(end);if(Math.hypot(event.clientX-g.x,event.clientY-g.y)>=5){if(g.start && dest && moveGroupBy(dest.column-g.start.column,dest.row-g.start.row))tell('EDITING · Grup dipindahkan. Undo untuk membatalkan.');else tell('EDITING · Tujuan tidak valid; grup tidak berubah.');}syncControls();return;}
+    if(Math.hypot(event.clientX-g.x,event.clientY-g.y)<5){const fi=scene().fenceAt(end),ti=scene().orangeTreeAt(end);clearGroup();if(fi!==null){selected=true;selectedType='fence';selectedFenceIndex=fi;}else if(ti!==null){selected=true;selectedType='tree';selectedTreeIndex=ti;}else selected=false;selectingObject=false;refresh();syncControls();tell(selected?'EDITING · Objek dipilih.':'EDITING · Tidak ada objek di titik ini.');return;}
+    const inside=p=>p.x>=Math.min(g.local.x,end.x) && p.x<=Math.max(g.local.x,end.x) && p.y>=Math.min(g.local.y,end.y) && p.y<=Math.max(g.local.y,end.y);
+    const trees=[],fences=[];(w.orangeTrees||[]).forEach((t,i)=>{if(inside(scene().orangeTreeAnchor(t)))trees.push(i);});(w.fences||[]).forEach((f,i)=>{const {a,b}=scene().fenceGeometry(f);if(inside({x:(a.x+b.x)/2,y:(a.y+b.y)/2}))fences.push(i);});
+    const first=trees.length?w.orangeTrees[trees[0]]:fences.length?w.fences[fences[0]]:null;
+    group=first?{trees,fences,anchor:{column:first.column,row:first.row}}:null;selected=false;selectingObject=false;showGroup();refresh();syncControls();tell(group?`EDITING · ${trees.length+fences.length} objek dipilih. Gunakan Geser atau Hapus.`:'EDITING · Tidak ada titik dasar objek di area.');
+  },true);
   // Capture object tools before terrain, pan, and the older drag interaction.
   canvas.addEventListener('pointerdown',event=>{
     if(objectDrag && event.pointerId!==objectDrag.id) { objectPointer=null;objectDrag=null;scene()?.setObjectDrag?.(null,0,null);refresh();syncControls();event.preventDefault();event.stopImmediatePropagation();return; }
@@ -463,7 +514,7 @@
     refresh();syncControls();
   },true);
   for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) $(id)?.addEventListener('click',()=>{
-    selectingObject=false;movingObject=false;placingHouse=false;placingOrange=false;placingFence=null;placementWorld=null;syncControls();
+    clearGroup();selectingObject=false;movingObject=false;placingHouse=false;placingOrange=false;placingFence=null;placementWorld=null;syncControls();
   });
   canvas.addEventListener('pointerdown', event => {
     if (!editing || !scene()) return;
@@ -530,7 +581,7 @@
       if (dialog.open) dialog.close(); finishEditing();
     } else if (editing && !applyingHistory && history && !sameSnapshot(history.last, snapshot())) {
       // Other tabs or world settings may change this character; don't undo over newer data.
-      pendingTerrain = null; cancelGesture();
+      pendingTerrain = null; clearGroup(); cancelGesture();
       history = ensureHistory(worldId);
       selected = (selectedType==='tree'||selectedType==='fence') ? false : Boolean(current()?.visible) && selected;
       if(!selected)selectedTreeIndex=null;movingObject=false;
@@ -539,6 +590,7 @@
     }
   });
   document.addEventListener('keydown', event => {
+    if(event.key==='Escape' && group && !movingObject && !selectingObject){event.preventDefault();clearGroup();refresh();syncControls();tell('EDITING · Pilihan grup dibatalkan.');return;}
     if (event.key==='Escape' && (movingObject || selectingObject)) {event.preventDefault();movingObject=false;selectingObject=false;syncControls();tell('EDITING · Alat objek dibatalkan.');return;}
     if (event.key === 'Escape' && (placingHouse || placingOrange || placingFence)) { event.preventDefault(); placingHouse=false; placingOrange=false; placingFence=null; placementWorld=null; syncControls();tell('EDITING · Penempatan objek dibatalkan.'); return; }
     if (event.key === 'Escape' && editing && !dialog.open) { finishEditing(); return; }
