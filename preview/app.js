@@ -1833,7 +1833,7 @@
     ctx.drawImage(mask,0,0,width,height);ctx.restore();
   }
   function drawSurfaceObjectShadows(light, cloudCover, code) {
-    const world = window.worldManager?.getActive();
+    const world = worldForObjects();
     if (!world || world.id === 'base') return;
     const shadows = [];
     const house = editingHouseDraft || window.worldManager.getHouse?.();
@@ -1991,6 +1991,14 @@
   function orangeDropPosition(tree) {
     const p=orangeTreeAnchor(tree);return {x:p.x+6,y:p.y+1};
   }
+  let objectDragWorld=null;
+  function worldForObjects() {const world=window.worldManager?.getActive();return objectDragWorld?.id===world?.id?objectDragWorld:world;}
+  let joinCache={fences:null,stacks:null,plan:[]};
+  function fenceJoins(world) {
+    const fences=world?.fences,stacks=world?.blockStacks;
+    if(joinCache.fences!==fences || joinCache.stacks!==stacks)joinCache={fences,stacks,plan:window.FenceJoins.plan(fences||[],surfaceHeight)};
+    return joinCache.plan;
+  }
   let editingFenceSelection=null;
   function fenceGeometry(f) {
     const c=characterCentre(f),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
@@ -2003,24 +2011,24 @@
     }
     return {a,b};
   }
-  function drawFence(f) {
+  function drawFence(f,join) {
     const g=fenceGeometry(f);ctx.save();applyIslandTransform();
     ctx.save();clipIslandSurface();ctx.strokeStyle='rgba(12,23,40,.16)';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(g.a.x,g.a.y);ctx.lineTo(g.b.x,g.b.y);ctx.stroke();ctx.restore();
     const player=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
     if(player?.visible && f.column===Math.round(player.column) && f.row===Math.round(player.row) && (f.edge==='S'||f.edge==='E'))ctx.globalAlpha=.5;
     const selected=editingFenceSelection && editingFenceSelection.column===f.column && editingFenceSelection.row===f.row && editingFenceSelection.edge===f.edge;
     ctx.lineWidth=.30;ctx.lineJoin='round';
-    for(const face of window.FenceMesh.faces(g.a,g.b,f.material)) {
+    for(const face of window.FenceMesh.faces(g.a,g.b,f.material,join)) {
       ctx.beginPath();ctx.moveTo(face.points[0].x,face.points[0].y);for(const p of face.points.slice(1))ctx.lineTo(p.x,p.y);ctx.closePath();
       ctx.fillStyle=face.color;ctx.fill();if(!face.detail){ctx.strokeStyle=selected?'#fff4a8':(f.material==='stone'?'#687666':'#664936');ctx.stroke();}
     }
     ctx.restore();
   }
   function fenceAt(point) {
-    const fences=window.worldManager?.getActive()?.fences||[];
+    const world=worldForObjects(),fences=world?.fences||[],joins=fenceJoins(world);
     for(let i=fences.length-1;i>=0;i--) {
       const f=fences[i],g=fenceGeometry(f);
-      if(window.FenceMesh.faces(g.a,g.b,f.material).some(face=>window.FenceMesh.contains(face.points,point.x,point.y)))return i;
+      if(window.FenceMesh.faces(g.a,g.b,f.material,joins[i]).some(face=>window.FenceMesh.contains(face.points,point.x,point.y)))return i;
     }
     return null;
   }
@@ -2426,9 +2434,10 @@
     drawHoeTarget();
     const visibleHouse=editingHouseDraft || window.worldManager?.getHouse?.();
     const visiblePlayer=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
-    const sceneObjects=(window.worldManager?.getActive()?.orangeTrees||[]).map(tree=>({depth:tree.column+tree.row+treeSize(tree)-1,draw:()=>{drawOrangeTree(tree,motionTime,sceneWeather);drawOrangeDrop(tree);}}));
-    for(const [a,b] of grassPairs(window.worldManager?.getActive()))sceneObjects.push({depth:(a.column+a.row+b.column+b.row)/2,draw:()=>drawGrassBridge(a,b)});
-    for(const f of window.worldManager?.getActive()?.fences||[])sceneObjects.push({depth:f.column+f.row+((f.edge==='S'||f.edge==='E')?.5:-.5),draw:()=>drawFence(f)});
+    const objectWorld=worldForObjects(),joins=fenceJoins(objectWorld);
+    const sceneObjects=(objectWorld?.orangeTrees||[]).map(tree=>({depth:tree.column+tree.row+treeSize(tree)-1,draw:()=>{drawOrangeTree(tree,motionTime,sceneWeather);drawOrangeDrop(tree);}}));
+    for(const [a,b] of grassPairs(objectWorld))sceneObjects.push({depth:(a.column+a.row+b.column+b.row)/2,draw:()=>drawGrassBridge(a,b)});
+    (objectWorld?.fences||[]).forEach((f,i)=>sceneObjects.push({depth:f.column+f.row+((f.edge==='S'||f.edge==='E')?.5:-.5),draw:()=>drawFence(f,joins[i])}));
     if(visibleHouse?.visible)sceneObjects.push({depth:visibleHouse.column+visibleHouse.row+2,draw:drawHouse});
     if(visiblePlayer?.visible)sceneObjects.push({depth:visiblePlayer.column+visiblePlayer.row,draw:()=>drawMainCharacter(motionTime)});
     sceneObjects.sort((a,b)=>a.depth-b.depth);for(const object of sceneObjects)object.draw();
@@ -2693,6 +2702,14 @@
     },
     centre: characterCentre,
     fenceAt, fenceGeometry,
+    setObjectDrag(kind,index,value) {
+      const world=window.worldManager?.getActive();
+      if(!world || !value){objectDragWorld=null;} else {
+        const key=kind==='fence'?'fences':'orangeTrees',items=(world[key]||[]).map((o,i)=>i===index?{...value}:o);
+        objectDragWorld={...world,[key]:items};
+      }
+      if(REDUCED_MOTION)drawFrame();
+    },
     setSelectedFence(f) {editingFenceSelection=f;if(REDUCED_MOTION)drawFrame();},
     surfaceHeight,
     waterDepth,

@@ -2,7 +2,7 @@
 // are projected from the actual tile edge. World records remain unchanged.
 (function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.FenceMesh=factory();})(typeof window!=='undefined'?window:globalThis,()=>{
   'use strict';
-  function faces(a,b,material) {
+  function faces(a,b,material,joins={}) {
     const slope=(b.y-a.y)/(b.x-a.x),depth=material==='stone'?2.6:1.8;
     // Perpendicular tile axis, always pointing towards the viewer.
     const nx=slope>=0?-depth:depth,ny=Math.abs(slope)*depth;
@@ -22,15 +22,18 @@
       // Low 2-course stonework, with smaller blocks and a readable thickness.
       const boundaries=[[0,.30,.67,1],[0,.19,.51,.79,1]];
       for(let course=0;course<2;course++)for(let i=0;i<boundaries[course].length-1;i++) {
-        const gap=.006,u0=boundaries[course][i]+gap,u1=boundaries[course][i+1]-gap,z0=course*4.5+.10,z1=(course+1)*4.5-.10-(course && i%2?.12:0);
+        const gap=.006,u0=boundaries[course][i]+(i===0 && joins.linkA?0:gap),u1=boundaries[course][i+1]-(i===boundaries[course].length-2 && joins.linkB?0:gap),z0=course*4.5+.10,z1=(course+1)*4.5-.10-(course && i%2?.12:0);
         box(u0,u1,-.5,.5,z0,z1,palettes[(i+course)%3]);
         const chip=u0+(u1-u0)*(.26+(i%2)*.18);mark(chip,chip+(u1-u0)*.13,.505,z0+1.1,z0+1.45,'#aab3a0');
       }
+      const joint={top:'#b8c1b1',front:'#929c8c',side:'#73806e'};
+      if(joins.joinA)box(-.09,.09,-.5,.5,0,8.9,joint);
+      if(joins.joinB)box(.91,1.09,-.5,.5,0,8.9,joint);
     } else {
       const rail={top:'#c69c68',front:'#a6784f',side:'#80583b'},post={top:'#d0ab79',front:'#a67c56',side:'#79543d'};
       // Two stout rails run between posts; the square posts have visible end and top faces.
-      box(.04,.96,-.30,.30,5.2,7.3,rail);box(.04,.96,-.30,.30,10.1,12.2,rail);
-      box(-.065,.065,-.65,.65,0,15,post);box(.935,1.065,-.65,.65,0,15,post);
+      box(joins.linkA?0:.04,joins.linkB?1:.96,-.30,.30,5.2,7.3,rail);box(joins.linkA?0:.04,joins.linkB?1:.96,-.30,.30,10.1,12.2,rail);
+      if(joins.postA!==false)box(-.065,.065,-.65,.65,0,15,post);if(joins.postB!==false)box(.935,1.065,-.65,.65,0,15,post);
       mark(.18,.43,.305,6.1,6.3,'#8e694a');mark(.50,.77,.305,11,11.2,'#8e694a');
     }
     return output;

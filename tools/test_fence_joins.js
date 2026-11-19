@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'),{vertices,plan}=require('../preview/fence-joins.js'),{faces}=require('../preview/fence-mesh.js');
+const f=(column,row,edge,material='wood')=>({column,row,edge,material});
+const a=f(3,4,'S'),b=f(4,4,'S'),corner=f(4,5,'W'),different=f(4,4,'S','stone');
+assert.deepEqual(vertices(a)[1],vertices(b)[0]);assert.deepEqual(vertices(a)[1],vertices(corner)[1]);
+let p=plan([a,b,corner],()=>1);assert.equal(p.filter(x=>x.postB===false || x.postA===false).length,2);assert.equal(p.filter(x=>x.joinA||x.joinB).length,1);
+assert.equal(plan([a,different],()=>1).filter(x=>x.linkA||x.linkB).length,0);
+assert.equal(plan([a,b],c=>c===3?1:2).filter(x=>x.linkA||x.linkB).length,0);
+const s=[f(3,4,'S','stone'),f(4,5,'W','stone')];p=plan(s,()=>1);assert.equal(p.filter(x=>x.joinA||x.joinB).length,1);
+assert.equal(faces({x:0,y:0},{x:14,y:7},'stone',p[0]).length+faces({x:14,y:7},{x:28,y:0},'stone',p[1]).length,59);
+console.log('Fence shared posts, corners, material and elevation isolation: OK');

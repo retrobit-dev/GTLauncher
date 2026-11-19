@@ -287,6 +287,11 @@ public class HomeActivity extends Activity {
 
         // Preview mode switches live outside the simulated tablet. The launcher opens in gameplay.
         setMapMode(true);
+        final WorldStore.SurfaceObject[] dragSurface={null};
+        final WorldStore.House[] dragHouse={null};
+        final PortalTravel.Tile[] dragStart={null};
+        final String[] dragWorld={null};
+        final boolean[] dragCancelled={false};
         homeScreen.setOnTouchListener((view, event) -> {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
                 skyView.cancelIdleWaterAttempt();
@@ -298,14 +303,35 @@ public class HomeActivity extends Activity {
                 }
                 swipeStartX = event.getX();
                 swipeStartY = event.getY();
+                dragSurface[0]=null;dragHouse[0]=null;dragWorld[0]=null;dragCancelled[0]=false;
+                if(gameplayMode && selectedTool==R.id.dock_tool_hand && placingWildGrassWorld==null && movingObjectWorld==null)try {
+                    WorldStore.World w=worldStore.activeWorld();
+                    if(w!=null && w.showCharacter && !groundActive){PortalTravel.Tile front=GameplayTarget.front(w.characterColumn,w.characterRow,w.characterFacing);PortalTravel.Tile hit=skyView.groundTileAt(event.getX(),event.getY());
+                        if(front!=null){WorldStore.SurfaceObject o=frontSurface(w,front);WorldStore.House h=frontHouse(w,front);
+                            if(o!=null && (skyView.surfaceObjectAt(o,event.getX(),event.getY()) || front.equals(hit)))dragSurface[0]=o;
+                            else if(h!=null && (skyView.houseAt(event.getX(),event.getY())==h || front.equals(hit)))dragHouse[0]=h;
+                            if(dragSurface[0]!=null || dragHouse[0]!=null){dragWorld[0]=w.id;dragStart[0]=hit;}
+                        }
+                    }
+                }catch(JSONException ignored){}
                 return true;
             }
+            if(event.getActionMasked()==MotionEvent.ACTION_POINTER_DOWN || event.getActionMasked()==MotionEvent.ACTION_CANCEL){dragCancelled[0]=true;return true;}
             if (event.getActionMasked() == MotionEvent.ACTION_UP) {
                 float deltaX = event.getX() - swipeStartX;
                 float deltaY = event.getY() - swipeStartY;
-                if (deltaY < -dp(72) && Math.abs(deltaY) > Math.abs(deltaX) * 1.15f) {
+                if(!dragCancelled[0] && dragWorld[0]!=null && Math.hypot(deltaX,deltaY)>=dp(8)) {
+                    PortalTravel.Tile end=skyView.groundTileAt(event.getX(),event.getY());
+                    try {
+                        int c=dragSurface[0]!=null?dragSurface[0].column:dragHouse[0].column,r=dragSurface[0]!=null?dragSurface[0].row:dragHouse[0].row;
+                        if(end!=null && dragStart[0]!=null){c+=end.column-dragStart[0].column;r+=end.row-dragStart[0].row;}else end=null;
+                        boolean moved=end!=null && worldStore.moveSelectedObject(dragWorld[0],dragHouse[0],dragSurface[0],c,r);
+                        if(moved)applyActiveWorld();
+                        Toast.makeText(this,moved?"Objek dipindahkan.":"Tujuan tidak valid; objek tidak dipindahkan.",Toast.LENGTH_SHORT).show();
+                    }catch(JSONException error){Toast.makeText(this,"World tidak berubah.",Toast.LENGTH_SHORT).show();}
+                } else if (!dragCancelled[0] && deltaY < -dp(72) && Math.abs(deltaY) > Math.abs(deltaX) * 1.15f) {
                     openDrawer();
-                } else if (gameplayMode && Math.hypot(deltaX,deltaY) < dp(8)) {
+                } else if (!dragCancelled[0] && gameplayMode && Math.hypot(deltaX,deltaY) < dp(8)) {
                     if(placingWildGrassWorld!=null) placeWildGrassAt(event.getX(),event.getY());
                     else gameplayTap(event.getX(),event.getY());
                 }
@@ -561,7 +587,7 @@ public class HomeActivity extends Activity {
         } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }
     private void showHandObjectMenu(String worldId,WorldStore.House house,WorldStore.SurfaceObject object,PortalTravel.Portal portal) {
-        boolean small=WorldStore.portableSmall(object),movable=house!=null || small || WorldStore.isPreviewGrass(object) || WorldStore.isPreviewBush(object);
+        boolean small=WorldStore.portableSmall(object),movable=house!=null || small || WorldStore.isPreviewGrass(object) || WorldStore.isPreviewBush(object) || (object!=null && ((object.type.equals("tree") && object.material.startsWith("conifer")) || (object.type.equals("fence") && object.material.startsWith("preview-"))));
         java.util.List<String> actions=new java.util.ArrayList<>();
         actions.add(small?"Ambil ke tas (belum bisa ditaruh kembali)":"Ambil — tidak tersedia");
         actions.add(movable?"Pindahkan":"Pindahkan — tidak tersedia");

@@ -289,6 +289,7 @@ public final class WeatherSkyView extends View {
     private java.util.List<PortalTravel.Portal> worldPortals = java.util.Collections.emptyList();
     private boolean portalWalkActive;
     private java.util.List<WorldStore.SurfaceObject> worldSurfaces = java.util.Collections.emptyList();
+    private java.util.Map<WorldStore.SurfaceObject,FenceJoins.Join> fenceJoins=java.util.Collections.emptyMap();
     private java.util.List<GrassConnections.Pair> grassConnections=java.util.Collections.emptyList();
     private java.util.List<WorldStore.House> worldHouses=java.util.Collections.emptyList();
     private String characterFacing = "S";
@@ -484,7 +485,7 @@ public final class WeatherSkyView extends View {
         ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2f;
         String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;gameplayCamera.reset();cameraFrameTime=0;}
         worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects);
-        grassConnections=GrassConnections.pairs(worldSurfaces);invalidate();
+        grassConnections=GrassConnections.pairs(worldSurfaces);fenceJoins=FenceJoins.plan(worldSurfaces);invalidate();
     }
     private PreviewWorld20 worldTerrain;
     private PondLife pondLife;
@@ -677,7 +678,7 @@ public final class WeatherSkyView extends View {
         if(o.type.equals("fence") && o.material.startsWith("preview-")) {
             float cx=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
             float[] e=FenceMesh.endpoints(cx,cy,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,o.edge);
-            return FenceMesh.contains(FenceMesh.faces(e[0],e[1],e[2],e[3],o.material.equals("preview-stone")),islandX(sx),islandY(sy));
+            return FenceMesh.contains(FenceMesh.faces(e[0],e[1],e[2],e[3],o.material.equals("preview-stone"),fenceJoins.get(o)),islandX(sx),islandY(sy));
         }
         Bitmap image=surfaceImage(o);if(image==null)return false;
         RectF g=surfaceSpriteBounds(o);float x=islandX(sx),y=islandY(sy);
@@ -898,7 +899,7 @@ public final class WeatherSkyView extends View {
                 boolean stone=o.material.equals("preview-stone");
                 boolean fades=showCharacter && o.column==Math.round(visualColumn()) && o.row==Math.round(visualRow()) && (o.edge.equals("S")||o.edge.equals("E"));
                 int ground=canvas.save();setClipIslandSurface(canvas);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(1.2f);paint.setColor(Color.argb(40,12,23,40));canvas.drawLine(ends[0],ends[1],ends[2],ends[3],paint);canvas.restoreToCount(ground);
-                for(FenceMesh.Face face:FenceMesh.faces(ends[0],ends[1],ends[2],ends[3],stone)) {
+                for(FenceMesh.Face face:FenceMesh.faces(ends[0],ends[1],ends[2],ends[3],stone,fenceJoins.get(o))) {
                     Path path=new Path();path.moveTo(face.points[0],face.points[1]);for(int i=2;i<face.points.length;i+=2)path.lineTo(face.points[i],face.points[i+1]);path.close();
                     paint.setStyle(Paint.Style.FILL);paint.setColor(face.color);paint.setAlpha(fades?128:255);canvas.drawPath(path,paint);
                     if(!face.detail){paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.3f);paint.setColor(stone?0xff687666:0xff664936);paint.setAlpha(fades?128:255);canvas.drawPath(path,paint);}
