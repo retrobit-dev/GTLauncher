@@ -176,6 +176,7 @@ public class HomeActivity extends Activity {
     private String placingWildGrassWorld;
     private String placingPlantKind="wild-grass",placingPlantVariant=null;
     private int placingPlantSize=1;
+    private int placingBridgeLength=3;
     private WorldStore.House movingHouse;
     private WorldStore.SurfaceObject movingSurface;
     private BridgeGeometry.Bridge movingBridge;
@@ -894,13 +895,13 @@ public class HomeActivity extends Activity {
                     dialog.dismiss();applyActiveWorld();placingPlantKind="fence";placingPlantVariant=material;placingPlantSize=which;setPlacementWorld(world.id);closeDrawer();Toast.makeText(this,"Ketuk tile kering untuk menempatkan pagar.",Toast.LENGTH_LONG).show();
                 }).setNegativeButton("Batal",null).show());
             }
-            for(final String material:new String[]{"wood","stone"}) {
+            for(final String material:new String[]{"wood","stone"}) for(final int length:new int[]{3,4,5}) {
                 LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundResource(R.drawable.bg_portal_button);
                 ImageView image=new ImageView(this);image.setImageResource(material.equals("wood")?R.drawable.bridge_wood:R.drawable.bridge_stone);image.setScaleType(ImageView.ScaleType.FIT_CENTER);card.addView(image,new LinearLayout.LayoutParams(dp(56),dp(44)));
-                TextView label=new TextView(this);label.setText(material.equals("wood")?"Jembatan kayu":"Jembatan batu");label.setGravity(Gravity.CENTER);label.setTextColor(Color.rgb(52,75,59));card.addView(label);
+                TextView label=new TextView(this);label.setText((material.equals("wood")?"Jembatan kayu":"Jembatan batu")+" "+length+"×1");label.setGravity(Gravity.CENTER);label.setTextColor(Color.rgb(52,75,59));card.addView(label);
                 GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(80);cell.setMargins(0,dp(4),dp(4),0);buildingGrid.addView(card,cell);
-                card.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Arah jembatan 3 block").setItems(new String[]{"Timur","Selatan"},(d,which)->{
-                    dialog.dismiss();applyActiveWorld();placingPlantKind="bridge";placingPlantVariant=material;placingPlantSize=which;setPlacementWorld(world.id);closeDrawer();Toast.makeText(this,"Ketuk awal jembatan 3 block pada tanah rata.",Toast.LENGTH_LONG).show();
+                card.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Arah jembatan "+length+" block").setItems(new String[]{"Timur","Selatan"},(d,which)->{
+                    dialog.dismiss();applyActiveWorld();placingPlantKind="bridge";placingPlantVariant=material;placingPlantSize=which;placingBridgeLength=length;setPlacementWorld(world.id);closeDrawer();Toast.makeText(this,"Ketuk awal jembatan "+length+" block pada tanah rata.",Toast.LENGTH_LONG).show();
                 }).setNegativeButton("Batal",null).show());
             }
             TextView group=new TextView(this);group.setText("Tanaman dan pohon");group.setTextColor(Color.rgb(52,75,59));group.setTypeface(null,android.graphics.Typeface.BOLD);plantPanel.addView(group);
@@ -931,7 +932,7 @@ public class HomeActivity extends Activity {
         if(!id.equals(worldStore.activeId())) {setPlacementWorld(null);return;}
         PortalTravel.Tile tile=skyView.groundTileAt(x,y);
         try {
-            if(tile==null || !("bridge".equals(placingPlantKind)?worldStore.placePreviewBridge(id,tile.column,tile.row,new String[]{"E","S"}[placingPlantSize],placingPlantVariant):"fence".equals(placingPlantKind)?worldStore.placePreviewFence(id,tile.column,tile.row,new String[]{"N","E","S","W"}[placingPlantSize],placingPlantVariant):worldStore.placePreviewPlant(id,tile.column,tile.row,placingPlantKind,placingPlantSize,placingPlantVariant))) {
+            if(tile==null || !("bridge".equals(placingPlantKind)?worldStore.placePreviewBridge(id,tile.column,tile.row,new String[]{"E","S"}[placingPlantSize],placingPlantVariant,placingBridgeLength):"fence".equals(placingPlantKind)?worldStore.placePreviewFence(id,tile.column,tile.row,new String[]{"N","E","S","W"}[placingPlantSize],placingPlantVariant):worldStore.placePreviewPlant(id,tile.column,tile.row,placingPlantKind,placingPlantSize,placingPlantVariant))) {
                 Toast.makeText(this,"Pilih tile kering yang kosong, tanpa rumah atau player.",Toast.LENGTH_LONG).show();return;
             }
             applyActiveWorld();

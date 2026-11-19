@@ -32,7 +32,7 @@
     $('catalog-place-conifer').disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-place-conifer-small').disabled=world.id==='base' || !Array.isArray(world.tiles);
     for(const suffix of ['', '-large','-flower','-flower-large','-berry','-berry-large']) $('catalog-place-bush'+suffix).disabled=world.id==='base' || !Array.isArray(world.tiles);
-    for(const kind of ['wood','stone']) { $('catalog-place-fence-'+kind).disabled=world.id==='base' || !Array.isArray(world.tiles);$('catalog-place-bridge-'+kind).disabled=world.id==='base' || !Array.isArray(world.tiles); }
+    for(const kind of ['wood','stone']) { $('catalog-place-fence-'+kind).disabled=world.id==='base' || !Array.isArray(world.tiles); for(const suffix of ['', '-4','-5']) $('catalog-place-bridge-'+kind+suffix).disabled=world.id==='base' || !Array.isArray(world.tiles); }
     $('catalog-place-wild-grass').disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-house-status').textContent=world.id==='base' ? 'Base World terkunci. Buka world buatan untuk menempatkan rumah.' : exists ? 'World ini sudah memiliki rumah player. Pindahkan rumah yang ada bila diperlukan.' : !Array.isArray(world.tiles) ? 'World lama ini tidak mendukung penempatan rumah.' : 'Pilih tombol, lalu ketuk sudut pertama tapak pada peta.';
     const objects = [];
@@ -41,7 +41,7 @@
     const house = window.worldManager.getHouse?.();
     if (house) objects.push(`Rumah player · ${columnLabel(house.column)}${house.row + 1}–${columnLabel(house.column + 2)}${house.row + 3}${house.visible ? '' : ' (tersembunyi)'}`);
     for(const tree of world.orangeTrees||[]) objects.push(`${tree.kind==='bush'?(tree.variant==='flower'?'Semak melati':tree.variant==='berry'?'Semak murbei':'Semak'):tree.kind==='wild-grass'?'Rumput liar':tree.kind==='conifer'?'Pohon cemara laut':'Pohon jeruk'} · ${columnLabel(tree.column)}${tree.row+1}–${columnLabel(tree.column+(tree.size||2)-1)}${tree.row+(tree.size||2)}`);
-    for(const bridge of world.bridges||[]) objects.push(`Jembatan ${bridge.material==='wood'?'kayu':'batu'} · ${columnLabel(bridge.column)}${bridge.row+1} · 3×1`);
+    for(const bridge of world.bridges||[]) objects.push(`Jembatan ${bridge.material==='wood'?'kayu':'batu'} · ${columnLabel(bridge.column)}${bridge.row+1} · ${bridge.length||3}×1`);
     for(const fence of world.fences||[]) objects.push(`Pagar ${fence.material==='wood'?'kayu':'batu'} · ${columnLabel(fence.column)}${fence.row+1} · ${fence.edge}`);
     if (!objects.length) objects.push('Belum ada objek yang ditampilkan.');
     for (const label of objects) {
@@ -122,18 +122,18 @@
     selected=false;selectingObject=false;movingObject=false;draft=null;placingHouse=false;placingFence=null;placingBridge=null;placingOrange=false;placingFence=material;placingFenceEdge='S';placementWorld=window.worldManager.getActive().id;refresh();syncControls();libraryDialog.close();
     tell('EDITING · Ketuk tile untuk pagar di sisi selatan, lalu pilih Putar untuk mengubah sisi.');
   });
-  for(const material of ['wood','stone']) $('catalog-place-bridge-'+material).addEventListener('click',()=>{
-    if(!editing || $('catalog-place-bridge-'+material).disabled)return;
-    deactivateTerrain();clearGroup();selected=false;selectingObject=false;movingObject=false;draft=null;placingBridge=material;bridgeAxis='E';placementWorld=window.worldManager.getActive().id;libraryDialog.close();refresh();syncControls();
-    tell('EDITING · Ketuk awal jembatan 3 block. Putar untuk arah; Batal untuk berhenti.');
-  });
+  for(const material of ['wood','stone']) for(const length of [3,4,5]) {const button=$('catalog-place-bridge-'+material+(length===3?'':'-'+length));button.addEventListener('click',()=>{
+    if(!editing || button.disabled)return;
+    deactivateTerrain();clearGroup();selected=false;selectingObject=false;movingObject=false;draft=null;placingBridge={material,length};bridgeAxis='E';placementWorld=window.worldManager.getActive().id;libraryDialog.close();refresh();syncControls();
+    tell(`EDITING · Ketuk awal jembatan ${length} block. Putar untuk arah; Batal untuk berhenti.`);
+  });}
   canvas.addEventListener('pointerdown', event => {
     if((!placingHouse && !placingOrange && !placingFence && !placingBridge) || !editing || event.button!==0) return;
     event.preventDefault(); event.stopImmediatePropagation(); placementPointer=event.pointerId;
     const tile=scene()?.tileAt(scene().toLocal(event.clientX,event.clientY));
     if(placingBridge) {
-      const before=window.worldManager.getActive().bridges||[],next=tile && [...before,{...tile,axis:bridgeAxis,material:placingBridge}];
-      if(!next || !saveBridges(before,next)){tell('EDITING · Pilih 3 block rata dan bebas; kedua ujung harus kering.');return;}
+      const before=window.worldManager.getActive().bridges||[],next=tile && [...before,{...tile,axis:bridgeAxis,material:placingBridge.material,...(placingBridge.length===3?{}:{length:placingBridge.length})}];
+      if(!next || !saveBridges(before,next)){tell(`EDITING · Pilih ${placingBridge.length} block rata dan bebas; kedua ujung harus kering.`);return;}
       selectedType='bridge';selectedBridgeIndex=before.length;selected=true;refresh();syncControls();tell('EDITING · Jembatan ditempatkan. Ketuk tile lain atau Batal.');return;
     }
     if(placingFence) {

@@ -423,6 +423,7 @@ final class WorldStore {
                 if ((old.previewData==null)!=(world.previewData==null))
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
+                    if(world.previewData.version<16 && old.previewData.bridges.stream().anyMatch(b->b.length!=3))throw new JSONException("Older preview format cannot replace bridge length");
                     if(!old.previewData.bridges.isEmpty() && world.previewData.version<15)throw new JSONException("Older preview format cannot replace bridges");
                     if(!old.surfaces.isEmpty()) throw new JSONException("Older preview format cannot replace trees");
                     int maxTile=world.previewData.version==1?1:world.previewData.version==2?5:6;
@@ -714,7 +715,7 @@ final class WorldStore {
         JSONObject root=new JSONObject(world.previewData.toJson()),data=root.getJSONObject("world");JSONArray before=data.optJSONArray("bridges");if(before==null)return false;
         JSONArray next=new JSONArray();boolean found=false;
         for(int i=0;i<before.length();i++) {JSONObject item=before.getJSONObject(i);
-            if(item.getInt("column")==expected.column && item.getInt("row")==expected.row && item.getString("axis").equals(expected.axis) && item.getString("material").equals(expected.material)){
+            if(item.getInt("column")==expected.column && item.getInt("row")==expected.row && item.getString("axis").equals(expected.axis) && item.getString("material").equals(expected.material) && item.optInt("length",3)==expected.length){
                 if(found)return false;found=true;if(delete)continue;item.put("column",column);item.put("row",row);
             }
             next.put(item);
@@ -723,11 +724,12 @@ final class WorldStore {
         PreviewWorld20 parsed;try{parsed=PreviewWorld20.parse(root.toString());}catch(JSONException invalid){return false;}
         java.util.List<World> worlds=list();for(int i=0;i<worlds.size();i++)if(worldId.equals(worlds.get(i).id)){worlds.set(i,fromPreview(parsed));return saveWorlds(worlds,worldId);}return false;
     }
-    boolean placePreviewBridge(String worldId,int column,int row,String axis,String material) throws JSONException {
-        if(!worldId.equals(activeId()) || !java.util.Arrays.asList("E","S").contains(axis) || !java.util.Arrays.asList("wood","stone").contains(material))return false;
+    boolean placePreviewBridge(String worldId,int column,int row,String axis,String material) throws JSONException {return placePreviewBridge(worldId,column,row,axis,material,3);}
+    boolean placePreviewBridge(String worldId,int column,int row,String axis,String material,int length) throws JSONException {
+        if(length<3 || length>5 || !worldId.equals(activeId()) || !java.util.Arrays.asList("E","S").contains(axis) || !java.util.Arrays.asList("wood","stone").contains(material))return false;
         World world=activeWorld();if(world==null || world.previewData==null)return false;
         JSONObject root=new JSONObject(world.previewData.toJson()),data=root.getJSONObject("world");JSONArray bridges=data.optJSONArray("bridges");if(bridges==null)bridges=new JSONArray();
-        bridges.put(new JSONObject().put("column",column).put("row",row).put("axis",axis).put("material",material));data.put("bridges",bridges);root.put("version",15);
+        JSONObject bridge=new JSONObject().put("column",column).put("row",row).put("axis",axis).put("material",material);if(length!=3)bridge.put("length",length);bridges.put(bridge);data.put("bridges",bridges);root.put("version",Math.max(world.previewData.version,length==3?15:16));
         PreviewWorld20 parsed;try{parsed=PreviewWorld20.parse(root.toString());}catch(JSONException invalid){return false;}
         java.util.List<World> worlds=list();for(int i=0;i<worlds.size();i++)if(worldId.equals(worlds.get(i).id)){worlds.set(i,fromPreview(parsed));return saveWorlds(worlds,worldId);}return false;
     }

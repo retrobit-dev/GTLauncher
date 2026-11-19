@@ -19,3 +19,16 @@ console.log('Bridge footprint and railing rules; v14 stacked pathfinding: OK');
  world.blockStacks=world.tiles.map(t=>[t]);world.blockStacks[5*20+6]=[1,3];assert(!b.valid(world,[bridge]),'uneven ground');
 }
 console.log('Bridge placement rejects overlap, water entrances, obstructions and uneven terrain: OK');
+for (const length of [4,5]) for (const axis of ['E','S']) {
+  const bridge={column:3,row:3,axis,material:'wood',length}, cells=b.cells(bridge);
+  assert.equal(cells.length,length);
+  const tiles=Array(100).fill(1); for(const p of cells.slice(1,-1))tiles[p.row*10+p.column]=3;
+  const w={gridSize:10,tiles};assert.equal(b.valid(w,[bridge]),true);
+  assert.equal(b.permitsStep([bridge],cells[0],cells[1]),true);
+  const last=cells.at(-1),out={column:last.column+(axis==='E'?1:0),row:last.row+(axis==='S'?1:0)};
+  assert.equal(b.permitsStep([bridge],last,out),true);
+  const side={column:cells[1].column+(axis==='S'?1:0),row:cells[1].row+(axis==='E'?1:0)};
+  assert.equal(b.permitsStep([bridge],cells[1],side),false);
+  tiles[last.row*10+last.column]=3;assert.equal(b.valid(w,[bridge]),false);
+}
+console.log('4×1 and 5×1 bridge footprints, water and end-only traversal: OK');

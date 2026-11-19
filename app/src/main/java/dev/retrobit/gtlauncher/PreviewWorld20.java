@@ -66,7 +66,7 @@ final class PreviewWorld20 {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 3 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15) throw new JSONException("Unsupported world version");
+        if (version > 3 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         if(version>=7 && version<13 && !w.has("orangeTrees")) throw new JSONException("Unsupported world version");
         // Flat conifer-only worlds are supported. Stacks and other tree kinds remain rejected.
@@ -149,7 +149,7 @@ final class PreviewWorld20 {
         if(w.has("bridges")) {
             if(version<15 || !(w.get("bridges") instanceof JSONArray))throw new JSONException("Unsupported bridges");
             JSONArray entries=w.getJSONArray("bridges");if(entries.length()>size*size/3)throw new JSONException("Too many bridges");
-            for(int i=0;i<entries.length();i++) {JSONObject b=entries.getJSONObject(i);keys(b,"column","row","axis","material");bridges.add(new BridgeGeometry.Bridge(integer(b,"column",0,size-1),integer(b,"row",0,size-1),string(b,"axis"),string(b,"material")));}
+            for(int i=0;i<entries.length();i++) {JSONObject b=entries.getJSONObject(i);keys(b,"column","row","axis","material","length");if(version<16 && b.has("length"))throw new JSONException("Unsupported bridge length");int length=b.has("length")?integer(b,"length",4,5):3;bridges.add(new BridgeGeometry.Bridge(integer(b,"column",0,size-1),integer(b,"row",0,size-1),string(b,"axis"),string(b,"material"),length));}
             final boolean[] blocked=new boolean[size*size];
             if(house instanceof JSONObject){JSONObject h=(JSONObject)house;int hc=h.getInt("column"),hr=h.getInt("row");for(int y=hr;y<hr+3;y++)for(int x=hc;x<hc+3;x++)blocked[y*size+x]=true;}
             JSONArray trees=w.optJSONArray("orangeTrees");if(trees!=null)for(int i=0;i<trees.length();i++){JSONObject t=trees.getJSONObject(i);int x=t.getInt("column"),y=t.getInt("row"),n=t.optInt("size",2);for(int dy=0;dy<n;dy++)for(int dx=0;dx<n;dx++)blocked[(y+dy)*size+x+dx]=true;}

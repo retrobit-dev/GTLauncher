@@ -1865,7 +1865,7 @@
       shadows.push({anchor: {x: centre.x, y: bottom},
         width: 84 * house.scale, depth: islandTileHeight * 3 * house.scale, height: 85 * house.scale});
     }
-    for(const bridge of world.bridges||[]){const p=bridgeBounds(bridge);shadows.push({anchor:{x:p.x,y:p.y},width:p.w*.8,depth:islandTileHeight*1.4,height:4});}
+    for(const bridge of world.bridges||[]){const p=bridgeBounds(bridge);shadows.push({anchor:{x:p.x,y:p.y},width:p.w*.8*(bridge.length||3)/3,depth:islandTileHeight*(bridge.length||3)/2,height:4});}
     const trees=world.orangeTrees||[], fences=world.fences||[];
     if (!shadows.length && !trees.length && !fences.length) return;
     const lightPoint = sunPlanePosition(light.hourAngleDegrees);
@@ -1916,12 +1916,14 @@
   }
   let editingBridgeSelection=null;
   function bridgeBounds(bridge) {
-    const centre=characterCentre({column:bridge.column+(bridge.axis==='E'?1:0),row:bridge.row+(bridge.axis==='S'?1:0),blockHeight:surfaceHeight(bridge.column,bridge.row)});
+    const half=((bridge.length||3)-1)/2;
+    const centre=characterCentre({column:bridge.column+(bridge.axis==='E'?half:0),row:bridge.row+(bridge.axis==='S'?half:0),blockHeight:surfaceHeight(bridge.column,bridge.row)});
     return {x:centre.x,y:centre.y,w:ISLAND_TILE_WIDTH*2.35,h:ISLAND_TILE_WIDTH*1.56};
   }
   function drawBridge(bridge) {
     const image=bridgeSprites[bridge.material];if(!image?.complete || !image.naturalWidth)return;
     const p=bridgeBounds(bridge);ctx.save();applyIslandTransform();ctx.translate(p.x,p.y);if(bridge.axis==='E')ctx.scale(-1,1);
+    const k=(bridge.length||3)/3;ctx.transform((k+1)/2,(1-k)/4,1-k,(k+1)/2,0,0);
     ctx.imageSmoothingEnabled=true;ctx.drawImage(image,-p.w/2,-p.h*.62,p.w,p.h);
     if(editingBridgeSelection && editingBridgeSelection.column===bridge.column && editingBridgeSelection.row===bridge.row && editingBridgeSelection.axis===bridge.axis){ctx.strokeStyle='#fff4a8';ctx.lineWidth=.6;ctx.strokeRect(-p.w/2,-p.h*.62,p.w,p.h);}
     ctx.restore();

@@ -552,9 +552,10 @@ public final class WeatherSkyView extends View {
         if(worldTerrain==null)return;
         for(BridgeGeometry.Bridge b:worldTerrain.bridges){
             Bitmap image=b.material.equals("wood")?bridgeWood:bridgeStone;if(image==null)continue;
-            int c=b.column+(b.axis.equals("E")?1:0),r=b.row+(b.axis.equals("S")?1:0);
+            float half=(b.length-1)/2f,c=b.column+(b.axis.equals("E")?half:0),r=b.row+(b.axis.equals("S")?half:0);
             float x=SCENE_WIDTH/2f+(c-r)*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(c+r)*ISLAND_TILE_HEIGHT/2f;
             float width=ISLAND_TILE_WIDTH*2.35f,height=ISLAND_TILE_WIDTH*1.56f;int save=canvas.save();canvas.translate(x,y);if(b.axis.equals("E"))canvas.scale(-1,1);
+            float k=b.length/3f;android.graphics.Matrix stretch=new android.graphics.Matrix();stretch.setValues(new float[]{(k+1)/2,1-k,0,(1-k)/4,(k+1)/2,0,0,0,1});canvas.concat(stretch);
             paint.setColor(Color.WHITE);paint.setAlpha(255);canvas.drawBitmap(image,null,new RectF(-width/2,-height*.62f,width/2,height*.38f),paint);canvas.restoreToCount(save);
         }
     }
