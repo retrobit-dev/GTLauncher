@@ -566,6 +566,31 @@ public final class WeatherSkyView extends View {
             paint.setColor(Color.WHITE);paint.setAlpha(255);canvas.drawBitmap(image,null,new RectF(-width/2,-height*.62f,width/2,height*.38f),paint);canvas.restoreToCount(save);
         }
     }
+    // Only objects painted after the player can hide them. Test opaque pixels rather
+    // than tile proximity, and never write this temporary fade into world data.
+    private RectF visibleCharacterBounds() {
+        float x=SCENE_WIDTH/2f+(visualColumn()-visualRow())*ISLAND_TILE_WIDTH/2f;
+        float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f-visualElevation()+visualWaterDepth();
+        float width=13.5f*characterScale;
+        return new RectF(x-width/2,y-25*characterScale,x+width/2,y);
+    }
+    private boolean spriteCoversCharacter(Bitmap image,RectF bounds,boolean mirror,boolean front) {
+        if(!showCharacter || !front || image==null)return false;
+        boolean back=characterFacing.equals("N")||characterFacing.equals("W");
+        return fenceOverlaps(image,bounds,mirror,back?mainCharacterBack:mainCharacter,visibleCharacterBounds(),characterFacing.equals("W")||characterFacing.equals("E"));
+    }
+    private boolean houseCoversCharacter(WorldStore.House house,Bitmap image,boolean front) {
+        if(!showCharacter || !front || image==null)return false;
+        boolean back=characterFacing.equals("N")||characterFacing.equals("W"),mirror=characterFacing.equals("W")||characterFacing.equals("E");
+        Bitmap player=back?mainCharacterBack:mainCharacter;RectF target=visibleCharacterBounds();
+        if("wide".equals(house.design)) {
+            float scale=(float)house.scale,x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+35*scale/6;
+            float bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f-elevationAt(house.column,house.row)+1.25f*ISLAND_TILE_HEIGHT*scale;
+            return fenceOverlaps(image,new RectF(x-70*scale*7/12,bottom-100*scale,x+70*scale*7/12,bottom),house.facing.equals("N")||house.facing.equals("E"),player,target,mirror);
+        }
+        HouseGeometry geometry=new HouseGeometry(ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,(float)house.scale);
+        return player!=null && FenceOcclusion.overlaps(occlusionBounds(projectedHouseBounds(house)),(x,y)->projectedHouseOpaque(house,geometry,x,y),occlusionBounds(target),(x,y)->opaqueAt(player,target,x,y,mirror));
+    }
     private void drawSurfaceSprites(Canvas canvas,boolean front) {
         drawGrassBridges(canvas,front);
         for(WorldStore.SurfaceObject o:worldSurfaces) {
@@ -583,7 +608,7 @@ public final class WeatherSkyView extends View {
                 image=o.type.equals("selling-box")?(opened?sellingBoxOpen:sellingBoxClosed):back?(opened?storageBackOpen:storageBackClosed):(opened?storageOpen:storageClosed);
             }
             if(image==null)continue;RectF g=surfaceSpriteBounds(o);
-            int alpha=Math.round(255*(100-Math.max(0,o.opacity))/100f);
+            int alpha=Math.round(255*(100-Math.max(0,o.opacity))/100f*(spriteCoversCharacter(image,g,mirror,front)?.5f:1f));
             {
                 int contactSave=canvas.save();setClipIslandSurface(canvas);
                 boolean grass=o.type.equals("bush") && (o.material.equals("wild-grass") || o.material.startsWith("preview-bush"));
@@ -1154,7 +1179,7 @@ public final class WeatherSkyView extends View {
             float scale=(float)house.scale,x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
             float bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f-elevationAt(house.column,house.row)+1.25f*ISLAND_TILE_HEIGHT*scale;
             float width=70*scale*(wide?7f/6:1),height=(wide?100:74)*scale;
-            paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,house.opacity))/100f));paint.setFilterBitmap(true);
+            paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,house.opacity))/100f*(houseCoversCharacter(house,sprite,front)?.5f:1f)));paint.setFilterBitmap(true);
             if(!wide) drawProjectedHouse(canvas,house,sprite,mirror);
             else {
                 int save=canvas.save();if(mirror)canvas.scale(-1,1,x,0);

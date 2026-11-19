@@ -2039,6 +2039,32 @@
     ctx.translate(x,y);ctx.transform(1,0,-sway/11,1,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     ctx.drawImage(wildGrassImage,-11,-11,22,11);ctx.restore();
   }
+  // Fade foreground artwork when opaque pixels overlap sampled points in the player bounds.
+  // This is an approximation, not a pixel-perfect character mask.
+  function coversCharacter(player, hit, bounds) {
+    if(!player?.visible || !window.sceneEditing)return false;
+    const anchor=characterCentre(player), scale=player.scale || 1;
+    const bottom=anchor.y+.5*scale+characterWaterDepth(player), height=PLAYER_HEIGHT*scale, width=PLAYER_WIDTH*scale;
+    if(bounds && (anchor.x+width/2<=bounds.left || anchor.x-width/2>=bounds.right || bottom<=bounds.top || bottom-height>=bounds.bottom))return false;
+    for(let yi=1;yi<10;yi++)for(let xi=1;xi<6;xi++) {
+      const p={x:anchor.x-width/2+width*xi/6,y:bottom-height+height*yi/10};
+      if(hit(p))return true;
+    }
+    return false;
+  }
+  function treeContains(tree,point) {
+    const sprite=treeSprite(tree);if(!sprite.complete || !sprite.naturalWidth)return false;
+    const centre=orangeTreeAnchor(tree),width=treeWidth(tree),height=treeHeight(tree),bottom=centre.y;
+    const x=point.x-centre.x+(point.y-bottom)*objectSway(tree)/height;
+    let u=(x+width/2)/width,v=(point.y-bottom+height)/height;
+    if(u<0||u>=1||v<0||v>=1)return false;
+    if(tree.facing==='W'||tree.facing==='E')u=1-u;
+    try {
+      let data=houseHitCache.get(sprite);
+      if(!data){const c=document.createElement('canvas');c.width=128;c.height=128;const h=c.getContext('2d',{willReadFrequently:true});h.drawImage(sprite,0,0,128,128);data=h.getImageData(0,0,128,128).data;houseHitCache.set(sprite,data);}
+      return data[(Math.floor(v*128)*128+Math.floor(u*128))*4+3]>32;
+    }catch(_){return false;}
+  }
   function orangeDropPosition(tree) {
     const p=orangeTreeAnchor(tree);return {x:p.x+6,y:p.y+1};
   }
@@ -2488,10 +2514,22 @@
     const visiblePlayer=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
     const objectWorld=worldForObjects(),joins=fenceJoins(objectWorld);
     for(const bridge of objectWorld?.bridges||[])drawBridge(bridge);
-    const sceneObjects=(objectWorld?.orangeTrees||[]).map(tree=>({depth:tree.column+tree.row+treeSize(tree)-1,draw:()=>{drawOrangeTree(tree,motionTime,sceneWeather);drawOrangeDrop(tree);}}));
+    const sceneObjects=(objectWorld?.orangeTrees||[]).map(tree=>({depth:tree.column+tree.row+treeSize(tree)-1,draw:()=>{
+      const foreground=visiblePlayer?.visible && tree.column+tree.row+treeSize(tree)-1>=visiblePlayer.column+visiblePlayer.row;
+      ctx.save();const t=foreground?orangeTreeAnchor(tree):null,w=foreground?treeWidth(tree):0,h=foreground?treeHeight(tree):0;
+      if(foreground && coversCharacter(visiblePlayer,p=>treeContains(tree,p),{left:t.x-w/2-3,right:t.x+w/2+3,top:t.y-h,bottom:t.y}))ctx.globalAlpha*=.5;
+      drawOrangeTree(tree,motionTime,sceneWeather);drawOrangeDrop(tree);ctx.restore();
+    }}));
     for(const [a,b] of grassPairs(objectWorld))sceneObjects.push({depth:(a.column+a.row+b.column+b.row)/2,draw:()=>drawGrassBridge(a,b)});
     (objectWorld?.fences||[]).forEach((f,i)=>sceneObjects.push({depth:f.column+f.row+((f.edge==='S'||f.edge==='E')?.5:-.5),draw:()=>drawFence(f,joins[i])}));
-    if(visibleHouse?.visible)sceneObjects.push({depth:visibleHouse.column+visibleHouse.row+2,draw:drawHouse});
+    if(visibleHouse?.visible)sceneObjects.push({depth:visibleHouse.column+visibleHouse.row+2,draw:()=>{
+      const foreground=visiblePlayer?.visible && visibleHouse.column+visibleHouse.row+2>=visiblePlayer.column+visiblePlayer.row;
+      const projection=foreground && window.HouseGeometry?houseProjection(visibleHouse):null;
+      const points=projection?[[0,0],[256,0],[512,0],[0,490],[256,490],[512,490]].map(([x,y])=>window.HouseGeometry.project(projection.geometry,x,y)):[];
+      const xs=points.map(p=>projection.centre.x+p.x*(projection.mirror?-1:1)),ys=points.map(p=>projection.bottom+p.y);
+      const bounds=projection?{left:Math.min(...xs),right:Math.max(...xs),top:Math.min(...ys),bottom:Math.max(...ys)}:null;
+      ctx.save();if(projection && coversCharacter(visiblePlayer,p=>houseAt(p,visibleHouse),bounds))ctx.globalAlpha*=.5;drawHouse();ctx.restore();
+    }});
     if(visiblePlayer?.visible)sceneObjects.push({depth:visiblePlayer.column+visiblePlayer.row,draw:()=>drawMainCharacter(motionTime)});
     sceneObjects.sort((a,b)=>a.depth-b.depth);for(const object of sceneObjects)object.draw();
     // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
@@ -2793,6 +2831,8 @@
     waterTopBorders,
     waterFalls,
     houseAt,
+    coversCharacter,
+    treeContains,
     setSelectedTree(tree) {editingTreeSelection=tree ? {...tree} : null;if(REDUCED_MOTION)drawFrame();},
     orangeTreeAnchor,
     plantSway(tree) { return objectSway(tree); },
