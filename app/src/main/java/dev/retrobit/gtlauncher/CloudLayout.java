@@ -11,7 +11,7 @@ final class CloudLayout {
     static float cellSize(float tileWidth,float tileHeight,int columns,int rows,int gridSize,int count) {
         if(tileWidth<=0 || tileHeight<=0 || columns<=0 || rows<=0 || gridSize<=0 || count<=0)throw new IllegalArgumentException("Invalid cloud dimensions");
         double span=Math.max(6,gridSize*.9/Math.sqrt(count));
-        return (float)(span*Math.min(tileWidth/columns,tileHeight/rows));
+        return (float)(.25*span*Math.min(tileWidth/columns,tileHeight/rows));
     }
     static double[] seed(int index,int count,int gridSize,double jitterEast,double jitterNorth) {
         double east=(index+.5+(jitterEast-.5)*.3)/count;

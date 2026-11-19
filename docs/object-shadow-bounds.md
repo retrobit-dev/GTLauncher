@@ -19,3 +19,7 @@ sama diberi jembatan visual; data dan seleksi masing-masing tile tidak digabung.
 Android hanya mendukung subset world preview datar sehingga semua tile rumputnya
 berada pada ketinggian yang sama. Art cemara lama tetap disimpan; asset redesign
 baru dipakai di katalog dan renderer kedua platform.
+
+## Bayangan rumah sesuai arah cahaya
+
+Preview dan Android memproyeksikan siluet alpha gambar rumah (depan/belakang dan cermin arah), bukan bentuk diamond generik. Arah dan panjang perkiraan mengikuti azimuth dan elevasi sumber cahaya aktif lalu dikecilkan agar tidak melampaui lebar dan tinggi rumah. Bayangan tetap berawal pada fondasi. Ini proyeksi sprite 2D yang dibatasi, bukan simulasi bayangan 3D fisik sempurna. Build Android/perangkat belum diuji.

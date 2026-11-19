@@ -1061,24 +1061,11 @@ public final class WeatherSkyView extends View {
     // There is no 3D object model, so the ground-depth component is stylized.
     private static final PorterDuffColorFilter OBJECT_SHADOW_FILTER =
             new PorterDuffColorFilter(Color.rgb(12, 23, 40), PorterDuff.Mode.SRC_IN);
-    private void drawObjectSilhouette(Canvas canvas, Bitmap sprite, float x, float y,
-                                      float width, float height, float[] light, boolean mirror) {
-        float h = Math.max(0, Math.min(height, LANGIT_MATAHARI_LIFT * 0.8f));
-        float ratio = h / (LANGIT_MATAHARI_LIFT - h);
-        float dx = (x - light[0]) * ratio;
-        float dy = (y - light[1] - LANGIT_MATAHARI_LIFT) * ratio + height * 0.4f;
-        float shadowScale=CharacterShadow.fitAroundAnchor(width,height,dx,dy);
-        Matrix transform = new Matrix();
-        transform.setValues(new float[]{shadowScale, -shadowScale*dx / height, x + shadowScale*(-width / 2 + dx),
-                0, -shadowScale*dy / height, y + shadowScale*dy, 0, 0, 1});
-        int saved = canvas.save();
-        canvas.concat(transform);
-        if (mirror) { canvas.translate(width, 0); canvas.scale(-1, 1); }
-        paint.setColorFilter(OBJECT_SHADOW_FILTER);
-        paint.setFilterBitmap(true);
-        canvas.drawBitmap(sprite, null, new RectF(0, 0, width, height), paint);
-        paint.setColorFilter(null);
-        canvas.restoreToCount(saved);
+    private void drawHouseSilhouette(Canvas canvas,Bitmap sprite,float x,float y,float width,float height,SkyMath.Position light,boolean mirror) {
+        float[] p=HouseShadow.projection(width,height,light.azimuthDegrees,light.altitudeDegrees);float dx=p[0],dy=p[1],scale=p[2];
+        Matrix transform=new Matrix();transform.setValues(new float[]{scale,-scale*dx/height,x+scale*(-width/2+dx),0,-scale*dy/height,y+scale*dy,0,0,1});
+        int saved=canvas.save();canvas.concat(transform);if(mirror){canvas.translate(width,0);canvas.scale(-1,1);}
+        paint.setColorFilter(OBJECT_SHADOW_FILTER);paint.setFilterBitmap(true);canvas.drawBitmap(sprite,null,new RectF(0,0,width,height),paint);paint.setColorFilter(null);canvas.restoreToCount(saved);
     }
 
     private void drawSurfaceObjectShadows(Canvas canvas, SkyMath.Position light, double cloudCover, int code) {
@@ -1094,7 +1081,7 @@ public final class WeatherSkyView extends View {
             float scale=(float)house.scale,x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
             float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f;
             int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-Math.max(0,house.opacity))/100f));
-            drawObjectSilhouette(canvas,image,x,wide?y+ISLAND_TILE_HEIGHT*1.25f*scale:houseBottom(house,new HouseGeometry(ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,scale)),70*scale*(wide?7f/6:1),(wide?100:74)*scale,lightPoint,"N".equals(house.facing)||"E".equals(house.facing));
+            drawHouseSilhouette(canvas,image,x,wide?y+ISLAND_TILE_HEIGHT*1.25f*scale:houseBottom(house,new HouseGeometry(ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,scale)),(wide?70*7f/6:84)*scale,(wide?100:85)*scale,light,"N".equals(house.facing)||"E".equals(house.facing));
             paint.setAlpha(originalAlpha);
         }
         java.util.List<FenceGeometry.Edge> shadowEdges=new java.util.ArrayList<>();

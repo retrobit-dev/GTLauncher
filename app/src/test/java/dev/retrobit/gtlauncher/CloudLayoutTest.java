@@ -12,8 +12,7 @@ public class CloudLayoutTest {
     }
     @Test public void sizeAndDistributionFollowTheWorld() {
         for(int grid:new int[]{9,20,25,50,100})for(int count:new int[]{1,3,6,10}) {
-            float cell=CloudLayout.cellSize(28,14,28,14,grid,count);assertTrue(cell>=6);
-            if(grid==50 && count==3)assertTrue(cell>20);
+            float cell=CloudLayout.cellSize(28,14,28,14,grid,count);float before=(float)Math.max(6,grid*.9/Math.sqrt(count));assertEquals(before/4,cell,.00001f);
             boolean left=false,right=false,top=false,bottom=false;
             for(int i=0;i<count;i++){double[] p=CloudLayout.seed(i,count,grid,.5,.5);assertTrue(p[0]>=0 && p[0]<grid && p[1]>=0 && p[1]<grid);left|=p[0]<grid*.25;right|=p[0]>grid*.75;top|=p[1]<grid*.25;bottom|=p[1]>grid*.70;}
             if(count>=3)assertTrue(left && right && top && bottom);

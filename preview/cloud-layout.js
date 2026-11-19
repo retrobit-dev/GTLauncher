@@ -10,7 +10,7 @@
   // Scale with the actual world rather than a fixed four tiles on every island.
   function cellSize(w,h,cols,rows,gridSize=9,cloudCount=3){
     const span=Math.max(6,gridSize*.9/Math.sqrt(Math.max(1,cloudCount)));
-    return span*Math.min(w/cols,h/rows);
+    return .25*span*Math.min(w/cols,h/rows);
   }
   // Stratify one axis and use a low-discrepancy sequence for the other. All
   // centers travel around the complete island grid with the integrated wind.

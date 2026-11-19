@@ -6,7 +6,7 @@ for(let cover=0;cover<=100;cover++) {
 }
 assert.equal(c.count(0,95),7);assert.equal(c.count(100,95),10);
 for(const grid of [9,20,25,50,100])for(const count of [1,3,6,10]) {
- const cell=c.cellSize(28,14,28,14,grid,count);assert(cell>=6);if(grid===50 && count===3)assert(cell>20);
+ const cell=c.cellSize(28,14,28,14,grid,count);const old=Math.max(6,grid*.9/Math.sqrt(count))*Math.min(28/28,14/14);assert(Math.abs(cell-old/4)<1e-9);
  const positions=Array.from({length:count},(_,i)=>c.seed(i,count,grid,.5,.5));
  for(const p of positions)assert(p.east>=0 && p.east<grid && p.north>=0 && p.north<grid);
  if(count>=3){assert(positions.some(p=>p.east<grid*.25));assert(positions.some(p=>p.east>grid*.75));assert(positions.some(p=>p.north<grid*.25));assert(positions.some(p=>p.north>grid*.70));}

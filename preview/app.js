@@ -1867,14 +1867,9 @@
     const shadows = [];
     const house = editingHouseDraft || window.worldManager.getHouse?.();
     const houseSprite = house && (house.facing === 'N' || house.facing === 'W') ? houseBackImage : houseImage;
-    if (house?.visible && houseSprite.complete && houseSprite.naturalWidth) {
-      const {centre,bottom} = houseProjection(house);
-      shadows.push({anchor: {x: centre.x, y: bottom},
-        width: 84 * house.scale, depth: islandTileHeight * 3 * house.scale, height: 85 * house.scale});
-    }
     for(const bridge of world.bridges||[]){const p=bridgeBounds(bridge);shadows.push({anchor:{x:p.x,y:p.y},width:p.w*.8*(bridge.length||3)/3,depth:islandTileHeight*(bridge.length||3)/2,height:4});}
     const trees=world.orangeTrees||[], fences=world.fences||[];
-    if (!shadows.length && !trees.length && !fences.length) return;
+    if (!shadows.length && !trees.length && !fences.length && !house?.visible) return;
     const lightPoint = sunPlanePosition(light.hourAngleDegrees);
     ctx.save(); applyIslandTransform(); clipIslandSurface();
     // Object shadows remain legible even under overcast conditions or virtual moonlight.
@@ -1886,6 +1881,16 @@
       ctx.beginPath(); ctx.moveTo(points[0][0], points[0][1]);
       for (const [x, y] of points.slice(1)) ctx.lineTo(x, y);
       ctx.closePath(); ctx.fill();
+    }
+    // Project the actual roof and walls' alpha, anchored at the house foundation.
+    if(house?.visible && houseSprite.complete && houseSprite.naturalWidth && Number.isFinite(light.azimuth) && window.HouseShadow) {
+      let mask=characterShadowMasks.get(houseSprite);
+      if(!mask){mask=document.createElement('canvas');mask.dataset.houseShadow='true';mask.width=houseSprite.naturalWidth;mask.height=houseSprite.naturalHeight;const m=mask.getContext('2d');m.drawImage(houseSprite,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);characterShadowMasks.set(houseSprite,mask);}
+      const {centre,bottom,mirror}=houseProjection(house),width=84*house.scale,height=85*house.scale;
+      const p=window.HouseShadow.projection(width,height,light.azimuth,light.altitude);
+      ctx.save();ctx.globalAlpha=opacity;ctx.imageSmoothingEnabled=true;ctx.translate(centre.x,bottom);ctx.scale(p.scale,p.scale);
+      ctx.transform(1,0,-p.dx/height,-p.dy/height,-width/2+p.dx,p.dy);
+      if(mirror){ctx.translate(width,0);ctx.scale(-1,1);}ctx.drawImage(mask,0,0,width,height);ctx.restore();
     }
     // Fence shadows share the exact endpoints of the visible segment and stay on top faces.
     for(const fence of fences) {
