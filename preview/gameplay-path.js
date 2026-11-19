@@ -1,5 +1,5 @@
 // Exact-tile routing on legacy and 20x20/25x25/50x50/100x100 preview worlds, without changing saved data.
-(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory(require('./bridge-geometry.js'));else root.GameplayPath=factory(root.BridgeGeometry);})(typeof window!=='undefined'?window:globalThis,(BridgeGeometry)=>{
+(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory(require('./bridge-geometry.js'),require('./ramp-geometry.js'));else root.GameplayPath=factory(root.BridgeGeometry,root.RampGeometry);})(typeof window!=='undefined'?window:globalThis,(BridgeGeometry,RampGeometry)=>{
   'use strict';
   function find(world,start,end,house,nearestDry=false) {
     const size=[20,25,50,100].includes(world?.gridSize)?world.gridSize:9;
@@ -11,6 +11,20 @@
     if (stacks !== undefined && (!Array.isArray(stacks) || stacks.length!==size*size ||
       stacks.some(s=>!Array.isArray(s) || s.length>32 || s.some(v=>!Number.isInteger(v)||v<1||v>10)))) return null;
     const height=p=>stacks ? stacks[keyOf(p)].length : (!world.tiles || world.tiles[keyOf(p)]!==0 ? 1 : 0);
+    // In-memory ramp data only; portable world support is intentionally not enabled yet.
+    // Reject malformed records instead of silently routing over unsupported terrain.
+    const ramps=new Map();
+    if(world?.ramps!==undefined){
+      if(!RampGeometry || !Array.isArray(world.ramps))return null;
+      for(const ramp of world.ramps){
+        if(!inside(ramp) || !RampGeometry.DIRECTIONS.includes(ramp.direction) || height(ramp)<1 || ramps.has(keyOf(ramp)))return null;
+        ramps.set(keyOf(ramp),ramp.direction);
+      }
+    }
+    function terrainStep(a,b,edge){
+      const da=ramps.get(keyOf(a)),db=ramps.get(keyOf(b));
+      return da===undefined && db===undefined ? Math.abs(height(a)-height(b))<=1 : RampGeometry.canConnect({height:height(a),direction:da},{height:height(b),direction:db},edge);
+    }
     const inHouse=p=>house?.visible && p.column>=house.column && p.column<house.column+3 && p.row>=house.row && p.row<house.row+3;
     const escaping=inside(start) && inHouse(start);
     const inTree=p=>(world?.orangeTrees||[]).some(t=>t.kind!=='wild-grass' && t.kind!=='bush' && p.column>=t.column && p.column<t.column+(t.size||2) && p.row>=t.row && p.row<t.row+(t.size||2));
@@ -24,8 +38,8 @@
       const p=queue[i]; if(nearestDry ? (key(p)!==key(start) && pass(p) && !inHouse(p) && (world.tiles?.[key(p)]!==3 || (world.bridges||[]).some(b=>BridgeGeometry?.indexAt(b,p)>=0))) : (p.column===end.column&&p.row===end.row)) {
         const route=[];let n=key(p);while(n!==null){route.push({column:n%size,row:Math.floor(n/size)});n=prev.get(n);}return route.reverse();
       }
-      for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
-        const next={column:p.column+dx,row:p.row+dy};if(!pass(next)||((world.bridges||[]).length && (!BridgeGeometry || !BridgeGeometry.permitsStep(world.bridges,p,next)))||(world.fences||[]).some(f=>{const d={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[f.edge];return d && ((p.column===f.column && p.row===f.row && next.column===f.column+d[0] && next.row===f.row+d[1]) || (next.column===f.column && next.row===f.row && p.column===f.column+d[0] && p.row===f.row+d[1]));})||Math.abs(height(p)-height(next))>1||prev.has(key(next)) || (escaping && !inHouse(p) && inHouse(next)))continue;
+      for(const [dx,dy,edge] of [[0,-1,'N'],[1,0,'E'],[0,1,'S'],[-1,0,'W']]) {
+        const next={column:p.column+dx,row:p.row+dy};if(!pass(next)||((world.bridges||[]).length && (!BridgeGeometry || !BridgeGeometry.permitsStep(world.bridges,p,next)))||(world.fences||[]).some(f=>{const d={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[f.edge];return d && ((p.column===f.column && p.row===f.row && next.column===f.column+d[0] && next.row===f.row+d[1]) || (next.column===f.column && next.row===f.row && p.column===f.column+d[0] && p.row===f.row+d[1]));})||!terrainStep(p,next,edge)||prev.has(key(next)) || (escaping && !inHouse(p) && inHouse(next)))continue;
         prev.set(key(next),key(p));queue.push(next);
       }
     }
