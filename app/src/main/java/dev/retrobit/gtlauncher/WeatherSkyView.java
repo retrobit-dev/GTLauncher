@@ -1849,7 +1849,7 @@ public final class WeatherSkyView extends View {
             else {
                 boolean grassTop=material>=7 && material<=10;
                 int baseMaterial=grassTop ? (material==7?2:material==8?4:material==9?5:6) : material;
-                int[] colors={0,0,0xffae8b68,0xff75cbd0,0xffb8b2a7,0xffdac695,0xff805e43};
+                int[] colors={0,0,0xffae8b68,0xff75cbd0,0xffb8b2a7,0xffdac695,0xffbd7549};
                 int fill=baseMaterial==2 ? blend(palette.soilLight,0xffd49d65,0.4) : baseMaterial==4 ? blend(colors[baseMaterial],palette.soilDark,0.08) : blend(colors[baseMaterial],palette.grassDark,0.12);
                 boolean leftWater = material==3 && row+1<ISLAND_GRID_SIZE && worldTerrain.tile(column,row+1)==3;
                 boolean rightWater = material==3 && column+1<ISLAND_GRID_SIZE && worldTerrain.tile(column+1,row)==3;
@@ -1861,6 +1861,13 @@ public final class WeatherSkyView extends View {
                 }
                 if (!leftWater) drawGrassTileSide(canvas,x,y,hw,hh,material==3?0:1.4f,ISLAND_TILE_SIDE_DEPTH,fill,true);
                 if (!rightWater) drawGrassTileSide(canvas,x,y,hw,hh,material==3?0:1.4f,ISLAND_TILE_SIDE_DEPTH,fill,false);
+                if(baseMaterial==6) {
+                    paint.setStyle(Paint.Style.FILL);paint.setColor(0x73582d1d);
+                    for(float[] p:new float[][]{{-.68f,.32f},{-.26f,.74f},{.35f,.65f},{.72f,.28f}}) {
+                        float px=x+(hw-.05f)*p[0],py=y+(hh-.025f)*p[1]+ISLAND_TILE_SIDE_DEPTH*.48f;
+                        canvas.drawRect(px,py,px+.65f,py+.45f,paint);
+                    }
+                }
                 drawSunlitIslandDiamond(canvas,x,y,material==3?hw:hw-0.05f,material==3?hh:hh-0.025f,material==3?0:1.4f,grassTop ? ((column+row)%2==0?palette.grassTileSoftFern:palette.grassTileFernSage) : fill,sunlight);
                 if (material==3) {
                     canvas.restore();
@@ -1892,9 +1899,16 @@ public final class WeatherSkyView extends View {
                     paint.setColor(0x6657544f);canvas.drawRect(fx,fy+.65f,fx+.85f,fy+1f,paint);
                 }
                 if(material==6) {
-                    paint.setColor(0xff523b2d);paint.setStrokeWidth(.75f);paint.setStyle(Paint.Style.STROKE);
-                    for(float offset:new float[]{-.42f,0f,.42f}) canvas.drawLine(x-hw*(1-Math.abs(offset)),y+hh*offset,x+hw*(1-Math.abs(offset)),y+hh*offset,paint);
-                    paint.setStyle(Paint.Style.FILL);
+                    Paint.Cap oldCap=paint.getStrokeCap();paint.setStrokeCap(Paint.Cap.ROUND);paint.setStyle(Paint.Style.STROKE);
+                    for(float v:new float[]{-.60f,-.20f,.20f,.60f}) {
+                        float ax=x+(hw-.05f)*(v+.78f)/2,ay=y+(hh-.025f)*(v-.78f)/2;
+                        float bx=x+(hw-.05f)*(v-.78f)/2,by=y+(hh-.025f)*(v+.78f)/2;
+                        paint.setColor(0xab572c1b);paint.setStrokeWidth(1.05f);canvas.drawLine(ax,ay,bx,by,paint);
+                        paint.setColor(0x7aefaf6e);paint.setStrokeWidth(.32f);canvas.drawLine(ax,ay-.45f,bx,by-.45f,paint);
+                    }
+                    paint.setStyle(Paint.Style.FILL);paint.setColor(0x8f5b3220);
+                    for(float[] p:new float[][]{{-.52f,-.02f},{.29f,-.30f},{.53f,.04f},{-.22f,.29f}})canvas.drawRect(x+p[0]*(hw-.05f),y+p[1]*(hh-.025f),x+p[0]*(hw-.05f)+.55f,y+p[1]*(hh-.025f)+.45f,paint);
+                    paint.setStrokeCap(oldCap);
                 }
                 if(grassTop) {
                     // Outline only the grassy cap; keep the original material on its sides.

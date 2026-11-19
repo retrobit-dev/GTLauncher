@@ -1233,7 +1233,7 @@
     const grassTop=material>=7 && material<=10;
     const baseMaterial=grassTop ? ({7:2,8:4,9:5,10:6})[material] : material;
     const lightTile = tile.variant === 0;
-    const terrain = {2:'#ae8b68', 3:'#75cbd0', 4:'#b8b2a7', 5:'#dac695', 6:'#805e43'};
+    const terrain = {2:'#ae8b68', 3:'#75cbd0', 4:'#b8b2a7', 5:'#dac695', 6:'#bd7549'};
     const fill = baseMaterial === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
       : baseMaterial === 2 ? blendColor(palette.soilLight, '#d49d65', 0.4)
       : baseMaterial === 4 ? blendColor(terrain[4],palette.soilDark,0.08)
@@ -1261,6 +1261,13 @@
       rightPerimeterFace ? islandTileHeight / 2 : halfHeight,
       rightPerimeterFace ? 0 : cornerRadius, rightSideDepth, fill, false);
 
+    if(baseMaterial===6) {
+      // Small earthy clods on the side faces, including the grass-topped variant.
+      ctx.save();ctx.fillStyle='rgba(88,45,29,.45)';
+      for(const [x,y,d] of [[-.68,.32,leftSideDepth],[-.26,.74,leftSideDepth],[.35,.65,rightSideDepth],[.72,.28,rightSideDepth]])
+        ctx.fillRect(tile.x+halfWidth*x,tile.y+halfHeight*y+d*.48,.65,.45);
+      ctx.restore();
+    }
     // Each top stays solid; direct sunlight adds only a uniform, subtle color lift.
     drawSunlitIslandDiamond(tile.x, tile.y, halfWidth, halfHeight,
       cornerRadius, grassTop ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage) : fill, sunlight);
@@ -1294,10 +1301,16 @@
       ctx.restore();
     }
     if (material === 6) {
-      ctx.save();ctx.strokeStyle='rgba(62,38,24,.55)';ctx.lineWidth=.75;
-      for (const offset of [-.42,0,.42]) {
-        ctx.beginPath();ctx.moveTo(tile.x - halfWidth*(1-Math.abs(offset)), tile.y + halfHeight*offset);
-        ctx.lineTo(tile.x + halfWidth*(1-Math.abs(offset)), tile.y + halfHeight*offset);ctx.stroke();
+      // Four short parallel furrows, warm soil and small clods from the approved concept.
+      ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+      for (const v of [-.60,-.20,.20,.60]) {
+        const a={x:tile.x+halfWidth*(v+.78)/2,y:tile.y+halfHeight*(v-.78)/2};
+        const b={x:tile.x+halfWidth*(v-.78)/2,y:tile.y+halfHeight*(v+.78)/2};
+        ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle='rgba(87,44,27,.67)';ctx.lineWidth=1.05;ctx.stroke();
+        ctx.beginPath();ctx.moveTo(a.x,a.y-.45);ctx.lineTo(b.x,b.y-.45);ctx.strokeStyle='rgba(239,175,110,.48)';ctx.lineWidth=.32;ctx.stroke();
+      }
+      for(const [x,y] of [[-.52,-.02],[.29,-.30],[.53,.04],[-.22,.29]]) {
+        ctx.fillStyle='rgba(91,50,32,.56)';ctx.fillRect(tile.x+x*halfWidth,tile.y+y*halfHeight,.55,.45);
       }
       ctx.restore();
     }
