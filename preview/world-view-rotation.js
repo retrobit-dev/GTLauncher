@@ -29,5 +29,34 @@
     const a=point(b.column,b.row,size,q),z=point(other.column,other.row,size,q);if(!a||!z)return null;
     return {column:Math.min(a.column,z.column),row:Math.min(a.row,z.row),axis:a.row===z.row?'E':'S',length};
   }
-  return Object.freeze({point,direction,rectangle,fence,bridge});
+  // Build an isolated camera-space world snapshot; the source is never changed.
+  // Only known coordinate-bearing records are transformed. This is not storage.
+  function projectWorld(world,quarterTurns) {
+    const q=turns(quarterTurns),size=world?.gridSize;
+    if(q===null || !Number.isInteger(size) || size<1 || !Array.isArray(world.tiles) || world.tiles.length!==size*size)return null;
+    const copy=x=>Array.isArray(x)?x.map(copy):x && typeof x==='object'?Object.fromEntries(Object.entries(x).map(([k,v])=>[k,copy(v)])):x;
+    const result=copy(world);
+    function move(p){return point(p.column,p.row,size,q);}
+    function grid(source){if(!Array.isArray(source) || source.length!==size*size)throw new Error('invalid grid');const output=Array(source.length);for(let r=0;r<size;r++)for(let c=0;c<size;c++){const p=point(c,r,size,q);output[p.row*size+p.column]=copy(source[r*size+c]);}return output;}
+    function facing(obj){if(obj.facing!==undefined){const d=direction(obj.facing,q);if(!d)throw new Error('invalid facing');obj.facing=d;}}
+    try {
+      for(const name of ['orangeTrees','fences','bridges','blockOpacity','ramps'])if(world[name]!==undefined && !Array.isArray(world[name]))throw new Error('invalid records');
+      result.tiles=grid(world.tiles);
+      if(world.blockStacks!==undefined)result.blockStacks=grid(world.blockStacks);
+      if(world.characterColumn!==undefined || world.characterRow!==undefined){const p=point(world.characterColumn,world.characterRow,size,q);if(!p || !Number.isInteger(world.characterColumn) || !Number.isInteger(world.characterRow) || world.characterColumn<0 || world.characterRow<0 || world.characterColumn>=size || world.characterRow>=size)throw new Error('invalid character');result.characterColumn=p.column;result.characterRow=p.row;}
+      if(world.characterFacing!==undefined){result.characterFacing=direction(world.characterFacing,q);if(!result.characterFacing)throw new Error('invalid facing');}
+      if(world.house){const h=rectangle(world.house.column,world.house.row,3,3,size,q);if(!h)throw new Error('invalid house');Object.assign(result.house,{column:h.column,row:h.row});facing(result.house);}
+      for(const [i,tree] of (world.orangeTrees||[]).entries()){
+        const n=tree.size||2,r=rectangle(tree.column,tree.row,n,n,size,q);if(!r)throw new Error('invalid tree');Object.assign(result.orangeTrees[i],{column:r.column,row:r.row});facing(result.orangeTrees[i]);
+      }
+      for(const [i,f] of (world.fences||[]).entries()){const transformed=fence(f,size,q);if(!transformed)throw new Error('invalid fence');Object.assign(result.fences[i],transformed);}
+      for(const [i,b] of (world.bridges||[]).entries()){const transformed=bridge(b,size,q);if(!transformed)throw new Error('invalid bridge');const target=result.bridges[i];target.column=transformed.column;target.row=transformed.row;target.axis=transformed.axis;}
+      for(const name of ['blockOpacity','ramps'])for(const [i,item] of (world[name]||[]).entries()){
+        const p=move(item);if(!p || !Number.isInteger(item.column) || !Number.isInteger(item.row) || item.column<0 || item.row<0 || item.column>=size || item.row>=size)throw new Error('invalid tile record');
+        Object.assign(result[name][i],p);if(name==='ramps'){const d=direction(item.direction,q);if(!d)throw new Error('invalid ramp');result[name][i].direction=d;}
+      }
+      return result;
+    }catch(_){return null;}
+  }
+  return Object.freeze({point,direction,rectangle,fence,bridge,projectWorld});
 });

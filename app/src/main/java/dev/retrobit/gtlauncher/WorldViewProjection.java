@@ -1,0 +1,61 @@
+package dev.retrobit.gtlauncher;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+/** Camera-space copy of a preview world. Never use this copy for storage. */
+final class WorldViewProjection {
+    static JSONObject project(JSONObject world,int turns) throws JSONException {
+        if(world==null)throw new JSONException("Missing world");
+        JSONObject out=new JSONObject(world.toString());int size=integer(out,"gridSize");
+        if(size<1 || size>100)throw new JSONException("Invalid grid size");
+        rotateGrid(out,"tiles",size,turns,true);rotateGrid(out,"blockStacks",size,turns,false);
+        if(out.has("characterColumn") || out.has("characterRow")) {
+            int c=integer(out,"characterColumn"),r=integer(out,"characterRow");if(c<0 || r<0 || c>=size || r>=size)throw new JSONException("Invalid character");
+            WorldViewRotation.Point p=WorldViewRotation.point(c,r,size,turns);
+            out.put("characterColumn",(int)p.column);out.put("characterRow",(int)p.row);
+        }
+        if(out.has("characterFacing"))out.put("characterFacing",rotatedDirection(out.getString("characterFacing"),turns));
+        if(out.has("house") && !out.isNull("house")) {
+            JSONObject house=out.getJSONObject("house");rotateRectangle(house,3,size,turns);rotateFacing(house,turns);
+        }
+        JSONArray trees=optionalArray(out,"orangeTrees");if(trees!=null)for(int i=0;i<trees.length();i++){
+            JSONObject tree=trees.getJSONObject(i);rotateRectangle(tree,tree.has("size")?integer(tree,"size"):2,size,turns);rotateFacing(tree,turns);
+        }
+        JSONArray fences=optionalArray(out,"fences");if(fences!=null)for(int i=0;i<fences.length();i++){
+            JSONObject fence=fences.getJSONObject(i);WorldViewRotation.Edge edge=WorldViewRotation.fence(integer(fence,"column"),integer(fence,"row"),fence.getString("edge"),size,turns);
+            if(edge==null)throw new JSONException("Invalid fence");fence.put("column",edge.column);fence.put("row",edge.row);fence.put("edge",edge.edge);
+        }
+        JSONArray bridges=optionalArray(out,"bridges");if(bridges!=null)for(int i=0;i<bridges.length();i++){
+            JSONObject bridge=bridges.getJSONObject(i);WorldViewRotation.Bridge b=WorldViewRotation.bridge(integer(bridge,"column"),integer(bridge,"row"),bridge.getString("axis"),bridge.has("length")?integer(bridge,"length"):3,size,turns);
+            if(b==null)throw new JSONException("Invalid bridge");bridge.put("column",b.column);bridge.put("row",b.row);bridge.put("axis",b.axis);
+        }
+        for(String name:new String[]{"blockOpacity","ramps"}) {
+            JSONArray records=optionalArray(out,name);if(records==null)continue;
+            for(int i=0;i<records.length();i++){
+                JSONObject item=records.getJSONObject(i);int c=integer(item,"column"),r=integer(item,"row");if(c<0 || r<0 || c>=size || r>=size)throw new JSONException("Invalid tile record");
+                WorldViewRotation.Point p=WorldViewRotation.point(c,r,size,turns);item.put("column",(int)p.column);item.put("row",(int)p.row);
+                if(name.equals("ramps"))item.put("direction",rotatedDirection(item.getString("direction"),turns));
+            }
+        }
+        return out;
+    }
+    private static JSONArray optionalArray(JSONObject obj,String key) throws JSONException {return obj.has(key)?obj.getJSONArray(key):null;}
+    private static void rotateGrid(JSONObject out,String key,int size,int turns,boolean required) throws JSONException {
+        if(!out.has(key) && !required)return;JSONArray input=out.getJSONArray(key);if(input.length()!=size*size)throw new JSONException("Invalid grid");
+        JSONArray result=new JSONArray();for(int i=0;i<size*size;i++)result.put(JSONObject.NULL);
+        for(int r=0;r<size;r++)for(int c=0;c<size;c++) {WorldViewRotation.Point p=WorldViewRotation.point(c,r,size,turns);result.put((int)p.row*size+(int)p.column,input.get(r*size+c));}
+        out.put(key,result);
+    }
+    private static void rotateRectangle(JSONObject obj,int n,int size,int turns) throws JSONException {
+        WorldViewRotation.Rect p=WorldViewRotation.rectangle(integer(obj,"column"),integer(obj,"row"),n,n,size,turns);if(p==null)throw new JSONException("Invalid footprint");
+        obj.put("column",p.column);obj.put("row",p.row);
+    }
+    private static void rotateFacing(JSONObject obj,int turns) throws JSONException {if(obj.has("facing"))obj.put("facing",rotatedDirection(obj.getString("facing"),turns));}
+    private static String rotatedDirection(String s,int turns) throws JSONException {String d=WorldViewRotation.direction(s,turns);if(d==null)throw new JSONException("Invalid facing");return d;}
+    private static int integer(JSONObject obj,String key) throws JSONException {
+        Object v=obj.get(key);if(!(v instanceof Number))throw new JSONException("Invalid coordinate");double n=((Number)v).doubleValue();if(!Double.isFinite(n) || n!=Math.rint(n) || n<Integer.MIN_VALUE || n>Integer.MAX_VALUE)throw new JSONException("Invalid coordinate");return (int)n;
+    }
+    private WorldViewProjection(){}
+}
