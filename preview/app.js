@@ -1882,7 +1882,7 @@
     }
     // Fence shadows share the exact endpoints of the visible segment and stay on top faces.
     for(const fence of fences) {
-      const {a,b}=fenceGeometry(fence),d=window.FenceShadow.offset(a,b,lightPoint,LANGIT_MATAHARI_LIFT,fence.material==='stone'?9:15);
+      const {a,b}=fenceGeometry(fence),d=window.FenceShadow.offset(a,b,lightPoint,LANGIT_MATAHARI_LIFT,fence.material==='stone-tall'?127.5:fence.material==='stone'?9:15);
       ctx.fillStyle=`rgba(12,23,40,${opacity*.55})`;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(b.x+d.x,b.y+d.y);ctx.lineTo(a.x+d.x,a.y+d.y);ctx.closePath();ctx.fill();
     }
     // The projected alpha preserves branches and canopy, including mirroring and wind sway.
@@ -2057,7 +2057,7 @@
     ctx.lineWidth=.30;ctx.lineJoin='round';
     for(const face of window.FenceMesh.faces(g.a,g.b,f.material,join)) {
       ctx.beginPath();ctx.moveTo(face.points[0].x,face.points[0].y);for(const p of face.points.slice(1))ctx.lineTo(p.x,p.y);ctx.closePath();
-      ctx.fillStyle=face.color;ctx.fill();if(!face.detail){ctx.strokeStyle=selected?'#fff4a8':(f.material==='stone'?'#687666':'#664936');ctx.stroke();}
+      ctx.fillStyle=face.color;ctx.fill();if(!face.detail){ctx.strokeStyle=selected?'#fff4a8':(f.material.startsWith('stone')?'#687666':'#664936');ctx.stroke();}
     }
     ctx.restore();
   }

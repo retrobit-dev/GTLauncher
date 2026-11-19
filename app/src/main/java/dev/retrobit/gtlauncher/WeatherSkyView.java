@@ -692,7 +692,7 @@ public final class WeatherSkyView extends View {
         if(o.type.equals("fence") && o.material.startsWith("preview-")) {
             float cx=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
             float[] e=FenceMesh.endpoints(cx,cy,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,o.edge);
-            return FenceMesh.contains(FenceMesh.faces(e[0],e[1],e[2],e[3],o.material.equals("preview-stone"),fenceJoins.get(o)),islandX(sx),islandY(sy));
+            return FenceMesh.contains(FenceMesh.faces(e[0],e[1],e[2],e[3],o.material.startsWith("preview-stone"),o.material.equals("preview-stone-tall"),fenceJoins.get(o)),islandX(sx),islandY(sy));
         }
         Bitmap image=surfaceImage(o);if(image==null)return false;
         RectF g=surfaceSpriteBounds(o);float x=islandX(sx),y=islandY(sy);
@@ -910,10 +910,10 @@ public final class WeatherSkyView extends View {
             FenceGeometry.Bounds g=FenceGeometry.bounds(new FenceGeometry.Edge(o.column,o.row,o.edge),edges,x,y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT);
             if(o.material.startsWith("preview-")) {
                 float[] ends=FenceMesh.endpoints(x,y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,o.edge);
-                boolean stone=o.material.equals("preview-stone");
+                boolean stone=o.material.startsWith("preview-stone"),tall=o.material.equals("preview-stone-tall");
                 boolean fades=showCharacter && o.column==Math.round(visualColumn()) && o.row==Math.round(visualRow()) && (o.edge.equals("S")||o.edge.equals("E"));
                 int ground=canvas.save();setClipIslandSurface(canvas);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(1.2f);paint.setColor(Color.argb(40,12,23,40));canvas.drawLine(ends[0],ends[1],ends[2],ends[3],paint);canvas.restoreToCount(ground);
-                for(FenceMesh.Face face:FenceMesh.faces(ends[0],ends[1],ends[2],ends[3],stone,fenceJoins.get(o))) {
+                for(FenceMesh.Face face:FenceMesh.faces(ends[0],ends[1],ends[2],ends[3],stone,tall,fenceJoins.get(o))) {
                     Path path=new Path();path.moveTo(face.points[0],face.points[1]);for(int i=2;i<face.points.length;i+=2)path.lineTo(face.points[i],face.points[i+1]);path.close();
                     paint.setStyle(Paint.Style.FILL);paint.setColor(face.color);paint.setAlpha(fades?128:255);canvas.drawPath(path,paint);
                     if(!face.detail){paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.3f);paint.setColor(stone?0xff687666:0xff664936);paint.setAlpha(fades?128:255);canvas.drawPath(path,paint);}
@@ -1104,7 +1104,7 @@ public final class WeatherSkyView extends View {
             float x=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
             FenceGeometry.Bounds g=FenceGeometry.bounds(new FenceGeometry.Edge(o.column,o.row,o.edge),shadowEdges,x,y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT);
             float[] ends=o.material.startsWith("preview-")?FenceMesh.endpoints(x,y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,o.edge):new float[]{g.firstX,g.firstY,g.secondX,g.secondY};
-            float[] d=FenceShadow.offset(ends[0],ends[1],ends[2],ends[3],lightPoint[0],lightPoint[1],LANGIT_MATAHARI_LIFT,o.material.equals("preview-stone")?9:15);
+            float[] d=FenceShadow.offset(ends[0],ends[1],ends[2],ends[3],lightPoint[0],lightPoint[1],LANGIT_MATAHARI_LIFT,o.material.equals("preview-stone-tall")?127.5f:o.material.equals("preview-stone")?9:15);
             Path shade=new Path();shade.moveTo(ends[0],ends[1]);shade.lineTo(ends[2],ends[3]);shade.lineTo(ends[2]+d[0],ends[3]+d[1]);shade.lineTo(ends[0]+d[0],ends[1]+d[1]);shade.close();
             int alpha=paint.getAlpha();paint.setAlpha(Math.round(alpha*.55f*(100-Math.max(0,o.opacity))/100f));canvas.drawPath(shade,paint);paint.setAlpha(alpha);
         }

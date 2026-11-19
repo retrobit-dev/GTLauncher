@@ -525,7 +525,7 @@ public class HomeActivity extends Activity {
         TextView cancel=findViewById(R.id.placement_cancel);
         if(cancel==null)return;
         if(worldId==null){cancel.setVisibility(View.GONE);return;}
-        String name="bridge".equals(placingPlantKind)?("wood".equals(placingPlantVariant)?"Jembatan kayu":"Jembatan batu"):"fence".equals(placingPlantKind)?("wood".equals(placingPlantVariant)?"Pagar kayu":"Pagar batu"):
+        String name="bridge".equals(placingPlantKind)?("wood".equals(placingPlantVariant)?"Jembatan kayu":"Jembatan batu"):"fence".equals(placingPlantKind)?("wood".equals(placingPlantVariant)?"Pagar kayu":"stone-tall".equals(placingPlantVariant)?"Tembok batu tinggi":"Pagar batu"):
                 "bush".equals(placingPlantKind)?"Semak":"Rumput liar";
         cancel.setText(name+" · Batal");cancel.setVisibility(View.VISIBLE);
     }
@@ -886,10 +886,10 @@ public class HomeActivity extends Activity {
             plantsTab.setOnClickListener(v->{buildingPanel.setVisibility(View.GONE);plantPanel.setVisibility(View.VISIBLE);buildingsTab.setSelected(false);plantsTab.setSelected(true);buildingsTab.setAlpha(.55f);plantsTab.setAlpha(1f);scroll.scrollTo(0,0);});
             TextView buildings=new TextView(this);buildings.setText("Bangunan");buildings.setTextColor(Color.rgb(52,75,59));buildings.setTypeface(null,android.graphics.Typeface.BOLD);buildingPanel.addView(buildings);
             GridLayout buildingGrid=new GridLayout(this);buildingGrid.setColumnCount(3);buildingPanel.addView(buildingGrid);
-            for(final String material:new String[]{"wood","stone"}) {
+            for(final String material:new String[]{"wood","stone","stone-tall"}) {
                 LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundResource(R.drawable.bg_portal_button);
-                ImageView image=new ImageView(this);image.setImageResource(material.equals("wood")?R.drawable.fence_mesh_wood:R.drawable.fence_mesh_stone);image.setScaleType(ImageView.ScaleType.FIT_CENTER);card.addView(image,new LinearLayout.LayoutParams(dp(56),dp(44)));
-                TextView label=new TextView(this);label.setText(material.equals("wood")?"Pagar kayu":"Pagar batu");label.setGravity(Gravity.CENTER);label.setTextColor(Color.rgb(52,75,59));card.addView(label);
+                ImageView image=new ImageView(this);image.setImageResource(material.equals("wood")?R.drawable.fence_mesh_wood:material.equals("stone-tall")?R.drawable.fence_mesh_stone_tall:R.drawable.fence_mesh_stone);image.setScaleType(ImageView.ScaleType.FIT_CENTER);card.addView(image,new LinearLayout.LayoutParams(dp(56),dp(44)));
+                TextView label=new TextView(this);label.setText(material.equals("wood")?"Pagar kayu":material.equals("stone-tall")?"Tembok batu tinggi":"Pagar batu");label.setGravity(Gravity.CENTER);label.setTextColor(Color.rgb(52,75,59));card.addView(label);
                 GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(80);cell.setMargins(0,dp(4),dp(4),0);buildingGrid.addView(card,cell);
                 card.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Pilih sisi tile").setItems(new String[]{"Utara","Timur","Selatan","Barat"},(d,which)->{
                     dialog.dismiss();applyActiveWorld();placingPlantKind="fence";placingPlantVariant=material;placingPlantSize=which;setPlacementWorld(world.id);closeDrawer();Toast.makeText(this,"Ketuk tile kering untuk menempatkan pagar.",Toast.LENGTH_LONG).show();

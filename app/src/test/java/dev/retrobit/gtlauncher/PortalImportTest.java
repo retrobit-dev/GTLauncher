@@ -332,13 +332,22 @@ public class PortalImportTest {
         assertTrue(store.editPreviewBridge("home",saved.previewData.bridges.get(0),0,0,true));assertEquals(0,store.activeWorld().previewData.bridges.size());
     }
     @Test public void longerBridgesRoundTripAndCannotBeDowngraded() throws JSONException {
-        WorldStore store=new WorldStore(prefs());store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1)));
+        WorldStore store=new WorldStore(prefs());JSONObject source=new JSONObject(portableWorld(3,1));org.json.JSONArray tiles=source.getJSONObject("world").getJSONArray("tiles");tiles.put(5*20+6,3);tiles.put(5*20+7,3);for(int r=10;r<=12;r++)tiles.put(r*20+9,3);store.upsertAndSelect(WorldStore.parseExport(source.toString()));
         assertTrue(store.placePreviewBridge("home",5,5,"E","wood",4));assertTrue(store.placePreviewBridge("home",9,9,"S","stone",5));
-        WorldStore.World saved=store.activeWorld();assertEquals(16,saved.previewData.version);assertEquals(4,saved.previewData.bridges.get(0).length);assertEquals(5,saved.previewData.bridges.get(1).length);
+        WorldStore.World saved=store.activeWorld();assertEquals(16,saved.previewData.version);assertEquals(4,saved.previewData.bridges.get(0).length);assertEquals(5,saved.previewData.bridges.get(1).length);assertEquals(3,saved.previewData.tile(6,5));assertEquals(3,saved.previewData.tile(9,11));assertTrue(saved.previewData.onBridge(9,11));
         assertTrue(saved.previewData.canStep(9,12,9,13));assertFalse(saved.previewData.canStep(9,12,10,12));
         assertTrue(store.placePreviewBridge("home",2,2,"E","stone",3));assertEquals(16,store.activeWorld().previewData.version);
         JSONObject old=new JSONObject(saved.previewData.toJson());old.put("version",15);try{WorldStore.parseExport(old.toString());fail("v15 cannot contain length");}catch(JSONException expected){}
         try{store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1)));fail("cannot downgrade");}catch(JSONException expected){}
+    }
+    @Test public void tallStoneWallRoundTripAndDowngradeGuard() throws JSONException {
+        WorldStore store=new WorldStore(prefs());store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1)));
+        assertTrue(store.placePreviewFence("home",5,5,"S","stone-tall"));WorldStore.World saved=store.activeWorld();assertEquals(17,saved.previewData.version);assertEquals("preview-stone-tall",saved.surfaces.get(0).material);
+        assertTrue(FenceEdges.blocks(5,5,"S",5,5,5,6));
+        java.util.List<FenceMesh.Face> mesh=FenceMesh.faces(0,0,14,7,true,true,null);float min=0;for(FenceMesh.Face f:mesh)for(int i=1;i<f.points.length;i+=2)min=Math.min(min,f.points[i]);assertTrue(Math.abs(min+127.4f)<1f);
+        JSONObject old=new JSONObject(saved.previewData.toJson());old.put("version",16);try{WorldStore.parseExport(old.toString());fail("v16 cannot represent tall walls");}catch(JSONException expected){}
+        JSONObject older=new JSONObject(saved.previewData.toJson());older.put("version",16);older.getJSONObject("world").getJSONArray("fences").getJSONObject(0).put("material","stone");try{store.upsertAndSelect(WorldStore.parseExport(older.toString()));fail("cannot downgrade tall walls");}catch(JSONException expected){}
+        assertEquals("preview-stone-tall",store.activeWorld().surfaces.get(0).material);
     }
     @Test public void grassToppedBlocksRoundTripAndRejectOldImports() throws JSONException {
         SharedPreferences p=prefs();WorldStore store=new WorldStore(p);

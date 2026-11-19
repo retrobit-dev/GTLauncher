@@ -66,7 +66,7 @@ final class PreviewWorld20 {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 3 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16) throw new JSONException("Unsupported world version");
+        if (version > 3 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15 && version != 16 && version != 17) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         if(version>=7 && version<13 && !w.has("orangeTrees")) throw new JSONException("Unsupported world version");
         // Flat conifer-only worlds are supported. Stacks and other tree kinds remain rejected.
@@ -139,7 +139,7 @@ final class PreviewWorld20 {
                 JSONObject f=fences.getJSONObject(i);keys(f,"column","row","edge","material");
                 int x=integer(f,"column",0,size-1),y=integer(f,"row",0,size-1);
                 String edge=string(f,"edge"),material=string(f,"material");
-                if(!Arrays.asList("N","E","S","W").contains(edge) || !Arrays.asList("wood","stone").contains(material) || tiles[y*size+x]==0 || tiles[y*size+x]==3)throw new JSONException("Invalid fence");
+                if(!Arrays.asList("N","E","S","W").contains(edge) || (!Arrays.asList("wood","stone","stone-tall").contains(material) || (version<17 && material.equals("stone-tall"))) || tiles[y*size+x]==0 || tiles[y*size+x]==3)throw new JSONException("Invalid fence");
                 if(house instanceof JSONObject) {JSONObject h=(JSONObject)house;int hc=h.getInt("column"),hr=h.getInt("row");if(x>=hc && x<hc+3 && y>=hr && y<hr+3)throw new JSONException("Fence overlaps house");}
                 String key=(edge.equals("W")?x-1:x)+","+(edge.equals("N")?y-1:y)+","+(edge.equals("W")?"E":edge.equals("N")?"S":edge);
                 if(!seen.add(key))throw new JSONException("Duplicate fence edge");

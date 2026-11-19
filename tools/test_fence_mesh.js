@@ -11,3 +11,8 @@ for(const b of [{x:14,y:7},{x:14,y:-7}]) {
  assert(!stone.some(f=>contains(f.points,1000,1000)),'empty space is not selectable');
 }
 console.log('Fence solid faces, depth, reduced stone height and hit testing: OK');
+const tall=faces({x:0,y:0},{x:14,y:7},'stone-tall');
+const highest=Math.min(...tall.flatMap(f=>f.points.map(p=>p.y)));
+assert(Math.abs(highest - (-127.5+.1))<1,'wall height is 1.5 times the default 85-unit house');
+assert(tall.length>200,'tall wall is built from independent stone courses');
+console.log('Tall stone wall height and masonry: OK');

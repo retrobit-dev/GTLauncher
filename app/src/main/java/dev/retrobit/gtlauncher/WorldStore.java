@@ -423,6 +423,7 @@ final class WorldStore {
                 if ((old.previewData==null)!=(world.previewData==null))
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
+                    if(world.previewData.version<17 && old.surfaces.stream().anyMatch(o->o.type.equals("fence") && o.material.equals("preview-stone-tall")))throw new JSONException("Older preview format cannot replace tall walls");
                     if(world.previewData.version<16 && old.previewData.bridges.stream().anyMatch(b->b.length!=3))throw new JSONException("Older preview format cannot replace bridge length");
                     if(!old.previewData.bridges.isEmpty() && world.previewData.version<15)throw new JSONException("Older preview format cannot replace bridges");
                     if(!old.surfaces.isEmpty()) throw new JSONException("Older preview format cannot replace trees");
@@ -734,7 +735,7 @@ final class WorldStore {
         java.util.List<World> worlds=list();for(int i=0;i<worlds.size();i++)if(worldId.equals(worlds.get(i).id)){worlds.set(i,fromPreview(parsed));return saveWorlds(worlds,worldId);}return false;
     }
     boolean placePreviewFence(String worldId,int column,int row,String edge,String material) throws JSONException {
-        if(!worldId.equals(activeId()) || !java.util.Arrays.asList("N","E","S","W").contains(edge) || !java.util.Arrays.asList("wood","stone").contains(material))return false;
+        if(!worldId.equals(activeId()) || !java.util.Arrays.asList("N","E","S","W").contains(edge) || !java.util.Arrays.asList("wood","stone","stone-tall").contains(material))return false;
         List<World> worlds=list();
         for(int i=0;i<worlds.size();i++) {
             World w=worlds.get(i);if(!worldId.equals(w.id))continue;
@@ -744,7 +745,7 @@ final class WorldStore {
             int x=column+(edge.equals("E")?1:edge.equals("W")?-1:0),y=row+(edge.equals("S")?1:edge.equals("N")?-1:0);
             for(SurfaceObject f:w.surfaces)if(f.type.equals("fence") && FenceEdges.blocks(f.column,f.row,f.edge,column,row,x,y))return false;
             fences.put(new JSONObject().put("column",column).put("row",row).put("edge",edge).put("material",material));
-            data.put("fences",fences);root.put("version",Math.max(13,w.previewData.version));
+            data.put("fences",fences);root.put("version",Math.max(material.equals("stone-tall")?17:13,w.previewData.version));
             worlds.set(i,fromPreview(PreviewWorld20.parse(root.toString())));return saveWorlds(worlds,worldId);
         }
         return false;

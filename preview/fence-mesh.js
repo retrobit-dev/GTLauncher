@@ -3,7 +3,7 @@
 (function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.FenceMesh=factory();})(typeof window!=='undefined'?window:globalThis,()=>{
   'use strict';
   function faces(a,b,material,joins={}) {
-    const slope=(b.y-a.y)/(b.x-a.x),depth=material==='stone'?2.6:1.8;
+    const slope=(b.y-a.y)/(b.x-a.x),depth=material.startsWith('stone')?2.6:1.8;
     // Perpendicular tile axis, always pointing towards the viewer.
     const nx=slope>=0?-depth:depth,ny=Math.abs(slope)*depth;
     const point=(u,v,z)=>({x:a.x+(b.x-a.x)*u+nx*v,y:a.y+(b.y-a.y)*u+ny*v-z});
@@ -17,18 +17,20 @@
     function mark(u0,u1,v,z0,z1,color) {
       output.push({color,detail:true,points:[point(u0,v,z0),point(u1,v,z0),point(u1,v,z1),point(u0,v,z1)]});
     }
-    if(material==='stone') {
+    if(material==='stone' || material==='stone-tall') {
       const palettes=[{top:'#bbc2af',front:'#909a88',side:'#737e6d'},{top:'#c4c7b8',front:'#9da595',side:'#7b8675'},{top:'#b6c0ad',front:'#899583',side:'#707d6d'}];
       // Low 2-course stonework, with smaller blocks and a readable thickness.
       const boundaries=[[0,.30,.67,1],[0,.19,.51,.79,1]];
-      for(let course=0;course<2;course++)for(let i=0;i<boundaries[course].length-1;i++) {
-        const gap=.006,u0=boundaries[course][i]+(i===0 && joins.linkA?0:gap),u1=boundaries[course][i+1]-(i===boundaries[course].length-2 && joins.linkB?0:gap),z0=course*4.5+.10,z1=(course+1)*4.5-.10-(course && i%2?.12:0);
+      const courses=material==='stone-tall'?26:2,courseHeight=material==='stone-tall'?127.5/26:4.5;
+      for(let course=0;course<courses;course++)for(let i=0;i<boundaries[course%2].length-1;i++) {
+        const gap=.006,u0=boundaries[course%2][i]+(i===0 && joins.linkA?0:gap),u1=boundaries[course%2][i+1]-(i===boundaries[course%2].length-2 && joins.linkB?0:gap),z0=course*courseHeight+.10,z1=(course+1)*courseHeight-.10-(course && i%2?.12:0);
         box(u0,u1,-.5,.5,z0,z1,palettes[(i+course)%3]);
         const chip=u0+(u1-u0)*(.26+(i%2)*.18);mark(chip,chip+(u1-u0)*.13,.505,z0+1.1,z0+1.45,'#aab3a0');
       }
       const joint={top:'#b8c1b1',front:'#929c8c',side:'#73806e'};
-      if(joins.joinA)box(-.09,.09,-.5,.5,0,8.9,joint);
-      if(joins.joinB)box(.91,1.09,-.5,.5,0,8.9,joint);
+      const wallHeight=material==='stone-tall'?127.4:8.9;
+      if(joins.joinA)box(-.09,.09,-.5,.5,0,wallHeight,joint);
+      if(joins.joinB)box(.91,1.09,-.5,.5,0,wallHeight,joint);
     } else {
       const rail={top:'#c69c68',front:'#a6784f',side:'#80583b'},post={top:'#d0ab79',front:'#a67c56',side:'#79543d'};
       // Two stout rails run between posts; the square posts have visible end and top faces.
