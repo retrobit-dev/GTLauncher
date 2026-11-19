@@ -1882,19 +1882,9 @@
     // A soft contact footprint stays attached to the house base even at noon,
     // when the directional projection is short and mostly hidden by the sprite.
     if(house?.visible && window.HouseShadow) {
-      const {centre}=houseProjection(house),points=window.HouseShadow.contact(84*house.scale,islandTileHeight*3*house.scale,house.scale);
+      const {centre}=houseProjection(house),points=window.HouseShadow.contact(84*house.scale,islandTileHeight*3*house.scale,house.scale,light.azimuth);
       ctx.save();ctx.fillStyle='rgba(12,23,40,.24)';ctx.filter='blur(.4px)';ctx.beginPath();ctx.moveTo(centre.x+points[0].x,centre.y+points[0].y);
       for(const p of points.slice(1))ctx.lineTo(centre.x+p.x,centre.y+p.y);ctx.closePath();ctx.fill();ctx.restore();
-    }
-    // Project the actual roof and walls' alpha, anchored at the house foundation.
-    if(house?.visible && houseSprite.complete && houseSprite.naturalWidth && Number.isFinite(light.azimuth) && window.HouseShadow) {
-      let mask=characterShadowMasks.get(houseSprite);
-      if(!mask){mask=document.createElement('canvas');mask.dataset.houseShadow='true';mask.width=houseSprite.naturalWidth;mask.height=houseSprite.naturalHeight;const m=mask.getContext('2d');m.drawImage(houseSprite,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);characterShadowMasks.set(houseSprite,mask);}
-      const {centre,bottom,mirror}=houseProjection(house),width=84*house.scale,height=85*house.scale;
-      const p=window.HouseShadow.projection(width,height,light.azimuth,light.altitude);
-      ctx.save();ctx.globalAlpha=opacity;ctx.imageSmoothingEnabled=true;ctx.translate(centre.x,bottom);ctx.scale(p.scale,p.scale);
-      ctx.transform(1,0,-p.dx/height,-p.dy/height,-width/2+p.dx,p.dy);
-      if(mirror){ctx.translate(width,0);ctx.scale(-1,1);}ctx.drawImage(mask,0,0,width,height);ctx.restore();
     }
     // Fence shadows share the exact endpoints of the visible segment and stay on top faces.
     for(const fence of fences) {

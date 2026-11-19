@@ -1,6 +1,6 @@
 # Batas bayangan objek
 
-Bayangan proyeksi player, rumah, pohon jeruk dan cemara dibatasi dalam koordinat scene: lebar dan tinggi proyeksinya tidak melebihi ukuran sprite yang menjadi batasnya, termasuk saat arah cahaya rendah dan pohon bergoyang. Skala diterapkan seragam terhadap titik pijak agar bentuk dan arah bayangan tetap mengikuti cahaya. Proyeksi player dibatasi pada lebar player berdiri bahkan ketika sprite pose idle lebih lebar. Android juga membatasi bayangan rumah di sekitar titik pijak supaya gabungannya dengan bayangan kontak tetap dalam batas rumah.
+Bayangan proyeksi player, pohon jeruk dan cemara dibatasi dalam koordinat scene: lebar dan tinggi proyeksinya tidak melebihi ukuran sprite yang menjadi batasnya, termasuk saat arah cahaya rendah dan pohon bergoyang. Skala diterapkan seragam terhadap titik pijak agar bentuk dan arah bayangan tetap mengikuti cahaya. Proyeksi player dibatasi pada lebar player berdiri bahkan ketika sprite pose idle lebih lebar.
 
 Objek Android lain yang belum memiliki proyeksi siluet tetap memakai bayangan kontak kecil; ini bukan klaim bahwa setiap jenis objek memiliki bayangan arah cahaya yang sama. Bayangan awan dan pulau adalah efek lingkungan, bukan objek katalog, dan tidak diubah. Uji geometri mencakup arah cahaya ekstrem, ukuran kecil/besar dan goyangan; tampilan Android belum diuji lewat build atau perangkat.
 
@@ -20,8 +20,8 @@ Android hanya mendukung subset world preview datar sehingga semua tile rumputnya
 berada pada ketinggian yang sama. Art cemara lama tetap disimpan; asset redesign
 baru dipakai di katalog dan renderer kedua platform.
 
-## Bayangan rumah sesuai arah cahaya
+## Bayangan rumah
 
-Preview dan Android memproyeksikan siluet alpha gambar rumah (depan/belakang dan cermin arah), bukan bentuk diamond generik. Arah dan panjang perkiraan mengikuti azimuth dan elevasi sumber cahaya aktif lalu dikecilkan agar tidak melampaui lebar dan tinggi rumah. Bayangan tetap berawal pada fondasi. Ini proyeksi sprite 2D yang dibatasi, bukan simulasi bayangan 3D fisik sempurna. Build Android/perangkat belum diuji.
+Preview dan Android menggunakan tapak fondasi sebagai satu bayangan kontak yang menyatu, bukan proyeksi siluet terpisah. Pergeseran kecil mengikuti azimuth cahaya. Ini pendekatan 2D sederhana, bukan bayangan 3D fisik. Build Android/perangkat belum diuji.
 
-Kontak rumah menggunakan bayangan lembut pada tapak fondasi 3×3 dan sedikit menjorok ke depan, di bawah proyeksi siluet yang mengikuti cahaya. Ukurannya dibatasi agar gabungan tidak melebihi dimensi rumah.
+Kontak rumah menggunakan bayangan lembut pada tapak fondasi 3×3 dan sedikit menjorok ke depan, dengan sedikit pergeseran mengikuti arah cahaya; proyeksi siluet terpisah dihilangkan karena tampak melayang. Ukurannya dibatasi agar gabungan tidak melebihi dimensi rumah.

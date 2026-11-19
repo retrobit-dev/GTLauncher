@@ -1059,13 +1059,6 @@ public final class WeatherSkyView extends View {
     // There is no 3D object model, so the ground-depth component is stylized.
     private static final PorterDuffColorFilter OBJECT_SHADOW_FILTER =
             new PorterDuffColorFilter(Color.rgb(12, 23, 40), PorterDuff.Mode.SRC_IN);
-    private void drawHouseSilhouette(Canvas canvas,Bitmap sprite,float x,float y,float width,float height,SkyMath.Position light,boolean mirror) {
-        float[] p=HouseShadow.projection(width,height,light.azimuthDegrees,light.altitudeDegrees);float dx=p[0],dy=p[1],scale=p[2];
-        Matrix transform=new Matrix();transform.setValues(new float[]{scale,-scale*dx/height,x+scale*(-width/2+dx),0,-scale*dy/height,y+scale*dy,0,0,1});
-        int saved=canvas.save();canvas.concat(transform);if(mirror){canvas.translate(width,0);canvas.scale(-1,1);}
-        paint.setColorFilter(OBJECT_SHADOW_FILTER);paint.setFilterBitmap(true);canvas.drawBitmap(sprite,null,new RectF(0,0,width,height),paint);paint.setColorFilter(null);canvas.restoreToCount(saved);
-    }
-
     private void drawSurfaceObjectShadows(Canvas canvas, SkyMath.Position light, double cloudCover, int code) {
         int save = canvas.save();
         setClipIslandSurface(canvas);
@@ -1073,15 +1066,6 @@ public final class WeatherSkyView extends View {
         paint.setColor(Color.argb((int) (255 * Math.max(0.12,
                 cloudShadowOpacity(Math.max(light.altitudeDegrees, 0), cloudCover, code))), 12, 23, 40));
         float[] lightPoint = sunPlanePosition(light.hourAngleDegrees);
-        for(WorldStore.House house:worldHouses) if(house.visible) {
-            boolean wide="wide".equals(house.design),back="N".equals(house.facing)||"W".equals(house.facing);
-            Bitmap image=houseArtwork(house);if(image==null)continue;
-            float scale=(float)house.scale,x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
-            float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f;
-            int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-Math.max(0,house.opacity))/100f));
-            drawHouseSilhouette(canvas,image,x,wide?y+ISLAND_TILE_HEIGHT*1.25f*scale:houseBottom(house,new HouseGeometry(ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,scale)),(wide?70*7f/6:84)*scale,(wide?100:85)*scale,light,"N".equals(house.facing)||"E".equals(house.facing));
-            paint.setAlpha(originalAlpha);
-        }
         java.util.List<FenceGeometry.Edge> shadowEdges=new java.util.ArrayList<>();
         for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("fence"))shadowEdges.add(new FenceGeometry.Edge(o.column,o.row,o.edge));
         for(PortalTravel.Portal portal:worldPortals)shadowEdges.add(new FenceGeometry.Edge(portal.tile.column,portal.tile.row,portal.edge));
@@ -1136,7 +1120,8 @@ public final class WeatherSkyView extends View {
             float x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
             float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f;
             int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-Math.max(0,house.opacity))/100f));
-            drawObjectContact(canvas,x,y+1.2f*scale,(wide?70*7f/6:84)*.96f*scale,ISLAND_TILE_HEIGHT*(wide?2.5f:3f)*scale);paint.setAlpha(originalAlpha);
+            float width=(wide?70*7f/6:84)*scale; double angle=Math.toRadians(light.azimuthDegrees);
+            drawObjectContact(canvas,x-(float)Math.sin(angle)*width*.02f,y+(2.5f-(float)Math.cos(angle))*scale,width*.96f,ISLAND_TILE_HEIGHT*(wide?2.5f:3f)*scale);paint.setAlpha(originalAlpha);
         }
         paint.setMaskFilter(null);canvas.restoreToCount(save);
     }

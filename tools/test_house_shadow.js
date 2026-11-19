@@ -5,7 +5,7 @@ for(const s of [.5,1,1.5])for(let a=0;a<360;a+=5)for(let e=0;e<=90;e+=5){
  assert((w/2+Math.abs(p.dx))*p.scale<=w/2+1e-8);
  assert(Math.abs(p.dy)*p.scale<=h/2+1e-8);
 }
-for(const scale of [.5,1,1.5]) {const w=84*scale,d=36*scale,p=contact(w,d,scale);assert.equal(p.length,4);assert(Math.max(...p.map(v=>v.x))-Math.min(...p.map(v=>v.x))<=w);assert(Math.abs(p[2].y-(d/2+1.2*scale))<1e-9);assert(p.every(v=>Math.abs(v.y-d/2)<=85*scale/2));}
+for(const scale of [.5,1,1.5]) {const w=84*scale,d=36*scale,p=contact(w,d,scale);assert.equal(p.length,4);assert(Math.max(...p.map(v=>v.x))-Math.min(...p.map(v=>v.x))<=w);assert(Math.abs(p[2].y-(d/2+1.5*scale))<1e-9);assert(p.every(v=>Math.abs(v.y-d/2)<=85*scale/2));}
 const n=projection(84,85,0,30),s=projection(84,85,180,30);assert(n.dx<0 && s.dx>0);assert(n.dy>0 && s.dy<0);
 assert(Math.abs(projection(84,85,0,80).dx)<Math.abs(n.dx));
 console.log('House silhouette projection follows light and stays within house dimensions: OK');

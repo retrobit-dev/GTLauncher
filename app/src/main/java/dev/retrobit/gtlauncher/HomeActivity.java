@@ -930,8 +930,16 @@ public class HomeActivity extends Activity {
     private void addPlacedCatalogObjects(LinearLayout panel,WorldStore.World world,AlertDialog catalog) throws JSONException {
         TextView title=new TextView(this);title.setText("Objek di world ini");title.setTextColor(Color.rgb(52,75,59));title.setTypeface(null,android.graphics.Typeface.BOLD);title.setPadding(0,dp(16),0,dp(6));panel.addView(title);
         TextView info=new TextView(this);info.setText("Karakter dan rumah tidak dapat diubah melalui daftar ini. Pilih ikon ganti atau hapus pada objek lainnya.");info.setTextColor(Color.rgb(75,95,78));panel.addView(info);
-        if(world.showCharacter)addProtectedCatalogRow(panel,"Karakter",R.drawable.character_hud_current);
-        if(world.hasHouse)addProtectedCatalogRow(panel,"Rumah player",R.drawable.simple_house_aligned);
+        if(world.showCharacter)addProtectedCatalogRow(panel,"Karakter",("N".equals(world.characterFacing)||"W".equals(world.characterFacing))?R.drawable.character_original_uhd_back:R.drawable.character_original_uhd_front,"W".equals(world.characterFacing)||"E".equals(world.characterFacing));
+        if(world.hasHouse)addProtectedCatalogRow(panel,"Rumah player",R.drawable.simple_house_aligned,false);
+        final java.util.List<JSONObject> selectedObjects=new java.util.ArrayList<>();
+        LinearLayout bulk=new LinearLayout(this);bulk.setGravity(Gravity.CENTER_VERTICAL);panel.addView(bulk);
+        android.widget.Button replaceSelected=new android.widget.Button(this),deleteSelected=new android.widget.Button(this);
+        replaceSelected.setText("Ganti terpilih");deleteSelected.setText("Hapus terpilih");replaceSelected.setEnabled(false);deleteSelected.setEnabled(false);bulk.addView(replaceSelected);bulk.addView(deleteSelected);
+        replaceSelected.setOnClickListener(v->showCatalogBatchReplacement(world.id,new java.util.ArrayList<>(selectedObjects),catalog));
+        deleteSelected.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Hapus objek terpilih?").setMessage("Hapus "+selectedObjects.size()+" objek? Data panen terkait tidak dipindahkan.").setPositiveButton("Hapus",(d,w)->{
+            try{JSONArray edits=new JSONArray();for(JSONObject e:selectedObjects)edits.put(e);boolean ok=worldStore.editCatalogBatch(world.id,edits);Toast.makeText(this,ok?"Objek dihapus.":"Objek berubah; world tidak diubah.",Toast.LENGTH_LONG).show();if(ok){catalog.dismiss();applyActiveWorld();showObjectCatalog();}}catch(JSONException e){Toast.makeText(this,"World tidak berubah.",Toast.LENGTH_LONG).show();}
+        }).setNegativeButton("Batal",null).show());
         JSONObject data=new JSONObject(world.previewData.toJson()).getJSONObject("world");
         for(String key:new String[]{"orangeTrees","fences","bridges"}) {
             JSONArray array=data.optJSONArray(key);if(array==null)continue;
@@ -942,6 +950,8 @@ public class HomeActivity extends Activity {
                 else if(key.equals("bridges")){boolean wood=item.getString("material").equals("wood");name=(wood?"Jembatan kayu ":"Jembatan batu ")+item.optInt("length",3)+"×1";icon=wood?R.drawable.bridge_wood:R.drawable.bridge_stone;}
                 else {String kind=item.getString("kind"),variant=item.optString("variant","");name=kind.equals("conifer")?"Cemara laut":kind.equals("wild-grass")?"Rumput liar":variant.equals("flower")?"Semak melati":variant.equals("berry")?"Semak murbei":"Semak";icon=kind.equals("conifer")?R.drawable.cemara_laut_redesign:kind.equals("wild-grass")?R.drawable.wild_grass_selected:variant.equals("flower")?R.drawable.bush_jasmine:variant.equals("berry")?R.drawable.bush_mulberry:R.drawable.bush_selected;}
                 LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);panel.addView(row);
+                JSONObject selectedEntry=new JSONObject().put("key",key).put("index",selected).put("expected",expected);
+                android.widget.CheckBox check=new android.widget.CheckBox(this);check.setContentDescription("Pilih "+name);row.addView(check);check.setOnCheckedChangeListener((v,checked)->{if(checked)selectedObjects.add(selectedEntry);else selectedObjects.remove(selectedEntry);replaceSelected.setEnabled(!selectedObjects.isEmpty());deleteSelected.setEnabled(!selectedObjects.isEmpty());});
                 ImageView image=new ImageView(this);image.setImageResource(icon);image.setScaleType(ImageView.ScaleType.FIT_CENTER);row.addView(image,new LinearLayout.LayoutParams(dp(44),dp(44)));
                 TextView label=new TextView(this);label.setText(name+" · "+(item.getInt("column")+1)+","+(item.getInt("row")+1));label.setTextColor(Color.rgb(52,75,59));row.addView(label,new LinearLayout.LayoutParams(0,dp(48),1));
                 ImageView replace=new ImageView(this);replace.setImageResource(R.drawable.ic_catalog_replace);replace.setContentDescription("Ganti "+name);replace.setPadding(dp(10),dp(10),dp(10),dp(10));replace.setClickable(true);row.addView(replace,new LinearLayout.LayoutParams(dp(48),dp(48)));
@@ -954,12 +964,15 @@ public class HomeActivity extends Activity {
             }
         }
     }
-    private void addProtectedCatalogRow(LinearLayout panel,String label,int resource) {
-        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);ImageView image=new ImageView(this);image.setImageResource(resource);image.setScaleType(ImageView.ScaleType.FIT_CENTER);row.addView(image,new LinearLayout.LayoutParams(dp(44),dp(44)));TextView text=new TextView(this);text.setText(label+" · Tidak melalui daftar");text.setTextColor(Color.rgb(52,75,59));row.addView(text);panel.addView(row);
+    private void addProtectedCatalogRow(LinearLayout panel,String label,int resource,boolean mirror) {
+        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);ImageView image=new ImageView(this);image.setImageResource(resource);image.setScaleX(mirror?-1f:1f);image.setScaleType(ImageView.ScaleType.FIT_CENTER);row.addView(image,new LinearLayout.LayoutParams(dp(44),dp(44)));TextView text=new TextView(this);text.setText(label+" · Tidak melalui daftar");text.setTextColor(Color.rgb(52,75,59));row.addView(text);panel.addView(row);
     }
     private void showCatalogReplacement(String worldId,String key,int index,String expected,AlertDialog catalog) {
+        try{java.util.List<JSONObject> entries=new java.util.ArrayList<>();entries.add(new JSONObject().put("key",key).put("index",index).put("expected",expected));showCatalogBatchReplacement(worldId,entries,catalog);}catch(JSONException e){Toast.makeText(this,"Objek tidak dapat dibaca.",Toast.LENGTH_LONG).show();}
+    }
+    private void showCatalogBatchReplacement(String worldId,java.util.List<JSONObject> entries,AlertDialog catalog) {
         try {
-            JSONObject source=new JSONObject(expected);LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(12),dp(10),dp(12),dp(10));ScrollView scroll=new ScrollView(this);scroll.addView(panel);
+            if(entries.isEmpty())return;new JSONObject(entries.get(0).getString("expected"));LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(12),dp(10),dp(12),dp(10));ScrollView scroll=new ScrollView(this);scroll.addView(panel);
             TextView prompt=new TextView(this);prompt.setText("Pilih objek pengganti. Posisi awal tetap; tapak diperiksa.");panel.addView(prompt);
             GridLayout grid=new GridLayout(this);grid.setColumnCount(3);panel.addView(grid);
             AlertDialog choices=new AlertDialog.Builder(this).setTitle("Ganti objek").setView(scroll).setNegativeButton("Batal",null).create();
@@ -968,11 +981,12 @@ public class HomeActivity extends Activity {
             for(int i=0;i<labels.length;i++){if(i==2)continue;final int choice=i;LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);card.setBackgroundResource(R.drawable.bg_portal_button);card.setContentDescription(labels[i]);card.setFocusable(true);card.setClickable(true);
                 ImageView icon=new ImageView(this);icon.setImageResource(icons[i]);icon.setScaleType(ImageView.ScaleType.FIT_CENTER);card.addView(icon,new LinearLayout.LayoutParams(dp(48),dp(44)));TextView text=new TextView(this);text.setText(labels[i]);text.setGravity(Gravity.CENTER);text.setTextColor(Color.rgb(52,75,59));card.addView(text);GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(80);cell.setMargins(dp(2),dp(2),dp(2),dp(2));grid.addView(card,cell);
                 card.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Ganti objek?").setMessage("Identitas dan siklus tanaman pengganti dimulai ulang. Objek lama tetap ada jika tapak tidak aman.").setPositiveButton("Ganti",(d,w)->{
-                    try{int c=source.getInt("column"),r=source.getInt("row");JSONObject target=new JSONObject().put("column",c).put("row",r);String targetKey;
+                    try{JSONArray edits=new JSONArray();for(JSONObject entry:entries){String key=entry.getString("key");JSONObject source=new JSONObject(entry.getString("expected"));int c=source.getInt("column"),r=source.getInt("row");JSONObject target=new JSONObject().put("column",c).put("row",r);String targetKey;
                         if(choice<3){targetKey="fences";target.put("edge",key.equals("fences")?source.getString("edge"):"S").put("material",new String[]{"wood","stone","stone-tall"}[choice]);}
                         else if(choice<9){targetKey="bridges";int length=3+(choice-3)%3;target.put("axis",key.equals("bridges")?source.getString("axis"):"E").put("material",choice<6?"wood":"stone");if(length>3)target.put("length",length);}
                         else{targetKey="orangeTrees";if(choice<11){target.put("kind","conifer");if(choice==10)target.put("size",1);}else if(choice==11)target.put("kind","wild-grass").put("size",1);else {target.put("kind","bush").put("size",choice%2==0?1:2);if(choice>=14)target.put("variant",choice<16?"flower":"berry").put("plantId",java.util.UUID.randomUUID().toString()).put("plantedAt",System.currentTimeMillis());}}
-                        boolean ok=worldStore.editCatalogObject(worldId,key,index,expected,targetKey,target);Toast.makeText(this,ok?"Objek diganti.":"Tapak tidak aman atau objek berubah; data tidak diubah.",Toast.LENGTH_LONG).show();if(ok){choices.dismiss();catalog.dismiss();applyActiveWorld();showObjectCatalog();}
+                        edits.put(new JSONObject(entry.toString()).put("targetKey",targetKey).put("target",target));}
+                        boolean ok=worldStore.editCatalogBatch(worldId,edits);Toast.makeText(this,ok?"Objek diganti.":"Tapak tidak aman atau objek berubah; data tidak diubah.",Toast.LENGTH_LONG).show();if(ok){choices.dismiss();catalog.dismiss();applyActiveWorld();showObjectCatalog();}
                     }catch(JSONException e){Toast.makeText(this,"World tidak berubah.",Toast.LENGTH_LONG).show();}
                 }).setNegativeButton("Batal",null).show());
             }choices.show();

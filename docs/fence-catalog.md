@@ -40,3 +40,7 @@ Data world dan format penyimpanan tidak berubah.
 ## Tembok batu tinggi (varian dihentikan)
 
 Tembok batu tinggi telah dihapus dari katalog penempatan dan pilihan pengganti di preview dan Android. World lama yang sudah memilikinya tetap dapat dibuka, dirender, diekspor dan diedit; objeknya dapat dihapus melalui daftar. Data tidak dihapus otomatis. Format preview v17 dan guard downgrade tetap didukung supaya world lama tidak hilang. Android belum diuji lewat build/perangkat.
+
+## Pilihan banyak objek
+
+Daftar objek preview dan Android menyediakan kotak pilihan untuk penghapusan atau penggantian banyak objek sekaligus. Satu jenis pengganti diterapkan pada posisi masing-masing; semua tapak diperiksa bersama dan seluruh operasi dibatalkan jika tidak aman atau data telah berubah. Identitas dan siklus tanaman baru dimulai ulang. Karakter dan rumah tetap dilindungi. Preview mendukung Undo/Redo; Android subset datar belum menyediakan Undo/Redo dan belum diuji di perangkat.

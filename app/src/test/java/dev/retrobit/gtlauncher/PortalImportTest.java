@@ -360,6 +360,15 @@ public class PortalImportTest {
         JSONObject data=new JSONObject(store.activeWorld().previewData.toJson()).getJSONObject("world");String wall=data.getJSONArray("fences").getJSONObject(1).toString();
         assertTrue(store.editCatalogObject("home","fences",1,wall,null,null));assertEquals(1,store.activeWorld().surfaces.size());
     }
+    @Test public void catalogBatchIsAtomicAndDeletesMultipleIndices() throws JSONException {
+        WorldStore store=new WorldStore(prefs());store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1)));
+        assertTrue(store.placePreviewPlant("home",10,10,"wild-grass",1,null));assertTrue(store.placePreviewPlant("home",11,10,"wild-grass",1,null));
+        JSONObject data=new JSONObject(store.activeWorld().previewData.toJson()).getJSONObject("world");org.json.JSONArray trees=data.getJSONArray("orangeTrees"),edits=new org.json.JSONArray();
+        for(int i=0;i<2;i++){JSONObject old=trees.getJSONObject(i),target=new JSONObject().put("column",old.getInt("column")).put("row",old.getInt("row")).put("kind","bush").put("size",2);edits.put(new JSONObject().put("key","orangeTrees").put("index",i).put("expected",old.toString()).put("targetKey","orangeTrees").put("target",target));}
+        String before=store.activeWorld().previewData.toJson();assertFalse(store.editCatalogBatch("home",edits));assertEquals(before,store.activeWorld().previewData.toJson());
+        org.json.JSONArray deletes=new org.json.JSONArray();for(int i=0;i<2;i++)deletes.put(new JSONObject().put("key","orangeTrees").put("index",i).put("expected",trees.getJSONObject(i).toString()));
+        assertTrue(store.editCatalogBatch("home",deletes));assertEquals(0,store.activeWorld().surfaces.size());assertFalse(store.editCatalogBatch("home",deletes));
+    }
     @Test public void grassToppedBlocksRoundTripAndRejectOldImports() throws JSONException {
         SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
         org.json.JSONObject root=new org.json.JSONObject(portableWorld(14,7));org.json.JSONArray tiles=root.getJSONObject("world").getJSONArray("tiles");tiles.put(1,8);tiles.put(2,9);tiles.put(3,10);

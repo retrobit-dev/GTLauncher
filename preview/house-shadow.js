@@ -10,10 +10,12 @@
     const scale=Math.min(1,width/(width+2*Math.abs(dx)),height/(2*Math.abs(dy)));
     return {dx,dy,scale};
   }
-  // Contact diamond hugs the foundation; a tiny forward inset makes contact visible.
-  function contact(width,depth,scale=1) {
-    return [{x:0,y:-depth/2+1.2*scale},{x:width*.48,y:1.2*scale},
-      {x:0,y:depth/2+1.2*scale},{x:-width*.48,y:1.2*scale}];
+  // A single footprint-derived shadow cannot separate from the foundation at low light.
+  function contact(width,depth,scale=1,azimuth=0) {
+    const a=(Number.isFinite(azimuth)?azimuth:0)*Math.PI/180;
+    const dx=-Math.sin(a)*width*.02,dy=2.5*scale-Math.cos(a)*scale;
+    return [{x:dx,y:-depth/2+dy},{x:dx+width*.48,y:dy},
+      {x:dx,y:depth/2+dy},{x:dx-width*.48,y:dy}];
   }
   return Object.freeze({projection,contact});
 });

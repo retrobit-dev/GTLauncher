@@ -719,13 +719,39 @@ final class WorldStore {
         if(source==null || index<0 || index>=source.length() || !source.getJSONObject(index).toString().equals(expected))return false;
         JSONObject old=source.getJSONObject(index);
         if(target!=null && (target.optInt("column",-1)!=old.getInt("column") || target.optInt("row",-1)!=old.getInt("row")))return false;
-        source.remove(index);if(source.length()==0)data.remove(sourceKey);else data.put(sourceKey,source);
+        source.remove(index);data.put(sourceKey,source);
         if(target!=null){
             if(targetKey.equals("orangeTrees") && world.showCharacter){int size=target.optInt("size",2),c=target.getInt("column"),r=target.getInt("row");if(world.characterColumn>=c && world.characterColumn<c+size && world.characterRow>=r && world.characterRow<r+size)return false;}
             JSONArray dest=data.optJSONArray(targetKey);if(dest==null)dest=new JSONArray();dest.put(new JSONObject(target.toString()));data.put(targetKey,dest);
             int needed=targetKey.equals("bridges")?(target.has("length")?16:15):targetKey.equals("fences")?("stone-tall".equals(target.optString("material"))?17:13):target.has("plantId")?12:"bush".equals(target.optString("kind"))?(target.optInt("size",1)==2?11:10):"wild-grass".equals(target.optString("kind"))?9:target.has("size")?8:7;
             root.put("version",Math.max(world.previewData.version,needed));
         }
+        PreviewWorld20 parsed;try{parsed=PreviewWorld20.parse(root.toString());}catch(JSONException invalid){return false;}
+        List<World> worlds=list();for(int i=0;i<worlds.size();i++)if(worldId.equals(worlds.get(i).id)){worlds.set(i,fromPreview(parsed));return saveWorlds(worlds,worldId);}return false;
+    }
+    // Commit a checked batch once, after validating every source and the complete final world.
+    boolean editCatalogBatch(String worldId, JSONArray edits) throws JSONException {
+        if(worldId==null || !worldId.equals(activeId()) || edits.length()==0)return false;
+        World world=activeWorld();if(world==null || world.previewData==null)return false;
+        JSONObject root=new JSONObject(world.previewData.toJson()),data=root.getJSONObject("world");
+        java.util.Set<String> seen=new java.util.HashSet<>();
+        java.util.List<JSONObject> entries=new java.util.ArrayList<>();
+        for(int i=0;i<edits.length();i++){
+            JSONObject e=edits.getJSONObject(i);String key=e.getString("key");int index=e.getInt("index");
+            if(!java.util.Arrays.asList("orangeTrees","fences","bridges").contains(key)||!seen.add(key+":"+index))return false;
+            JSONArray a=data.optJSONArray(key);if(a==null||index<0||index>=a.length()||!a.getJSONObject(index).toString().equals(e.getString("expected")))return false;
+            if(e.has("target")){JSONObject old=a.getJSONObject(index),target=e.getJSONObject("target");String to=e.getString("targetKey");
+                if(!java.util.Arrays.asList("orangeTrees","fences","bridges").contains(to)||target.optInt("column",-1)!=old.getInt("column")||target.optInt("row",-1)!=old.getInt("row"))return false;
+                if(to.equals("orangeTrees") && world.showCharacter){int size=target.optInt("size",2),c=target.getInt("column"),r=target.getInt("row");if(world.characterColumn>=c&&world.characterColumn<c+size&&world.characterRow>=r&&world.characterRow<r+size)return false;}
+            }entries.add(e);
+        }
+        java.util.Collections.sort(entries,(a,b)->Integer.compare(b.optInt("index"),a.optInt("index")));
+        for(JSONObject e:entries){String key=e.getString("key");JSONArray a=data.getJSONArray(key);a.remove(e.getInt("index"));}
+        int version=world.previewData.version;
+        for(JSONObject e:entries)if(e.has("target")){String key=e.getString("targetKey");JSONObject target=e.getJSONObject("target");JSONArray a=data.optJSONArray(key);if(a==null)a=new JSONArray();a.put(target);data.put(key,a);
+            int needed=key.equals("bridges")?(target.has("length")?16:15):key.equals("fences")?("stone-tall".equals(target.optString("material"))?17:13):target.has("plantId")?12:"bush".equals(target.optString("kind"))?(target.optInt("size",1)==2?11:10):"wild-grass".equals(target.optString("kind"))?9:target.has("size")?8:7;version=Math.max(version,needed);
+        }
+        root.put("version",version);
         PreviewWorld20 parsed;try{parsed=PreviewWorld20.parse(root.toString());}catch(JSONException invalid){return false;}
         List<World> worlds=list();for(int i=0;i<worlds.size();i++)if(worldId.equals(worlds.get(i).id)){worlds.set(i,fromPreview(parsed));return saveWorlds(worlds,worldId);}return false;
     }

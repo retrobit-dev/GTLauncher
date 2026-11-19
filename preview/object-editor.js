@@ -22,7 +22,7 @@
     tab.addEventListener('click',()=>selectCatalogTab(index));
     tab.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();selectCatalogTab(event.key==='Home'?0:event.key==='End'?catalogTabs.length-1:(index+1)%catalogTabs.length,true);});
   });
-  let catalogReplacement=null;
+  let catalogReplacement=null, catalogSelection=[];
   const objectSets=world=>({trees:(world.orangeTrees||[]).map(o=>({...o})),fences:(world.fences||[]).map(o=>({...o})),bridges:(world.bridges||[]).map(o=>({...o}))});
   function renderLibrary() {
     const world = window.worldManager.getActive();
@@ -37,6 +37,8 @@
     for(const kind of ['wood','stone']) { $('catalog-place-fence-'+kind).disabled=world.id==='base' || !Array.isArray(world.tiles); for(const suffix of ['', '-4','-5']) $('catalog-place-bridge-'+kind+suffix).disabled=world.id==='base' || !Array.isArray(world.tiles); }
     $('catalog-place-wild-grass').disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-house-status').textContent=world.id==='base' ? 'Base World terkunci. Buka world buatan untuk menempatkan rumah.' : exists ? 'World ini sudah memiliki rumah player. Pindahkan rumah yang ada bila diperlukan.' : !Array.isArray(world.tiles) ? 'World lama ini tidak mendukung penempatan rumah.' : 'Pilih tombol, lalu ketuk sudut pertama tapak pada peta.';
+    $('catalog-bulk-replace').disabled=!editing || !catalogSelection.length; $('catalog-bulk-delete').disabled=!editing || !catalogSelection.length;
+    $('catalog-selection-count').textContent=`${catalogSelection.length} dipilih`;
     $('catalog-replace-status').hidden=!catalogReplacement;$('catalog-replace-cancel').hidden=!catalogReplacement;
     $('catalog-replace-status').textContent=catalogReplacement?`Ganti ${catalogReplacement.label}: pilih objek pengganti di katalog. Posisi awal tetap; tapak diperiksa sebelum disimpan.`:'';
     const character=window.worldManager.getCharacter(),house=window.worldManager.getHouse?.();
@@ -46,6 +48,8 @@
       const detail=document.createElement('div');detail.className='world-card-details';detail.textContent=label;node.append(detail);
       if(protectedObject){const note=document.createElement('small');note.textContent='Tidak melalui daftar';node.append(note);}
       else {
+        const check=document.createElement('input');check.type='checkbox';check.className='catalog-check';check.setAttribute('aria-label',`Pilih ${label}`);check.disabled=!editing || world.id==='base';check.checked=catalogSelection.some(s=>s.key===key&&s.index===index&&JSON.stringify(s.object)===JSON.stringify(object));
+        check.addEventListener('change',()=>{catalogSelection=catalogSelection.filter(s=>!(s.key===key&&s.index===index));if(check.checked)catalogSelection.push({key,index,object:{...object},label});$('catalog-bulk-replace').disabled=!catalogSelection.length;$('catalog-bulk-delete').disabled=!catalogSelection.length;$('catalog-selection-count').textContent=`${catalogSelection.length} dipilih`;});node.prepend(check);
         const actions=document.createElement('div');actions.className='catalog-placed-actions';
         for(const [action,path] of [['replace','M4 8h13l-3-3m3 3-3 3M20 16H7l3-3m-3 3 3 3'],['delete','M4 6h16M9 6V4h6v2m3 0-1 14H7L6 6m4 4v6m4-6v6']]) {
           const button=document.createElement('button');button.type='button';button.className='catalog-action';button.dataset.action=action;button.setAttribute('aria-label',`${action==='replace'?'Ganti':'Hapus'} ${label}`);button.title=action==='replace'?'Ganti objek':'Hapus objek';button.disabled=!editing || world.id==='base';
@@ -56,15 +60,23 @@
         }node.append(actions);
       }libraryList.append(node);
     }
-    if(character.visible)row(`Karakter · ${columnLabel(character.column)}${character.row+1}`,'assets/player-character.png',null,0,null,true);
+    if(character.visible){row(`Karakter · ${columnLabel(character.column)}${character.row+1}`,`assets/main-character${['N','W'].includes(character.facing)?'-back':''}.png?v=short-stocky-1`,null,0,null,true);if(['W','E'].includes(character.facing))libraryList.lastElementChild.querySelector('img').style.transform='scaleX(-1)';}
     if(house)row(`Rumah player · ${columnLabel(house.column)}${house.row+1}${house.visible?'':' (tersembunyi)'}`,'assets/simple-house-aligned.png',null,0,null,true);
     (world.orangeTrees||[]).forEach((t,i)=>{const label=t.kind==='bush'?(t.variant==='flower'?'Semak melati':t.variant==='berry'?'Semak murbei':'Semak'):t.kind==='wild-grass'?'Rumput liar':t.kind==='conifer'?'Pohon cemara laut':'Pohon jeruk';const image=t.kind==='bush'?(t.variant==='flower'?'assets/bush-jasmine.png':t.variant==='berry'?'assets/bush-mulberry.png':'assets/bush-selected.png'):t.kind==='wild-grass'?'assets/wild-grass-selected.png':t.kind==='conifer'?'assets/cemara-laut-redesign.png':'assets/orange-tree-pixel.png';row(`${label} · ${columnLabel(t.column)}${t.row+1}`,image,'trees',i,t);});
     (world.bridges||[]).forEach((b,i)=>row(`Jembatan ${b.material==='wood'?'kayu':'batu'} · ${columnLabel(b.column)}${b.row+1} · ${b.length||3}×1`,`assets/bridge-${b.material}.png`,'bridges',i,b));
     (world.fences||[]).forEach((f,i)=>row(`${f.material==='stone-tall'?'Tembok tinggi':f.material==='wood'?'Pagar kayu':'Pagar batu'} · ${columnLabel(f.column)}${f.row+1} · ${f.edge}`,`assets/fence-mesh-${f.material}.png`,'fences',i,f));
     if(!libraryList.childElementCount){const empty=document.createElement('p');empty.textContent='Belum ada objek yang ditampilkan.';libraryList.append(empty);}
   }
+  $('catalog-bulk-delete').addEventListener('click',()=>{
+    const world=window.worldManager.getActive(),selected=catalogSelection.slice(),before=objectSets(world);
+    if(!selected.length || !window.confirm(`Hapus ${selected.length} objek? Data panen terkait tidak dipindahkan.`))return;
+    if(world.id!==worldId || selected.some(s=>JSON.stringify(before[s.key][s.index])!==JSON.stringify(s.object))){tell('EDITING · Objek berubah; data tidak diubah.');return;}
+    const next={trees:before.trees.slice(),fences:before.fences.slice(),bridges:before.bridges.slice()};for(const s of selected.slice().sort((a,b)=>b.index-a.index))next[s.key].splice(s.index,1);
+    if(saveCatalogObjects(before,next)){catalogSelection=[];catalogReplacement=null;renderLibrary();tell('EDITING · Objek terpilih dihapus.');}else tell('EDITING · Objek tidak dapat dihapus; data tidak diubah.');
+  });
+  $('catalog-bulk-replace').addEventListener('click',()=>{if(!catalogSelection.length)return;deactivateTerrain();syncControls();catalogReplacement={worldId:worldId,items:catalogSelection.map(s=>({...s})),expected:objectSets(window.worldManager.getActive()),label:`${catalogSelection.length} objek`};renderLibrary();selectCatalogTab(0);libraryDialog.scrollTop=0;});
   $('catalog-replace-cancel').addEventListener('click',()=>{catalogReplacement=null;renderLibrary();});
-  libraryDialog.addEventListener('close',()=>{catalogReplacement=null;});
+  libraryDialog.addEventListener('close',()=>{catalogReplacement=null;catalogSelection=[];});
   function replacementForButton(id,source) {
     const position={column:source.object.column,row:source.object.row};
     if(id==='catalog-place-orange')return {key:'trees',object:position};
@@ -80,13 +92,13 @@
   }
   libraryDialog.addEventListener('click',event=>{
     if(!catalogReplacement)return;const button=event.target.closest('.catalog-tile');if(!button)return;
-    event.preventDefault();event.stopImmediatePropagation();const source=catalogReplacement,nextItem=replacementForButton(button.id,source);
+    event.preventDefault();event.stopImmediatePropagation();const source=catalogReplacement,items=source.items||[source],replacements=items.map(item=>replacementForButton(button.id,item)),nextItem=replacements[0];
     if(!nextItem){$('catalog-replace-status').textContent='Karakter dan rumah player tidak dapat digunakan sebagai pengganti di sini.';return;}
     if(!window.confirm(`Ganti ${source.label}? Posisi awal dipertahankan; identitas dan siklus tanaman baru dimulai ulang.`))return;
     const before=source.expected,next={trees:before.trees.map(o=>({...o})),fences:before.fences.map(o=>({...o})),bridges:before.bridges.map(o=>({...o}))};
-    if(source.worldId!==worldId || JSON.stringify(before[source.key][source.index])!==JSON.stringify(source.object)){catalogReplacement=null;renderLibrary();tell('EDITING · Objek berubah; data tidak diubah.');return;}
-    next[source.key].splice(source.index,1);next[nextItem.key].push(nextItem.object);
-    if(saveCatalogObjects(before,next)){catalogReplacement=null;renderLibrary();tell('EDITING · Objek diganti.');}else $('catalog-replace-status').textContent='Penggantian gagal: tapak, player, world, atau penyimpanan tidak aman. Objek lama tetap ada.';
+    if(source.worldId!==worldId || items.some(item=>JSON.stringify(before[item.key][item.index])!==JSON.stringify(item.object))){catalogReplacement=null;renderLibrary();tell('EDITING · Objek berubah; data tidak diubah.');return;}
+    for(const item of items.slice().sort((a,b)=>b.index-a.index))next[item.key].splice(item.index,1);for(const item of replacements)next[item.key].push(item.object);
+    if(saveCatalogObjects(before,next)){catalogReplacement=null;catalogSelection=[];renderLibrary();tell('EDITING · Objek diganti.');}else $('catalog-replace-status').textContent='Penggantian gagal: tapak, player, world, atau penyimpanan tidak aman. Objek lama tetap ada.';
   },true);
   $('object-library-button').addEventListener('click', () => {
     if(editing){clearGroup();selected=false;refresh();syncControls();} renderLibrary(); if (!libraryDialog.open) libraryDialog.showModal();
