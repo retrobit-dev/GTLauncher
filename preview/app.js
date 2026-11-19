@@ -862,12 +862,10 @@
       ^ Math.imul(count, 0x2545f491);
     const axisLength = Math.hypot(ISLAND_TILE_WIDTH, islandTileHeight);
     const clouds = [];
-    const cols=Math.ceil(Math.sqrt(count)), rows=Math.ceil(count/cols);
     for (let index = 0; index < count; index += 1) {
       const shape = CLOUD_SHAPE_VARIANTS[Math.floor(cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length)];
-      const cell=window.CloudLayout.cellSize(ISLAND_TILE_WIDTH,islandTileHeight,shape[0].length,shape.length);
-      const eastSeed=((index%cols)+.2+.6*cloudHash(seed,index,2))/cols*ISLAND_GRID_SIZE;
-      const northSeed=(Math.floor(index/cols)+.2+.6*cloudHash(seed,index,3))/rows*ISLAND_GRID_SIZE;
+      const cell=window.CloudLayout.cellSize(ISLAND_TILE_WIDTH,islandTileHeight,shape[0].length,shape.length,ISLAND_GRID_SIZE,count);
+      const {east:eastSeed,north:northSeed}=window.CloudLayout.seed(index,count,ISLAND_GRID_SIZE,cloudHash(seed,index,2),cloudHash(seed,index,3));
       const east = wrap(eastSeed + cloudEastTravel, ISLAND_GRID_SIZE) - ISLAND_GRID_SIZE/2;
       const north = wrap(northSeed + cloudNorthTravel, ISLAND_GRID_SIZE) - ISLAND_GRID_SIZE/2;
       const x = WIDTH / 2 - LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_WIDTH / axisLength
@@ -1701,10 +1699,12 @@
     const wet=window.CloudLayout.wet(cloudCover,code);
     const opacity=Math.max(cloudShadowOpacity({altitude:lightAltitude},cloudCover,code),wet?.16:0)
       *window.CloudLayout.fade(motionTime,!REDUCED_MOTION);
-    ctx.save();applyIslandTransform();clipIslandSurface();
+    // drawFloatingIsland already applied the island camera transform.
+    ctx.save();clipIslandSurface();
     ctx.fillStyle=`rgba(12,23,40,${opacity})`;
     ctx.filter=`blur(${wet?3:1.5}px)`;
     ctx.beginPath();
+    const transform=ctx.getTransform(),visible={left:-transform.e/transform.a,right:(renderCanvas.width-transform.e)/transform.a,top:-transform.f/transform.d,bottom:(renderCanvas.height-transform.f)/transform.d};
     for(const cloud of clouds) {
       // Wrap on the world plane, independent of camera or player movement.
       const dx=(cloud.planeX-WIDTH/2)/(ISLAND_TILE_WIDTH/2);
@@ -1713,8 +1713,15 @@
       const b=wrap((dx-dy)/2+ISLAND_GRID_SIZE/2,ISLAND_GRID_SIZE)-ISLAND_GRID_SIZE/2;
       const x=WIDTH/2+(a+b)*ISLAND_TILE_WIDTH/2, y=islandCenterY+(a-b)*islandTileHeight/2;
       const w=cloud.shape[0].length*cloud.cell,h=cloud.shape.length*cloud.cell;
-      for(let row=0;row<cloud.shape.length;row++)for(let col=0;col<cloud.shape[row].length;col++)
-        if(cloud.shape[row][col]!=='0')ctx.rect(x-w/2+col*cloud.cell,y-h/2+row*cloud.cell,cloud.cell+.02,cloud.cell+.02);
+      // Draw periodic copies at the island edges, so a moving shadow crosses a
+      // boundary smoothly instead of disappearing or being confined centrally.
+      for(let ia=-1;ia<=1;ia++)for(let ib=-1;ib<=1;ib++) {
+        const px=x+(ia+ib)*ISLAND_GRID_SIZE*ISLAND_TILE_WIDTH/2,py=y+(ia-ib)*ISLAND_GRID_SIZE*islandTileHeight/2;
+        const margin=(wet?3:1.5)*4;
+        if(px+w/2+margin<visible.left || px-w/2-margin>visible.right || py+h/2+margin<visible.top || py-h/2-margin>visible.bottom)continue;
+        for(let row=0;row<cloud.shape.length;row++)for(let col=0;col<cloud.shape[row].length;col++)
+          if(cloud.shape[row][col]!=='0')ctx.rect(px-w/2+col*cloud.cell,py-h/2+row*cloud.cell,cloud.cell+.02,cloud.cell+.02);
+      }
     }
     // One union fill avoids darker overlaps; blur makes the shadow diffuse.
     ctx.fill();ctx.restore();

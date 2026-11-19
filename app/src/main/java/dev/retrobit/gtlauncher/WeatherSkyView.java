@@ -1678,10 +1678,12 @@ public final class WeatherSkyView extends View {
             float x = cloud.planeX, y = cloud.planeY + LANGIT_AWAN_LIFT;
             float[] position=CloudShadowPlacement.onIsland(x,y,SCENE_WIDTH/2f,ISLAND_CENTER_Y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,ISLAND_GRID_SIZE);
             float width=cloud.shape[0].length()*cloud.cell, height=cloud.shape.length*cloud.cell;
-            float scale=Math.min(1f, Math.min(4f*ISLAND_TILE_WIDTH/width, 4f*ISLAND_TILE_HEIGHT/height));
-            if (canvas.quickReject(position[0]-width*scale/2-blurMargin, position[1]-height*scale/2-blurMargin,
-                    position[0]+width*scale/2+blurMargin, position[1]+height*scale/2+blurMargin, Canvas.EdgeType.AA)) continue;
-            addGroundSilhouette(mask, cloud.shape, position[0], position[1], width*scale, height*scale);
+            // Periodic copies continue a single shadow across the island boundary.
+            for(int a=-1;a<=1;a++)for(int b=-1;b<=1;b++) {
+                float px=position[0]+(a+b)*ISLAND_GRID_SIZE*ISLAND_TILE_WIDTH/2f,py=position[1]+(a-b)*ISLAND_GRID_SIZE*ISLAND_TILE_HEIGHT/2f;
+                if(canvas.quickReject(px-width/2-blurMargin,py-height/2-blurMargin,px+width/2+blurMargin,py+height/2+blurMargin,Canvas.EdgeType.AA))continue;
+                addGroundSilhouette(mask,cloud.shape,px,py,width,height);
+            }
         }
         paint.setStyle(Paint.Style.FILL);
         paint.setMaskFilter(new BlurMaskFilter(blur, BlurMaskFilter.Blur.NORMAL));
@@ -2791,13 +2793,12 @@ public final class WeatherSkyView extends View {
         CloudState[] clouds = new CloudState[count];
         double len = Math.hypot(ISLAND_TILE_WIDTH, ISLAND_TILE_HEIGHT);
         float lift=cloudDisplayLift(), sx=islandScaleX()*mapZoom(), sy=islandScaleY()*mapZoom();
-        int cols=(int)Math.ceil(Math.sqrt(count)),rows=(int)Math.ceil(count/(double)cols);
         for (int index = 0; index < count; index++) {
             int variant = (int) (cloudHash(seed, index, 1) * CLOUD_SHAPE_VARIANTS.length);
             String[] shape = CLOUD_SHAPE_VARIANTS[variant];
-            float cell=CloudLayout.cellSize(ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,shape[0].length(),shape.length);
-            double eastSeed=((index%cols)+.2+.6*cloudHash(seed,index,2))/cols*ISLAND_GRID_SIZE;
-            double northSeed=(Math.floor(index/(double)cols)+.2+.6*cloudHash(seed,index,3))/rows*ISLAND_GRID_SIZE;
+            float cell=CloudLayout.cellSize(ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,shape[0].length(),shape.length,ISLAND_GRID_SIZE,count);
+            double[] seeds=CloudLayout.seed(index,count,ISLAND_GRID_SIZE,cloudHash(seed,index,2),cloudHash(seed,index,3));
+            double eastSeed=seeds[0],northSeed=seeds[1];
             double east = ((eastSeed + cloudEastTravel) % ISLAND_GRID_SIZE + ISLAND_GRID_SIZE) % ISLAND_GRID_SIZE - ISLAND_GRID_SIZE / 2.0;
             double north = ((northSeed + cloudNorthTravel) % ISLAND_GRID_SIZE + ISLAND_GRID_SIZE) % ISLAND_GRID_SIZE - ISLAND_GRID_SIZE / 2.0;
             float x = (float) (SCENE_WIDTH / 2.0 - LANGIT_AWAN_WEST_SHIFT * ISLAND_TILE_WIDTH / len
