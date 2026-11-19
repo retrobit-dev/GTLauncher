@@ -840,7 +840,7 @@ public class HomeActivity extends Activity {
             GridLayout buildingGrid=new GridLayout(this);buildingGrid.setColumnCount(2);panel.addView(buildingGrid);
             for(final String material:new String[]{"wood","stone"}) {
                 LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundResource(R.drawable.bg_portal_button);
-                ImageView image=new ImageView(this);image.setImageResource(material.equals("wood")?R.drawable.fence_harmonized_wood:R.drawable.fence_harmonized_stone);image.setScaleType(ImageView.ScaleType.FIT_CENTER);card.addView(image,new LinearLayout.LayoutParams(dp(96),dp(64)));
+                ImageView image=new ImageView(this);image.setImageResource(material.equals("wood")?R.drawable.fence_mesh_wood:R.drawable.fence_mesh_stone);image.setScaleType(ImageView.ScaleType.FIT_CENTER);card.addView(image,new LinearLayout.LayoutParams(dp(96),dp(64)));
                 TextView label=new TextView(this);label.setText(material.equals("wood")?"Pagar kayu":"Pagar batu");label.setGravity(Gravity.CENTER);label.setTextColor(Color.rgb(52,75,59));card.addView(label);
                 GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(140);cell.setMargins(0,dp(8),dp(8),0);buildingGrid.addView(card,cell);
                 card.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Pilih sisi tile").setItems(new String[]{"Utara","Timur","Selatan","Barat"},(d,which)->{

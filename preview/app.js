@@ -56,7 +56,6 @@
   const wildGrassImage=new Image();wildGrassImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};wildGrassImage.src='./assets/wild-grass-selected.png?v=3';
   const bushImage=new Image();bushImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};bushImage.src='./assets/bush-selected.png?v=1';
   const bushFlowerImage=new Image(),bushBerryImage=new Image();for(const [image,path] of [[bushFlowerImage,'jasmine'],[bushBerryImage,'mulberry']]){image.onload=()=>{if(REDUCED_MOTION)drawFrame();};image.src=`./assets/bush-${path}.png?v=1`;}
-  const fenceImages=Object.fromEntries(['wood','stone'].map(material=>{const image=new Image();image.onload=()=>{if(REDUCED_MOTION)drawFrame();};image.src=`./assets/fence-harmonized-${material}.png`;return [material,image];}));
   const treeSprite=tree=>tree.kind==='bush'?(window.BushHarvest?.ready(window.worldManager?.getActive(),tree)?(tree.variant==='flower'?bushFlowerImage:bushBerryImage):bushImage):tree.kind==='wild-grass'?wildGrassImage:tree.kind==='conifer'?coniferTreeImage:orangeTreeImage;
   const treeSize=tree=>tree.size===1?1:2;
   const treeVisualScale=tree=>tree.kind==='bush'?14.5/60*treeSize(tree):tree.kind==='wild-grass'?14/60:treeSize(tree)/2;
@@ -1860,7 +1859,7 @@
     }
     // Fence shadows share the exact endpoints of the visible segment and stay on top faces.
     for(const fence of fences) {
-      const {a,b}=fenceGeometry(fence),d=window.FenceShadow.offset(a,b,lightPoint,LANGIT_MATAHARI_LIFT);
+      const {a,b}=fenceGeometry(fence),d=window.FenceShadow.offset(a,b,lightPoint,LANGIT_MATAHARI_LIFT,fence.material==='stone'?9:15);
       ctx.fillStyle=`rgba(12,23,40,${opacity*.55})`;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.lineTo(b.x+d.x,b.y+d.y);ctx.lineTo(a.x+d.x,a.y+d.y);ctx.closePath();ctx.fill();
     }
     // The projected alpha preserves branches and canopy, including mirroring and wind sway.
@@ -2002,30 +2001,26 @@
       case 'S':a={x:c.x-hw,y:c.y};b={x:c.x,y:c.y+hh};break;
       default:a={x:c.x-hw,y:c.y};b={x:c.x,y:c.y-hh};
     }
-    const rising=f.edge==='E'||f.edge==='W', sy=0.065, sx=(b.x-a.x)/388;
-    const y1=rising?400:306,y2=rising?306:400;
-    const shear=(b.y-a.y-sy*(y2-y1))/388;
-    return {a,b,rising,sx,sy,shear,tx:a.x-sx*65,ty:a.y-shear*65-sy*y1};
+    return {a,b};
   }
   function drawFence(f) {
-    const image=fenceImages[f.material];if(!image?.complete || !image.naturalWidth)return;
     const g=fenceGeometry(f);ctx.save();applyIslandTransform();
     ctx.save();clipIslandSurface();ctx.strokeStyle='rgba(12,23,40,.16)';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(g.a.x,g.a.y);ctx.lineTo(g.b.x,g.b.y);ctx.stroke();ctx.restore();
     const player=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
     if(player?.visible && f.column===Math.round(player.column) && f.row===Math.round(player.row) && (f.edge==='S'||f.edge==='E'))ctx.globalAlpha=.5;
-    ctx.transform(g.sx,g.shear,0,g.sy,g.tx,g.ty);if(!g.rising){ctx.translate(512,0);ctx.scale(-1,1);}
-    ctx.imageSmoothingEnabled=true;ctx.drawImage(image,0,0,512,400);
-    if(editingFenceSelection && editingFenceSelection.column===f.column && editingFenceSelection.row===f.row && editingFenceSelection.edge===f.edge){ctx.strokeStyle='#fff4a8';ctx.lineWidth=2/g.sy;ctx.strokeRect(35,45,442,350);}
+    const selected=editingFenceSelection && editingFenceSelection.column===f.column && editingFenceSelection.row===f.row && editingFenceSelection.edge===f.edge;
+    ctx.lineWidth=.30;ctx.lineJoin='round';
+    for(const face of window.FenceMesh.faces(g.a,g.b,f.material)) {
+      ctx.beginPath();ctx.moveTo(face.points[0].x,face.points[0].y);for(const p of face.points.slice(1))ctx.lineTo(p.x,p.y);ctx.closePath();
+      ctx.fillStyle=face.color;ctx.fill();if(!face.detail){ctx.strokeStyle=selected?'#fff4a8':(f.material==='stone'?'#687666':'#664936');ctx.stroke();}
+    }
     ctx.restore();
   }
   function fenceAt(point) {
     const fences=window.worldManager?.getActive()?.fences||[];
     for(let i=fences.length-1;i>=0;i--) {
-      const f=fences[i],g=fenceGeometry(f),img=fenceImages[f.material];
-      let x=(point.x-g.tx)/g.sx,y=(point.y-g.ty-g.shear*x)/g.sy;if(!g.rising)x=512-x;
-      if(x<0||x>=512||y<0||y>=400||!img.complete || !img.naturalWidth)continue;
-      let data=houseHitCache.get(img);if(!data){const c=document.createElement('canvas');c.width=128;c.height=100;const h=c.getContext('2d',{willReadFrequently:true});h.drawImage(img,0,0,128,100);data=h.getImageData(0,0,128,100).data;houseHitCache.set(img,data);}
-      if(data[(Math.floor(y/4)*128+Math.floor(x/4))*4+3]>32)return i;
+      const f=fences[i],g=fenceGeometry(f);
+      if(window.FenceMesh.faces(g.a,g.b,f.material).some(face=>window.FenceMesh.contains(face.points,point.x,point.y)))return i;
     }
     return null;
   }

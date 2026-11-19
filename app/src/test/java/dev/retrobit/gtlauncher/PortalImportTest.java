@@ -335,6 +335,20 @@ public class PortalImportTest {
         assertTrue(store.deleteSelectedPlant("home",w.surfaces.get(0)));assertEquals(1,store.activeWorld().surfaces.size());
         assertTrue(store.deleteSelectedPlant("home",store.activeWorld().surfaces.get(0)));assertEquals(0,store.activeWorld().surfaces.size());
     }
+    @Test public void portableFenceSolidsHaveDepthAndAccurateHitGeometry() {
+        for(String edge:new String[]{"N","E","S","W"}) {
+            float[] p=FenceMesh.endpoints(100,100,28,14,edge);
+            java.util.List<FenceMesh.Face> wood=FenceMesh.faces(p[0],p[1],p[2],p[3],false);
+            java.util.List<FenceMesh.Face> stone=FenceMesh.faces(p[0],p[1],p[2],p[3],true);
+            assertEquals(14,wood.size());assertEquals(28,stone.size());
+            FenceMesh.Face f=stone.get(1);float x=0,y=0;for(int i=0;i<8;i+=2){x+=f.points[i]/4;y+=f.points[i+1]/4;}
+            assertTrue(FenceMesh.contains(stone,x,y));assertFalse(FenceMesh.contains(stone,-1000,-1000));
+            float woodTop=Float.MAX_VALUE,stoneTop=Float.MAX_VALUE;
+            for(FenceMesh.Face face:wood)for(int i=1;i<face.points.length;i+=2)woodTop=Math.min(woodTop,face.points[i]);
+            for(FenceMesh.Face face:stone)for(int i=1;i<face.points.length;i+=2)stoneTop=Math.min(stoneTop,face.points[i]);
+            assertTrue(stoneTop>woodTop);
+        }
+    }
     @Test public void fenceShadowStaysBoundedAndFollowsLight() {
         float[] right=FenceShadow.offset(0,0,16,8,-500,200,175),left=FenceShadow.offset(0,0,16,8,500,200,175);
         assertTrue(right[0]>0);assertTrue(left[0]<0);
