@@ -114,7 +114,7 @@
   let selectedBridgeIndex=null,placingBridge=null,bridgeAxis='E';
   let selectedTreeIndex=null, selectedFenceIndex=null, placingFence=null, placingFenceEdge='S', selectingObject=false, movingObject=false, objectPointer=null;
   let dragOffset = null, pinch = null, suppressDrag = false, objectDrag=null;
-  let group=null, areaGesture=null;
+  let group=null, areaGesture=null, selectedBlock=null;
   const areaBox=document.createElement('div');areaBox.className='object-selection-area';areaBox.hidden=true;canvas.parentElement.append(areaBox);
   const pointers = new Map();
   function clearGroup(){group=null;areaGesture=null;areaBox.hidden=true;scene()?.setObjectGroup?.([],[]);}
@@ -223,7 +223,7 @@
       && a.scale === b.scale && a.facing === b.facing;
   }
   function current(type = selectedType) {
-    const obj = type === 'house' ? window.worldManager.getHouse() : type==='bridge' ? window.worldManager.getActive().bridges?.[selectedBridgeIndex] : type==='tree' ? window.worldManager.getActive().orangeTrees?.[selectedTreeIndex] : type==='fence' ? window.worldManager.getActive().fences?.[selectedFenceIndex] : window.worldManager.getCharacter();
+    const obj = type === 'block' ? selectedBlock : type === 'house' ? window.worldManager.getHouse() : type==='bridge' ? window.worldManager.getActive().bridges?.[selectedBridgeIndex] : type==='tree' ? window.worldManager.getActive().orangeTrees?.[selectedTreeIndex] : type==='fence' ? window.worldManager.getActive().fences?.[selectedFenceIndex] : window.worldManager.getCharacter();
     return obj ? {...obj} : null;
   }
   function blocks(world) { return world.blockStacks ? world.blockStacks.map(x=>x.slice()) : world.tiles?.map(t=>t?[t]:[]) ?? null; }
@@ -332,19 +332,19 @@
     editButton.setAttribute('aria-pressed', String(editing));
     canvas.classList.toggle('is-editing', editing);
     status.hidden = !editing;
-    detailsButton.hidden = !editing || !selected || (selectedType==='tree'||selectedType==='fence'||selectedType==='bridge');
+    detailsButton.hidden = !editing || !selected || (selectedType==='tree'||selectedType==='fence'||selectedType==='bridge'||selectedType==='block');
     selectButton.hidden = !editing || (selected && selectedType === 'character') || !window.worldManager.getCharacter().visible;
     selectHouse.hidden = !editing || (selected && selectedType === 'house') || !window.worldManager.getHouse();
     undoButton.disabled = !editing || !history || !history.undo.length || pointers.size > 0 || Boolean(pendingTerrain) || Boolean(objectDrag?.started);
     redoButton.disabled = !editing || !history || !history.redo.length || pointers.size > 0 || Boolean(pendingTerrain) || Boolean(objectDrag?.started);
     rotateControls.hidden = !editing;
-    rotateLeft.disabled = Boolean(group) || (!selected && !placingFence && !placingBridge) || pointers.size > 0;
-    rotateRight.disabled = Boolean(group) || (!selected && !placingFence && !placingBridge) || pointers.size > 0;
+    rotateLeft.disabled = Boolean(group) || selectedType==='block' && selected || (!selected && !placingFence && !placingBridge) || pointers.size > 0;
+    rotateRight.disabled = Boolean(group) || selectedType==='block' && selected || (!selected && !placingFence && !placingBridge) || pointers.size > 0;
     $('object-placement-cancel').hidden=!editing || !(placingHouse || placingOrange || placingFence || placingBridge);
     $('object-tool-select').setAttribute('aria-pressed',String(selectingObject));
-    $('object-tool-move').disabled=!editing || (!selected && !group);
+    $('object-tool-move').disabled=!editing || (selected && selectedType==='block') || (!selected && !group);
     $('object-tool-move').setAttribute('aria-pressed',String(movingObject));
-    $('object-tool-delete').disabled=!editing || (!group && (!selected || selectedType==='character'));
+    $('object-tool-delete').disabled=!editing || (!group && (!selected || selectedType==='character' || selectedType==='block'));
     $('rotate-direction').textContent = directionNames[placingFence ? placingFenceEdge : (draft || current() || {}).facing] || 'Selatan';
   }
   function finishEditing() {
@@ -437,7 +437,7 @@
   });
   function position(event) { return {x: event.clientX, y: event.clientY}; }
   function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
-  function refresh() { scene()?.update(draft, editing && selected && selectedType!=='tree' && selectedType!=='fence' && selectedType!=='bridge', selectedType);scene()?.setSelectedTree?.(editing && selected && selectedType==='tree' ? current('tree') : null);scene()?.setSelectedFence?.(editing && selected && selectedType==='fence' ? current('fence') : null);scene()?.setSelectedBridge?.(editing && selected && selectedType==='bridge' ? current('bridge') : null); }
+  function refresh() { scene()?.setSelectedBlock?.(editing && selected && selectedType==='block' ? selectedBlock : null);scene()?.update(draft, editing && selected && selectedType!=='tree' && selectedType!=='fence' && selectedType!=='bridge' && selectedType!=='block', selectedType);scene()?.setSelectedTree?.(editing && selected && selectedType==='tree' ? current('tree') : null);scene()?.setSelectedFence?.(editing && selected && selectedType==='fence' ? current('fence') : null);scene()?.setSelectedBridge?.(editing && selected && selectedType==='bridge' ? current('bridge') : null); }
   function cancelGesture() { pointers.clear(); pinch = null; dragOffset = null; suppressDrag = false; draft = null;objectPointer=null;objectDrag=null;scene()?.setObjectDrag?.(null,0,null);refresh(); syncControls(); }
   function deactivateTerrain() {
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
@@ -457,14 +457,14 @@
     return saved;
   }
   $('object-tool-select').addEventListener('click',()=>{
-    if(!editing)return;deactivateTerrain();clearGroup();selected=false;selectingObject=!selectingObject;movingObject=false;refresh();syncControls();tell(selectingObject?'EDITING · Seret area untuk memilih pagar dan tanaman. Ketuk untuk memilih satu objek.':'EDITING · Pilih objek dinonaktifkan.');
+    if(!editing)return;deactivateTerrain();clearGroup();selected=false;selectingObject=!selectingObject;movingObject=false;refresh();syncControls();tell(selectingObject?'EDITING · Seret area untuk memilih pagar dan tanaman; ketuk untuk memilih rumah, objek, atau block.':'EDITING · Pilih objek dinonaktifkan.');
   });
   $('object-tool-move').addEventListener('click',()=>{
-    if(!editing || (!selected && !group))return;deactivateTerrain();selectingObject=false;movingObject=!movingObject;syncControls();
+    if(!editing || (selected && selectedType==='block') || (!selected && !group))return;deactivateTerrain();selectingObject=false;movingObject=!movingObject;syncControls();
     tell(movingObject?'EDITING · Ketuk tile tujuan untuk objek. Escape untuk batal.':'EDITING · Pindahkan dibatalkan.');
   });
   $('object-tool-delete').addEventListener('click',()=>{
-    if(!editing || (!group && (!selected || selectedType==='character')) || !window.confirm('Hapus objek yang dipilih dari world?'))return;
+    if(!editing || (!group && (!selected || selectedType==='character' || selectedType==='block')) || !window.confirm('Hapus objek yang dipilih dari world?'))return;
     if(group){const before=groupSnapshot(),next={trees:before.trees.filter((_,i)=>!group.trees.includes(i)),fences:before.fences.filter((_,i)=>!group.fences.includes(i))};if(saveGroup(before,next)){clearGroup();selected=false;movingObject=false;refresh();syncControls();tell('EDITING · Grup dihapus. Undo untuk memulihkan.');}else tell('EDITING · Grup tidak dapat dihapus.');return;}
     let saved=false;
     if(selectedType==='bridge') {const before=window.worldManager.getActive().bridges||[];saved=saveBridges(before,before.filter((_,i)=>i!==selectedBridgeIndex));}
@@ -514,7 +514,16 @@
     if(type==='pointercancel'){tell('EDITING · Seleksi area dibatalkan.');return;}
     const end=scene().toLocal(event.clientX,event.clientY),w=window.worldManager.getActive();
     if(g.drag){const dest=scene().tileAt(end);if(Math.hypot(event.clientX-g.x,event.clientY-g.y)>=5){if(g.start && dest && moveGroupBy(dest.column-g.start.column,dest.row-g.start.row))tell('EDITING · Grup dipindahkan. Undo untuk membatalkan.');else tell('EDITING · Tujuan tidak valid; grup tidak berubah.');}syncControls();return;}
-    if(Math.hypot(event.clientX-g.x,event.clientY-g.y)<5){const bi=scene().bridgeAt(end),fi=scene().fenceAt(end),ti=scene().orangeTreeAt(end);clearGroup();if(bi!==null){selected=true;selectedType='bridge';selectedBridgeIndex=bi;}else if(fi!==null){selected=true;selectedType='fence';selectedFenceIndex=fi;}else if(ti!==null){selected=true;selectedType='tree';selectedTreeIndex=ti;}else selected=false;selectingObject=false;refresh();syncControls();tell(selected?'EDITING · Objek dipilih.':'EDITING · Tidak ada objek di titik ini.');return;}
+    if(Math.hypot(event.clientX-g.x,event.clientY-g.y)<5){
+      const bi=scene().bridgeAt(end),fi=scene().fenceAt(end),ti=scene().orangeTreeAt(end),house=window.worldManager.getHouse(),player=window.worldManager.getCharacter();clearGroup();
+      if(scene().hit(end,player)){selected=true;selectedType='character';}
+      else if(bi!==null){selected=true;selectedType='bridge';selectedBridgeIndex=bi;}
+      else if(fi!==null){selected=true;selectedType='fence';selectedFenceIndex=fi;}
+      else if(ti!==null){selected=true;selectedType='tree';selectedTreeIndex=ti;}
+      else if(house?.visible && scene().houseAt(end,house)){selected=true;selectedType='house';}
+      else {selectedBlock=scene().blockAt?.(end) || null;selected=!!selectedBlock;if(selected)selectedType='block';}
+      selectingObject=false;draft=null;refresh();syncControls();tell(selected?(selectedType==='block'?`EDITING · Block ${columnLabel(selectedBlock.column)}${selectedBlock.row+1}, tingkat ${selectedBlock.level+1} dipilih.`:'EDITING · Objek dipilih.'):'EDITING · Tidak ada objek atau block di titik ini.');return;
+    }
     const inside=p=>p.x>=Math.min(g.local.x,end.x) && p.x<=Math.max(g.local.x,end.x) && p.y>=Math.min(g.local.y,end.y) && p.y<=Math.max(g.local.y,end.y);
     const trees=[],fences=[];(w.orangeTrees||[]).forEach((t,i)=>{if(inside(scene().orangeTreeAnchor(t)))trees.push(i);});(w.fences||[]).forEach((f,i)=>{const {a,b}=scene().fenceGeometry(f);if(inside({x:(a.x+b.x)/2,y:(a.y+b.y)/2}))fences.push(i);});
     const first=trees.length?w.orangeTrees[trees[0]]:fences.length?w.fences[fences[0]]:null;
@@ -596,7 +605,8 @@
     refresh();syncControls();
   },true);
   for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) $(id)?.addEventListener('click',()=>{
-    clearGroup();selectingObject=false;movingObject=false;placingHouse=false;placingOrange=false;placingFence=null;placingBridge=null;placementWorld=null;syncControls();
+    clearGroup();selectingObject=false;movingObject=false;placingHouse=false;placingOrange=false;placingFence=null;placingBridge=null;placementWorld=null;
+    if(selectedType==='block'){selected=false;selectedBlock=null;refresh();}syncControls();
   });
   canvas.addEventListener('pointerdown', event => {
     if (!editing || !scene()) return;
@@ -665,7 +675,7 @@
       // Other tabs or world settings may change this character; don't undo over newer data.
       pendingTerrain = null; clearGroup(); cancelGesture();
       history = ensureHistory(worldId);
-      selected = (selectedType==='tree'||selectedType==='fence'||selectedType==='bridge') ? false : Boolean(current()?.visible) && selected;
+      selected = (selectedType==='tree'||selectedType==='fence'||selectedType==='bridge'||selectedType==='block') ? false : Boolean(current()?.visible) && selected;
       if(!selected)selectedTreeIndex=null;movingObject=false;
       refresh(); syncControls();
       tell('EDITING · Objek berubah di luar editor; riwayat disetel ulang.');

@@ -1978,6 +1978,14 @@
     treeAlphaBoundsCache.set(sprite,bounds);return bounds;
   }
   let editingTreeSelection=null, editingTreeGroup=[], editingFenceGroup=[];
+  let editingBlockSelection=null;
+  function drawSelectedBlock() {
+    if(!editingBlockSelection)return;
+    const b=editingBlockSelection,w=worldForObjects(),i=b.row*ISLAND_GRID_SIZE+b.column,stack=w?.blockStacks?.[i] || (w?.tiles?.[i]?[w.tiles[i]]:[]);
+    if(b.level<0 || b.level>=stack.length)return;
+    const c=characterCentre({column:b.column,row:b.row,blockHeight:b.level+1}),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
+    ctx.save();applyIslandTransform();ctx.strokeStyle='#fff4a8';ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(c.x,c.y-hh);ctx.lineTo(c.x+hw,c.y);ctx.lineTo(c.x,c.y+hh);ctx.lineTo(c.x-hw,c.y);ctx.closePath();ctx.stroke();ctx.restore();
+  }
   let orangeTreeMotionState={time:0,speed:0,direction:90,heading:0};
   function orangeTreeSway(tree) {
     const m=orangeTreeMotionState;
@@ -2475,6 +2483,7 @@
     drawCharacterProjectedShadow(shadowLight, sceneWeather.cloudCover);
     drawGameplayRoute();
     drawHoeTarget();
+    drawSelectedBlock();
     const visibleHouse=editingHouseDraft || window.worldManager?.getHouse?.();
     const visiblePlayer=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
     const objectWorld=worldForObjects(),joins=fenceJoins(objectWorld);
@@ -2766,6 +2775,15 @@
         objectDragWorld={...world,[key]:items};
       }
       if(REDUCED_MOTION)drawFrame();
+    },
+    setSelectedBlock(block) {editingBlockSelection=block;if(REDUCED_MOTION)drawFrame();},
+    blockAt(point) {
+      const world=window.worldManager?.getActive(),tile=this.tileAt(point);if(!tile || !world?.tiles)return null;
+      const index=tile.row*ISLAND_GRID_SIZE+tile.column,stack=world.blockStacks?.[index] || (world.tiles[index]?[world.tiles[index]]:[]);if(!stack.length)return null;
+      const centre=characterCentre({column:tile.column,row:tile.row,blockHeight:stack.length}),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
+      const dx=Math.abs(point.x-centre.x)/hw,edge=centre.y+hh*(1-dx);
+      const levelsDown=dx<=1 && point.y>edge ? Math.floor((point.y-edge)/BLOCK_HEIGHT) : 0;
+      const level=Math.max(0,stack.length-1-levelsDown);return {column:tile.column,row:tile.row,level};
     },
     setObjectGroup(trees,fences) {editingTreeGroup=trees||[];editingFenceGroup=fences||[];if(REDUCED_MOTION)drawFrame();},
     setSelectedFence(f) {editingFenceSelection=f;if(REDUCED_MOTION)drawFrame();},
