@@ -2922,13 +2922,16 @@
     },
     tileAt(point) {
       const world=window.worldManager?.getActive();
-      if(world?.blockStacks) {
+      if(world?.blockStacks || world?.ramps?.length) {
         const hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
+        const ramps=new Map((world.ramps||[]).map(r=>[r.row*ISLAND_GRID_SIZE+r.column,r]));
         // Reverse painter order picks the visible top face nearest the viewer.
         for(let i=ISLAND_TILES.length-1;i>=0;i--) {
-          const tile=ISLAND_TILES[i], height=world.blockStacks[tile.row*ISLAND_GRID_SIZE+tile.column].length;
+          const tile=ISLAND_TILES[i],index=tile.row*ISLAND_GRID_SIZE+tile.column;
+          const height=world.blockStacks ? world.blockStacks[index].length : (world.tiles?.[index]?1:0);
           if(!height) continue;
-          const y=tile.y-(height-1)*BLOCK_HEIGHT;
+          const y=tile.y-(height-1)*BLOCK_HEIGHT,ramp=ramps.get(index);
+          if(ramp && window.RampGeometry?.hit(ramp.direction,ISLAND_TILE_WIDTH,islandTileHeight,BLOCK_HEIGHT,point.x-tile.x,point.y-y))return {column:tile.column,row:tile.row};
           const dx=Math.abs(point.x-tile.x)/hw;
           if(dx<=1 && (dx+Math.abs(point.y-y)/hh<=1 ||
              (height>1 && point.y>=y+hh*(1-dx) && point.y<=y+hh*(1-dx)+(height-1)*BLOCK_HEIGHT)))

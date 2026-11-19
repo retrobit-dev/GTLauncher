@@ -22,6 +22,24 @@
     const highFace=[vertex(a[2],a[3],0),vertex(b[2],b[3],0),vertex(b[2],b[3],1),vertex(a[2],a[3],1)];
     return {topFace,sideFaces,highFace};
   }
+  // Hit-test precisely the faces drawn by the default isometric view.
+  // Points on a polygon edge count as hits, avoiding cracks between faces.
+  function hit(direction,width,depth,height,x,y){
+    const shape=create(direction,width,depth,height);
+    if(!shape || !Number.isFinite(x) || !Number.isFinite(y))return false;
+    const inside=face=>{
+      let contained=false;
+      for(let i=0,j=face.length-1;i<face.length;j=i++){
+        const a=face[j],b=face[i],cross=(x-a.x)*(b.y-a.y)-(y-a.y)*(b.x-a.x);
+        if(Math.abs(cross)<1e-9 && x>=Math.min(a.x,b.x)-1e-9 && x<=Math.max(a.x,b.x)+1e-9 && y>=Math.min(a.y,b.y)-1e-9 && y<=Math.max(a.y,b.y)+1e-9)return true;
+        if((a.y>y)!==(b.y>y) && x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x)contained=!contained;
+      }
+      return contained;
+    };
+    if(inside(shape.topFace))return true;
+    if((direction==='E'||direction==='S') && inside(shape.highFace))return true;
+    return shape.sideFaces.some(face=>(face.every(p=>p.u===1)||face.every(p=>p.v===1)) && inside(face));
+  }
   // A ramp occupies one tile above its supporting stack. Its high edge is one
   // level above its low edge. Side edges are deliberately not traversable.
   // Ordinary flat-to-flat steps keep their existing one-level jump rule.
@@ -48,5 +66,5 @@
     const first=t<.5,surface=first?a:b,offset=first?t:t-1;
     return surface.height+(surface.direction==null?0:fraction(surface.direction,.5+delta[0]*offset,.5+delta[1]*offset));
   }
-  return Object.freeze({DIRECTIONS,fraction,create,canConnect,stepHeight});
+  return Object.freeze({DIRECTIONS,fraction,create,hit,canConnect,stepHeight});
 });
