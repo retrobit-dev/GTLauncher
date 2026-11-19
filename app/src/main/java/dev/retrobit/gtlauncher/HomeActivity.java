@@ -177,7 +177,8 @@ public class HomeActivity extends Activity {
     private WorldStore.SurfaceObject movingSurface;
     private WorldStore worldStore;
     private int portalWalkGeneration;
-    private boolean groundActive, groundRunning;
+    private boolean groundActive, groundRunning, groundAutoWater;
+    private long groundAutoIdle;
     private int groundGeneration,groundIndex;
     private java.util.List<PortalTravel.Tile> groundRoute;
     private Runnable groundCallback;
@@ -267,6 +268,7 @@ public class HomeActivity extends Activity {
         batteryIcon = findViewById(R.id.hud_battery_icon);
         resizeHudReadouts();
         skyView = (WeatherSkyView) homeScreen;
+        skyView.setIdleWaterListener(this::onIdleWater);
         skyView.setLocation(FALLBACK_LATITUDE, FALLBACK_LONGITUDE);
         worldStore = new WorldStore(getSharedPreferences("worlds", MODE_PRIVATE),new InventoryStore(getSharedPreferences(INVENTORY_PREFS,MODE_PRIVATE)));
         applyActiveWorld();
@@ -284,6 +286,8 @@ public class HomeActivity extends Activity {
         setMapMode(true);
         homeScreen.setOnTouchListener((view, event) -> {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                skyView.cancelIdleWaterAttempt();
+                groundAutoWater=false;
                 if(!groundActive || groundGeneration!=portalWalkGeneration) {
                     portalWalkGeneration++;
                     skyView.setPortalWalkActive(false);
@@ -606,8 +610,29 @@ public class HomeActivity extends Activity {
             beginGroundRoute(world,route,false);
         } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }
+    private void onIdleWater(String worldId, int column, int row, long elapsed) {
+        if(!gameplayMode || groundActive) return;
+        try {
+            WorldStore.World world=worldStore.activeWorld();
+            if(world==null || !world.showCharacter || !world.id.equals(worldId) || world.characterColumn!=column
+                    || world.characterRow!=row || world.previewData==null || world.previewData.tile(column,row)!=3) return;
+            PortalTravel.Terrain normal=portalTerrain(world);
+            PortalTravel.DryTerrain terrain=new PortalTravel.DryTerrain() {
+                public boolean canStand(int c,int r) { return normal.canStand(c,r); }
+                public boolean canStep(int a,int b,int c,int d) { return normal.canStep(a,b,c,d); }
+                public boolean isDry(int c,int r) { return world.previewData.tile(c,r)!=3; }
+            };
+            java.util.List<PortalTravel.Tile> route=PortalTravel.pathToNearestDry(new PortalTravel.Tile(column,row),terrain,world.gridSize());
+            if(route==null || route.size()<2) return;
+            beginGroundRoute(world,route,false);
+            groundAutoWater=true; groundAutoIdle=elapsed;
+        } catch(JSONException | IllegalArgumentException error) {
+            // Keep the character and stored world unchanged if routing cannot be calculated.
+        }
+    }
     private void beginGroundRoute(WorldStore.World world,java.util.List<PortalTravel.Tile> route,boolean running) {
         int generation=++portalWalkGeneration;
+        groundAutoWater=false;
         groundActive=true;groundRunning=running;groundGeneration=generation;groundRoute=route;
         skyView.setPortalWalkActive(true);skyView.setCharacterRunning(running);skyView.setGameplayRoute(route,1);
         walkGroundStep(world,route,1,generation,world.characterFacing);
@@ -645,7 +670,9 @@ public class HomeActivity extends Activity {
             groundActive=false;groundCallback=null;
             try {PortalTravel.Tile end=route.get(route.size()-1);
                 if(!worldStore.moveCharacter(world.id,end.column,end.row,facing)) throw new JSONException("Move failed");
+                boolean resumeIdle=groundAutoWater; long idle=groundAutoIdle;
                 skyView.setPortalWalkActive(false);applyActiveWorld();
+                if(resumeIdle) skyView.resumeIdleAfterWater(idle);
             } catch(JSONException e){skyView.setPortalWalkActive(false);applyActiveWorld();Toast.makeText(this,"Posisi tidak dapat disimpan.",Toast.LENGTH_SHORT).show();}
             return;
         }
@@ -659,7 +686,7 @@ public class HomeActivity extends Activity {
     }
 
     private void applyActiveWorld() {
-        groundActive=false;groundRunning=false;
+        groundActive=false;groundRunning=false;groundAutoWater=false;
         if(groundCallback!=null){mainHandler.removeCallbacks(groundCallback);groundCallback=null;}
         portalWalkGeneration++;
         skyView.setPortalWalkActive(false);

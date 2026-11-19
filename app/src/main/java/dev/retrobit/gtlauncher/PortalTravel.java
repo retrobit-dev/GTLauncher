@@ -87,6 +87,29 @@ final class PortalTravel {
         }
         return null;
     }
+    interface DryTerrain extends Terrain { boolean isDry(int column, int row); }
+    /** Breadth-first route to the nearest reachable dry tile, including both endpoints. */
+    static List<Tile> pathToNearestDry(Tile start, DryTerrain terrain, int size) {
+        if (!validTile(start,size) || terrain==null || !terrain.canStand(start.column,start.row)) return null;
+        Tile[][] previous=new Tile[size][size]; boolean[][] visited=new boolean[size][size];
+        ArrayDeque<Tile> queue=new ArrayDeque<>(); queue.add(start); visited[start.row][start.column]=true;
+        final int[][] steps={{0,-1},{1,0},{0,1},{-1,0}};
+        while(!queue.isEmpty()) {
+            Tile current=queue.remove();
+            if(terrain.isDry(current.column,current.row)) {
+                ArrayList<Tile> route=new ArrayList<>();
+                for(Tile p=current;p!=null;p=previous[p.row][p.column]) route.add(p);
+                Collections.reverse(route); return route;
+            }
+            for(int[] step:steps) {
+                int c=current.column+step[0],r=current.row+step[1];
+                if(c<0 || r<0 || c>=size || r>=size || visited[r][c] || !terrain.canStand(c,r)
+                        || !terrain.canStep(current.column,current.row,c,r)) continue;
+                Tile next=new Tile(c,r);visited[r][c]=true;previous[r][c]=current;queue.add(next);
+            }
+        }
+        return null;
+    }
     /** Shortest reachable tile sharing an edge with a rectangular object footprint. */
     static List<Tile> pathBeside(Tile start,int column,int row,int width,int height,Terrain terrain) {
         return pathBeside(start,column,row,width,height,terrain,SIZE);

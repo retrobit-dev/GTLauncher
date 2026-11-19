@@ -1051,6 +1051,12 @@ public final class WeatherSkyView extends View {
         canvas.drawPath(outline,paint);paint.setStyle(Paint.Style.FILL);
     }
     private final PlayerIdleBow playerIdleBow = new PlayerIdleBow();
+    interface IdleWaterListener { void onIdleWater(String worldId, int column, int row, long elapsed); }
+    private IdleWaterListener idleWaterListener;
+    private String waterAttemptKey;
+    void setIdleWaterListener(IdleWaterListener listener) { idleWaterListener=listener; }
+    void cancelIdleWaterAttempt() { waterAttemptKey=null; playerIdleBow.reset(); }
+    void resumeIdleAfterWater(long elapsed) { playerIdleBow.resume(elapsed); invalidate(); }
     private float idleBowAmount, idleSitAmount;
     private Bitmap idleBlendBitmap, idleBlendFrom, idleBlendTo;
     private float idleBlendMix=-1;
@@ -1061,6 +1067,19 @@ public final class WeatherSkyView extends View {
         String key=enabled ? surfaceWorldId+":"+characterColumn+":"+characterRow : null;
         idleBowAmount=playerIdleBow.update(now,key,enabled,visualWaterDepth()<=0);
         idleSitAmount=visualWaterDepth()<=0?playerIdleBow.sitting():0;
+        if (!enabled || visualWaterDepth()<=0) waterAttemptKey=null;
+        else if (playerIdleBow.elapsed()>=5000 && !key.equals(waterAttemptKey) && idleWaterListener!=null) {
+            waterAttemptKey=key;
+            final String world=surfaceWorldId, attempt=key;
+            final int column=characterColumn, row=characterRow;
+            final long elapsed=playerIdleBow.elapsed();
+            post(() -> {
+                if(attempt.equals(waterAttemptKey) && gameplayMode && showCharacter && animationEnabled
+                        && android.animation.ValueAnimator.areAnimatorsEnabled() && !characterStepping && !portalWalkActive
+                        && world.equals(surfaceWorldId) && column==characterColumn && row==characterRow && waterDepthAt(column,row)>0
+                        && idleWaterListener!=null) idleWaterListener.onIdleWater(world,column,row,elapsed);
+            });
+        }
         if(idleBowAmount>0 || idleSitAmount>0) {
             boolean back="N".equals(characterFacing)||"W".equals(characterFacing);
             Bitmap standing=back?mainCharacterBack:mainCharacter;
@@ -1217,11 +1236,12 @@ public final class WeatherSkyView extends View {
     protected void onWindowVisibilityChanged(int visibility) {
         super.onWindowVisibilityChanged(visibility);
         if(playerIdleBow!=null)playerIdleBow.reset();
+        waterAttemptKey=null;
         idleBowAmount=0;idleSitAmount=0;
     }
 
     public void setAnimationEnabled(boolean enabled) {
-        playerIdleBow.reset(); idleBowAmount=0;idleSitAmount=0;
+        playerIdleBow.reset(); waterAttemptKey=null; idleBowAmount=0;idleSitAmount=0;
         animationEnabled = enabled;
         if (enabled) postInvalidateOnAnimation();
     }
