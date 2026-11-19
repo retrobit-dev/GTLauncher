@@ -18,7 +18,7 @@
   let storageError = '';
   let loadedRaw = null;
   const validTile = t => Number.isInteger(t) && t >= 0 && t <= 6;
-  const WORLD_KEYS = ['id','name','description','color','showCharacter','characterColumn','characterRow','characterScale','characterFacing','house','gridSize','tiles','blockStacks','orangeTrees'];
+  const WORLD_KEYS = ['id','name','description','color','showCharacter','characterColumn','characterRow','characterScale','characterFacing','house','gridSize','tiles','blockStacks','orangeTrees','fences'];
   // The top block mirrors tiles for legacy flat-world consumers. A missing
   // stack layer means every non-empty tile has one block; no migration is needed.
   function validStacks(stacks, tiles, size) {
@@ -40,6 +40,25 @@
       for(let r=tree.row;r<tree.row+(tree.size||2);r++) for(let c=tree.column;c<tree.column+(tree.size||2);c++) { const i=r*size+c; if(occupied.has(i)) return false; occupied.add(i); }
     }
     return true;
+  }
+  function validFences(fences,world,tiles=world.tiles,stacks=world.blockStacks) {
+    if(fences===undefined)return true;
+    const size=world.gridSize;
+    if(!Array.isArray(fences) || !Array.isArray(tiles) || fences.length>size*size*2+size*2)return false;
+    const seen=new Set();
+    for(const f of fences) {
+      if(!f || typeof f!=='object' || Array.isArray(f) || Object.keys(f).some(k=>!['column','row','edge','material'].includes(k)) || !Number.isInteger(f.column) || !Number.isInteger(f.row) || f.column<0 || f.row<0 || f.column>=size || f.row>=size || !['N','E','S','W'].includes(f.edge) || !['wood','stone'].includes(f.material))return false;
+      const i=f.row*size+f.column,key=window.FenceEdges.key(f);
+      const h=world.house;
+      if(!tiles[i] || tiles[i]===3 || seen.has(key) || (h && f.column>=h.column && f.column<h.column+3 && f.row>=h.row && f.row<h.row+3))return false;
+      seen.add(key);
+    }
+    return true;
+  }
+  function replaceFences(id,expected,next) {
+    const world=activeWorld();
+    if(id==='base' || world.id!==id || JSON.stringify(world.fences||[])!==JSON.stringify(expected) || !validFences(next,world))return false;
+    return commit({...state,worlds:state.worlds.map(w=>{if(w.id!==id)return w;const copy={...w};if(next.length)copy.fences=next.map(f=>({...f}));else delete copy.fences;return copy;})});
   }
   function treeAt(world,column,row) { return (world.orangeTrees||[]).some(t=>column>=t.column && column<t.column+(t.size||2) && row>=t.row && row<t.row+(t.size||2)); }
   function solidTreeAt(world,column,row) { return (world.orangeTrees||[]).some(t=>t.kind!=='wild-grass' && t.kind!=='bush' && column>=t.column && column<t.column+(t.size||2) && row>=t.row && row<t.row+(t.size||2)); }
@@ -147,6 +166,7 @@
           || (world.blockStacks !== undefined && !validStacks(world.blockStacks, world.tiles, world.gridSize))
           || (world.house !== undefined && !validHouse(world.house, world.gridSize || 9))
           || !validOrangeTrees(world.orangeTrees,world.gridSize || 9)
+          || !validFences(world.fences,world)
           || (world.showCharacter !== undefined && typeof world.showCharacter !== 'boolean')
           || (world.characterFacing !== undefined && !['N', 'E', 'S', 'W'].includes(world.characterFacing))
           || (world.characterColumn !== undefined && (!Number.isInteger(world.characterColumn) || world.characterColumn < 0 || world.characterColumn >= (world.gridSize || 9)))
@@ -218,7 +238,7 @@
   }
   function updateHouse(id, house) {
     if (id === 'base' || activeWorld().id !== id || !state.worlds.some(w => w.id === id && w.house)
-      || !house || Array.from({length:9},(_,i)=>treeAt(activeWorld(),house.column+i%3,house.row+Math.floor(i/3))).some(Boolean) || !validHouse(house, activeWorld().gridSize || 9) || !levelHouse(activeWorld(),house) || (activeWorld().tiles && Array.from({length: 9}, (_, i) => activeWorld().tiles[(house.row + Math.floor(i / 3)) * activeWorld().gridSize + house.column + i % 3]).some(t => !t)) || typeof house.visible !== 'boolean'
+      || !house || !validFences(activeWorld().fences,{...activeWorld(),house}) || Array.from({length:9},(_,i)=>treeAt(activeWorld(),house.column+i%3,house.row+Math.floor(i/3))).some(Boolean) || !validHouse(house, activeWorld().gridSize || 9) || !levelHouse(activeWorld(),house) || (activeWorld().tiles && Array.from({length: 9}, (_, i) => activeWorld().tiles[(house.row + Math.floor(i / 3)) * activeWorld().gridSize + house.column + i % 3]).some(t => !t)) || typeof house.visible !== 'boolean'
       || typeof house.scale !== 'number' || !['N','E','S','W'].includes(house.facing)) return false;
     return commit({...state, worlds: state.worlds.map(w => w.id === id ? {...w, house: {...house}} : w)});
   }
@@ -231,7 +251,7 @@
     if(next) {
       const player=getCharacter(world);
       if(player.visible && player.column>=next.column && player.column<next.column+3 && player.row>=next.row && player.row<next.row+3) return false;
-      if(!levelHouse(world,next)) return false;
+      if(!levelHouse(world,next) || !validFences(world.fences,{...world,house:next})) return false;
       for(let r=next.row;r<next.row+3;r++) for(let c=next.column;c<next.column+3;c++) if(treeAt(world,c,r))return false;
       for(let r=next.row;r<next.row+3;r++) for(let c=next.column;c<next.column+3;c++)
         if(!world.tiles[r*size+c] || world.tiles[r*size+c]===3) return false;
@@ -270,11 +290,12 @@
     const keys = (value, allowed) => record(value) && Object.keys(value).every(key => allowed.includes(key));
     let root;
     try { root = JSON.parse(text.replace(/^\uFEFF/, '')); } catch (_) { return fail(); }
-    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(root.version)) {
+    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].includes(root.version)) {
       const w = root.world;
       if (!keys(w, WORLD_KEYS) || ![20,25,50,100].includes(w.gridSize) || !Array.isArray(w.tiles) || w.tiles.length !== w.gridSize * w.gridSize
         || w.tiles.some(t => !validTile(t) || (t > (root.version === 1 ? 1 : root.version === 2 ? 5 : 6)))
         || (root.version < 5 && w.orangeTrees !== undefined) || (root.version < 6 && w.orangeTrees?.some(t=>t.facing!==undefined)) || (root.version < 7 && w.orangeTrees?.some(t=>t.kind!==undefined)) || (root.version < 8 && w.orangeTrees?.some(t=>t.size!==undefined)) || (root.version < 9 && w.orangeTrees?.some(t=>t.kind==='wild-grass')) || (root.version < 10 && w.orangeTrees?.some(t=>t.kind==='bush')) || (root.version < 11 && w.orangeTrees?.some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined))) || (root.version < 12 && w.orangeTrees?.some(t=>t.plantId!==undefined || t.plantedAt!==undefined)) || !validOrangeTrees(w.orangeTrees,w.gridSize)
+        || (root.version < 13 && w.fences !== undefined) || !validFences(w.fences,w)
         || (root.version < 4 && w.blockStacks !== undefined)
         || (root.version === 4 && !validStacks(w.blockStacks, w.tiles, w.gridSize)) || (root.version >= 5 && w.blockStacks !== undefined && !validStacks(w.blockStacks,w.tiles,w.gridSize)) || typeof w.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(w.id) || w.id === 'base'
         || typeof w.name !== 'string' || !w.name.trim() || w.name.length > 48 || typeof w.description !== 'string' || w.description.length > 160
@@ -287,7 +308,7 @@
       if (w.house) for (let r=w.house.row;r<w.house.row+3;r++) for (let c=w.house.column;c<w.house.column+3;c++) if (!w.tiles[r*w.gridSize+c]) return fail();
       if (!levelHouse(w,w.house) || !validTreeGround(w,w.tiles) || (w.showCharacter && solidTreeAt(w,w.characterColumn,w.characterRow))) return fail();
       if(w.house) for(let r=w.house.row;r<w.house.row+3;r++)for(let c=w.house.column;c<w.house.column+3;c++) if(treeAt(w,c,r))return fail();
-      return {version: root.version===12 ? 40 : root.version===11 ? 39 : root.version===10 ? 38 : root.version===9 ? 37 : root.version===8 ? 36 : root.version===7 ? 35 : root.version===6 ? 34 : root.version===5 ? 33 : 32, world: {...w, tiles: w.tiles.slice(), house: w.house ? {...w.house} : null}};
+      return {version: root.version===13 ? 41 : root.version===12 ? 40 : root.version===11 ? 39 : root.version===10 ? 38 : root.version===9 ? 37 : root.version===8 ? 36 : root.version===7 ? 35 : root.version===6 ? 34 : root.version===5 ? 33 : 32, world: {...w, tiles: w.tiles.slice(), house: w.house ? {...w.house} : null}};
     }
     if (!keys(root, ['format', 'version', 'world']) || root.format !== 'gtlauncher-world'
       || ![1, 2, 3, 4, 5, 6].includes(root.version)) return fail();
@@ -347,15 +368,16 @@
       $('world-import-prompt').textContent = `World “${existing.name}” sudah ada dengan ID yang sama. Ganti isinya dengan data dari berkas?`;
       $('world-import-confirm').hidden = false; return;
     }
-    if (existing && version!==33 && version!==34 && version!==35 && version!==36 && version!==37 && version!==38 && version!==39 && version!==40 && (existing.orangeTrees||[]).length) { cancelImport(); render(); announce('Berkas lama tidak mendukung pohon jeruk; data tidak diubah.'); return; }
-    if (existing && version!==35 && version!==36 && version!==37 && version!==38 && version!==39 && version!==40 && (existing.orangeTrees||[]).some(t=>t.kind!==undefined)) { cancelImport(); render(); announce('Berkas lama tidak mendukung jenis pohon ini; data tidak diubah.'); return; }
-    if (existing && version!==36 && version!==37 && version!==38 && version!==39 && version!==40 && (existing.orangeTrees||[]).some(t=>t.size!==undefined)) { cancelImport(); render(); announce('Berkas lama tidak mendukung ukuran pohon ini; data tidak diubah.'); return; }
-    if (existing && version!==40 && (existing.orangeTrees||[]).some(t=>t.plantId!==undefined)) { cancelImport(); render(); announce('Berkas lama tidak mendukung identitas tanaman; data tidak diubah.'); return; }
-    if (existing && version!==39 && version!==40 && (existing.orangeTrees||[]).some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined))) { cancelImport(); render(); announce('Berkas lama tidak mendukung variasi semak; data tidak diubah.'); return; }
-    if (existing && version!==38 && version!==39 && version!==40 && (existing.orangeTrees||[]).some(t=>t.kind==='bush')) { cancelImport(); render(); announce('Berkas lama tidak mendukung semak; data tidak diubah.'); return; }
-    if (existing && version!==37 && version!==38 && version!==39 && version!==40 && (existing.orangeTrees||[]).some(t=>t.kind==='wild-grass')) { cancelImport(); render(); announce('Berkas lama tidak mendukung rumput liar; data tidak diubah.'); return; }
+    if (existing && version!==41 && (existing.fences||[]).length) { cancelImport(); render(); announce('Berkas lama tidak mendukung pagar; data tidak diubah.'); return; }
+    if (existing && version!==33 && version!==34 && version!==35 && version!==36 && version!==37 && version!==38 && version!==39 && version!==40 && version!==41 && (existing.orangeTrees||[]).length) { cancelImport(); render(); announce('Berkas lama tidak mendukung pohon jeruk; data tidak diubah.'); return; }
+    if (existing && version!==35 && version!==36 && version!==37 && version!==38 && version!==39 && version!==40 && version!==41 && (existing.orangeTrees||[]).some(t=>t.kind!==undefined)) { cancelImport(); render(); announce('Berkas lama tidak mendukung jenis pohon ini; data tidak diubah.'); return; }
+    if (existing && version!==36 && version!==37 && version!==38 && version!==39 && version!==40 && version!==41 && (existing.orangeTrees||[]).some(t=>t.size!==undefined)) { cancelImport(); render(); announce('Berkas lama tidak mendukung ukuran pohon ini; data tidak diubah.'); return; }
+    if (existing && version!==40 && version!==41 && (existing.orangeTrees||[]).some(t=>t.plantId!==undefined)) { cancelImport(); render(); announce('Berkas lama tidak mendukung identitas tanaman; data tidak diubah.'); return; }
+    if (existing && version!==39 && version!==40 && version!==41 && (existing.orangeTrees||[]).some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined))) { cancelImport(); render(); announce('Berkas lama tidak mendukung variasi semak; data tidak diubah.'); return; }
+    if (existing && version!==38 && version!==39 && version!==40 && version!==41 && (existing.orangeTrees||[]).some(t=>t.kind==='bush')) { cancelImport(); render(); announce('Berkas lama tidak mendukung semak; data tidak diubah.'); return; }
+    if (existing && version!==37 && version!==38 && version!==39 && version!==40 && version!==41 && (existing.orangeTrees||[]).some(t=>t.kind==='wild-grass')) { cancelImport(); render(); announce('Berkas lama tidak mendukung rumput liar; data tidak diubah.'); return; }
     if (existing && version===33 && (existing.orangeTrees||[]).some(t=>t.facing!==undefined)) { cancelImport(); render(); announce('Berkas lama tidak mendukung arah pohon; data tidak diubah.'); return; }
-    if (existing && (version !== 32 && version !== 33 && version !== 34 && version !== 35 && version !== 36 && version !== 37 && version !== 38 && version !== 39 && version !== 40 ? Object.keys(existing).some(k => !['id','name','description','color','showCharacter','characterColumn','characterRow','characterScale','characterFacing','house'].includes(k)) : Object.keys(existing).some(k => !WORLD_KEYS.includes(k)))) {
+    if (existing && (version !== 32 && version !== 33 && version !== 34 && version !== 35 && version !== 36 && version !== 37 && version !== 38 && version !== 39 && version !== 40 && version !== 41 ? Object.keys(existing).some(k => !['id','name','description','color','showCharacter','characterColumn','characterRow','characterScale','characterFacing','house'].includes(k)) : Object.keys(existing).some(k => !WORLD_KEYS.includes(k)))) {
       cancelImport(); render(); announce('World yang ada memiliki data yang belum didukung. Data tidak diubah.'); return;
     }
     if (existing && ((version < 3 && getCharacter(existing).visible)
@@ -531,16 +553,16 @@
         const character = getCharacter(world);
         const snapshot = {...world, showCharacter: character.visible, characterColumn: character.column, characterRow: character.row,
           characterScale: character.scale, characterFacing: character.facing, house: getHouse(world)};
-        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.orangeTrees?.some(t=>t.plantId!==undefined) ? 12 : snapshot.orangeTrees?.some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined)) ? 11 : snapshot.orangeTrees?.some(t=>t.kind==='bush') ? 10 : snapshot.orangeTrees?.some(t=>t.kind==='wild-grass') ? 9 : snapshot.orangeTrees?.some(t=>t.size!==undefined) ? 8 : snapshot.orangeTrees?.some(t=>t.kind!==undefined) ? 7 : snapshot.orangeTrees?.some(t=>t.facing!==undefined) ? 6 : snapshot.orangeTrees !== undefined ? 5 : snapshot.blockStacks ? 4 : snapshot.tiles.some(t => t === 6) ? 3 : snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
+        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.fences!==undefined ? 13 : snapshot.orangeTrees?.some(t=>t.plantId!==undefined) ? 12 : snapshot.orangeTrees?.some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined)) ? 11 : snapshot.orangeTrees?.some(t=>t.kind==='bush') ? 10 : snapshot.orangeTrees?.some(t=>t.kind==='wild-grass') ? 9 : snapshot.orangeTrees?.some(t=>t.size!==undefined) ? 8 : snapshot.orangeTrees?.some(t=>t.kind!==undefined) ? 7 : snapshot.orangeTrees?.some(t=>t.facing!==undefined) ? 6 : snapshot.orangeTrees !== undefined ? 5 : snapshot.blockStacks ? 4 : snapshot.tiles.some(t => t === 6) ? 3 : snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
         const blob = new Blob([json], {type:'application/json'});
         const url = URL.createObjectURL(blob);
         const safeName = world.name.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'world';
         showExport(url, `gtlauncher-preview-${safeName}.json`, false, json, true);
-        const androidConifers = !snapshot.blockStacks && snapshot.orangeTrees?.length && snapshot.orangeTrees.every(t=>t.kind==='conifer'||t.kind==='wild-grass'||t.kind==='bush');
-        if(androidConifers) $('world-export-help').textContent = 'JSON cemara/rumput/semak datar dapat diimpor Android versi terbaru. World Android dan preview tetap terpisah.';
+        const androidConifers = !snapshot.blockStacks && (snapshot.fences?.length || snapshot.orangeTrees?.length) && (!snapshot.orangeTrees || snapshot.orangeTrees.every(t=>t.kind==='conifer'||t.kind==='wild-grass'||t.kind==='bush'));
+        if(androidConifers) $('world-export-help').textContent = 'JSON pagar/cemara/rumput/semak datar dapat diimpor Android versi terbaru. World Android dan preview tetap terpisah.';
         else if(snapshot.orangeTrees !== undefined) $('world-export-help').textContent = 'JSON pohon ini hanya dapat diimpor di preview; Android belum mendukung seluruh datanya.';
         else if(snapshot.blockStacks) $('world-export-help').textContent = 'JSON versi 4 ini hanya dapat diimpor di preview; Android belum mendukung block bertingkat.';
-        announce(androidConifers ? 'JSON cemara/rumput/semak datar siap untuk preview dan Android versi terbaru.' : snapshot.orangeTrees !== undefined ? 'JSON pohon siap untuk preview; Android belum mendukung seluruh datanya.' : snapshot.blockStacks ? 'JSON block bertingkat siap untuk preview; Android belum mendukung format ini.' : 'JSON world siap untuk preview dan Android versi terbaru.'); return;
+        announce(androidConifers ? 'JSON pagar/cemara/rumput/semak datar siap untuk preview dan Android versi terbaru.' : snapshot.orangeTrees !== undefined ? 'JSON pohon siap untuk preview; Android belum mendukung seluruh datanya.' : snapshot.blockStacks ? 'JSON block bertingkat siap untuk preview; Android belum mendukung format ini.' : 'JSON world siap untuk preview dan Android versi terbaru.'); return;
       }
       // Stable world ID and the supported character object are portable to Android.
       if (!/^[a-zA-Z0-9_-]{1,128}$/.test(world.id) || world.id === 'base') {
@@ -620,7 +642,7 @@
     // Legacy single-layer edits must never flatten a saved stack.
     if (world.blockStacks && tiles.some((t,i) => t !== world.tiles[i])) return false;
     const character = getCharacter(world), house = getHouse(world);
-    if (!tiles[character.row * world.gridSize + character.column] || !validTreeGround(world,tiles)) return false;
+    if (!tiles[character.row * world.gridSize + character.column] || !validTreeGround(world,tiles) || !validFences(world.fences,world,tiles)) return false;
     if (house) for (let r = house.row; r < house.row + 3; r++) for (let c = house.column; c < house.column + 3; c++) if (!tiles[r * world.gridSize + c] || tiles[r * world.gridSize + c] === 3) return false;
     return commit({...state, worlds: state.worlds.map(w => w.id === id ? {...w, tiles: tiles.slice()} : w)});
   }
@@ -628,7 +650,7 @@
     const world = activeWorld(), size = world.gridSize;
     if (id === 'base' || world.id !== id || ![20,25,50,100].includes(size) || !Array.isArray(stacks)) return false;
     const tiles = stacks.map(stack => Array.isArray(stack) && stack.length ? stack[stack.length-1] : 0);
-    if (!validStacks(stacks, tiles, size) || !validTreeGround(world,tiles,stacks)) return false;
+    if (!validStacks(stacks, tiles, size) || !validTreeGround(world,tiles,stacks) || !validFences(world.fences,world,tiles,stacks)) return false;
     const character = getCharacter(world), house = getHouse(world);
     const oldHeight = i => world.blockStacks ? world.blockStacks[i].length : (world.tiles[i] ? 1 : 0);
     const characterIndex = character.row * size + character.column;
@@ -669,7 +691,7 @@
     const tiles=world.tiles.slice();tiles[index]=6;
     return updateTiles(id,tiles);
   }
-  window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, replacePlayerHouse, replaceOrangeTrees, updateTiles, updateBlockStacks, tillTile});
+  window.worldManager = Object.freeze({getActive: activeWorld, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, replacePlayerHouse, replaceOrangeTrees, replaceFences, updateTiles, updateBlockStacks, tillTile});
   render();
   if (homeUpgraded) announce('Home diperbarui menjadi 25×25. Cadangan sebelum perubahan tersedia untuk diunduh.');
   else if (storageError) announce(storageError);

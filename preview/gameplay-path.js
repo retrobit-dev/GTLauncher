@@ -25,7 +25,7 @@
         const route=[];let n=key(p);while(n!==null){route.push({column:n%size,row:Math.floor(n/size)});n=prev.get(n);}return route.reverse();
       }
       for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
-        const next={column:p.column+dx,row:p.row+dy};if(!pass(next)||Math.abs(height(p)-height(next))>1||prev.has(key(next)) || (escaping && !inHouse(p) && inHouse(next)))continue;
+        const next={column:p.column+dx,row:p.row+dy};if(!pass(next)||(world.fences||[]).some(f=>{const d={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[f.edge];return d && ((p.column===f.column && p.row===f.row && next.column===f.column+d[0] && next.row===f.row+d[1]) || (next.column===f.column && next.row===f.row && p.column===f.column+d[0] && p.row===f.row+d[1]));})||Math.abs(height(p)-height(next))>1||prev.has(key(next)) || (escaping && !inHouse(p) && inHouse(next)))continue;
         prev.set(key(next),key(p));queue.push(next);
       }
     }

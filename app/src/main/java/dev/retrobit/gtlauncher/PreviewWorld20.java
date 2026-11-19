@@ -64,11 +64,11 @@ final class PreviewWorld20 {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 3 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12) throw new JSONException("Unsupported world version");
+        if (version > 3 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
-        if(version>=7 && !w.has("orangeTrees")) throw new JSONException("Unsupported world version");
+        if(version>=7 && version<13 && !w.has("orangeTrees")) throw new JSONException("Unsupported world version");
         // Flat conifer-only worlds are supported. Stacks and other tree kinds remain rejected.
-        keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","orangeTrees");
+        keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","orangeTrees","fences");
         if(version<7 && w.has("orangeTrees")) throw new JSONException("Unsupported field: orangeTrees");
         String id=string(w,"id"), name=string(w,"name"), description=string(w,"description"), color=string(w,"color");
         if (!id.matches("[A-Za-z0-9_-]{1,128}") || id.equals("base") || name.trim().isEmpty() || name.length()>48
@@ -94,7 +94,7 @@ final class PreviewWorld20 {
             if (h.has("scale")) scale(h,"scale"); if (h.has("facing")) facing(h,"facing"); if (h.has("visible")) bool(h,"visible");
             for (int y=hr;y<hr+3;y++) for (int x=hc;x<hc+3;x++) if (tiles[y*size+x]==0) throw new JSONException("House on empty tile");
         }
-        if(version>=7) {
+        if(version>=7 && w.has("orangeTrees")) {
             Object treeValue=w.get("orangeTrees");
             if(!(treeValue instanceof JSONArray)) throw new JSONException("Unsupported object");
             JSONArray trees=(JSONArray)treeValue;
@@ -127,6 +127,20 @@ final class PreviewWorld20 {
                         if(x>=hc && x<hc+3 && y>=hr && y<hr+3)throw new JSONException("Object collision");}
                     occupied[index]=true;
                 }
+            }
+        }
+        if(w.has("fences")) {
+            if(version<13 || !(w.get("fences") instanceof JSONArray))throw new JSONException("Unsupported fences");
+            JSONArray fences=w.getJSONArray("fences");if(fences.length()>size*size*2+size*2)throw new JSONException("Too many fences");
+            java.util.Set<String> seen=new java.util.HashSet<>();
+            for(int i=0;i<fences.length();i++) {
+                JSONObject f=fences.getJSONObject(i);keys(f,"column","row","edge","material");
+                int x=integer(f,"column",0,size-1),y=integer(f,"row",0,size-1);
+                String edge=string(f,"edge"),material=string(f,"material");
+                if(!Arrays.asList("N","E","S","W").contains(edge) || !Arrays.asList("wood","stone").contains(material) || tiles[y*size+x]==0 || tiles[y*size+x]==3)throw new JSONException("Invalid fence");
+                if(house instanceof JSONObject) {JSONObject h=(JSONObject)house;int hc=h.getInt("column"),hr=h.getInt("row");if(x>=hc && x<hc+3 && y>=hr && y<hr+3)throw new JSONException("Fence overlaps house");}
+                String key=(edge.equals("W")?x-1:x)+","+(edge.equals("N")?y-1:y)+","+(edge.equals("W")?"E":edge.equals("N")?"S":edge);
+                if(!seen.add(key))throw new JSONException("Duplicate fence edge");
             }
         }
         return new PreviewWorld20(root.toString(),id,size,version,BlockTerrain.parse(size,source,null));

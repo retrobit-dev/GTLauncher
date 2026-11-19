@@ -270,7 +270,7 @@ public final class WeatherSkyView extends View {
     private Integer worldIslandTint;
     private Bitmap sparrowPet, sparrowFlap, sparrowBack, sparrowBackFlap, mainCharacter, mainCharacterBack, idleFrontTransition, idleFrontPose, idleBackTransition, idleBackPose, idleFrontSitting, idleBackSitting, idleFrontSitLowering, idleBackSitLowering, idleFrontSitNearly, idleBackSitNearly, houseImage, houseBackImage, houseWideImage, houseWideBackImage, houseWideMirrorImage, houseWideBackMirrorImage, portalMarkerImage;
     private final Bitmap[] walkFront=new Bitmap[12], walkBack=new Bitmap[12], runFront=new Bitmap[12], runBack=new Bitmap[12];
-    private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron;
+    private Bitmap fenceFarm,fenceSlat,fenceStone,fenceIron,fenceApprovedWood,fenceApprovedStone;
     private final java.util.Map<String,Bitmap> flowerSprites=new java.util.HashMap<>();
     private Bitmap treeDormant,treeBananaFruitless,treeCoconutFruitless;
     private TreePhenology.Result treePhenology;
@@ -397,6 +397,7 @@ public final class WeatherSkyView extends View {
         houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_back);
         houseWideMirrorImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_mirror);houseWideBackMirrorImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_back_mirror);
         portalMarkerImage = BitmapFactory.decodeResource(getResources(), R.drawable.portal_exclamation_red);
+        fenceApprovedWood=BitmapFactory.decodeResource(getResources(),R.drawable.fence_approved_wood);fenceApprovedStone=BitmapFactory.decodeResource(getResources(),R.drawable.fence_approved_stone);
         fenceFarm=BitmapFactory.decodeResource(getResources(),R.drawable.fence_farm);fenceSlat=BitmapFactory.decodeResource(getResources(),R.drawable.fence_slat);fenceStone=BitmapFactory.decodeResource(getResources(),R.drawable.fence_stone);fenceIron=BitmapFactory.decodeResource(getResources(),R.drawable.fence_iron);
         flowerSprites.put("rose",BitmapFactory.decodeResource(getResources(),R.drawable.petals_rose));
         flowerSprites.put("tulip",BitmapFactory.decodeResource(getResources(),R.drawable.petals_tulip));
@@ -888,6 +889,18 @@ public final class WeatherSkyView extends View {
             float x=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f;
             float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f;
             FenceGeometry.Bounds g=FenceGeometry.bounds(new FenceGeometry.Edge(o.column,o.row,o.edge),edges,x,y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT);
+            if(o.material.startsWith("preview-")) {
+                Bitmap art=o.material.equals("preview-wood")?fenceApprovedWood:fenceApprovedStone;if(art==null)continue;
+                float sx=(g.secondX-g.firstX)/388f,sy=.065f;
+                float y1=g.rising?400f:306f,y2=g.rising?306f:400f;
+                float shear=(g.secondY-g.firstY-sy*(y2-y1))/388f;
+                float tx=g.firstX-sx*65f,ty=g.firstY-shear*65f-sy*y1;
+                boolean fades=showCharacter && o.column==Math.round(visualColumn()) && o.row==Math.round(visualRow()) && (o.edge.equals("S")||o.edge.equals("E"));
+                int ground=canvas.save();setClipIslandSurface(canvas);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(1.2f);paint.setColor(Color.argb(40,12,23,40));canvas.drawLine(g.firstX,g.firstY,g.secondX,g.secondY,paint);canvas.restoreToCount(ground);
+                int save=canvas.save();Matrix matrix=new Matrix();matrix.setValues(new float[]{sx,0,tx,shear,sy,ty,0,0,1});canvas.concat(matrix);
+                if(!g.rising){canvas.translate(512,0);canvas.scale(-1,1);}
+                paint.setStyle(Paint.Style.FILL);paint.setColor(Color.WHITE);paint.setAlpha(fades?128:255);paint.setFilterBitmap(true);canvas.drawBitmap(art,null,new RectF(0,0,512,400),paint);canvas.restoreToCount(save);continue;
+            }
             Bitmap image="slat".equals(o.material)?fenceSlat:"stone".equals(o.material)?fenceStone:"iron".equals(o.material)?fenceIron:fenceFarm;
             if(image==null)continue;
             RectF fenceBounds=new RectF(g.x,g.y,g.x+g.width,g.y+g.height);boolean fades=fenceCoversEarlierObject(image,fenceBounds,!g.rising,front);

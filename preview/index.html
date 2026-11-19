@@ -7,8 +7,9 @@
   <title>GTLauncher — Live Weather Preview</title>
   <link rel="stylesheet" href="./styles.css?v=live-sky-63">
   <script src="./vendor/qrcode.js" defer></script>
-  <script src="./worlds.js?v=41" defer></script>
-  <script src="./object-editor.js?v=19" defer></script>
+  <script src="./fence-edges.js?v=1" defer></script>
+  <script src="./worlds.js?v=42" defer></script>
+  <script src="./object-editor.js?v=20" defer></script>
   <script src="./pond-life.js?v=1" defer></script>
   <script src="./house-geometry.js?v=2" defer></script>
   <script src="./orange-tree-motion.js?v=2" defer></script>
@@ -20,11 +21,11 @@
   <script src="./tree-shadow.js?v=2" defer></script>
   <script src="./player-idle-bow.js?v=8" defer></script>
   <script src="./sparrow-pet.js?v=5" defer></script>
-  <script src="./app.js?v=sky-263" defer></script>
+  <script src="./app.js?v=sky-264" defer></script>
   <script src="./preview-modes.js?v=2" defer></script>
   <script src="./editor-camera.js?v=7" defer></script>
   <script src="./terrain-tools.js?v=107" defer></script>
-  <script src="./gameplay-path.js?v=106" defer></script>
+  <script src="./gameplay-path.js?v=107" defer></script>
   <script src="./gameplay-movement.js?v=22" defer></script>
   <script src="./season-estimate.js?v=1" defer></script>
   <script src="./hud.js?v=9" defer></script>
@@ -179,6 +180,8 @@
       <section class="catalog-group" aria-labelledby="catalog-buildings-title">
         <h4 id="catalog-buildings-title">Bangunan</h4>
         <div class="catalog-grid">
+          <button id="catalog-place-fence-wood" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/fence-approved-wood.png" alt=""></span><strong>Pagar kayu</strong><span class="catalog-footprint">Sisi tile</span></button>
+          <button id="catalog-place-fence-stone" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/fence-approved-stone.png" alt=""></span><strong>Pagar batu</strong><span class="catalog-footprint">Sisi tile</span></button>
           <button id="catalog-place-house" type="button" class="catalog-tile" aria-label="Tempatkan rumah player, tapak 3 kali 3" aria-describedby="catalog-house-status">
             <span class="catalog-art"><img src="assets/simple-house-aligned.png?v=1" alt=""></span><strong>Rumah player</strong><span class="catalog-footprint">Tapak 3×3</span>
           </button>
@@ -221,7 +224,7 @@
         </div>
       </section>
       <section class="catalog-placed" aria-labelledby="catalog-placed-title"><h3 id="catalog-placed-title">Objek di world ini</h3><div id="object-library-list" class="world-list"></div></section>
-      <p class="world-help">Katalog objek lain dan salinan belum tersedia. Aset pagar belum bisa ditambahkan ke world.</p>
+      <p class="world-help">Katalog objek lain dan salinan belum tersedia.</p>
     </section></div>
   </dialog>
   <dialog id="object-dialog" class="world-dialog" aria-labelledby="object-dialog-title">

@@ -319,6 +319,22 @@ public class PortalImportTest {
             try {WorldStore.parseExport(copy.toString());fail("must reject unsupported, invalid or colliding data");}catch(JSONException expected){}
         }
     }
+    @Test public void previewFencePlacementImportAndDeletionAreLossless() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1))));
+        assertTrue(store.placePreviewFence("home",6,5,"E","wood"));
+        assertFalse(store.placePreviewFence("home",7,5,"W","stone"));
+        assertTrue(store.placePreviewFence("home",7,5,"E","stone"));
+        WorldStore.World w=store.activeWorld();assertEquals(13,w.previewData.version);assertEquals(2,w.surfaces.size());
+        assertEquals("preview-wood",w.surfaces.get(0).material);
+        assertTrue(store.moveCharacter("home",6,5,"E"));
+        w=WorldStore.parseExport(store.activeWorld().previewData.toJson());assertEquals(2,w.surfaces.size());assertEquals(6,w.characterColumn);
+        String saved=p.getString("worlds_v1",null);
+        try{store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1)));fail("old format would discard fences");}catch(JSONException expected){}
+        assertEquals(saved,p.getString("worlds_v1",null));
+        assertTrue(store.deleteSelectedPlant("home",w.surfaces.get(0)));assertEquals(1,store.activeWorld().surfaces.size());
+        assertTrue(store.deleteSelectedPlant("home",store.activeWorld().surfaces.get(0)));assertEquals(0,store.activeWorld().surfaces.size());
+    }
     @Test public void fenceBoundaryBlocksBothDirectionsOnly() {
         assertTrue(FenceEdges.blocks(4,5,"E",4,5,5,5));
         assertTrue(FenceEdges.blocks(5,5,"W",5,5,4,5));

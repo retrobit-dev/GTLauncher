@@ -313,6 +313,13 @@ final class WorldStore {
                 trees.add(new SurfaceObject(grass || bush?"bush":"tree",tree.getInt("column"),tree.getInt("row"),tree.optString("facing","S"),grass?"wild-grass":bush?"preview-bush"+(tree.has("variant")?"-"+tree.getString("variant"):"")+(tree.optInt("size")==2?"-large":""):tree.optInt("size",2)==1?"conifer-small":"conifer",tree.toString()));
             }
         }
+        if(w.has("fences")) {
+            JSONArray fences=w.getJSONArray("fences");
+            for(int i=0;i<fences.length();i++) {
+                JSONObject f=fences.getJSONObject(i);
+                trees.add(new SurfaceObject("fence",f.getInt("column"),f.getInt("row"),f.getString("edge"),"preview-"+f.getString("material"),f.toString()));
+            }
+        }
         World result=new World(data.id,w.getString("name"),w.getString("description"),w.getString("color"),
                 w.getBoolean("showCharacter"),w.getInt("characterColumn"),w.getInt("characterRow"),w.getDouble("characterScale"),w.getString("characterFacing"),
                 first!=null,first!=null && first.visible,first==null?0:first.column,first==null?0:first.row,first==null?1:first.scale,
@@ -515,7 +522,7 @@ final class WorldStore {
         for(int i=0;i<worlds.size();i++) { World w=worlds.get(i); if(w.id.equals(worldId) && w.showCharacter) {
             if(!w.tileExists(column,row) || (houseCovers(w.houses,column,row) && (column!=w.characterColumn || row!=w.characterRow))) return false;
             if(w.previewData!=null) for(SurfaceObject object:w.surfaces) {
-                if(walkThrough(object))continue;
+                if(walkThrough(object) || object.type.equals("fence"))continue;
                 int size=surfaceFootprint(object);
                 if(column>=object.column && row>=object.row && column<object.column+size && row<object.row+size)return false;
             }
@@ -615,7 +622,7 @@ final class WorldStore {
         if(!worldId.equals(activeId()) || expected==null)return false;
         World world=activeWorld();if(world==null)return false;
         boolean supported=world.previewData!=null
-                ? isPreviewGrass(expected) || isPreviewBush(expected) || (expected.type.equals("tree") && expected.material.startsWith("conifer"))
+                ? isPreviewGrass(expected) || isPreviewBush(expected) || (expected.type.equals("tree") && expected.material.startsWith("conifer")) || (expected.type.equals("fence") && expected.material.startsWith("preview-"))
                 : portableSmall(expected);
         if(!supported)return false;
         boolean exists=false;for(SurfaceObject o:world.surfaces)if(o.raw.equals(expected.raw)){exists=true;break;}
@@ -624,7 +631,7 @@ final class WorldStore {
         for(int i=0;i<all.length();i++)if(worldId.equals(all.getJSONObject(i).optString("id"))){stored=all.getJSONObject(i);break;}
         if(stored==null)return false;
         JSONObject root=world.previewData!=null?new JSONObject(world.previewData.toJson()):null;
-        JSONArray objects=root!=null?root.getJSONObject("world").getJSONArray("orangeTrees"):stored.getJSONArray("objects");
+        JSONArray objects=root!=null?root.getJSONObject("world").getJSONArray(expected.type.equals("fence")?"fences":"orangeTrees"):stored.getJSONArray("objects");
         boolean removed=false;
         for(int i=0;i<objects.length();i++)if(objects.getJSONObject(i).toString().equals(expected.raw)){objects.remove(i);removed=true;break;}
         if(!removed)return false;
@@ -665,6 +672,22 @@ final class WorldStore {
         }
         return false;
     }
+    boolean placePreviewFence(String worldId,int column,int row,String edge,String material) throws JSONException {
+        if(!worldId.equals(activeId()) || !java.util.Arrays.asList("N","E","S","W").contains(edge) || !java.util.Arrays.asList("wood","stone").contains(material))return false;
+        List<World> worlds=list();
+        for(int i=0;i<worlds.size();i++) {
+            World w=worlds.get(i);if(!worldId.equals(w.id))continue;
+            if(w.previewData==null || !w.tileExists(column,row) || w.previewData.tile(column,row)==3 || houseCovers(w.houses,column,row))return false;
+            JSONObject root=new JSONObject(w.previewData.toJson()),data=root.getJSONObject("world");
+            JSONArray fences=data.has("fences")?data.getJSONArray("fences"):new JSONArray();
+            int x=column+(edge.equals("E")?1:edge.equals("W")?-1:0),y=row+(edge.equals("S")?1:edge.equals("N")?-1:0);
+            for(SurfaceObject f:w.surfaces)if(f.type.equals("fence") && FenceEdges.blocks(f.column,f.row,f.edge,column,row,x,y))return false;
+            fences.put(new JSONObject().put("column",column).put("row",row).put("edge",edge).put("material",material));
+            data.put("fences",fences);root.put("version",13);
+            worlds.set(i,fromPreview(PreviewWorld20.parse(root.toString())));return saveWorlds(worlds,worldId);
+        }
+        return false;
+    }
     /** Place one tuft in a supported flat portable world, committing only after full revalidation. */
     boolean placeWildGrass(String worldId,int column,int row) throws JSONException {return placePreviewPlant(worldId,column,row,"wild-grass");}
     boolean placePreviewPlant(String worldId,int column,int row,String kind) throws JSONException {return placePreviewPlant(worldId,column,row,kind,1,null);}
@@ -679,6 +702,7 @@ final class WorldStore {
             for(int y=row;y<row+size;y++)for(int x=column;x<column+size;x++) {
                 if(!w.tileExists(x,y) || w.previewData.tile(x,y)==3 || (w.showCharacter && w.characterColumn==x && w.characterRow==y) || houseCovers(w.houses,x,y))return false;
                 for(SurfaceObject object:w.surfaces) {
+                    if(object.type.equals("fence"))continue;
                     int footprint=surfaceFootprint(object);
                     if(x>=object.column && y>=object.row && x<object.column+footprint && y<object.row+footprint)return false;
                 }

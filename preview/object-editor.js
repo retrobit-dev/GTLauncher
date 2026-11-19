@@ -23,6 +23,7 @@
     $('catalog-place-conifer').disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-place-conifer-small').disabled=world.id==='base' || !Array.isArray(world.tiles);
     for(const suffix of ['', '-large','-flower','-flower-large','-berry','-berry-large']) $('catalog-place-bush'+suffix).disabled=world.id==='base' || !Array.isArray(world.tiles);
+    for(const kind of ['wood','stone']) $('catalog-place-fence-'+kind).disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-place-wild-grass').disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-house-status').textContent=world.id==='base' ? 'Base World terkunci. Buka world buatan untuk menempatkan rumah.' : exists ? 'World ini sudah memiliki rumah player. Pindahkan rumah yang ada bila diperlukan.' : !Array.isArray(world.tiles) ? 'World lama ini tidak mendukung penempatan rumah.' : 'Pilih tombol, lalu ketuk sudut pertama tapak pada peta.';
     const objects = [];
@@ -31,6 +32,7 @@
     const house = window.worldManager.getHouse?.();
     if (house) objects.push(`Rumah player · ${columnLabel(house.column)}${house.row + 1}–${columnLabel(house.column + 2)}${house.row + 3}${house.visible ? '' : ' (tersembunyi)'}`);
     for(const tree of world.orangeTrees||[]) objects.push(`${tree.kind==='bush'?(tree.variant==='flower'?'Semak melati':tree.variant==='berry'?'Semak murbei':'Semak'):tree.kind==='wild-grass'?'Rumput liar':tree.kind==='conifer'?'Pohon cemara laut':'Pohon jeruk'} · ${columnLabel(tree.column)}${tree.row+1}–${columnLabel(tree.column+(tree.size||2)-1)}${tree.row+(tree.size||2)}`);
+    for(const fence of world.fences||[]) objects.push(`Pagar ${fence.material==='wood'?'kayu':'batu'} · ${columnLabel(fence.column)}${fence.row+1} · ${fence.edge}`);
     if (!objects.length) objects.push('Belum ada objek yang ditampilkan.');
     for (const label of objects) {
       const row = document.createElement('div');
@@ -48,7 +50,7 @@
     const row = document.createElement('option'); row.value = i; row.textContent = String(i + 1); rows.append(row);
   }
   let editing = false, selected = false, selectedType = 'character', worldId = null, draft = null;
-  let selectedTreeIndex=null, selectingObject=false, movingObject=false, objectPointer=null;
+  let selectedTreeIndex=null, selectedFenceIndex=null, placingFence=null, selectingObject=false, movingObject=false, objectPointer=null;
   let dragOffset = null, pinch = null, suppressDrag = false;
   const pointers = new Map();
   // History is local to a world and this browser tab; reopening Edit keeps it until reload.
@@ -61,45 +63,56 @@
       const button=$(id); if(button?.getAttribute('aria-pressed')==='true') button.click();
     }
     selected=false; selectingObject=false; movingObject=false; draft=null; refresh(); syncControls();
-    placingOrange=false; placingHouse=true; placementWorld=window.worldManager.getActive().id; libraryDialog.close();
+    placingOrange=false; placingFence=null; placingHouse=true; placementWorld=window.worldManager.getActive().id; libraryDialog.close();
     tell('EDITING · Ketuk tile untuk sudut pertama rumah player 3×3. Escape untuk batal.');
   });
   $('catalog-place-orange').addEventListener('click',()=>{
     if($('catalog-place-orange').disabled || !editing) return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingOrange=true;placementWorld=window.worldManager.getActive().id;libraryDialog.close();
+    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange=true;placementWorld=window.worldManager.getActive().id;libraryDialog.close();
     tell('EDITING · Ketuk sudut pertama pohon jeruk 2×2. Escape untuk batal.');
   });
   $('catalog-place-conifer').addEventListener('click',()=>{
     if($('catalog-place-conifer').disabled || !editing)return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingOrange='conifer';placementWorld=window.worldManager.getActive().id;libraryDialog.close();
+    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange='conifer';placementWorld=window.worldManager.getActive().id;libraryDialog.close();
     tell('EDITING · Ketuk sudut pertama pohon cemara laut 2×2. Escape untuk batal.');
   });
   $('catalog-place-conifer-small').addEventListener('click',()=>{
     if($('catalog-place-conifer-small').disabled || !editing)return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingOrange='conifer-small';placementWorld=window.worldManager.getActive().id;libraryDialog.close();
+    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange='conifer-small';placementWorld=window.worldManager.getActive().id;libraryDialog.close();
     tell('EDITING · Ketuk tile pohon cemara laut 1×1. Escape untuk batal.');
   });
   $('catalog-place-wild-grass').addEventListener('click',()=>{
     if($('catalog-place-wild-grass').disabled || !editing)return;
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingOrange='wild-grass';placementWorld=window.worldManager.getActive().id;libraryDialog.close();
+    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange='wild-grass';placementWorld=window.worldManager.getActive().id;libraryDialog.close();
     tell('EDITING · Ketuk tile rumput liar 1×1. Escape untuk batal.');
   });
   for(const [suffix,variant,size] of [['',null,1],['-large',null,2],['-flower','flower',1],['-flower-large','flower',2],['-berry','berry',1],['-berry-large','berry',2]]) {
     $('catalog-place-bush'+suffix).addEventListener('click',()=>{
       if($('catalog-place-bush'+suffix).disabled || !editing)return;
       for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-      selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingOrange={kind:'bush',size,...(variant?{variant}:{})};placementWorld=window.worldManager.getActive().id;libraryDialog.close();
+      selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingFence=null;placingOrange={kind:'bush',size,...(variant?{variant}:{})};placementWorld=window.worldManager.getActive().id;libraryDialog.close();
       tell(`EDITING · Ketuk tile sudut pertama semak ${size}×${size}. Escape untuk batal.`);
     });
   }
+  for(const material of ['wood','stone']) $('catalog-place-fence-'+material).addEventListener('click',()=>{
+    if(!editing || $('catalog-place-fence-'+material).disabled)return;
+    for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
+    selected=false;selectingObject=false;movingObject=false;draft=null;placingHouse=false;placingFence=null;placingOrange=false;placingFence=material;placementWorld=window.worldManager.getActive().id;refresh();syncControls();libraryDialog.close();
+    tell('EDITING · Ketuk tile untuk pagar di sisi selatan, lalu pilih Putar untuk mengubah sisi.');
+  });
   canvas.addEventListener('pointerdown', event => {
-    if((!placingHouse && !placingOrange) || !editing || event.button!==0) return;
+    if((!placingHouse && !placingOrange && !placingFence) || !editing || event.button!==0) return;
     event.preventDefault(); event.stopImmediatePropagation(); placementPointer=event.pointerId;
     const tile=scene()?.tileAt(scene().toLocal(event.clientX,event.clientY));
+    if(placingFence) {
+      const before=window.worldManager.getActive().fences||[];
+      if(!tile || !saveFences(before,[...before,{...tile,edge:'S',material:placingFence}])) {tell('EDITING · Pilih tile kering dengan sisi yang belum berpagar.');return;}
+      selectedType='fence';selectedFenceIndex=before.length;selected=true;placingFence=null;placementWorld=null;refresh();syncControls();tell('EDITING · Pagar ditempatkan; putar untuk memilih sisi.');return;
+    }
     if(placingOrange) {
       const before=window.worldManager.getActive().orangeTrees||[];
       applyingHistory=true;let saved=false;
@@ -131,13 +144,13 @@
       && a.scale === b.scale && a.facing === b.facing;
   }
   function current(type = selectedType) {
-    const obj = type === 'house' ? window.worldManager.getHouse() : type==='tree' ? window.worldManager.getActive().orangeTrees?.[selectedTreeIndex] : window.worldManager.getCharacter();
+    const obj = type === 'house' ? window.worldManager.getHouse() : type==='tree' ? window.worldManager.getActive().orangeTrees?.[selectedTreeIndex] : type==='fence' ? window.worldManager.getActive().fences?.[selectedFenceIndex] : window.worldManager.getCharacter();
     return obj ? {...obj} : null;
   }
   function blocks(world) { return world.blockStacks ? world.blockStacks.map(x=>x.slice()) : world.tiles?.map(t=>t?[t]:[]) ?? null; }
-  function snapshot() { return {character: current('character'), house: current('house'), trees:(window.worldManager.getActive().orangeTrees||[]).map(t=>({...t})), blocks: blocks(window.worldManager.getActive())}; }
+  function snapshot() { return {character: current('character'), house: current('house'), trees:(window.worldManager.getActive().orangeTrees||[]).map(t=>({...t})), fences:(window.worldManager.getActive().fences||[]).map(f=>({...f})), blocks: blocks(window.worldManager.getActive())}; }
   function sameBlocks(a,b) { return a===b || (Array.isArray(a) && Array.isArray(b) && a.length===b.length && a.every((v,i)=>v.length===b[i].length && v.every((t,j)=>t===b[i][j]))); }
-  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house) && JSON.stringify(a.trees)===JSON.stringify(b.trees) && sameBlocks(a.blocks,b.blocks); }
+  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house) && JSON.stringify(a.trees)===JSON.stringify(b.trees) && JSON.stringify(a.fences)===JSON.stringify(b.fences) && sameBlocks(a.blocks,b.blocks); }
   function ensureHistory(id) {
     const state = snapshot();
     let item = histories.get(id);
@@ -164,6 +177,12 @@
   function stepHistory(from, to, label) {
     if (!editing || !history || pendingTerrain || pointers.size || dialog.open || !from.length) return;
     const next = from[from.length - 1];
+    if(next.type==='fences') {
+      const before=(window.worldManager.getActive().fences||[]).map(f=>({...f}));
+      applyingHistory=true;let saved;try{saved=window.worldManager.replaceFences(worldId,before,next.value);}finally{applyingHistory=false;}
+      if(!saved){tell('EDITING · Riwayat pagar tidak dapat diterapkan.');return;}
+      from.pop();to.push({type:'fences',value:before});history.last=snapshot();selected=false;selectedFenceIndex=null;movingObject=false;refresh();syncControls();return;
+    }
     if(next.type==='orangeTrees') {
       const before=(window.worldManager.getActive().orangeTrees||[]).map(t=>({...t}));
       applyingHistory=true;let saved;try {saved=window.worldManager.replaceOrangeTrees(worldId,before,next.value);}finally{applyingHistory=false;}
@@ -231,7 +250,7 @@
     editButton.setAttribute('aria-pressed', String(editing));
     canvas.classList.toggle('is-editing', editing);
     status.hidden = !editing;
-    detailsButton.hidden = !editing || !selected || selectedType==='tree';
+    detailsButton.hidden = !editing || !selected || (selectedType==='tree'||selectedType==='fence');
     selectButton.hidden = !editing || (selected && selectedType === 'character') || !window.worldManager.getCharacter().visible;
     selectHouse.hidden = !editing || (selected && selectedType === 'house') || !window.worldManager.getHouse();
     undoButton.disabled = !editing || !history || !history.undo.length || pointers.size > 0 || Boolean(pendingTerrain);
@@ -247,7 +266,7 @@
   }
   function finishEditing() {
     if(pendingTerrain) window.editorBlockHistory.end();
-    selectingObject=false;movingObject=false;selectedTreeIndex=null;placingHouse=false; placingOrange=false; placementWorld=null; pendingTerrain = null; editing = false; selected = false; worldId = null; draft = null; history = null;
+    selectingObject=false;movingObject=false;selectedTreeIndex=null;selectedFenceIndex=null;placingFence=null;placingHouse=false; placingOrange=false; placementWorld=null; pendingTerrain = null; editing = false; selected = false; worldId = null; draft = null; history = null;
     pointers.clear(); dragOffset = null; pinch = null; suppressDrag = false;
     scene()?.update(null, false); scene()?.setSelectedTree?.(null); syncControls();
   }
@@ -265,6 +284,11 @@
   redoButton.addEventListener('click', () => stepHistory(history?.redo, history?.undo, 'Redo'));
   function rotate(step) {
     if (!editing || !selected || pointers.size || dialog.open) return;
+    if(selectedType==='fence') {
+      const before=window.worldManager.getActive().fences||[],f=before[selectedFenceIndex];if(!f)return;
+      const next=before.map((item,i)=>i===selectedFenceIndex?{...item,edge:directions[(directions.indexOf(f.edge)+step+4)%4]}:item);
+      if(saveFences(before,next)){refresh();syncControls();tell('EDITING · Sisi pagar diperbarui.');}else tell('EDITING · Sisi ini sudah berpagar.');return;
+    }
     if(selectedType==='tree') {
       const trees=window.worldManager.getActive().orangeTrees||[], tree=trees[selectedTreeIndex];if(!tree)return;
       const next=trees.map((t,i)=>i===selectedTreeIndex?{...t,facing:directions[(directions.indexOf(t.facing||'S')+step+4)%4]}:{...t});
@@ -326,11 +350,15 @@
   });
   function position(event) { return {x: event.clientX, y: event.clientY}; }
   function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
-  function refresh() { scene()?.update(draft, editing && selected && selectedType!=='tree', selectedType);scene()?.setSelectedTree?.(editing && selected && selectedType==='tree' ? current('tree') : null); }
+  function refresh() { scene()?.update(draft, editing && selected && selectedType!=='tree' && selectedType!=='fence', selectedType);scene()?.setSelectedTree?.(editing && selected && selectedType==='tree' ? current('tree') : null);scene()?.setSelectedFence?.(editing && selected && selectedType==='fence' ? current('fence') : null); }
   function cancelGesture() { pointers.clear(); pinch = null; dragOffset = null; suppressDrag = false; draft = null; refresh(); syncControls(); }
   function deactivateTerrain() {
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-    placingHouse=false;placingOrange=false;placementWorld=null;
+    placingHouse=false;placingFence=null;placingOrange=false;placingFence=null;placementWorld=null;
+  }
+  function saveFences(before,next) {
+    applyingHistory=true;let saved;try{saved=window.worldManager.replaceFences(worldId,before,next);}finally{applyingHistory=false;}
+    if(saved){history.undo.push({type:'fences',value:before.map(f=>({...f}))});if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();}return saved;
   }
   function saveTrees(before,next) {
     applyingHistory=true;let saved;
@@ -348,7 +376,8 @@
   $('object-tool-delete').addEventListener('click',()=>{
     if(!editing || !selected || selectedType==='character' || !window.confirm('Hapus objek yang dipilih dari world?'))return;
     let saved=false;
-    if(selectedType==='tree') {
+    if(selectedType==='fence') {const before=window.worldManager.getActive().fences||[];saved=saveFences(before,before.filter((_,i)=>i!==selectedFenceIndex));}
+    else if(selectedType==='tree') {
       const before=window.worldManager.getActive().orangeTrees||[];saved=saveTrees(before,before.filter((_,i)=>i!==selectedTreeIndex));
     } else if(selectedType==='house') {
       const before=current('house');applyingHistory=true;try{saved=window.worldManager.replacePlayerHouse(worldId,before,null);}finally{applyingHistory=false;}
@@ -359,16 +388,18 @@
   });
   // Capture object tools before terrain, pan, and the older drag interaction.
   canvas.addEventListener('pointerdown',event=>{
-    if(!editing || event.button!==0 || placingHouse || placingOrange)return;
+    if(!editing || event.button!==0 || placingHouse || placingOrange || placingFence)return;
     const local=scene()?.toLocal(event.clientX,event.clientY);if(!local)return;
     const terrainActive=!!document.querySelector('.terrain-tools button[aria-pressed="true"]');
     const directTree=!terrainActive && $('editor-pan').getAttribute('aria-pressed')!=='true' ? (scene()?.orangeTreeAt?.(local) ?? null) : null;
-    if(!selectingObject && !movingObject && directTree===null)return;
+    const directFence=!terrainActive && $('editor-pan').getAttribute('aria-pressed')!=='true' ? (scene()?.fenceAt?.(local) ?? null) : null;
+    if(!selectingObject && !movingObject && directTree===null && directFence===null)return;
     event.preventDefault();event.stopImmediatePropagation();objectPointer=event.pointerId;
     if(movingObject) {
       const tile=scene().tileAt(local);if(!tile){tell('EDITING · Pilih tile di dalam world.');return;}
       let saved=false;
-      if(selectedType==='tree') {
+      if(selectedType==='fence') {const before=window.worldManager.getActive().fences||[];saved=saveFences(before,before.map((f,i)=>i===selectedFenceIndex?{...f,...tile}:f));}
+      else if(selectedType==='tree') {
         const before=window.worldManager.getActive().orangeTrees||[];
         const next=before.map((t,i)=>i===selectedTreeIndex?{...t,...tile}:{...t});saved=saveTrees(before,next);
       } else if(selectedType==='house') {
@@ -384,6 +415,7 @@
     }
     const player=window.worldManager.getCharacter(), house=window.worldManager.getHouse();
     if(scene().hit(local,player)) {selectedType='character';selectedTreeIndex=null;selected=true;}
+    else if(directFence!==null && directFence!==undefined) {selectedType='fence';selectedFenceIndex=directFence;selected=true;}
     else if(directTree!==null && directTree!==undefined) {selectedType='tree';selectedTreeIndex=directTree;selected=true;}
     else if(house && scene().houseAt(local,house)) {selectedType='house';selectedTreeIndex=null;selected=true;}
     else {selected=false;selectedTreeIndex=null;}
@@ -462,7 +494,7 @@
       // Other tabs or world settings may change this character; don't undo over newer data.
       pendingTerrain = null; cancelGesture();
       history = ensureHistory(worldId);
-      selected = selectedType==='tree' ? false : Boolean(current()?.visible) && selected;
+      selected = (selectedType==='tree'||selectedType==='fence') ? false : Boolean(current()?.visible) && selected;
       if(!selected)selectedTreeIndex=null;movingObject=false;
       refresh(); syncControls();
       tell('EDITING · Objek berubah di luar editor; riwayat disetel ulang.');
@@ -470,7 +502,7 @@
   });
   document.addEventListener('keydown', event => {
     if (event.key==='Escape' && (movingObject || selectingObject)) {event.preventDefault();movingObject=false;selectingObject=false;syncControls();tell('EDITING · Alat objek dibatalkan.');return;}
-    if (event.key === 'Escape' && (placingHouse || placingOrange)) { event.preventDefault(); placingHouse=false; placingOrange=false; placementWorld=null; tell('EDITING · Penempatan objek dibatalkan.'); return; }
+    if (event.key === 'Escape' && (placingHouse || placingOrange || placingFence)) { event.preventDefault(); placingHouse=false; placingOrange=false; placingFence=null; placementWorld=null; tell('EDITING · Penempatan objek dibatalkan.'); return; }
     if (event.key === 'Escape' && editing && !dialog.open) { finishEditing(); return; }
     const tag = event.target?.tagName?.toLowerCase();
     if (!editing || dialog.open || !(event.ctrlKey || event.metaKey) || event.altKey

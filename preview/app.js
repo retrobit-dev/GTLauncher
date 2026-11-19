@@ -56,6 +56,7 @@
   const wildGrassImage=new Image();wildGrassImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};wildGrassImage.src='./assets/wild-grass-selected.png?v=3';
   const bushImage=new Image();bushImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};bushImage.src='./assets/bush-selected.png?v=1';
   const bushFlowerImage=new Image(),bushBerryImage=new Image();for(const [image,path] of [[bushFlowerImage,'jasmine'],[bushBerryImage,'mulberry']]){image.onload=()=>{if(REDUCED_MOTION)drawFrame();};image.src=`./assets/bush-${path}.png?v=1`;}
+  const fenceImages=Object.fromEntries(['wood','stone'].map(material=>{const image=new Image();image.onload=()=>{if(REDUCED_MOTION)drawFrame();};image.src=`./assets/fence-approved-${material}.png`;return [material,image];}));
   const treeSprite=tree=>tree.kind==='bush'?(window.BushHarvest?.ready(window.worldManager?.getActive(),tree)?(tree.variant==='flower'?bushFlowerImage:bushBerryImage):bushImage):tree.kind==='wild-grass'?wildGrassImage:tree.kind==='conifer'?coniferTreeImage:orangeTreeImage;
   const treeSize=tree=>tree.size===1?1:2;
   const treeVisualScale=tree=>tree.kind==='bush'?14.5/60*treeSize(tree):tree.kind==='wild-grass'?14/60:treeSize(tree)/2;
@@ -1986,6 +1987,43 @@
   function orangeDropPosition(tree) {
     const p=orangeTreeAnchor(tree);return {x:p.x+6,y:p.y+1};
   }
+  let editingFenceSelection=null;
+  function fenceGeometry(f) {
+    const c=characterCentre(f),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
+    let a,b;
+    switch(f.edge) {
+      case 'N':a={x:c.x,y:c.y-hh};b={x:c.x+hw,y:c.y};break;
+      case 'E':a={x:c.x,y:c.y+hh};b={x:c.x+hw,y:c.y};break;
+      case 'S':a={x:c.x-hw,y:c.y};b={x:c.x,y:c.y+hh};break;
+      default:a={x:c.x-hw,y:c.y};b={x:c.x,y:c.y-hh};
+    }
+    const rising=f.edge==='E'||f.edge==='W', sy=0.065, sx=(b.x-a.x)/388;
+    const y1=rising?400:306,y2=rising?306:400;
+    const shear=(b.y-a.y-sy*(y2-y1))/388;
+    return {a,b,rising,sx,sy,shear,tx:a.x-sx*65,ty:a.y-shear*65-sy*y1};
+  }
+  function drawFence(f) {
+    const image=fenceImages[f.material];if(!image?.complete || !image.naturalWidth)return;
+    const g=fenceGeometry(f);ctx.save();applyIslandTransform();
+    ctx.save();clipIslandSurface();ctx.strokeStyle='rgba(12,23,40,.16)';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(g.a.x,g.a.y);ctx.lineTo(g.b.x,g.b.y);ctx.stroke();ctx.restore();
+    const player=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
+    if(player?.visible && f.column===Math.round(player.column) && f.row===Math.round(player.row) && (f.edge==='S'||f.edge==='E'))ctx.globalAlpha=.5;
+    ctx.transform(g.sx,g.shear,0,g.sy,g.tx,g.ty);if(!g.rising){ctx.translate(512,0);ctx.scale(-1,1);}
+    ctx.imageSmoothingEnabled=true;ctx.drawImage(image,0,0,512,400);
+    if(editingFenceSelection && editingFenceSelection.column===f.column && editingFenceSelection.row===f.row && editingFenceSelection.edge===f.edge){ctx.strokeStyle='#fff4a8';ctx.lineWidth=2/g.sy;ctx.strokeRect(35,45,442,350);}
+    ctx.restore();
+  }
+  function fenceAt(point) {
+    const fences=window.worldManager?.getActive()?.fences||[];
+    for(let i=fences.length-1;i>=0;i--) {
+      const f=fences[i],g=fenceGeometry(f),img=fenceImages[f.material];
+      let x=(point.x-g.tx)/g.sx,y=(point.y-g.ty-g.shear*x)/g.sy;if(!g.rising)x=512-x;
+      if(x<0||x>=512||y<0||y>=400||!img.complete || !img.naturalWidth)continue;
+      let data=houseHitCache.get(img);if(!data){const c=document.createElement('canvas');c.width=128;c.height=100;const h=c.getContext('2d',{willReadFrequently:true});h.drawImage(img,0,0,128,100);data=h.getImageData(0,0,128,100).data;houseHitCache.set(img,data);}
+      if(data[(Math.floor(y/4)*128+Math.floor(x/4))*4+3]>32)return i;
+    }
+    return null;
+  }
   function drawOrangeDrop(tree) {
     const world=window.worldManager?.getActive(),now=Date.now();
     if(tree.kind!==undefined || !window.OrangeDrops?.available(world,tree,now))return;
@@ -2390,6 +2428,7 @@
     const visiblePlayer=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
     const sceneObjects=(window.worldManager?.getActive()?.orangeTrees||[]).map(tree=>({depth:tree.column+tree.row+treeSize(tree)-1,draw:()=>{drawOrangeTree(tree,motionTime,sceneWeather);drawOrangeDrop(tree);}}));
     for(const [a,b] of grassPairs(window.worldManager?.getActive()))sceneObjects.push({depth:(a.column+a.row+b.column+b.row)/2,draw:()=>drawGrassBridge(a,b)});
+    for(const f of window.worldManager?.getActive()?.fences||[])sceneObjects.push({depth:f.column+f.row+((f.edge==='S'||f.edge==='E')?.5:-.5),draw:()=>drawFence(f)});
     if(visibleHouse?.visible)sceneObjects.push({depth:visibleHouse.column+visibleHouse.row+2,draw:drawHouse});
     if(visiblePlayer?.visible)sceneObjects.push({depth:visiblePlayer.column+visiblePlayer.row,draw:()=>drawMainCharacter(motionTime)});
     sceneObjects.sort((a,b)=>a.depth-b.depth);for(const object of sceneObjects)object.draw();
@@ -2653,6 +2692,8 @@
         y: anchorY + (y - anchorY - cameraPanY) / islandZoom};
     },
     centre: characterCentre,
+    fenceAt, fenceGeometry,
+    setSelectedFence(f) {editingFenceSelection=f;if(REDUCED_MOTION)drawFrame();},
     surfaceHeight,
     waterDepth,
     waterBorders,
