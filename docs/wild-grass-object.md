@@ -1,6 +1,6 @@
 # Rumput liar
 
-Konsep pilihan disimpan pada `preview/assets/character-redraw/wild-grass-new-concept.png`. `tools/build_wild_grass_selected.py` menghasilkan sprite transparan untuk preview dan Android tanpa meregangkan proporsi. Gambar lama Android `wild_grass.png` tetap disimpan.
+Konsep pilihan disimpan pada `preview/assets/character-redraw/wild-grass-new-concept.png`. `tools/build_wild_grass_selected.py` menghasilkan sprite transparan untuk preview dan Android tanpa meregangkan proporsi. Palet sprite dilunakkan menjadi hijau sage agar lebih selaras dengan rumput pulau; gambar konsep dan gambar lama Android `wild_grass.png` tetap disimpan. Pangkal sprite diletakkan sedikit ke depan pada permukaan tile dan diberi bayangan kontak kecil yang mengikuti pangkal; tapak, hit test, dan bayangan tetap berbagi posisi yang sama.
 
 Di preview, buka Map Editor → Objek → Tanaman dan pohon → **Rumput liar** lalu ketuk tile kering 1×1 yang kosong. Objek dapat dipilih melalui siluet, digeser, diputar, dihapus, dan mendukung Undo/Redo. Rumput menghalangi tile seperti objek semak Android yang sudah ada, bergerak mengikuti angin, dan tidak menghasilkan jeruk. Efek rumput dekoratif otomatis pada tile tidak diubah.
 

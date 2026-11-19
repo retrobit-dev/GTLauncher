@@ -8,7 +8,16 @@ im=Image.open(a).convert('RGBA')
 assert im.size==(512,256)
 assert im.getpixel((0,0))[3]==0 and im.getpixel((511,255))[3]==0
 box=im.getbbox();assert box and box[0]>30 and box[2]<482 and box[3]==256
+# Representative foliage is sage rather than the saturated yellow-green concept.
+colors=[(r,g,b) for r,g,b,a in im.getdata() if a>240 and g>r and g>b and g>80]
+assert colors and sum(g-b for r,g,b in colors)/len(colors)<50
+assert sum(a>128 for r,g,b,a in (im.getpixel((x,255)) for x in range(512)))>0
 assert (root/'app/src/main/res/drawable-nodpi/wild_grass.png').exists(), 'keep original artwork'
 view=(root/'app/src/main/java/dev/retrobit/gtlauncher/WeatherSkyView.java').read_text()
 assert 'R.drawable.wild_grass_selected' in view
 print('Selected wild-grass sprite: transparency, grounding, asset parity and old artwork: OK')
+
+preview=(root/'preview/app.js').read_text()
+assert "if(tree.kind==='wild-grass') centre.y+=0.75" in preview
+assert "ctx.ellipse(centre.x,bottom,8,1.5" in preview
+assert 'o.material.equals("wild-grass")?.75f' in view and 'contactWidth=grass?8f' in view

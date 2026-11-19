@@ -8,6 +8,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
  await clickTile({column:24,row:24});assert.equal(await page.evaluate(()=>worldManager.getActive().orangeTrees),undefined);
  await clickTile({column:27,row:24});assert.equal(await page.evaluate(()=>worldManager.getActive().orangeTrees),undefined);
  await clickTile({column:26,row:27});const expected=[{column:26,row:27,kind:'wild-grass',size:1}];assert.deepEqual(await page.evaluate(()=>worldManager.getActive().orangeTrees),expected);
+ assert.equal(await page.evaluate(()=>{const t=worldManager.getActive().orangeTrees[0];return sceneEditing.orangeTreeAnchor(t).y-sceneEditing.centre(t).y}),0.75,'grass base is planted on the tile');
  assert.equal(await page.evaluate(()=>OrangeDrops.available(worldManager.getActive(),worldManager.getActive().orangeTrees[0],Date.now())),false,'no fruit');
  assert.equal(await page.evaluate(()=>GameplayPath.find(worldManager.getActive(),worldManager.getCharacter(),{column:26,row:27},null)),null);
  assert.notEqual(await page.evaluate(()=>GameplayPath.find(worldManager.getActive(),worldManager.getCharacter(),{column:27,row:27},null)),null);

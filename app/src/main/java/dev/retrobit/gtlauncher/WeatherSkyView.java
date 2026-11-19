@@ -503,7 +503,7 @@ public final class WeatherSkyView extends View {
                     boolean small=o.material.equals("banana") || o.material.equals("palm");width=small?24:(o.material.equals("orange") && "ripe".equals(treeStage(o.material)) && !isHarvested(o)?60f*512f/490f:48);height=small?30:60;bottom=y+ISLAND_TILE_HEIGHT*(small?.275f:o.material.equals("orange")?.5f:1.05f);
                 } break;
             case "sunflower": width=15;height=23;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
-            case "bush": width=o.material.equals("wild-grass")?28f:18.5f;height=o.material.equals("wild-grass")?14f:14.5f;bottom=y+(o.material.equals("wild-grass") && o.edge!=null?0:ISLAND_TILE_HEIGHT*.325f);break;
+            case "bush": width=o.material.equals("wild-grass")?28f:18.5f;height=o.material.equals("wild-grass")?14f:14.5f;bottom=y+(o.material.equals("wild-grass")?.75f:ISLAND_TILE_HEIGHT*.325f);break;
             case "mailbox": width=13;height=30;bottom=y+ISLAND_TILE_HEIGHT*.15f;break;
             default: width=18;height=18;bottom=y+ISLAND_TILE_HEIGHT*.15f;
         }
@@ -536,7 +536,10 @@ public final class WeatherSkyView extends View {
             if(image==null)continue;RectF g=surfaceSpriteBounds(o);
             int alpha=Math.round(255*(100-Math.max(0,o.opacity))/100f);
             if(!(o.type.equals("tree") && (o.material.equals("orange") || o.material.startsWith("conifer")))) {
-                paint.setColor(Color.argb(Math.round(35*alpha/255f),12,23,40));paint.setStyle(Paint.Style.FILL);canvas.drawOval(new RectF(g.centerX()-g.width()*.3f,g.bottom-1,g.centerX()+g.width()*.3f,g.bottom+1),paint);
+                boolean grass=o.type.equals("bush") && o.material.equals("wild-grass");
+                paint.setColor(grass?Color.argb(Math.round(71*alpha/255f),28,49,35):Color.argb(Math.round(35*alpha/255f),12,23,40));paint.setStyle(Paint.Style.FILL);
+                float contactWidth=grass?8f:g.width()*.3f,contactDepth=grass?1.5f:1f;
+                canvas.drawOval(new RectF(g.centerX()-contactWidth,g.bottom-contactDepth,g.centerX()+contactWidth,g.bottom+contactDepth),paint);
             }
             paint.setColor(Color.WHITE);paint.setAlpha(alpha);paint.setFilterBitmap(true);int saved=canvas.save();
             if(o.type.equals("tree") && (o.material.equals("orange") || o.material.startsWith("conifer"))) {

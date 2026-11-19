@@ -53,7 +53,7 @@
   const coniferTreeImage = new Image();
   coniferTreeImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};
   coniferTreeImage.src='./assets/conifer-tree.png?v=1';
-  const wildGrassImage=new Image();wildGrassImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};wildGrassImage.src='./assets/wild-grass-selected.png?v=1';
+  const wildGrassImage=new Image();wildGrassImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};wildGrassImage.src='./assets/wild-grass-selected.png?v=2';
   const treeSprite=tree=>tree.kind==='wild-grass'?wildGrassImage:tree.kind==='conifer'?coniferTreeImage:orangeTreeImage;
   const treeSize=tree=>tree.size===1?1:2;
   const treeVisualScale=tree=>tree.kind==='wild-grass'?14/60:treeSize(tree)/2;
@@ -1914,7 +1914,10 @@
   // Footprint centre, shared by rendering, hit testing and shadows.
   function orangeTreeAnchor(tree) {
     const offset=(treeSize(tree)-1)/2;
-    return characterCentre({column:tree.column+offset,row:tree.row+offset,blockHeight:surfaceHeight(tree.column,tree.row)});
+    const centre=characterCentre({column:tree.column+offset,row:tree.row+offset,blockHeight:surfaceHeight(tree.column,tree.row)});
+    // The foliage base sits slightly forward on its tile, with selection and shadow sharing the same anchor.
+    if(tree.kind==='wild-grass') centre.y+=0.75;
+    return centre;
   }
   let editingTreeSelection=null;
   let orangeTreeMotionState={time:0,speed:0,direction:90,heading:0};
@@ -1928,7 +1931,12 @@
     const centre=orangeTreeAnchor(tree);
     const scale=treeVisualScale(tree),bottom=centre.y, width=treeWidth(tree),height=treeHeight(tree);
     const sway=orangeTreeSway(tree)*scale;
-    ctx.save();applyIslandTransform();ctx.translate(centre.x,bottom);ctx.transform(1,0,-sway/height,1,0,0);
+    ctx.save();applyIslandTransform();
+    if(tree.kind==='wild-grass') {
+      // A small contact shadow touches the root even when the projected shadow points away.
+      ctx.fillStyle='rgba(28,49,35,0.28)';ctx.beginPath();ctx.ellipse(centre.x,bottom,8,1.5,0,0,Math.PI*2);ctx.fill();
+    }
+    ctx.translate(centre.x,bottom);ctx.transform(1,0,-sway/height,1,0,0);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
     ctx.drawImage(sprite,-width/2,-height,width,height);ctx.restore();
