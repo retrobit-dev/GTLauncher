@@ -280,6 +280,15 @@ public class PortalImportTest {
         try{store.upsertAndSelect(WorldStore.parseExport(old.toString()));fail("downgrade must not erase object opacity");}catch(JSONException expected){}
         assertEquals(75,store.activeWorld().previewData.bridges.get(0).opacity);
     }
+    @Test public void previewBlockOpacityPreservedAndDowngradeRejected() throws Exception {
+        JSONObject root=new JSONObject(portableWorld(20,1)),w=root.getJSONObject("world");
+        w.put("blockOpacity",new org.json.JSONArray().put(new JSONObject().put("column",5).put("row",6).put("level",0).put("opacity",40)));
+        WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(root.toString())));assertEquals(40,store.activeWorld().previewData.blockOpacity(5,6,0));
+        assertTrue(store.tillTile("home",5,6));assertEquals(40,store.activeWorld().previewData.blockOpacity(5,6,0));
+        JSONObject old=new JSONObject(store.activeWorld().previewData.toJson());old.put("version",19);old.getJSONObject("world").remove("blockOpacity");
+        try{store.upsertAndSelect(WorldStore.parseExport(old.toString()));fail("downgrade must not erase block opacity");}catch(JSONException expected){}
+        assertEquals(40,store.activeWorld().previewData.blockOpacity(5,6,0));
+    }
     @Test public void differentSchemasNeverOverwriteAndPreservePreferences() throws JSONException {
         String bush="{\"type\":\"bush\",\"column\":1,\"row\":1,\"variant\":\"tiered\"}";
         SharedPreferences p=prefs();WorldStore store=new WorldStore(p);

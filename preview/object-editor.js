@@ -223,13 +223,13 @@
       && a.scale === b.scale && a.facing === b.facing && (a.opacity ?? 0) === (b.opacity ?? 0);
   }
   function current(type = selectedType) {
-    const obj = type === 'block' ? selectedBlock : type === 'house' ? window.worldManager.getHouse() : type==='bridge' ? window.worldManager.getActive().bridges?.[selectedBridgeIndex] : type==='tree' ? window.worldManager.getActive().orangeTrees?.[selectedTreeIndex] : type==='fence' ? window.worldManager.getActive().fences?.[selectedFenceIndex] : window.worldManager.getCharacter();
+    const obj = type === 'block' ? (selectedBlock ? {...selectedBlock,opacity:(window.worldManager.getActive().blockOpacity||[]).find(e=>e.column===selectedBlock.column && e.row===selectedBlock.row && e.level===selectedBlock.level)?.opacity ?? 0} : null) : type === 'house' ? window.worldManager.getHouse() : type==='bridge' ? window.worldManager.getActive().bridges?.[selectedBridgeIndex] : type==='tree' ? window.worldManager.getActive().orangeTrees?.[selectedTreeIndex] : type==='fence' ? window.worldManager.getActive().fences?.[selectedFenceIndex] : window.worldManager.getCharacter();
     return obj ? {...obj} : null;
   }
   function blocks(world) { return world.blockStacks ? world.blockStacks.map(x=>x.slice()) : world.tiles?.map(t=>t?[t]:[]) ?? null; }
-  function snapshot() { return {character: current('character'), house: current('house'), trees:(window.worldManager.getActive().orangeTrees||[]).map(t=>({...t})), fences:(window.worldManager.getActive().fences||[]).map(f=>({...f})), bridges:(window.worldManager.getActive().bridges||[]).map(b=>({...b})), blocks: blocks(window.worldManager.getActive())}; }
+  function snapshot() { return {character: current('character'), house: current('house'), trees:(window.worldManager.getActive().orangeTrees||[]).map(t=>({...t})), fences:(window.worldManager.getActive().fences||[]).map(f=>({...f})), bridges:(window.worldManager.getActive().bridges||[]).map(b=>({...b})), blocks: blocks(window.worldManager.getActive()),blockOpacity:(window.worldManager.getActive().blockOpacity||[]).map(e=>({...e}))}; }
   function sameBlocks(a,b) { return a===b || (Array.isArray(a) && Array.isArray(b) && a.length===b.length && a.every((v,i)=>v.length===b[i].length && v.every((t,j)=>t===b[i][j]))); }
-  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house) && JSON.stringify(a.trees)===JSON.stringify(b.trees) && JSON.stringify(a.fences)===JSON.stringify(b.fences) && JSON.stringify(a.bridges)===JSON.stringify(b.bridges) && sameBlocks(a.blocks,b.blocks); }
+  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house) && JSON.stringify(a.trees)===JSON.stringify(b.trees) && JSON.stringify(a.fences)===JSON.stringify(b.fences) && JSON.stringify(a.bridges)===JSON.stringify(b.bridges) && sameBlocks(a.blocks,b.blocks) && JSON.stringify(a.blockOpacity)===JSON.stringify(b.blockOpacity); }
   function ensureHistory(id) {
     const state = snapshot();
     let item = histories.get(id);
@@ -280,14 +280,20 @@
       history.last=snapshot();selectedType='house';selected=Boolean(next.value?.visible);draft=null;refresh();syncControls();
       tell(`EDITING · ${label}: penempatan rumah player.`);return;
     }
+    if(next.type==='blockOpacity') {
+      const before=(window.worldManager.getActive().blockOpacity||[]).map(e=>({...e}));applyingHistory=true;let saved;
+      try{saved=window.worldManager.replaceBlockOpacity(worldId,before,next.value);}finally{applyingHistory=false;}
+      if(!saved){tell('EDITING · Riwayat transparansi block tidak dapat disimpan.');return;}
+      from.pop();to.push({type:'blockOpacity',value:before});history.last=snapshot();refresh();syncControls();return;
+    }
     if (next.type === 'tiles') {
-      const before=blocks(window.worldManager.getActive());
+      const before=blocks(window.worldManager.getActive()),beforeOpacity=(window.worldManager.getActive().blockOpacity||[]).map(e=>({...e}));
       if (!before) return;
       applyingHistory=true;
       let saved;
-      try { saved=window.worldManager.updateBlockStacks(worldId,next.value); } finally { applyingHistory=false; }
+      try { saved=window.worldManager.updateBlockStacks(worldId,next.value,next.opacity); } finally { applyingHistory=false; }
       if (!saved) { tell('EDITING · Riwayat block tidak dapat disimpan.'); return; }
-      from.pop();to.push({type:'tiles',value:before});
+      from.pop();to.push({type:'tiles',value:before,opacity:beforeOpacity});
       if(to.length>HISTORY_LIMIT)to.shift();
       history.last=snapshot();draft=null;refresh();syncControls();tell(`EDITING · ${label}: perubahan block.`);return;
     }
@@ -305,7 +311,7 @@
       if (!editing && document.querySelector('.preview-stage')?.dataset.mode==='editor') editButton.click();
       const world=window.worldManager.getActive();
       if (!editing || !history || world.id!==worldId || !Array.isArray(world.tiles) || pointers.size || dialog.open) return false;
-      pendingTerrain={id:worldId,before:blocks(world),changed:false};syncControls();return true;
+      pendingTerrain={id:worldId,before:blocks(world),opacity:(world.blockOpacity||[]).map(e=>({...e})),changed:false};syncControls();return true;
     },
     update(id,stacks) {
       if (!pendingTerrain || pendingTerrain.id!==id || id!==worldId || !history) return false;
@@ -316,8 +322,8 @@
     },
     end() {
       const pending=pendingTerrain;pendingTerrain=null;
-      if (pending?.changed && editing && history && pending.id===worldId && window.worldManager.getActive().id===worldId && !sameBlocks(pending.before,blocks(window.worldManager.getActive()))) {
-        history.undo.push({type:'tiles',value:pending.before});
+      if (pending?.changed && editing && history && pending.id===worldId && window.worldManager.getActive().id===worldId && (!sameBlocks(pending.before,blocks(window.worldManager.getActive())) || JSON.stringify(pending.opacity)!==JSON.stringify(window.worldManager.getActive().blockOpacity||[]))) {
+        history.undo.push({type:'tiles',value:pending.before,opacity:pending.opacity});
         if(history.undo.length>HISTORY_LIMIT)history.undo.shift();
         history.redo.length=0;history.last=snapshot();
       }
@@ -333,8 +339,8 @@
     canvas.classList.toggle('is-editing', editing);
     status.hidden = !editing;
     const opacityControl=$('house-transparency-control'),opacity=$('house-transparency');
-    opacityControl.hidden=!(editing && selected && ['house','tree','fence','bridge'].includes(selectedType));
-    if(!opacityControl.hidden){$('transparency-label').textContent=`Transparansi ${selectedType==='house'?'rumah':selectedType==='tree'?'tanaman':selectedType==='fence'?'pagar':'jembatan'}`;opacity.value=String(current()?.opacity ?? 0);$('house-transparency-value').textContent=`${opacity.value}%`;}
+    opacityControl.hidden=!(editing && selected && ['house','tree','fence','bridge','block'].includes(selectedType));
+    if(!opacityControl.hidden){$('transparency-label').textContent=`Transparansi ${selectedType==='house'?'rumah':selectedType==='tree'?'tanaman':selectedType==='fence'?'pagar':selectedType==='block'?'block':'jembatan'}`;opacity.value=String(current()?.opacity ?? 0);$('house-transparency-value').textContent=`${opacity.value}%`;}
     detailsButton.hidden = !editing || !selected || (selectedType==='tree'||selectedType==='fence'||selectedType==='bridge'||selectedType==='block');
     selectButton.hidden = !editing || (selected && selectedType === 'character') || !window.worldManager.getCharacter().visible;
     selectHouse.hidden = !editing || (selected && selectedType === 'house') || !window.worldManager.getHouse();
@@ -426,11 +432,18 @@
   });
   $('house-transparency').addEventListener('input',event=>{$('house-transparency-value').textContent=`${event.target.value}%`;});
   $('house-transparency').addEventListener('change',event=>{
-    if(!editing || !selected || !['house','tree','fence','bridge'].includes(selectedType))return;
+    if(!editing || !selected || !['house','tree','fence','bridge','block'].includes(selectedType))return;
     const config=current(),value=Number(event.target.value);if(!config)return;
     if(value===0)delete config.opacity;else config.opacity=value;
     let saved=false;
     if(selectedType==='house')saved=recordEdit(config);
+    else if(selectedType==='block') {
+      const before=(window.worldManager.getActive().blockOpacity||[]).map(e=>({...e}));
+      const next=before.filter(e=>!(e.column===config.column && e.row===config.row && e.level===config.level));
+      if(value>0)next.push({column:config.column,row:config.row,level:config.level,opacity:value});
+      applyingHistory=true;try{saved=window.worldManager.replaceBlockOpacity(worldId,before,next);}finally{applyingHistory=false;}
+      if(saved && JSON.stringify(before)!==JSON.stringify(next)){history.undo.push({type:'blockOpacity',value:before});if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();}
+    }
     else {
       const world=window.worldManager.getActive(),key=selectedType==='tree'?'orangeTrees':selectedType==='fence'?'fences':'bridges';
       const index=selectedType==='tree'?selectedTreeIndex:selectedType==='fence'?selectedFenceIndex:selectedBridgeIndex;

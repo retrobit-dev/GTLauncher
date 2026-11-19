@@ -424,6 +424,7 @@ final class WorldStore {
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
                     if(world.previewData.version<4 && old.previewData.hasStacks())throw new JSONException("Older preview format cannot replace stacked terrain");
+                    if(world.previewData.version<20 && old.previewData.hasBlockOpacity())throw new JSONException("Older preview format cannot replace block opacity");
                     if(world.previewData.version<19 && (old.surfaces.stream().anyMatch(o->o.opacity>=0) || old.previewData.bridges.stream().anyMatch(b->b.opacity>=0)))throw new JSONException("Older preview format cannot replace object opacity");
                     if(world.previewData.version<18 && old.houses.stream().anyMatch(h->h.opacity>=0))throw new JSONException("Older preview format cannot replace house opacity");
                     if(world.previewData.version<17 && old.surfaces.stream().anyMatch(o->o.type.equals("fence") && o.material.equals("preview-stone-tall")))throw new JSONException("Older preview format cannot replace tall walls");

@@ -1888,6 +1888,8 @@ public final class WeatherSkyView extends View {
             if(canvas.quickReject(x-hw,baseY-(height-1)*ISLAND_GRASS_BAND_DEPTH-hh,x+hw,baseY+hh+ISLAND_DEPTH,Canvas.EdgeType.AA))continue;
             for(int level=0;level<height;level++) {
             int material=worldTerrain.block(column,row,level);float y=baseY-level*ISLAND_GRASS_BAND_DEPTH;
+            int opacity=worldTerrain.blockOpacity(column,row,level),layer=-1;
+            if(opacity>0)layer=canvas.saveLayerAlpha(x-hw-3,y-hh-3,x+hw+3,y+hh+(level==0?ISLAND_DEPTH:ISLAND_GRASS_BAND_DEPTH)+3,Math.round(255*(100-opacity)/100f),Canvas.ALL_SAVE_FLAG);
             float sideDepth=level>0?ISLAND_GRASS_BAND_DEPTH:ISLAND_TILE_SIDE_DEPTH;
             if(level==0 && !worldTerrain.canStand(column,row+1))
                 drawSmoothIslandQuad(canvas,x-hw,y,x,y+hh,x,y+hh+ISLAND_DEPTH,x-hw,y+ISLAND_DEPTH,palette.soilLight,palette.soilDark,0,0f);
@@ -1968,8 +1970,14 @@ public final class WeatherSkyView extends View {
                 }
                 if(material==3 && level==height-1) drawPondLife(canvas,x,y,row*ISLAND_GRID_SIZE+column);
             }
+            if(layer!=-1)canvas.restoreToCount(layer);
             }
-            if(worldTerrain.tile(column,row)==3)drawWaterfalls(canvas,column,row,x,baseY-(height-1)*ISLAND_GRASS_BAND_DEPTH,hw,hh);
+            if(worldTerrain.tile(column,row)==3) {
+                int opacity=worldTerrain.blockOpacity(column,row,height-1),layer=-1;
+                if(opacity>0)layer=canvas.saveLayerAlpha(x-hw-3,baseY-(height-1)*ISLAND_GRASS_BAND_DEPTH-hh-3,x+hw+3,baseY+hh+ISLAND_DEPTH+3,Math.round(255*(100-opacity)/100f),Canvas.ALL_SAVE_FLAG);
+                drawWaterfalls(canvas,column,row,x,baseY-(height-1)*ISLAND_GRASS_BAND_DEPTH,hw,hh);
+                if(layer!=-1)canvas.restoreToCount(layer);
+            }
         }
     }
 

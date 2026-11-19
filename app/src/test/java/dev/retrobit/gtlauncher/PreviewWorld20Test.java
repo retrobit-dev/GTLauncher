@@ -35,6 +35,12 @@ public class PreviewWorld20Test {
         root.put("version",18);rejected(root);root.put("version",19);
         tree.put("opacity",31);rejected(root);tree.put("opacity",30);fence.put("opacity",-5);rejected(root);fence.put("opacity",55);bridge.put("opacity","75");rejected(root);
     }
+    @Test public void blockOpacityIsPerLevelValidatedAndVersioned() throws Exception {
+        JSONObject root=stacked(20),w=root.getJSONObject("world");w.getJSONArray("blockStacks").getJSONArray(10*20+10).put(2);w.getJSONArray("tiles").put(10*20+10,2);
+        JSONObject e=new JSONObject().put("column",10).put("row",10).put("level",1).put("opacity",45);JSONArray entries=new JSONArray().put(e);w.put("blockOpacity",entries);
+        PreviewWorld20 p=PreviewWorld20.parse(root.toString());assertEquals(45,p.blockOpacity(10,10,1));assertEquals(0,p.blockOpacity(10,10,0));assertTrue(p.hasBlockOpacity());
+        root.put("version",19);rejected(root);root.put("version",20);e.put("level",2);rejected(root);e.put("level",1);e.put("opacity",46);rejected(root);e.put("opacity",45);entries.put(new JSONObject(e.toString()));rejected(root);
+    }
     @Test public void allTerrainAndHouseRoundTrip() throws Exception {
         JSONObject root=sample(), w=root.getJSONObject("world");
         w.getJSONArray("tiles").put(399,0).put(398,2).put(397,3).put(396,4).put(395,5);

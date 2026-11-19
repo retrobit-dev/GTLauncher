@@ -15,10 +15,11 @@ final class PreviewWorld20 implements StackWater.Terrain {
     private final String json;
     final String id;
     private final BlockTerrain terrain;
+    private final int[] blockOpacity;
     final java.util.List<BridgeGeometry.Bridge> bridges;
 
-    private PreviewWorld20(String json, String id, int size, int version, BlockTerrain terrain,java.util.List<BridgeGeometry.Bridge> bridges) {
-        this.json = json; this.id = id; this.size = size; this.version = version; this.terrain = terrain;this.bridges=java.util.Collections.unmodifiableList(new java.util.ArrayList<>(bridges));
+    private PreviewWorld20(String json, String id, int size, int version, BlockTerrain terrain,java.util.List<BridgeGeometry.Bridge> bridges,int[] blockOpacity) {
+        this.json = json; this.id = id; this.size = size; this.version = version; this.terrain = terrain;this.blockOpacity=blockOpacity;this.bridges=java.util.Collections.unmodifiableList(new java.util.ArrayList<>(bridges));
     }
     int tile(int column, int row) {
         if (column < 0 || row < 0 || column >= size || row >= size) throw new IndexOutOfBoundsException();
@@ -31,6 +32,8 @@ final class PreviewWorld20 implements StackWater.Terrain {
     boolean canStep(int fromColumn,int fromRow,int toColumn,int toRow) {
         return terrain.canStep(fromColumn,fromRow,toColumn,toRow) && BridgeGeometry.permitsStep(bridges,fromColumn,fromRow,toColumn,toRow);
     }
+    int blockOpacity(int c,int r,int level) {return blockOpacity[(r*size+c)*32+level];}
+    boolean hasBlockOpacity() {for(int value:blockOpacity)if(value>0)return true;return false;}
     public int height(int c,int r) { return terrain.height(c,r); }
     public int block(int c,int r,int level) { return terrain.block(c,r,level); }
     public int size() { return size; }
@@ -75,10 +78,10 @@ final class PreviewWorld20 implements StackWater.Terrain {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 19) throw new JSONException("Unsupported world version");
+        if (version > 20) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         if(w.has("blockStacks") && version<4 || version==4 && !w.has("blockStacks"))throw new JSONException("Invalid block stacks version");
-        keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","blockStacks","orangeTrees","fences","bridges");
+        keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","blockStacks","blockOpacity","orangeTrees","fences","bridges");
         if(version<5 && w.has("orangeTrees")) throw new JSONException("Unsupported field: orangeTrees");
         String id=string(w,"id"), name=string(w,"name"), description=string(w,"description"), color=string(w,"color");
         if (!id.matches("[A-Za-z0-9_-]{1,128}") || id.equals("base") || name.trim().isEmpty() || name.length()>48
@@ -104,6 +107,16 @@ final class PreviewWorld20 implements StackWater.Terrain {
             }
         }
         final BlockTerrain terrain=BlockTerrain.parse(size,source,stacks);
+        int[] opacityByBlock=new int[size*size*32];
+        if(w.has("blockOpacity")) {
+            if(version<20 || !(w.get("blockOpacity") instanceof JSONArray))throw new JSONException("Unsupported block opacity");
+            JSONArray values=w.getJSONArray("blockOpacity");if(values.length()>size*size*32)throw new JSONException("Too many block opacity entries");
+            for(int i=0;i<values.length();i++) {
+                JSONObject entry=values.getJSONObject(i);keys(entry,"column","row","level","opacity");
+                int col=integer(entry,"column",0,size-1),row=integer(entry,"row",0,size-1),level=integer(entry,"level",0,31),value=integer(entry,"opacity",5,90),index=(row*size+col)*32+level;
+                if(value%5!=0 || level>=terrain.height(col,row) || opacityByBlock[index]!=0)throw new JSONException("Invalid block opacity");opacityByBlock[index]=value;
+            }
+        }
         bool(w,"showCharacter"); int c=integer(w,"characterColumn",0,size-1), r=integer(w,"characterRow",0,size-1);
         scale(w,"characterScale"); facing(w,"characterFacing");
         if (tiles[r*size+c]==0) throw new JSONException("Character on empty tile");
@@ -180,6 +193,6 @@ final class PreviewWorld20 implements StackWater.Terrain {
             BridgeGeometry.Terrain ground=new BridgeGeometry.Terrain(){public int size(){return size;}public int tile(int c,int r){return tiles[r*size+c];}public int height(int c,int r){return terrain.height(c,r);}public boolean obstructed(int c,int r){return blocked[r*size+c];}};
             if(!BridgeGeometry.valid(bridges,ground))throw new JSONException("Invalid bridge footprint");
         }
-        return new PreviewWorld20(root.toString(),id,size,version,terrain,bridges);
+        return new PreviewWorld20(root.toString(),id,size,version,terrain,bridges,opacityByBlock);
     }
 }

@@ -2279,32 +2279,34 @@
     drawIslandShadow(centerX, lowerY, light.altitude, light.hourAngle, cloudCover, code, light.declination);
     const activeWorld = window.worldManager?.getActive();
     const tileData = activeWorld?.tiles, stacks=activeWorld?.blockStacks;
+    const blockOpacity=new Map((activeWorld?.blockOpacity||[]).map(e=>[`${e.row*ISLAND_GRID_SIZE+e.column}:${e.level}`,e.opacity]));
     const pond=pondLayout(activeWorld);updatePondWind(motionTime,sceneWeather);
-    if (tileData && (stacks || tileData.some(value => value !== 1))) {
+    if (tileData && (stacks || blockOpacity.size || tileData.some(value => value !== 1))) {
       for (const tile of ISLAND_TILES) {
         const index=tile.row * ISLAND_GRID_SIZE + tile.column, stack=stacks?.[index];
         if (!tileData[index]) continue;
         if (tileVisible(tile, ISLAND_DEPTH)) {
+          ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:0`)||0))/100;
           const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
           // Full-depth faces expose the silhouette and the soil beneath each remaining tile.
           const leftOpen = tile.row === ISLAND_GRID_SIZE - 1 || !tileData[(tile.row + 1) * ISLAND_GRID_SIZE + tile.column];
           const rightOpen = tile.column === ISLAND_GRID_SIZE - 1 || !tileData[tile.row * ISLAND_GRID_SIZE + tile.column + 1];
           if (leftOpen) drawSmoothIslandPolygon([[tile.x-hw,tile.y],[tile.x,tile.y+hh],[tile.x,tile.y+hh+ISLAND_DEPTH],[tile.x-hw,tile.y+ISLAND_DEPTH]], palette.soilLight, palette.soilDark);
           if (rightOpen) drawSmoothIslandPolygon([[tile.x,tile.y+hh],[tile.x+hw,tile.y],[tile.x+hw,tile.y+ISLAND_DEPTH],[tile.x,tile.y+hh+ISLAND_DEPTH]], palette.soilDark, palette.soilDark);
-          drawGrassTile(tile, palette, sunlight, stack ? stack[0] : tileData[index]);
+          drawGrassTile(tile, palette, sunlight, stack ? stack[0] : tileData[index]);ctx.restore();
         }
         if (stack) for(let level=1;level<stack.length;level++) {
           const raised={...tile,y:tile.y-level*BLOCK_HEIGHT};
-          if(tileVisible(raised,BLOCK_HEIGHT)) drawGrassTile(raised,palette,sunlight,stack[level],level);
+          if(tileVisible(raised,BLOCK_HEIGHT)){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawGrassTile(raised,palette,sunlight,stack[level],level);ctx.restore();}
         }
         if(tileData[index]===3 && pond?.byTile.has(index)) {
           const level=stack ? stack.length-1 : 0, topTile={...tile,y:tile.y-level*BLOCK_HEIGHT};
-          if(tileVisible(topTile,BLOCK_HEIGHT)) drawPondLife(topTile,pond.byTile.get(index),motionTime);
+          if(tileVisible(topTile,BLOCK_HEIGHT)){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawPondLife(topTile,pond.byTile.get(index),motionTime);ctx.restore();}
         }
         if(stack && tileData[index]===3) {
           const level=stack ? stack.length-1 : 0;
           const falls=waterFalls(tile.column,tile.row,activeWorld);
-          if(Object.keys(falls).length) drawWaterfalls(tile,level,falls,motionTime);
+          if(Object.keys(falls).length){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawWaterfalls(tile,level,falls,motionTime);ctx.restore();}
         }
       }
     } else {
