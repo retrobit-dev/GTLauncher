@@ -9,8 +9,8 @@ final class RampGeometry {
         }
     }
     static final class Shape {
-        final Vertex[] top;final Vertex[][] sides;
-        Shape(Vertex[] top,Vertex[][] sides){this.top=top;this.sides=sides;}
+        final Vertex[] top,highFace;final Vertex[][] sides;
+        Shape(Vertex[] top,Vertex[][] sides,Vertex[] highFace){this.top=top;this.sides=sides;this.highFace=highFace;}
     }
     static double fraction(String direction,double u,double v) {
         if(direction==null || !Double.isFinite(u) || !Double.isFinite(v) || u<0 || u>1 || v<0 || v>1)return Double.NaN;
@@ -23,7 +23,9 @@ final class RampGeometry {
         int[][] ends;
         switch(direction){case "E":ends=new int[][]{{0,0,1,0},{0,1,1,1}};break;case "W":ends=new int[][]{{1,0,0,0},{1,1,0,1}};break;case "S":ends=new int[][]{{0,0,0,1},{1,0,1,1}};break;default:ends=new int[][]{{0,1,0,0},{1,1,1,0}};}
         Vertex[][] sides=new Vertex[2][3];for(int i=0;i<2;i++){int[] e=ends[i];sides[i]=new Vertex[]{new Vertex(e[0],e[1],0,width,depth,height),new Vertex(e[2],e[3],0,width,depth,height),new Vertex(e[2],e[3],1,width,depth,height)};}
-        return new Shape(top,sides);
+        int[] a=ends[0],b=ends[1];
+        Vertex[] highFace={new Vertex(a[2],a[3],0,width,depth,height),new Vertex(b[2],b[3],0,width,depth,height),new Vertex(b[2],b[3],1,width,depth,height),new Vertex(a[2],a[3],1,width,depth,height)};
+        return new Shape(top,sides,highFace);
     }
     private RampGeometry(){}
 }

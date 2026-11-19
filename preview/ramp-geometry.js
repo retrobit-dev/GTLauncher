@@ -17,7 +17,10 @@
     const ends=direction==='E'?[[0,0,1,0],[0,1,1,1]]:direction==='W'?[[1,0,0,0],[1,1,0,1]]:
       direction==='S'?[[0,0,0,1],[1,0,1,1]]:[[0,1,0,0],[1,1,1,0]];
     const sideFaces=ends.map(([lu,lv,hu,hv])=>[vertex(lu,lv,0),vertex(hu,hv,0),vertex(hu,hv,1)]);
-    return {topFace,sideFaces};
+    // The vertical high end is needed when it is not joined to an upper block.
+    const [a,b]=ends;
+    const highFace=[vertex(a[2],a[3],0),vertex(b[2],b[3],0),vertex(b[2],b[3],1),vertex(a[2],a[3],1)];
+    return {topFace,sideFaces,highFace};
   }
   return Object.freeze({DIRECTIONS,fraction,create});
 });
