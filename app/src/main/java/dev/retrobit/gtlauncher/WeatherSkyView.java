@@ -1896,6 +1896,14 @@ public final class WeatherSkyView extends View {
                     for(float offset:new float[]{-.42f,0f,.42f}) canvas.drawLine(x-hw*(1-Math.abs(offset)),y+hh*offset,x+hw*(1-Math.abs(offset)),y+hh*offset,paint);
                     paint.setStyle(Paint.Style.FILL);
                 }
+                if(grassTop) {
+                    // Outline only the grassy cap; keep the original material on its sides.
+                    traceSmoothIslandDiamond(islandPolyPath,x,y,hw-.05f,hh-.025f,1.4f);
+                    Paint.Join oldJoin=paint.getStrokeJoin();
+                    paint.setStyle(Paint.Style.STROKE);paint.setColor(blend(palette.grassDark,palette.grass,0.3));
+                    paint.setStrokeWidth(.55f);paint.setStrokeJoin(Paint.Join.ROUND);canvas.drawPath(islandPolyPath,paint);
+                    paint.setStrokeJoin(oldJoin);paint.setStyle(Paint.Style.FILL);
+                }
                 if(material==3) drawPondLife(canvas,x,y,row*ISLAND_GRID_SIZE+column);
             }
         }

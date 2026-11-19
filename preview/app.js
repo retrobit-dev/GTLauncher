@@ -1312,6 +1312,12 @@
         ISLAND_TILE_WIDTH, islandTileHeight);
       ctx.restore();
     }
+    // A fine rim separates the grassy cap from its material and lower grass.
+    // Ordinary flat meadow tiles retain their existing seamless appearance.
+    if(grassTop || (material===1 && raised)) {
+      ctx.save();ctx.beginPath();traceSmoothIslandDiamond(tile.x,tile.y,halfWidth,halfHeight,cornerRadius);
+      ctx.strokeStyle=blendColor(palette.grassDark,palette.grass,0.3);ctx.lineWidth=.55;ctx.lineJoin='round';ctx.stroke();ctx.restore();
+    }
   }
 
   function drawGrassTileSide(centerX, centerY, halfWidth, halfHeight, cornerRadius,
