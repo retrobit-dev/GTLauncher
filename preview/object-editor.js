@@ -21,13 +21,14 @@
     houseButton.disabled=world.id==='base' || exists || !Array.isArray(world.tiles);
     $('catalog-place-orange').disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-place-conifer').disabled=world.id==='base' || !Array.isArray(world.tiles);
+    $('catalog-place-conifer-small').disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-house-status').textContent=world.id==='base' ? 'Base World terkunci. Buka world buatan untuk menempatkan rumah.' : exists ? 'World ini sudah memiliki rumah player. Pindahkan rumah yang ada bila diperlukan.' : !Array.isArray(world.tiles) ? 'World lama ini tidak mendukung penempatan rumah.' : 'Pilih tombol, lalu ketuk sudut pertama tapak pada peta.';
     const objects = [];
     const character = window.worldManager.getCharacter();
     if (character.visible) objects.push(`Karakter · ${columnLabel(character.column)}${character.row + 1}`);
     const house = window.worldManager.getHouse?.();
     if (house) objects.push(`Rumah player · ${columnLabel(house.column)}${house.row + 1}–${columnLabel(house.column + 2)}${house.row + 3}${house.visible ? '' : ' (tersembunyi)'}`);
-    for(const tree of world.orangeTrees||[]) objects.push(`Pohon ${tree.kind==='conifer'?'cemara':'jeruk'} · ${columnLabel(tree.column)}${tree.row+1}–${columnLabel(tree.column+1)}${tree.row+2}`);
+    for(const tree of world.orangeTrees||[]) objects.push(`Pohon ${tree.kind==='conifer'?'cemara':'jeruk'} · ${columnLabel(tree.column)}${tree.row+1}–${columnLabel(tree.column+(tree.size||2)-1)}${tree.row+(tree.size||2)}`);
     if (!objects.length) objects.push('Belum ada objek yang ditampilkan.');
     for (const label of objects) {
       const row = document.createElement('div');
@@ -73,6 +74,12 @@
     selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingOrange='conifer';placementWorld=window.worldManager.getActive().id;libraryDialog.close();
     tell('EDITING · Ketuk sudut pertama pohon cemara 2×2. Escape untuk batal.');
   });
+  $('catalog-place-conifer-small').addEventListener('click',()=>{
+    if($('catalog-place-conifer-small').disabled || !editing)return;
+    for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
+    selected=false;selectingObject=false;movingObject=false;draft=null;refresh();syncControls();placingHouse=false;placingOrange='conifer-small';placementWorld=window.worldManager.getActive().id;libraryDialog.close();
+    tell('EDITING · Ketuk tile pohon cemara 1×1. Escape untuk batal.');
+  });
   canvas.addEventListener('pointerdown', event => {
     if((!placingHouse && !placingOrange) || !editing || event.button!==0) return;
     event.preventDefault(); event.stopImmediatePropagation(); placementPointer=event.pointerId;
@@ -80,9 +87,9 @@
     if(placingOrange) {
       const before=window.worldManager.getActive().orangeTrees||[];
       applyingHistory=true;let saved=false;
-      try {if(tile)saved=window.worldManager.replaceOrangeTrees(placementWorld,before,[...before,placingOrange==='conifer'?{...tile,kind:'conifer'}:tile]);} finally {applyingHistory=false;}
-      if(!saved) {tell('EDITING · Pilih area 2×2 rata tanpa air, lubang, rumah, pohon, atau player.');return;}
-      const treeLabel=placingOrange==='conifer'?'cemara':'jeruk';
+      try {if(tile)saved=window.worldManager.replaceOrangeTrees(placementWorld,before,[...before,placingOrange==='conifer-small'?{...tile,kind:'conifer',size:1}:placingOrange==='conifer'?{...tile,kind:'conifer'}:tile]);} finally {applyingHistory=false;}
+      if(!saved) {tell(`EDITING · Pilih area ${placingOrange==='conifer-small'?'1×1':'2×2'} rata tanpa air, lubang, rumah, pohon, atau player.`);return;}
+      const treeLabel=placingOrange==='conifer' || placingOrange==='conifer-small'?'cemara':'jeruk';
       placingOrange=false;placementWorld=null;history.undo.push({type:'orangeTrees',value:before.map(t=>({...t}))});
       if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();syncControls();tell(`EDITING · Pohon ${treeLabel} ditempatkan.`);return;
     }

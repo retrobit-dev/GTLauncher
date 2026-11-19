@@ -271,7 +271,7 @@ public class PortalImportTest {
         SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
         assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,6))));
         String before=p.getString("worlds_v1",null),active=store.activeId();
-        for(int version=4;version<=7;version++) {
+        for(int version=4;version<=8;version++) {
             try {store.upsertAndSelect(WorldStore.parseExport(portableWorld(version,1)));fail("unsupported version");}
             catch(JSONException expected) {assertEquals("Unsupported world version",expected.getMessage());}
             assertEquals(before,p.getString("worlds_v1",null));assertEquals(active,store.activeId());
