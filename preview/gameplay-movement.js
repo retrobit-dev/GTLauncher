@@ -54,7 +54,8 @@
       const end=walk.route[walk.route.length-1],previous=walk.route[walk.route.length-2];
       const facing=direction(previous,end),character={...walk.character,...end,facing};
       committing=true;let ok=false;try{ok=worlds.updateCharacter(walk.id,character);}finally{committing=false;}
-      const walkMessage=walk.message; cancel();
+      const walkMessage=walk.message, idleCarry=walk.idleCarry; cancel();
+      if(ok && idleCarry!=null)scene.resumeIdle?.(idleCarry);
       if(!ok){tell('Posisi tidak tersimpan; periksa penyimpanan browser.');return;}
       tell(walkMessage || `Tiba di ${columnLabel(end.column)}${end.row+1}.`);return;
     }
@@ -66,6 +67,7 @@
   function direction(a,b){return b.column>a.column?'E':b.column<a.column?'W':b.row>a.row?'S':'N';}
   function move(target,continueRunning=false) {
     if(walk){
+      walk.idleCarry=null;
       const end=walk.route[walk.route.length-1];
       walk.pendingTarget=(target.column!==end.column || target.row!==end.row)?target:null;
       walk.runRequested=true;tell(walk.pendingTarget?'Mengubah tujuan dan berlari…':'Berlari menuju tujuan.');return;
@@ -102,6 +104,22 @@
     walk={id:world.id,character,route,message:completion,routeIndex:1,started:null,running:continueRunning,runRequested:false,pendingTarget:null,durations:route.slice(1).map(()=>continueRunning?330:650)};
     const token=++generation;window.requestAnimationFrame(t=>step(t,token));
   }
+  window.addEventListener('playerwateridle',event=>{
+    const world=worlds.getActive(),character=worlds.getCharacter();
+    if(walk || stage.dataset.mode!=='gameplay' || document.hidden || !character?.visible || event.detail.key!==`${world.id}:${character.column}:${character.row}` || scene.waterDepth(character.column,character.row)<=0)return;
+    const route=path.findNearestDry(world,character,worlds.getHouse());
+    if(!route || route.length<2)return;
+    // Automatic relocation must not be interpreted as a tool/facing tap.
+    const end=route[route.length-1];
+    if(reduced) {
+      committing=true;let ok=false;try{ok=worlds.updateCharacter(world.id,{...character,...end,facing:direction(route[route.length-2],end)});}finally{committing=false;}
+      if(ok)scene.resumeIdle?.(event.detail.elapsed);
+      return;
+    }
+    scene.setGameplayRoute?.(route,1);
+    walk={id:world.id,character,route,message:'',routeIndex:1,started:null,running:false,runRequested:false,pendingTarget:null,durations:route.slice(1).map(()=>650),idleCarry:event.detail.elapsed};
+    const token=++generation;window.requestAnimationFrame(t=>step(t,token));
+  });
   canvas.addEventListener('pointerdown',event=>{
     if(stage.dataset.mode!=='gameplay'||(event.pointerType==='mouse'&&event.button!==0)||gesture)return;
     gesture={id:event.pointerId,x:event.clientX,y:event.clientY};

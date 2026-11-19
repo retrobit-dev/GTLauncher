@@ -1751,7 +1751,7 @@
   const idleBowController=window.PlayerIdleBow.create();
   const idleBowFrames=Object.fromEntries(['front','back'].map(side=>[side,
     ['transition','concept','sit-lowering','sit-nearly','sitting'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=10`;return image;})]));
-  let idleBowAmount=0, idleSitAmount=0, idleBowSprite=null;
+  let idleBowAmount=0, idleSitAmount=0, idleBowSprite=null, waterEscapeKey=null;
   const idleBlend=document.createElement('canvas');idleBlend.width=512;idleBlend.height=800;
   idleBlend.dataset.playerIdleBow='true';
   let idleBlendKey='';
@@ -1760,6 +1760,12 @@
     const enabled=!REDUCED_MOTION && cameraMode==='gameplay' && !document.hidden && !gameplayDraft && !editingDraft && world?.id!=='base' && character?.visible;
     const key=enabled?`${world.id}:${character.column}:${character.row}`:null;
     idleBowAmount=idleBowController.update(now,key,enabled,character && characterWaterDepth(character)===0); idleBowSprite=null;
+    if (!key || !character || characterWaterDepth(character)===0) waterEscapeKey=null;
+    if (key && characterWaterDepth(character)>0 && idleBowController.elapsed()>=5000 && waterEscapeKey!==key) {
+      waterEscapeKey=key;
+      const elapsed=idleBowController.elapsed();
+      queueMicrotask(()=>window.dispatchEvent(new CustomEvent('playerwateridle',{detail:{key,elapsed}})));
+    }
     const sit=character && characterWaterDepth(character)===0 ? idleBowController.sitting() : 0;
     idleSitAmount=sit;
     if((idleBowAmount>0 || sit>0) && character) {
@@ -2540,6 +2546,7 @@
       islandZoom=baseFitZoom()*editorZoom;
       if(REDUCED_MOTION) drawFrame();
     },
+    resumeIdle(elapsed) { idleBowController.resume(elapsed); },
     setGameplayRoute(route, next=1) {
       gameplayRoute = route ? {tiles:route.map(tile=>({column:tile.column,row:tile.row})),next} : null;
       if (REDUCED_MOTION) drawFrame();

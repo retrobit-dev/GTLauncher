@@ -19,3 +19,7 @@ Revisi studi tersedia sebagai `sit-redraw-repaired-front-v2.png` dan `sit-redraw
 Perbaikan tangan tampak depan: lengan dekat tetap utuh, sedangkan lengan jauh tertutup badan/ransel dan hanya telapak yang tampak. Patch yang sama dipakai di frame lutut tertekuk, dengan titik kontak bayangan diperbarui. Crossfade antara frame utuh tetap dapat menampilkan sedikit bayangan ganda sesaat saat berubah pose; ini bukan rig anatomis. Aset preview dan Android sama, tetapi Android belum diuji lewat build/perangkat.
 
 Tangan dekat tampak depan digeser ke belakang dengan lengan bawah miring, sementara telapak tangan jauh tetap terlihat sebagian di belakang lengan/ransel. Patch yang sama dipakai untuk pose duduk dan lutut tertekuk; titik bayangan kontak mengikuti posisi baru. Kepala/topi dan bagian tubuh lain tidak digeser. Uji aset memeriksa posisi relatif tangan, tidak adanya lengan jauh rangkap, serta kesamaan preview/Android; verifikasi Android pada perangkat masih diperlukan.
+
+## Keluar dari air saat idle (preview)
+
+Pada preview dengan animasi aktif, setelah diam lima detik di air player berjalan otomatis ke block kering terdekat yang dapat dicapai dengan aturan rute normal. Hitungan idle yang sudah berlalu disimpan selama perjalanan otomatis dan dilanjutkan saat tiba; gerakan atau pengalihan tujuan oleh pengguna membatalkan kelanjutan hitungan. Jika tidak ada block kering yang dapat dicapai, player tetap di air dan siklus membungkuk tetap berjalan. Reduced motion menonaktifkan perilaku idle otomatis ini. Perilaku keluar dari air belum diterapkan di Android.
