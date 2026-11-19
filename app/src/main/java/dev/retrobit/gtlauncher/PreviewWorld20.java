@@ -31,6 +31,8 @@ final class PreviewWorld20 {
     boolean canStep(int fromColumn,int fromRow,int toColumn,int toRow) {
         return terrain.canStep(fromColumn,fromRow,toColumn,toRow) && BridgeGeometry.permitsStep(bridges,fromColumn,fromRow,toColumn,toRow);
     }
+    int height(int c,int r) { return terrain.height(c,r); }
+    int block(int c,int r,int level) { return terrain.block(c,r,level); }
     boolean onBridge(int c,int r) {for(BridgeGeometry.Bridge bridge:bridges)if(BridgeGeometry.indexAt(bridge,c,r)>=0)return true;return false;}
     String toJson() { return json; }
     private static void keys(JSONObject object, String... allowed) throws JSONException {
@@ -61,16 +63,21 @@ final class PreviewWorld20 {
     private static void facing(JSONObject o, String key) throws JSONException {
         if (!Arrays.asList("N", "E", "S", "W").contains(string(o, key))) throw new JSONException("Invalid " + key);
     }
-    static PreviewWorld20 parse(String input) throws JSONException {
+    static PreviewWorld20 parse(String input) throws JSONException { return parse(input,false); }
+    // Validation/model entry point only. Android import stays gated until the scene renderer,
+    // picking, camera and object anchoring understand elevated surfaces.
+    static PreviewWorld20 parseStackedForValidation(String input) throws JSONException { return parse(input,true); }
+    private static PreviewWorld20 parse(String input, boolean allowStacks) throws JSONException {
         JSONObject root = new JSONObject(input);
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 17 || version == 4) throw new JSONException("Unsupported world version");
+        if (version > 17 || (version == 4 && !allowStacks)) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         // Never flatten unsupported stacks or claim the file is corrupt.
-        if(w.has("blockStacks"))throw new JSONException("Unsupported block stacks");
-        keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","orangeTrees","fences","bridges");
+        if(w.has("blockStacks") && !allowStacks)throw new JSONException("Unsupported block stacks");
+        if(w.has("blockStacks") && version<4 || version==4 && !w.has("blockStacks"))throw new JSONException("Invalid block stacks version");
+        keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","blockStacks","orangeTrees","fences","bridges");
         if(version<5 && w.has("orangeTrees")) throw new JSONException("Unsupported field: orangeTrees");
         String id=string(w,"id"), name=string(w,"name"), description=string(w,"description"), color=string(w,"color");
         if (!id.matches("[A-Za-z0-9_-]{1,128}") || id.equals("base") || name.trim().isEmpty() || name.length()>48
@@ -85,6 +92,17 @@ final class PreviewWorld20 {
             if (!Double.isFinite(n) || n!=Math.rint(n) || n<0 || n>(version==1?1:version==2?5:version<14?6:10)) throw new JSONException("Invalid tile");
             tiles[i]=(int)n;
         }
+        JSONArray stacks=null;
+        if(w.has("blockStacks")) {
+            if(!(w.get("blockStacks") instanceof JSONArray))throw new JSONException("Invalid block stacks");
+            stacks=w.getJSONArray("blockStacks");
+            if(version<14)for(int i=0;i<stacks.length();i++) {
+                if(!(stacks.get(i) instanceof JSONArray))throw new JSONException("Invalid block stack");
+                JSONArray column=stacks.getJSONArray(i);
+                for(int n=0;n<column.length();n++){Object value=column.get(n);if(!(value instanceof Number) || ((Number)value).doubleValue()>6)throw new JSONException("Unsupported block material");}
+            }
+        }
+        final BlockTerrain terrain=BlockTerrain.parse(size,source,stacks);
         bool(w,"showCharacter"); int c=integer(w,"characterColumn",0,size-1), r=integer(w,"characterRow",0,size-1);
         scale(w,"characterScale"); facing(w,"characterFacing");
         if (tiles[r*size+c]==0) throw new JSONException("Character on empty tile");
@@ -94,7 +112,8 @@ final class PreviewWorld20 {
             JSONObject h=(JSONObject)house; keys(h,"column","row","scale","facing","visible");
             int hc=integer(h,"column",0,size-3), hr=integer(h,"row",0,size-3);
             if (h.has("scale")) scale(h,"scale"); if (h.has("facing")) facing(h,"facing"); if (h.has("visible")) bool(h,"visible");
-            for (int y=hr;y<hr+3;y++) for (int x=hc;x<hc+3;x++) if (tiles[y*size+x]==0) throw new JSONException("House on empty tile");
+            int level=terrain.height(hc,hr);
+            for (int y=hr;y<hr+3;y++) for (int x=hc;x<hc+3;x++) if (tiles[y*size+x]==0 || terrain.height(x,y)!=level) throw new JSONException("House footprint is not level");
         }
         if(version>=5 && w.has("orangeTrees")) {
             Object treeValue=w.get("orangeTrees");
@@ -123,9 +142,10 @@ final class PreviewWorld20 {
                 }
                 if(tree.has("facing"))facing(tree,"facing");
                 int tc=integer(tree,"column",0,size-footprint),tr=integer(tree,"row",0,size-footprint);
+                int level=terrain.height(tc,tr);
                 for(int y=tr;y<tr+footprint;y++)for(int x=tc;x<tc+footprint;x++) {
                     int index=y*size+x;
-                    if(occupied[index] || tiles[index]==0 || tiles[index]==3 || (show && x==c && y==r && ("conifer".equals(kind) || "orange".equals(kind))))throw new JSONException("Object collision");
+                    if(occupied[index] || tiles[index]==0 || tiles[index]==3 || terrain.height(x,y)!=level || (show && x==c && y==r && ("conifer".equals(kind) || "orange".equals(kind))))throw new JSONException("Object collision");
                     if(house instanceof JSONObject) {JSONObject h=(JSONObject)house;int hc=h.getInt("column"),hr=h.getInt("row");
                         if(x>=hc && x<hc+3 && y>=hr && y<hr+3)throw new JSONException("Object collision");}
                     occupied[index]=true;
@@ -155,9 +175,9 @@ final class PreviewWorld20 {
             if(house instanceof JSONObject){JSONObject h=(JSONObject)house;int hc=h.getInt("column"),hr=h.getInt("row");for(int y=hr;y<hr+3;y++)for(int x=hc;x<hc+3;x++)blocked[y*size+x]=true;}
             JSONArray trees=w.optJSONArray("orangeTrees");if(trees!=null)for(int i=0;i<trees.length();i++){JSONObject t=trees.getJSONObject(i);int x=t.getInt("column"),y=t.getInt("row"),n=t.optInt("size",2);for(int dy=0;dy<n;dy++)for(int dx=0;dx<n;dx++)blocked[(y+dy)*size+x+dx]=true;}
             JSONArray fences=w.optJSONArray("fences");if(fences!=null)for(int i=0;i<fences.length();i++){JSONObject f=fences.getJSONObject(i);int x=f.getInt("column"),y=f.getInt("row");blocked[y*size+x]=true;String e=f.getString("edge");int nx=x+(e.equals("E")?1:e.equals("W")?-1:0),ny=y+(e.equals("S")?1:e.equals("N")?-1:0);if(nx>=0 && nx<size && ny>=0 && ny<size)blocked[ny*size+nx]=true;}
-            BridgeGeometry.Terrain ground=new BridgeGeometry.Terrain(){public int size(){return size;}public int tile(int c,int r){return tiles[r*size+c];}public int height(int c,int r){return tiles[r*size+c]==0?0:1;}public boolean obstructed(int c,int r){return blocked[r*size+c];}};
+            BridgeGeometry.Terrain ground=new BridgeGeometry.Terrain(){public int size(){return size;}public int tile(int c,int r){return tiles[r*size+c];}public int height(int c,int r){return terrain.height(c,r);}public boolean obstructed(int c,int r){return blocked[r*size+c];}};
             if(!BridgeGeometry.valid(bridges,ground))throw new JSONException("Invalid bridge footprint");
         }
-        return new PreviewWorld20(root.toString(),id,size,version,BlockTerrain.parse(size,source,null),bridges);
+        return new PreviewWorld20(root.toString(),id,size,version,terrain,bridges);
     }
 }

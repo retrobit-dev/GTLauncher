@@ -17,3 +17,9 @@ Ini **belum** mengaktifkan impor world bertingkat: parser world Android masih me
 Preview menyediakan block tanah, batu, pasir, dan tanah garapan dengan permukaan atas rumput; sisi tetap memakai bahan asal. Air tidak memiliki varian ini. ID 7–10 tersimpan sebagai jenis block terpisah, termasuk bila berada di bawah block lain, sehingga ekspor yang memuatnya menggunakan format preview v14. Format lama tidak dapat mengganti world yang mengandung ID tersebut.
 
 Android menerima dan menggambar v14 **datar** pada versi aplikasi yang diperbarui, dengan batasan impor objek yang sama seperti sebelumnya. Block bertingkat belum didukung Android dan ditolak tanpa mengganti data. Pemilih block dan editor terrain Android belum tersedia; aplikasi Android lama tidak mendukung v14.
+
+## Kemajuan validasi world bertingkat
+
+Model internal kini dapat memvalidasi contoh format bertingkat v4–v17 tanpa meratakan kolom: setiap material dan permukaan disimpan utuh, tapak rumah dan pohon harus rata, jembatan memakai tinggi sebenarnya, dan aturan langkah membatasi beda tinggi satu block. Model proyeksi terpisah mencakup posisi permukaan, interpolasi tinggi, pemilihan top diamond dan jumlah sisi yang terekspos. Tes model Java mencakup format lama/baru, data salah, tapak tidak rata dan tebing.
+
+Ini **belum mengaktifkan impor di aplikasi**. `parseStackedForValidation` hanya untuk pengembangan/tes. Renderer, picking sebenarnya (termasuk sisi block), urutan kedalaman objek, air dan air terjun, bayangan, kamera, serta penyimpanan dan interaksi masih harus disambungkan dan diuji secara menyeluruh; sementara itu parser impor tetap menolak world bertingkat tanpa menimpa data. Belum ada build atau uji perangkat Android.

@@ -60,6 +60,36 @@ public class PreviewWorld20Test {
         PreviewWorld20 parsed=PreviewWorld20.parse(root.toString());assertEquals(6,parsed.tile(0,10));assertTrue(parsed.canStand(0,10));
         assertEquals(parsed.toJson(),PreviewWorld20.parse(parsed.toJson()).toJson());
     }
+    private JSONObject stacked(int version) throws Exception {
+        JSONObject root=sample();root.put("version",version);JSONArray all=new JSONArray();for(int i=0;i<400;i++)all.put(new JSONArray().put(1));root.getJSONObject("world").put("blockStacks",all);return root;
+    }
+    private void rejectedStack(JSONObject root) throws Exception {
+        try {PreviewWorld20.parseStackedForValidation(root.toString());fail("invalid stacked world");}catch(org.json.JSONException expected){}
+    }
+    @Test public void stackedValidationPreservesBlocksAndEnforcesCliffs() throws Exception {
+        for(int version:new int[]{4,5,6,7,13,14,15,16,17}) {
+            JSONObject root=stacked(version),world=root.getJSONObject("world");JSONArray stacks=world.getJSONArray("blockStacks");
+            stacks.getJSONArray(10*20+10).put(2);world.getJSONArray("tiles").put(10*20+10,2);
+            stacks.getJSONArray(10*20+11).put(2).put(4);world.getJSONArray("tiles").put(10*20+11,4);
+            PreviewWorld20 parsed=PreviewWorld20.parseStackedForValidation(root.toString());
+            assertEquals(2,parsed.height(10,10));assertEquals(1,parsed.block(10,10,0));assertEquals(2,parsed.block(10,10,1));assertEquals(3,parsed.height(11,10));
+            assertTrue(parsed.canStep(9,10,10,10));assertTrue(parsed.canStep(10,10,11,10));assertFalse(parsed.canStep(11,10,12,10));
+            assertEquals(stacks.toString(),new JSONObject(parsed.toJson()).getJSONObject("world").getJSONArray("blockStacks").toString());
+            rejected(root); // import remains closed until Android draws/picks elevated tiles
+        }
+    }
+    @Test public void stackedVersionAndFootprintValidation() throws Exception {
+        JSONObject root=stacked(4),w=root.getJSONObject("world");w.getJSONArray("blockStacks").getJSONArray(0).put(1);rejectedStack(root); // house must be level
+        root=stacked(5);w=root.getJSONObject("world");w.put("orangeTrees",new JSONArray().put(new JSONObject().put("column",10).put("row",10)));
+        w.getJSONArray("blockStacks").getJSONArray(10*20+10).put(1);rejectedStack(root); // tree footprint not level
+        root=stacked(15);w=root.getJSONObject("world");w.put("bridges",new JSONArray().put(new JSONObject().put("column",10).put("row",10).put("axis","E").put("material","wood")));
+        w.getJSONArray("blockStacks").getJSONArray(10*20+11).put(1);rejectedStack(root); // bridge footprint not level
+        root=stacked(13);w=root.getJSONObject("world");w.getJSONArray("blockStacks").getJSONArray(10*20+10).put(7).put(1);rejectedStack(root); // hidden grass-top requires v14
+        root.put("version",14);PreviewWorld20.parseStackedForValidation(root.toString());
+        root=stacked(4);w=root.getJSONObject("world");w.getJSONArray("blockStacks").getJSONArray(10*20+10).put(2);rejectedStack(root); // top mismatch
+        root=stacked(4);root.getJSONObject("world").remove("blockStacks");rejectedStack(root);
+        root=stacked(3);rejectedStack(root);
+    }
     @Test public void rejectsUnknownOrMalformedData() throws Exception {
         JSONObject root=sample(); root.getJSONObject("world").put("objects",new JSONArray()); rejected(root);
         root=sample(); root.getJSONObject("world").getJSONObject("house").put("design","new"); rejected(root);
