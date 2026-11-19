@@ -95,13 +95,13 @@
   function baseFitZoom() { return 9 / ISLAND_GRID_SIZE; }
   // Interior tile faces stay shallow; exposed perimeter faces extend through the grass band.
   const ISLAND_TILE_SIDE_DEPTH = 2.5;
-  // Explicit side-wall bands: 8 units of grass above 16 units of exposed soil.
-  const ISLAND_GRASS_BAND_DEPTH = 8;
+  // Half-height grass block band above the unchanged 16-unit soil underside.
+  const ISLAND_GRASS_BAND_DEPTH = 4;
   const ISLAND_SOIL_BAND_DEPTH = 16;
   // The green cap overhangs the narrower soil body along the front perimeter.
   const ISLAND_GRASS_OVERHANG = 4;
   const ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
-  // A stacked block has the same height as the island’s grass band.
+  // World levels and the grass block band share the same half-height.
   const BLOCK_HEIGHT = ISLAND_GRASS_BAND_DEPTH;
   const ISLAND_BASE_BOTTOM_MARGIN = 8;
   const ISLAND_VERTICAL_LIFT = 10;
@@ -1218,16 +1218,17 @@
       ctx.restore();
     }
   }
-  // In-memory ramp rendering; persistence/editor integration is not enabled yet.
+  // Ramps inherit block proportions and use their own selected material.
   // Faces use the same material palette as blocks and only front-facing sides.
   function drawRamp(tile, direction, material, palette) {
     const shape=window.RampGeometry?.create(direction,ISLAND_TILE_WIDTH,islandTileHeight,BLOCK_HEIGHT);
     if(!shape)return;
     const grassTop=material>=7 && material<=10, base=grassTop?({7:2,8:4,9:5,10:6})[material]:material;
     const terrain={3:'#75cbd0',4:'#b8b2a7',5:'#dac695',6:'#bd7549'};
-    const side=base===1?(tile.variant===0?palette.grassTileSoftFern:palette.grassTileFernSage):base===2?blendColor(palette.soilLight,'#d49d65',.4):base===4?blendColor(terrain[4],palette.soilDark,.08):blendColor(terrain[base]||'#ae8b68',palette.grassDark,.12);
+    let side=base===1?(tile.variant===0?palette.grassTileSoftFern:palette.grassTileFernSage):base===2?blendColor(palette.soilLight,'#d49d65',.4):base===4?blendColor(terrain[4],palette.soilDark,.08):blendColor(terrain[base]||'#ae8b68',palette.grassDark,.12);
+    if(base!==1 && tile.variant!==0)side=blendColor(side,'#000000',.06);
     const top=grassTop?(tile.variant===0?palette.grassTileSoftFern:palette.grassTileFernSage):side;
-    const polygon=(face,color)=>drawSmoothIslandPolygon(face.map(p=>[tile.x+p.x,tile.y+p.y]),color,color);
+    const polygon=(face,color)=>drawSmoothIslandPolygon(face.map(p=>[tile.x+p.x,tile.y+p.y]),color,color,blendColor(color,'#000000',.12),.35);
     ctx.save();if(material===3)ctx.globalAlpha*=.64;
     for(const face of shape.sideFaces) {
       const u=face.every(p=>p.u===1),v=face.every(p=>p.v===1);
@@ -1247,12 +1248,13 @@
     if(borders && falls.right) borders.right=false;
     const grassTop=material>=7 && material<=10;
     const baseMaterial=grassTop ? ({7:2,8:4,9:5,10:6})[material] : material;
-    const lightTile = tile.variant === 0;
+    const lightTile = (tile.column+tile.row+level)%2 === 0;
     const terrain = {2:'#ae8b68', 3:'#75cbd0', 4:'#b8b2a7', 5:'#dac695', 6:'#bd7549'};
-    const fill = baseMaterial === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
+    let fill = baseMaterial === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
       : baseMaterial === 2 ? blendColor(palette.soilLight, '#d49d65', 0.4)
       : baseMaterial === 4 ? blendColor(terrain[4],palette.soilDark,0.08)
       : blendColor(terrain[baseMaterial] || terrain[2], palette.grassDark, 0.12);
+    if(baseMaterial!==1 && !lightTile)fill=blendColor(fill,'#000000',.06);
     const halfWidth = ISLAND_TILE_WIDTH / 2 - (material===3 ? 0 : 0.05);
     const halfHeight = islandTileHeight / 2 - (material===3 ? 0 : 0.025);
     const cornerRadius = material===3 ? 0 : 1.4;
@@ -1369,7 +1371,7 @@
         ctx.closePath();
       }, centerX - halfWidth, centerY + cutY,
       centerX, centerY + halfHeight + depth,
-      blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade));
+      blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade+.12), .35);
     } else {
       drawSmoothIslandPath(() => {
         ctx.moveTo(centerX, splitY);
@@ -1385,7 +1387,7 @@
         ctx.closePath();
       }, centerX, centerY + cutY,
       centerX + halfWidth, centerY + halfHeight + depth,
-      blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade));
+      blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade+.12), .35);
     }
   }
 
@@ -2334,7 +2336,7 @@
         const ramp=ramps.get(index),rampLevel=stack ? stack.length-1 : 0;
         if(ramp && tileVisible({...tile,y:tile.y-(rampLevel+1)*BLOCK_HEIGHT},BLOCK_HEIGHT)) {
           ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${rampLevel}`)||0))/100;
-          drawRamp({...tile,y:tile.y-rampLevel*BLOCK_HEIGHT},ramp.direction,ramp.material ?? tileData[index],palette);ctx.restore();
+          drawRamp({...tile,variant:(tile.column+tile.row+rampLevel+1)%2,y:tile.y-rampLevel*BLOCK_HEIGHT},ramp.direction,ramp.material ?? tileData[index],palette);ctx.restore();
         }
       }
     } else {

@@ -37,7 +37,7 @@
       const rail={top:'#c69c68',front:'#a6784f',side:'#80583b'},post={top:'#d0ab79',front:'#a67c56',side:'#79543d'};
       // Two stout rails run between posts; the square posts have visible end and top faces.
       box(joins.linkA?0:.04,joins.linkB?1:.96,-.30,.30,5.2,7.3,rail);box(joins.linkA?0:.04,joins.linkB?1:.96,-.30,.30,10.1,12.2,rail);
-      if(joins.postA!==false)box(-.065,.065,-.65,.65,0,15+8*(joins.postExtraA||0),post);if(joins.postB!==false)box(.935,1.065,-.65,.65,0,15+8*(joins.postExtraB||0),post);
+      if(joins.postA!==false)box(-.065,.065,-.65,.65,0,15+4*(joins.postExtraA||0),post);if(joins.postB!==false)box(.935,1.065,-.65,.65,0,15+4*(joins.postExtraB||0),post);
       mark(.18,.43,.305,6.1,6.3,'#8e694a');mark(.50,.77,.305,11,11.2,'#8e694a');
     }
     return output;

@@ -14,7 +14,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
      const center=sceneEditing.centre({column:10,row:10,blockHeight:height});
      const depth=2*(sceneEditing.centre({column:11,row:10,blockHeight:height}).y-center.y);
      for(const direction of ['N','E','S','W']){
-       world.ramps=[{column:10,row:10,direction}];const shape=RampGeometry.create(direction,28,depth,8);
+       world.ramps=[{column:10,row:10,direction}];const shape=RampGeometry.create(direction,28,depth,4);
        const faces=[shape.topFace,...shape.sideFaces.filter(f=>f.every(p=>p.u===1)||f.every(p=>p.v===1)),...(['E','S'].includes(direction)?[shape.highFace]:[])];
        for(const face of faces){const x=center.x+face.reduce((n,p)=>n+p.x,0)/face.length,y=center.y+face.reduce((n,p)=>n+p.y,0)/face.length;const selected=sceneEditing.tileAt({x,y});result.push({height,direction,selected});}
      }

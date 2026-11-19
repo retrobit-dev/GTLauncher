@@ -61,8 +61,8 @@ final class FenceMesh {
         } else {
             m.box(joins!=null && joins.linkA?0:.04f,joins!=null && joins.linkB?1:.96f,-.30f,.30f,5.2f,7.3f,0xffc69c68,0xffa6784f,0xff80583b);
             m.box(joins!=null && joins.linkA?0:.04f,joins!=null && joins.linkB?1:.96f,-.30f,.30f,10.1f,12.2f,0xffc69c68,0xffa6784f,0xff80583b);
-            if(joins==null || joins.postA)m.box(-.065f,.065f,-.65f,.65f,0,15+8*(joins==null?0:joins.postExtraA),0xffd0ab79,0xffa67c56,0xff79543d);
-            if(joins==null || joins.postB)m.box(.935f,1.065f,-.65f,.65f,0,15+8*(joins==null?0:joins.postExtraB),0xffd0ab79,0xffa67c56,0xff79543d);
+            if(joins==null || joins.postA)m.box(-.065f,.065f,-.65f,.65f,0,15+4*(joins==null?0:joins.postExtraA),0xffd0ab79,0xffa67c56,0xff79543d);
+            if(joins==null || joins.postB)m.box(.935f,1.065f,-.65f,.65f,0,15+4*(joins==null?0:joins.postExtraB),0xffd0ab79,0xffa67c56,0xff79543d);
             m.mark(.18f,.43f,.305f,6.1f,6.3f,0xff8e694a);m.mark(.50f,.77f,.305f,11,11.2f,0xff8e694a);
         }
         return m.faces;
