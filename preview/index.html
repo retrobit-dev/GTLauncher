@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#e2e4e1">
   <title>GTLauncher — Live Weather Preview</title>
-  <link rel="stylesheet" href="./styles.css?v=live-sky-66">
+  <link rel="stylesheet" href="./styles.css?v=live-sky-67">
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./fence-edges.js?v=1" defer></script>
   <script src="./bridge-geometry.js?v=3" defer></script>
-  <script src="./worlds.js?v=47" defer></script>
-  <script src="./object-editor.js?v=27" defer></script>
+  <script src="./worlds.js?v=48" defer></script>
+  <script src="./object-editor.js?v=28" defer></script>
   <script src="./pond-life.js?v=1" defer></script>
   <script src="./house-geometry.js?v=2" defer></script>
   <script src="./orange-tree-motion.js?v=2" defer></script>
@@ -187,6 +187,7 @@
     <div class="world-content"><section class="object-catalog" aria-labelledby="object-catalog-title">
       <h3 id="object-catalog-title">Katalog objek</h3>
       <p class="world-help catalog-intro">Pilih objek, lalu ketuk tile pada peta untuk menempatkannya.</p>
+      <p id="catalog-replace-status" class="world-help" role="status" hidden></p><button id="catalog-replace-cancel" class="world-secondary" type="button" hidden>Batal ganti</button>
       <div class="catalog-tabs" role="tablist" aria-label="Jenis objek">
         <button id="catalog-tab-buildings" type="button" role="tab" aria-controls="catalog-panel-buildings" aria-selected="true" tabindex="0">Bangunan</button>
         <button id="catalog-tab-plants" type="button" role="tab" aria-controls="catalog-panel-plants" aria-selected="false" tabindex="-1">Tanaman dan pohon</button>

@@ -22,6 +22,8 @@
     tab.addEventListener('click',()=>selectCatalogTab(index));
     tab.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();selectCatalogTab(event.key==='Home'?0:event.key==='End'?catalogTabs.length-1:(index+1)%catalogTabs.length,true);});
   });
+  let catalogReplacement=null;
+  const objectSets=world=>({trees:(world.orangeTrees||[]).map(o=>({...o})),fences:(world.fences||[]).map(o=>({...o})),bridges:(world.bridges||[]).map(o=>({...o}))});
   function renderLibrary() {
     const world = window.worldManager.getActive();
     $('object-library-world').textContent = `World: ${world.name}`;
@@ -36,20 +38,57 @@
     for(const kind of ['wood','stone']) { $('catalog-place-fence-'+kind).disabled=world.id==='base' || !Array.isArray(world.tiles); for(const suffix of ['', '-4','-5']) $('catalog-place-bridge-'+kind+suffix).disabled=world.id==='base' || !Array.isArray(world.tiles); }
     $('catalog-place-wild-grass').disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-house-status').textContent=world.id==='base' ? 'Base World terkunci. Buka world buatan untuk menempatkan rumah.' : exists ? 'World ini sudah memiliki rumah player. Pindahkan rumah yang ada bila diperlukan.' : !Array.isArray(world.tiles) ? 'World lama ini tidak mendukung penempatan rumah.' : 'Pilih tombol, lalu ketuk sudut pertama tapak pada peta.';
-    const objects = [];
-    const character = window.worldManager.getCharacter();
-    if (character.visible) objects.push(`Karakter · ${columnLabel(character.column)}${character.row + 1}`);
-    const house = window.worldManager.getHouse?.();
-    if (house) objects.push(`Rumah player · ${columnLabel(house.column)}${house.row + 1}–${columnLabel(house.column + 2)}${house.row + 3}${house.visible ? '' : ' (tersembunyi)'}`);
-    for(const tree of world.orangeTrees||[]) objects.push(`${tree.kind==='bush'?(tree.variant==='flower'?'Semak melati':tree.variant==='berry'?'Semak murbei':'Semak'):tree.kind==='wild-grass'?'Rumput liar':tree.kind==='conifer'?'Pohon cemara laut':'Pohon jeruk'} · ${columnLabel(tree.column)}${tree.row+1}–${columnLabel(tree.column+(tree.size||2)-1)}${tree.row+(tree.size||2)}`);
-    for(const bridge of world.bridges||[]) objects.push(`Jembatan ${bridge.material==='wood'?'kayu':'batu'} · ${columnLabel(bridge.column)}${bridge.row+1} · ${bridge.length||3}×1`);
-    for(const fence of world.fences||[]) objects.push(`${fence.material==='stone-tall'?'Tembok tinggi':fence.material==='wood'?'Pagar kayu':'Pagar batu'} · ${columnLabel(fence.column)}${fence.row+1} · ${fence.edge}`);
-    if (!objects.length) objects.push('Belum ada objek yang ditampilkan.');
-    for (const label of objects) {
-      const row = document.createElement('div');
-      row.className = 'world-card'; row.textContent = label; libraryList.append(row);
+    $('catalog-replace-status').hidden=!catalogReplacement;$('catalog-replace-cancel').hidden=!catalogReplacement;
+    $('catalog-replace-status').textContent=catalogReplacement?`Ganti ${catalogReplacement.label}: pilih objek pengganti di katalog. Posisi awal tetap; tapak diperiksa sebelum disimpan.`:'';
+    const character=window.worldManager.getCharacter(),house=window.worldManager.getHouse?.();
+    function row(label,image,key,index,object,protectedObject=false) {
+      const node=document.createElement('div');node.className='world-card catalog-placed-row';
+      const icon=document.createElement('img');icon.className='catalog-placed-icon';icon.src=image;icon.alt='';node.append(icon);
+      const detail=document.createElement('div');detail.className='world-card-details';detail.textContent=label;node.append(detail);
+      if(protectedObject){const note=document.createElement('small');note.textContent='Tidak melalui daftar';node.append(note);}
+      else {
+        const actions=document.createElement('div');actions.className='catalog-placed-actions';
+        for(const [action,path] of [['replace','M4 8h13l-3-3m3 3-3 3M20 16H7l3-3m-3 3 3 3'],['delete','M4 6h16M9 6V4h6v2m3 0-1 14H7L6 6m4 4v6m4-6v6']]) {
+          const button=document.createElement('button');button.type='button';button.className='catalog-action';button.dataset.action=action;button.setAttribute('aria-label',`${action==='replace'?'Ganti':'Hapus'} ${label}`);button.title=action==='replace'?'Ganti objek':'Hapus objek';button.disabled=!editing || world.id==='base';
+          const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');const line=document.createElementNS('http://www.w3.org/2000/svg','path');line.setAttribute('d',path);svg.append(line);button.append(svg);
+          button.addEventListener('click',()=>{if(action==='replace'){deactivateTerrain();syncControls();catalogReplacement={worldId:world.id,key,index,object:{...object},expected:objectSets(world),label};renderLibrary();selectCatalogTab(0);$('object-library-dialog').scrollTop=0;}
+            else if(window.confirm(`Hapus ${label}? Data panen terkait tidak dipindahkan.`)){const before=objectSets(window.worldManager.getActive());if(world.id!==window.worldManager.getActive().id || JSON.stringify(before[key][index])!==JSON.stringify(object)){tell('Objek sudah berubah; data tidak diubah.');return;}const next={trees:before.trees.map(o=>({...o})),fences:before.fences.map(o=>({...o})),bridges:before.bridges.map(o=>({...o}))};next[key].splice(index,1);if(saveCatalogObjects(before,next)){catalogReplacement=null;renderLibrary();tell('EDITING · Objek dihapus.');}else tell('EDITING · Objek tidak dapat dihapus; data tidak diubah.');}});
+          actions.append(button);
+        }node.append(actions);
+      }libraryList.append(node);
     }
+    if(character.visible)row(`Karakter · ${columnLabel(character.column)}${character.row+1}`,'assets/player-character.png',null,0,null,true);
+    if(house)row(`Rumah player · ${columnLabel(house.column)}${house.row+1}${house.visible?'':' (tersembunyi)'}`,'assets/simple-house-aligned.png',null,0,null,true);
+    (world.orangeTrees||[]).forEach((t,i)=>{const label=t.kind==='bush'?(t.variant==='flower'?'Semak melati':t.variant==='berry'?'Semak murbei':'Semak'):t.kind==='wild-grass'?'Rumput liar':t.kind==='conifer'?'Pohon cemara laut':'Pohon jeruk';const image=t.kind==='bush'?(t.variant==='flower'?'assets/bush-jasmine.png':t.variant==='berry'?'assets/bush-mulberry.png':'assets/bush-selected.png'):t.kind==='wild-grass'?'assets/wild-grass-selected.png':t.kind==='conifer'?'assets/cemara-laut-redesign.png':'assets/orange-tree-pixel.png';row(`${label} · ${columnLabel(t.column)}${t.row+1}`,image,'trees',i,t);});
+    (world.bridges||[]).forEach((b,i)=>row(`Jembatan ${b.material==='wood'?'kayu':'batu'} · ${columnLabel(b.column)}${b.row+1} · ${b.length||3}×1`,`assets/bridge-${b.material}.png`,'bridges',i,b));
+    (world.fences||[]).forEach((f,i)=>row(`${f.material==='stone-tall'?'Tembok tinggi':f.material==='wood'?'Pagar kayu':'Pagar batu'} · ${columnLabel(f.column)}${f.row+1} · ${f.edge}`,`assets/fence-mesh-${f.material}.png`,'fences',i,f));
+    if(!libraryList.childElementCount){const empty=document.createElement('p');empty.textContent='Belum ada objek yang ditampilkan.';libraryList.append(empty);}
   }
+  $('catalog-replace-cancel').addEventListener('click',()=>{catalogReplacement=null;renderLibrary();});
+  libraryDialog.addEventListener('close',()=>{catalogReplacement=null;});
+  function replacementForButton(id,source) {
+    const position={column:source.object.column,row:source.object.row};
+    if(id==='catalog-place-orange')return {key:'trees',object:position};
+    if(id==='catalog-place-conifer' || id==='catalog-place-conifer-small')return {key:'trees',object:{...position,kind:'conifer',...(id.endsWith('-small')?{size:1}:{})}};
+    if(id==='catalog-place-wild-grass')return {key:'trees',object:{...position,kind:'wild-grass',size:1}};
+    const bush=id.match(/^catalog-place-bush(?:-(flower|berry))?(-large)?$/);
+    if(bush){const variant=bush[1],object={...position,kind:'bush',size:bush[2]?2:1,...(variant?{variant,plantId:(globalThis.crypto.randomUUID?.() || Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('')),plantedAt:Date.now()}:{})};return {key:'trees',object};}
+    const fence=id.match(/^catalog-place-fence-(wood|stone|stone-tall)$/);
+    if(fence)return {key:'fences',object:{...position,edge:source.key==='fences'?source.object.edge:'S',material:fence[1]}};
+    const bridge=id.match(/^catalog-place-bridge-(wood|stone)(?:-(4|5))?$/);
+    if(bridge)return {key:'bridges',object:{...position,axis:source.key==='bridges'?source.object.axis:'E',material:bridge[1],...(bridge[2]?{length:Number(bridge[2])}:{})}};
+    return null;
+  }
+  libraryDialog.addEventListener('click',event=>{
+    if(!catalogReplacement)return;const button=event.target.closest('.catalog-tile');if(!button)return;
+    event.preventDefault();event.stopImmediatePropagation();const source=catalogReplacement,nextItem=replacementForButton(button.id,source);
+    if(!nextItem){$('catalog-replace-status').textContent='Karakter dan rumah player tidak dapat digunakan sebagai pengganti di sini.';return;}
+    if(!window.confirm(`Ganti ${source.label}? Posisi awal dipertahankan; identitas dan siklus tanaman baru dimulai ulang.`))return;
+    const before=source.expected,next={trees:before.trees.map(o=>({...o})),fences:before.fences.map(o=>({...o})),bridges:before.bridges.map(o=>({...o}))};
+    if(source.worldId!==worldId || JSON.stringify(before[source.key][source.index])!==JSON.stringify(source.object)){catalogReplacement=null;renderLibrary();tell('EDITING · Objek berubah; data tidak diubah.');return;}
+    next[source.key].splice(source.index,1);next[nextItem.key].push(nextItem.object);
+    if(saveCatalogObjects(before,next)){catalogReplacement=null;renderLibrary();tell('EDITING · Objek diganti.');}else $('catalog-replace-status').textContent='Penggantian gagal: tapak, player, world, atau penyimpanan tidak aman. Objek lama tetap ada.';
+  },true);
   $('object-library-button').addEventListener('click', () => {
     if(editing){clearGroup();selected=false;refresh();syncControls();} renderLibrary(); if (!libraryDialog.open) libraryDialog.showModal();
   });
@@ -206,6 +245,7 @@
   function stepHistory(from, to, label) {
     if (!editing || !history || pendingTerrain || pointers.size || dialog.open || !from.length) return;
     const next = from[from.length - 1];
+    if(next.type==='catalogObjects'){const before=objectSets(window.worldManager.getActive());applyingHistory=true;let saved;try{saved=window.worldManager.replaceCatalogObjects(worldId,before,next.value);}finally{applyingHistory=false;}if(!saved){tell('EDITING · Riwayat objek tidak dapat diterapkan.');return;}from.pop();to.push({type:'catalogObjects',value:before});history.last=snapshot();selected=false;refresh();syncControls();tell(`EDITING · ${label}: objek.`);return;}
     if(next.type==='group') {const before=groupSnapshot();applyingHistory=true;let saved;try{saved=window.worldManager.replaceObjectGroup(worldId,before,next.value);}finally{applyingHistory=false;}if(!saved){tell('EDITING · Riwayat grup tidak dapat diterapkan.');return;}from.pop();to.push({type:'group',value:before});history.last=snapshot();clearGroup();selected=false;movingObject=false;refresh();syncControls();tell(`EDITING · ${label}: grup objek.`);return;}
     if(next.type==='bridges') {const before=(window.worldManager.getActive().bridges||[]).map(b=>({...b}));applyingHistory=true;let saved;try{saved=window.worldManager.replaceBridges(worldId,before,next.value);}finally{applyingHistory=false;}if(!saved){tell('EDITING · Riwayat jembatan tidak dapat diterapkan.');return;}from.pop();to.push({type:'bridges',value:before});history.last=snapshot();selected=false;selectedBridgeIndex=null;refresh();syncControls();return;}
     if(next.type==='fences') {
@@ -393,6 +433,7 @@
     placingHouse=false;placingFence=null;placingBridge=null;placingOrange=false;placementWorld=null;
   }
   $('object-placement-cancel').addEventListener('click',()=>{placingHouse=false;placingOrange=false;placingFence=null;placingBridge=null;placementWorld=null;syncControls();tell('EDITING · Penempatan objek dibatalkan.');});
+  function saveCatalogObjects(before,next) {if(!editing || !history)return false;applyingHistory=true;let saved;try{saved=window.worldManager.replaceCatalogObjects(worldId,before,next);}finally{applyingHistory=false;}if(saved){history.undo.push({type:'catalogObjects',value:before});if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();syncControls();}return saved;}
   function saveBridges(before,next) {applyingHistory=true;let saved;try{saved=window.worldManager.replaceBridges(worldId,before,next);}finally{applyingHistory=false;}if(saved){history.undo.push({type:'bridges',value:before.map(b=>({...b}))});if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();}return saved;}
   function saveFences(before,next) {
     applyingHistory=true;let saved;try{saved=window.worldManager.replaceFences(worldId,before,next);}finally{applyingHistory=false;}

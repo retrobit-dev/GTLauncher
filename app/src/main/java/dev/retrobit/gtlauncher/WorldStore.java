@@ -710,6 +710,25 @@ final class WorldStore {
         }
         return false;
     }
+    /** Atomically delete or replace one supported preview object at its original anchor. */
+    boolean editCatalogObject(String worldId,String sourceKey,int index,String expected,String targetKey,JSONObject target) throws JSONException {
+        java.util.List<String> keys=java.util.Arrays.asList("orangeTrees","fences","bridges");
+        if(worldId==null || !worldId.equals(activeId()) || !keys.contains(sourceKey) || (target!=null && !keys.contains(targetKey)))return false;
+        World world=activeWorld();if(world==null || world.previewData==null)return false;
+        JSONObject root=new JSONObject(world.previewData.toJson()),data=root.getJSONObject("world");JSONArray source=data.optJSONArray(sourceKey);
+        if(source==null || index<0 || index>=source.length() || !source.getJSONObject(index).toString().equals(expected))return false;
+        JSONObject old=source.getJSONObject(index);
+        if(target!=null && (target.optInt("column",-1)!=old.getInt("column") || target.optInt("row",-1)!=old.getInt("row")))return false;
+        source.remove(index);if(source.length()==0)data.remove(sourceKey);else data.put(sourceKey,source);
+        if(target!=null){
+            if(targetKey.equals("orangeTrees") && world.showCharacter){int size=target.optInt("size",2),c=target.getInt("column"),r=target.getInt("row");if(world.characterColumn>=c && world.characterColumn<c+size && world.characterRow>=r && world.characterRow<r+size)return false;}
+            JSONArray dest=data.optJSONArray(targetKey);if(dest==null)dest=new JSONArray();dest.put(new JSONObject(target.toString()));data.put(targetKey,dest);
+            int needed=targetKey.equals("bridges")?(target.has("length")?16:15):targetKey.equals("fences")?("stone-tall".equals(target.optString("material"))?17:13):target.has("plantId")?12:"bush".equals(target.optString("kind"))?(target.optInt("size",1)==2?11:10):"wild-grass".equals(target.optString("kind"))?9:target.has("size")?8:7;
+            root.put("version",Math.max(world.previewData.version,needed));
+        }
+        PreviewWorld20 parsed;try{parsed=PreviewWorld20.parse(root.toString());}catch(JSONException invalid){return false;}
+        List<World> worlds=list();for(int i=0;i<worlds.size();i++)if(worldId.equals(worlds.get(i).id)){worlds.set(i,fromPreview(parsed));return saveWorlds(worlds,worldId);}return false;
+    }
     boolean editPreviewBridge(String worldId,BridgeGeometry.Bridge expected,int column,int row,boolean delete) throws JSONException {
         if(worldId==null || !worldId.equals(activeId()) || expected==null)return false;
         World world=activeWorld();if(world==null || world.previewData==null)return false;

@@ -349,6 +349,17 @@ public class PortalImportTest {
         JSONObject older=new JSONObject(saved.previewData.toJson());older.put("version",16);older.getJSONObject("world").getJSONArray("fences").getJSONObject(0).put("material","stone");try{store.upsertAndSelect(WorldStore.parseExport(older.toString()));fail("cannot downgrade tall walls");}catch(JSONException expected){}
         assertEquals("preview-stone-tall",store.activeWorld().surfaces.get(0).material);
     }
+    @Test public void catalogReplacementIsAtomicAndRejectsStaleOrBlockedObjects() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1)));
+        assertTrue(store.placePreviewPlant("home",10,10,"wild-grass",1,null));assertTrue(store.placePreviewFence("home",12,10,"S","stone"));
+        JSONObject root=new JSONObject(store.activeWorld().previewData.toJson());String expected=root.getJSONObject("world").getJSONArray("orangeTrees").getJSONObject(0).toString();
+        JSONObject bridge=new JSONObject().put("column",10).put("row",10).put("axis","E").put("material","wood");String before=store.activeWorld().previewData.toJson();
+        assertFalse(store.editCatalogObject("home","orangeTrees",0,expected,"bridges",bridge));assertEquals(before,store.activeWorld().previewData.toJson());
+        JSONObject fence=new JSONObject().put("column",10).put("row",10).put("edge","N").put("material","stone-tall");assertTrue(store.editCatalogObject("home","orangeTrees",0,expected,"fences",fence));
+        assertEquals(17,store.activeWorld().previewData.version);assertEquals(2,store.activeWorld().surfaces.size());assertFalse(store.editCatalogObject("home","orangeTrees",0,expected,null,null));
+        JSONObject data=new JSONObject(store.activeWorld().previewData.toJson()).getJSONObject("world");String wall=data.getJSONArray("fences").getJSONObject(1).toString();
+        assertTrue(store.editCatalogObject("home","fences",1,wall,null,null));assertEquals(1,store.activeWorld().surfaces.size());
+    }
     @Test public void grassToppedBlocksRoundTripAndRejectOldImports() throws JSONException {
         SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
         org.json.JSONObject root=new org.json.JSONObject(portableWorld(14,7));org.json.JSONArray tiles=root.getJSONObject("world").getJSONArray("tiles");tiles.put(1,8);tiles.put(2,9);tiles.put(3,10);

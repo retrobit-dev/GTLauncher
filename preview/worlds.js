@@ -77,6 +77,20 @@
     if(house)for(let r=house.row;r<house.row+3;r++)for(let c=house.column;c<house.column+3;c++)if(treeAt(candidate,c,r))return false;
     return commit({...state,worlds:state.worlds.map(w=>{if(w.id!==id)return w;const copy={...w};if(next.trees.length)copy.orangeTrees=next.trees.map(t=>({...t}));else delete copy.orangeTrees;if(next.fences.length)copy.fences=next.fences.map(f=>({...f}));else delete copy.fences;return copy;})});
   }
+  // Compare-and-swap all portable object collections in one write, including
+  // cross-category replacement. Failed validation never removes the original.
+  function replaceCatalogObjects(id,expected,next) {
+    const world=activeWorld(),size=world.gridSize;
+    if(id==='base' || world.id!==id || !Array.isArray(world.tiles) || ![20,25,50,100].includes(size) ||
+       !['trees','fences','bridges'].every(k=>Array.isArray(expected[k]) && Array.isArray(next[k])) ||
+       JSON.stringify(world.orangeTrees||[])!==JSON.stringify(expected.trees) || JSON.stringify(world.fences||[])!==JSON.stringify(expected.fences) || JSON.stringify(world.bridges||[])!==JSON.stringify(expected.bridges))return false;
+    const candidate={...world,orangeTrees:next.trees,fences:next.fences,bridges:next.bridges};
+    if(!validOrangeTrees(next.trees,size) || !validFences(next.fences,candidate) || !validBridges(candidate) || !validTreeGround(candidate,world.tiles))return false;
+    const player=getCharacter(world),house=getHouse(world);
+    if(player.visible && (solidTreeAt(candidate,player.column,player.row) || (treeAt(candidate,player.column,player.row) && !treeAt(world,player.column,player.row))))return false;
+    if(house)for(let r=house.row;r<house.row+3;r++)for(let c=house.column;c<house.column+3;c++)if(treeAt(candidate,c,r))return false;
+    return commit({...state,worlds:state.worlds.map(w=>{if(w.id!==id)return w;const copy={...w};for(const [key,value] of [['orangeTrees',next.trees],['fences',next.fences],['bridges',next.bridges]]){if(value.length)copy[key]=value.map(o=>({...o}));else delete copy[key];}return copy;})});
+  }
   function treeAt(world,column,row) { return (world.orangeTrees||[]).some(t=>column>=t.column && column<t.column+(t.size||2) && row>=t.row && row<t.row+(t.size||2)); }
   function solidTreeAt(world,column,row) { return (world.orangeTrees||[]).some(t=>t.kind!=='wild-grass' && t.kind!=='bush' && column>=t.column && column<t.column+(t.size||2) && row>=t.row && row<t.row+(t.size||2)); }
   function validTreeGround(world, tiles, stacks=world.blockStacks) {
@@ -715,7 +729,7 @@
     const tiles=world.tiles.slice();tiles[index]=6;
     return updateTiles(id,tiles);
   }
-  window.worldManager = Object.freeze({getActive: activeWorld, replaceBridges, replaceObjectGroup, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, replacePlayerHouse, replaceOrangeTrees, replaceFences, updateTiles, updateBlockStacks, tillTile});
+  window.worldManager = Object.freeze({getActive: activeWorld, replaceBridges, replaceObjectGroup, replaceCatalogObjects, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, replacePlayerHouse, replaceOrangeTrees, replaceFences, updateTiles, updateBlockStacks, tillTile});
   render();
   if (homeUpgraded) announce('Home diperbarui menjadi 25×25. Cadangan sebelum perubahan tersedia untuk diunduh.');
   else if (storageError) announce(storageError);

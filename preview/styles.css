@@ -470,3 +470,9 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 
 .object-selection-area { position:absolute; z-index:20; pointer-events:none; border:1px dashed #fff; background:rgba(255,255,255,.14); box-shadow:0 0 0 1px rgba(0,0,0,.45); }
 .object-selection-area[hidden] { display:none; }
+.catalog-placed-row { flex-wrap:nowrap; padding:7px 9px; }
+.catalog-placed-icon { width:36px; height:36px; object-fit:contain; flex:none; }
+.catalog-placed-actions { display:flex; gap:4px; flex:none; }
+.catalog-action { width:38px; height:38px; display:grid; place-items:center; background:transparent; color:#344b3b; border:1px solid #9aac9e; border-radius:8px; cursor:pointer; }
+.catalog-action:disabled { opacity:.4; cursor:not-allowed; }
+.catalog-action svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }

@@ -921,10 +921,62 @@ public class HomeActivity extends Activity {
                 card.setOnClickListener(v->{dialog.dismiss();applyActiveWorld();placingPlantKind=kind;placingPlantVariant=variant;placingPlantSize=size;setPlacementWorld(world.id);closeDrawer();
                     Toast.makeText(this,"Ketuk tile kering untuk menempatkan "+name+". Buka World untuk membatalkan.",Toast.LENGTH_LONG).show();});
             }
+            addPlacedCatalogObjects(panel,world,dialog);
             dialog.show();
         } catch(JSONException error) {
             Toast.makeText(this,"World tidak dapat dibaca; data tidak diubah.",Toast.LENGTH_LONG).show();
         }
+    }
+    private void addPlacedCatalogObjects(LinearLayout panel,WorldStore.World world,AlertDialog catalog) throws JSONException {
+        TextView title=new TextView(this);title.setText("Objek di world ini");title.setTextColor(Color.rgb(52,75,59));title.setTypeface(null,android.graphics.Typeface.BOLD);title.setPadding(0,dp(16),0,dp(6));panel.addView(title);
+        TextView info=new TextView(this);info.setText("Karakter dan rumah tidak dapat diubah melalui daftar ini. Pilih ikon ganti atau hapus pada objek lainnya.");info.setTextColor(Color.rgb(75,95,78));panel.addView(info);
+        if(world.showCharacter)addProtectedCatalogRow(panel,"Karakter",R.drawable.character_hud_current);
+        if(world.hasHouse)addProtectedCatalogRow(panel,"Rumah player",R.drawable.simple_house_aligned);
+        JSONObject data=new JSONObject(world.previewData.toJson()).getJSONObject("world");
+        for(String key:new String[]{"orangeTrees","fences","bridges"}) {
+            JSONArray array=data.optJSONArray(key);if(array==null)continue;
+            for(int index=0;index<array.length();index++) {
+                JSONObject item=array.getJSONObject(index);final int selected=index;final String expected=item.toString();
+                String name;int icon;
+                if(key.equals("fences")){String m=item.getString("material");name=m.equals("wood")?"Pagar kayu":m.equals("stone-tall")?"Tembok batu tinggi":"Pagar batu";icon=m.equals("wood")?R.drawable.fence_mesh_wood:m.equals("stone-tall")?R.drawable.fence_mesh_stone_tall:R.drawable.fence_mesh_stone;}
+                else if(key.equals("bridges")){boolean wood=item.getString("material").equals("wood");name=(wood?"Jembatan kayu ":"Jembatan batu ")+item.optInt("length",3)+"×1";icon=wood?R.drawable.bridge_wood:R.drawable.bridge_stone;}
+                else {String kind=item.getString("kind"),variant=item.optString("variant","");name=kind.equals("conifer")?"Cemara laut":kind.equals("wild-grass")?"Rumput liar":variant.equals("flower")?"Semak melati":variant.equals("berry")?"Semak murbei":"Semak";icon=kind.equals("conifer")?R.drawable.cemara_laut_redesign:kind.equals("wild-grass")?R.drawable.wild_grass_selected:variant.equals("flower")?R.drawable.bush_jasmine:variant.equals("berry")?R.drawable.bush_mulberry:R.drawable.bush_selected;}
+                LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);panel.addView(row);
+                ImageView image=new ImageView(this);image.setImageResource(icon);image.setScaleType(ImageView.ScaleType.FIT_CENTER);row.addView(image,new LinearLayout.LayoutParams(dp(44),dp(44)));
+                TextView label=new TextView(this);label.setText(name+" · "+(item.getInt("column")+1)+","+(item.getInt("row")+1));label.setTextColor(Color.rgb(52,75,59));row.addView(label,new LinearLayout.LayoutParams(0,dp(48),1));
+                ImageView replace=new ImageView(this);replace.setImageResource(R.drawable.ic_catalog_replace);replace.setContentDescription("Ganti "+name);replace.setPadding(dp(10),dp(10),dp(10),dp(10));replace.setClickable(true);row.addView(replace,new LinearLayout.LayoutParams(dp(48),dp(48)));
+                ImageView delete=new ImageView(this);delete.setImageResource(R.drawable.ic_catalog_delete);delete.setContentDescription("Hapus "+name);delete.setPadding(dp(10),dp(10),dp(10),dp(10));delete.setClickable(true);row.addView(delete,new LinearLayout.LayoutParams(dp(48),dp(48)));
+                replace.setOnClickListener(v->showCatalogReplacement(world.id,key,selected,expected,catalog));
+                delete.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Hapus objek?").setMessage("Data panen terkait tidak dipindahkan.").setPositiveButton("Hapus",(d,w)->{
+                    try{boolean ok=worldStore.editCatalogObject(world.id,key,selected,expected,null,null);Toast.makeText(this,ok?"Objek dihapus.":"Objek berubah atau tidak dapat dihapus; data tetap aman.",Toast.LENGTH_LONG).show();if(ok){catalog.dismiss();applyActiveWorld();showObjectCatalog();}}
+                    catch(JSONException e){Toast.makeText(this,"World tidak berubah.",Toast.LENGTH_LONG).show();}
+                }).setNegativeButton("Batal",null).show());
+            }
+        }
+    }
+    private void addProtectedCatalogRow(LinearLayout panel,String label,int resource) {
+        LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);ImageView image=new ImageView(this);image.setImageResource(resource);image.setScaleType(ImageView.ScaleType.FIT_CENTER);row.addView(image,new LinearLayout.LayoutParams(dp(44),dp(44)));TextView text=new TextView(this);text.setText(label+" · Tidak melalui daftar");text.setTextColor(Color.rgb(52,75,59));row.addView(text);panel.addView(row);
+    }
+    private void showCatalogReplacement(String worldId,String key,int index,String expected,AlertDialog catalog) {
+        try {
+            JSONObject source=new JSONObject(expected);LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(12),dp(10),dp(12),dp(10));ScrollView scroll=new ScrollView(this);scroll.addView(panel);
+            TextView prompt=new TextView(this);prompt.setText("Pilih objek pengganti. Posisi awal tetap; tapak diperiksa.");panel.addView(prompt);
+            GridLayout grid=new GridLayout(this);grid.setColumnCount(3);panel.addView(grid);
+            AlertDialog choices=new AlertDialog.Builder(this).setTitle("Ganti objek").setView(scroll).setNegativeButton("Batal",null).create();
+            String[] labels={"Pagar kayu","Pagar batu","Tembok tinggi","Jembatan kayu 3×1","Jembatan kayu 4×1","Jembatan kayu 5×1","Jembatan batu 3×1","Jembatan batu 4×1","Jembatan batu 5×1","Cemara laut 2×2","Cemara laut 1×1","Rumput liar","Semak 1×1","Semak 2×2","Melati 1×1","Melati 2×2","Murbei 1×1","Murbei 2×2"};
+            int[] icons={R.drawable.fence_mesh_wood,R.drawable.fence_mesh_stone,R.drawable.fence_mesh_stone_tall,R.drawable.bridge_wood,R.drawable.bridge_wood,R.drawable.bridge_wood,R.drawable.bridge_stone,R.drawable.bridge_stone,R.drawable.bridge_stone,R.drawable.cemara_laut_redesign,R.drawable.cemara_laut_redesign,R.drawable.wild_grass_selected,R.drawable.bush_selected,R.drawable.bush_selected,R.drawable.bush_jasmine,R.drawable.bush_jasmine,R.drawable.bush_mulberry,R.drawable.bush_mulberry};
+            for(int i=0;i<labels.length;i++){final int choice=i;LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);card.setBackgroundResource(R.drawable.bg_portal_button);card.setContentDescription(labels[i]);card.setFocusable(true);card.setClickable(true);
+                ImageView icon=new ImageView(this);icon.setImageResource(icons[i]);icon.setScaleType(ImageView.ScaleType.FIT_CENTER);card.addView(icon,new LinearLayout.LayoutParams(dp(48),dp(44)));TextView text=new TextView(this);text.setText(labels[i]);text.setGravity(Gravity.CENTER);text.setTextColor(Color.rgb(52,75,59));card.addView(text);GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(80);cell.setMargins(dp(2),dp(2),dp(2),dp(2));grid.addView(card,cell);
+                card.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Ganti objek?").setMessage("Identitas dan siklus tanaman pengganti dimulai ulang. Objek lama tetap ada jika tapak tidak aman.").setPositiveButton("Ganti",(d,w)->{
+                    try{int c=source.getInt("column"),r=source.getInt("row");JSONObject target=new JSONObject().put("column",c).put("row",r);String targetKey;
+                        if(choice<3){targetKey="fences";target.put("edge",key.equals("fences")?source.getString("edge"):"S").put("material",new String[]{"wood","stone","stone-tall"}[choice]);}
+                        else if(choice<9){targetKey="bridges";int length=3+(choice-3)%3;target.put("axis",key.equals("bridges")?source.getString("axis"):"E").put("material",choice<6?"wood":"stone");if(length>3)target.put("length",length);}
+                        else{targetKey="orangeTrees";if(choice<11){target.put("kind","conifer");if(choice==10)target.put("size",1);}else if(choice==11)target.put("kind","wild-grass").put("size",1);else {target.put("kind","bush").put("size",choice%2==0?1:2);if(choice>=14)target.put("variant",choice<16?"flower":"berry").put("plantId",java.util.UUID.randomUUID().toString()).put("plantedAt",System.currentTimeMillis());}}
+                        boolean ok=worldStore.editCatalogObject(worldId,key,index,expected,targetKey,target);Toast.makeText(this,ok?"Objek diganti.":"Tapak tidak aman atau objek berubah; data tidak diubah.",Toast.LENGTH_LONG).show();if(ok){choices.dismiss();catalog.dismiss();applyActiveWorld();showObjectCatalog();}
+                    }catch(JSONException e){Toast.makeText(this,"World tidak berubah.",Toast.LENGTH_LONG).show();}
+                }).setNegativeButton("Batal",null).show());
+            }choices.show();
+        }catch(JSONException error){Toast.makeText(this,"Objek tidak dapat dibaca.",Toast.LENGTH_LONG).show();}
     }
     private void placeWildGrassAt(float x,float y) {
         String id=placingWildGrassWorld;
