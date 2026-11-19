@@ -248,6 +248,14 @@ public class PortalImportTest {
                 .put("showCharacter",true).put("characterColumn",5).put("characterRow",5).put("characterScale",1).put("characterFacing","S");
         return new org.json.JSONObject().put("format","gtlauncher-preview-world").put("version",version).put("world",w).toString();
     }
+    @Test public void houseHitMatchesEquivalentReloadedWorldRecords() throws Exception {
+        JSONObject root=new JSONObject(portableWorld(18,1));
+        root.getJSONObject("world").put("house",new JSONObject().put("column",0).put("row",0).put("scale",1).put("facing","S").put("visible",true).put("opacity",40));
+        WorldStore.House a=WorldStore.parseExport(root.toString()).houses.get(0),b=WorldStore.parseExport(root.toString()).houses.get(0);
+        assertTrue(a!=b);assertTrue(WorldStore.sameHouse(a,b));
+        root.getJSONObject("world").getJSONObject("house").put("opacity",45);
+        assertFalse(WorldStore.sameHouse(a,WorldStore.parseExport(root.toString()).houses.get(0)));assertFalse(WorldStore.sameHouse(null,b));
+    }
     @Test public void previewHouseOpacityPersistsAndDowngradeIsRejected() throws Exception {
         JSONObject root=new JSONObject(portableWorld(18,1));
         root.getJSONObject("world").put("house",new JSONObject().put("column",0).put("row",0).put("scale",1).put("facing","S").put("visible",true).put("opacity",40));

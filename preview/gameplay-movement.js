@@ -178,7 +178,7 @@
     const frontHouse=house?.visible && front.column>=house.column && front.column<house.column+3 && front.row>=house.row && front.row<house.row+3;
     const hitFront=tile && tile.column===front.column && tile.row===front.row;
     const hitCharacter=!hitFront && !hitHouse && scene.hit?.(local,character);
-    if(selected && (hitCharacter || ((hitFront || hitHouse) && selected==='hand' && frontHouse))) {
+    if(selected && (hitCharacter || (hitHouse && selected==='hand' && frontHouse))) {
       scene.setGameplayRoute?.(null);
       if(selected==='hand') {
         if(frontHouse && objectDialog){cancel();selectedHouse={id:worlds.getActive().id,house:{...house}};objectDialog.showModal();tell('Rumah dipilih.');}

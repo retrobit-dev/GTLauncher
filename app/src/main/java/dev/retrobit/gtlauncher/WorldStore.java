@@ -573,7 +573,7 @@ final class WorldStore {
         }
         return bag;
     }
-    private static boolean sameHouse(House a,House b) {
+    static boolean sameHouse(House a,House b) {
         return a!=null && b!=null && a.column==b.column && a.row==b.row && a.visible==b.visible && a.scale==b.scale
                 && a.opacity==b.opacity && java.util.Objects.equals(a.id,b.id) && java.util.Objects.equals(a.design,b.design) && a.facing.equals(b.facing);
     }

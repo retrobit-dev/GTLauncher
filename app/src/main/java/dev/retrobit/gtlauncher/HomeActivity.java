@@ -311,7 +311,7 @@ public class HomeActivity extends Activity {
                     if(w!=null && w.showCharacter && !groundActive){PortalTravel.Tile front=GameplayTarget.front(w.characterColumn,w.characterRow,w.characterFacing);PortalTravel.Tile hit=skyView.groundTileAt(event.getX(),event.getY());
                         if(front!=null){WorldStore.SurfaceObject o=frontSurface(w,front);WorldStore.House h=frontHouse(w,front);
                             if(o!=null && (skyView.surfaceObjectAt(o,event.getX(),event.getY()) || front.equals(hit)))dragSurface[0]=o;
-                            else if(h!=null && (skyView.houseAt(event.getX(),event.getY())==h || front.equals(hit)))dragHouse[0]=h;
+                            else if(h!=null && WorldStore.sameHouse(skyView.houseAt(event.getX(),event.getY()),h))dragHouse[0]=h;
                             if(dragSurface[0]!=null || dragHouse[0]!=null){dragWorld[0]=w.id;dragStart[0]=hit;}
                         }
                     }
@@ -574,7 +574,8 @@ public class HomeActivity extends Activity {
             boolean frontHit=front.equals(target);
             boolean spriteHit=object!=null && skyView.surfaceObjectAt(object,x,y);
             boolean characterHit=!frontHit && !spriteHit && skyView.characterAt(x,y);
-            boolean handTarget=portal!=null && frontHit || house!=null && frontHit || object!=null && (spriteHit || (frontHit && (object.type.equals("road") || object.type.equals("fence") || object.type.equals("flower"))));
+            boolean hitHouse=house!=null && WorldStore.sameHouse(skyView.houseAt(x,y),house);
+            boolean handTarget=portal!=null && frontHit || hitHouse || object!=null && (spriteHit || (frontHit && (object.type.equals("road") || object.type.equals("fence") || object.type.equals("flower"))));
             if(selectedTool!=-1 && (characterHit || (selectedTool==R.id.dock_tool_hand && handTarget))) {
                 if(selectedTool==R.id.dock_tool_hand) {
                     if(house!=null || object!=null || portal!=null)showHandObjectMenu(world.id,house,object,portal);
