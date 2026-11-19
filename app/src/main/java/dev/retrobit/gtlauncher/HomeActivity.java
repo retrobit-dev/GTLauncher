@@ -173,6 +173,7 @@ public class HomeActivity extends Activity {
     private WeatherSkyView skyView;
     private int selectedTool = -1;
     private String movingObjectWorld;
+    private String placingWildGrassWorld;
     private WorldStore.House movingHouse;
     private WorldStore.SurfaceObject movingSurface;
     private WorldStore worldStore;
@@ -303,7 +304,8 @@ public class HomeActivity extends Activity {
                 if (deltaY < -dp(72) && Math.abs(deltaY) > Math.abs(deltaX) * 1.15f) {
                     openDrawer();
                 } else if (gameplayMode && Math.hypot(deltaX,deltaY) < dp(8)) {
-                    gameplayTap(event.getX(),event.getY());
+                    if(placingWildGrassWorld!=null) placeWildGrassAt(event.getX(),event.getY());
+                    else gameplayTap(event.getX(),event.getY());
                 }
                 return true;
             }
@@ -376,6 +378,7 @@ public class HomeActivity extends Activity {
     @Override
     protected void onPause() {
         stopBatteryUpdates();
+        placingWildGrassWorld=null;
         portalWalkGeneration++;
         if (skyView != null) { skyView.setPortalWalkActive(false); applyActiveWorld(); }
         mainHandler.removeCallbacks(dayNightRefresh);
@@ -542,7 +545,7 @@ public class HomeActivity extends Activity {
         } catch(JSONException error){Toast.makeText(this,"World tidak dapat dibaca.",Toast.LENGTH_SHORT).show();}
     }
     private void showHandObjectMenu(String worldId,WorldStore.House house,WorldStore.SurfaceObject object,PortalTravel.Portal portal) {
-        boolean small=WorldStore.portableSmall(object),movable=house!=null || small;
+        boolean small=WorldStore.portableSmall(object),movable=house!=null || small || WorldStore.isPreviewGrass(object);
         java.util.List<String> actions=new java.util.ArrayList<>();
         actions.add(small?"Ambil ke tas (belum bisa ditaruh kembali)":"Ambil — tidak tersedia");
         actions.add(movable?"Pindahkan":"Pindahkan — tidak tersedia");
@@ -760,6 +763,7 @@ public class HomeActivity extends Activity {
     }
 
     private void showWorldDialog() {
+        placingWildGrassWorld=null;
         final List<WorldStore.World> worlds;
         try {
             worlds = worldStore.list();
@@ -790,7 +794,50 @@ public class HomeActivity extends Activity {
                         Toast.makeText(this, "Pilihan world tidak dapat disimpan.", Toast.LENGTH_LONG).show();
                     }
                 }).setNeutralButton("Impor world", (dialog, which) -> chooseWorldFile())
+                .setPositiveButton("Katalog objek", (dialog, which) -> showObjectCatalog())
                 .setNegativeButton("Tutup", null).show();
+    }
+
+    private void showObjectCatalog() {
+        try {
+            WorldStore.World world=worldStore.activeWorld();
+            if(world==null || world.previewData==null || !world.showCharacter) {
+                Toast.makeText(this,"Pilih world datar dengan karakter untuk menempatkan objek.",Toast.LENGTH_LONG).show();return;
+            }
+            LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(16),dp(8),dp(16),dp(8));
+            TextView group=new TextView(this);group.setText("Tanaman");group.setTextColor(Color.rgb(52,75,59));group.setTypeface(null,android.graphics.Typeface.BOLD);panel.addView(group);
+            GridLayout grid=new GridLayout(this);grid.setColumnCount(2);panel.addView(grid);
+            LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);
+            card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundResource(R.drawable.bg_portal_button);
+            card.setFocusable(true);card.setClickable(true);card.setContentDescription("Tempatkan rumput liar, tapak satu kali satu");
+            ImageView image=new ImageView(this);image.setImageResource(R.drawable.wild_grass_selected);image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            card.addView(image,new LinearLayout.LayoutParams(dp(96),dp(64)));
+            TextView caption=new TextView(this);caption.setText("Rumput liar · 1×1");caption.setTextColor(Color.rgb(52,75,59));caption.setGravity(Gravity.CENTER);card.addView(caption);
+            GridLayout.LayoutParams cell=new GridLayout.LayoutParams();cell.width=dp(140);cell.height=GridLayout.LayoutParams.WRAP_CONTENT;cell.setMargins(0,dp(8),dp(8),0);grid.addView(card,cell);
+            AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Katalog objek").setView(panel).setNegativeButton("Batal",null).create();
+            card.setOnClickListener(v->{
+                dialog.dismiss();applyActiveWorld();placingWildGrassWorld=world.id;closeDrawer();
+                Toast.makeText(this,"Ketuk tile kering untuk menempatkan rumput liar. Buka World untuk membatalkan.",Toast.LENGTH_LONG).show();
+            });dialog.show();
+        } catch(JSONException error) {
+            Toast.makeText(this,"World tidak dapat dibaca; data tidak diubah.",Toast.LENGTH_LONG).show();
+        }
+    }
+    private void placeWildGrassAt(float x,float y) {
+        String id=placingWildGrassWorld;
+        if(id==null)return;
+        if(!id.equals(worldStore.activeId())) {placingWildGrassWorld=null;return;}
+        PortalTravel.Tile tile=skyView.groundTileAt(x,y);
+        try {
+            if(tile==null || !worldStore.placeWildGrass(id,tile.column,tile.row)) {
+                Toast.makeText(this,"Pilih tile kering yang kosong, tanpa rumah atau player.",Toast.LENGTH_LONG).show();return;
+            }
+            placingWildGrassWorld=null;applyActiveWorld();
+            Toast.makeText(this,"Rumput liar ditempatkan.",Toast.LENGTH_SHORT).show();
+        } catch(JSONException | IllegalArgumentException error) {
+            placingWildGrassWorld=null;
+            Toast.makeText(this,"Objek tidak tersimpan; data world tidak diubah.",Toast.LENGTH_LONG).show();
+        }
     }
 
     private void chooseWorldFile() {

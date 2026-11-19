@@ -1,6 +1,7 @@
 const assert=require('node:assert/strict'),{chromium}=require('playwright-core');
 (async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader']});try{
-const page=await browser.newPage({viewport:{width:1000,height:700},reducedMotion:'reduce'});
+const page=await browser.newPage({viewport:{width:1000,height:700},reducedMotion:'reduce'});page.setDefaultTimeout(90000);
+await page.route('**/api.open-meteo.com/**',r=>r.abort());
 await page.addInitScript(()=>{if(!localStorage.getItem('gtlauncher.worlds.v1')){const tiles=Array(2500).fill(1);tiles[24*50+27]=3;localStorage.setItem('gtlauncher.worlds.v1',JSON.stringify({activeId:'orchard',worlds:[{id:'orchard',name:'Orchard',description:'',color:'#a8c795',gridSize:50,tiles,showCharacter:true,characterColumn:24,characterRow:24,characterScale:1,characterFacing:'S',house:null}]}))}});
 await page.goto(process.env.PREVIEW_URL||'http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});await page.locator('#mode-map-editor').click();await page.evaluate(()=>sceneEditing.setCamera(3,0,40));
 const clickTile=async p=>{const xy=await page.evaluate(p=>{const r=document.querySelector('#sky-canvas').getBoundingClientRect(),o=sceneEditing.toLocal(r.left,r.top),z=sceneEditing.camera().renderZoom,n=sceneEditing.centre(p);return{x:r.left+(n.x-o.x)*z*r.width/320,y:r.top+(n.y-o.y)*z*r.height/200}},p);await page.mouse.click(xy.x,xy.y)};

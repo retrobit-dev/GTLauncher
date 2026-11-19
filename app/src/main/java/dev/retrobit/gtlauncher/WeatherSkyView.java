@@ -503,7 +503,7 @@ public final class WeatherSkyView extends View {
                     boolean small=o.material.equals("banana") || o.material.equals("palm");width=small?24:(o.material.equals("orange") && "ripe".equals(treeStage(o.material)) && !isHarvested(o)?60f*512f/490f:48);height=small?30:60;bottom=y+ISLAND_TILE_HEIGHT*(small?.275f:o.material.equals("orange")?.5f:1.05f);
                 } break;
             case "sunflower": width=15;height=23;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
-            case "bush": width=o.material.equals("wild-grass")?28f:18.5f;height=o.material.equals("wild-grass")?14f:14.5f;bottom=y+ISLAND_TILE_HEIGHT*.325f;break;
+            case "bush": width=o.material.equals("wild-grass")?28f:18.5f;height=o.material.equals("wild-grass")?14f:14.5f;bottom=y+(o.material.equals("wild-grass") && o.edge!=null?0:ISLAND_TILE_HEIGHT*.325f);break;
             case "mailbox": width=13;height=30;bottom=y+ISLAND_TILE_HEIGHT*.15f;break;
             default: width=18;height=18;bottom=y+ISLAND_TILE_HEIGHT*.15f;
         }
@@ -527,7 +527,7 @@ public final class WeatherSkyView extends View {
             Bitmap image; boolean mirror=false;
             if(o.type.equals("tree")) {image=treeImage(o);mirror=o.material.startsWith("conifer") && ("W".equals(o.edge)||"E".equals(o.edge));}
             else if(o.type.equals("sunflower")) { image=(o.material.equals("N")||o.material.equals("W"))?sunflowerBack:sunflowerFront;mirror=o.material.equals("N")||o.material.equals("E"); }
-            else if(o.type.equals("bush")) image=o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:o.material.equals("tiered")?bushTiered:o.material.equals("flower")?bushFlower:o.material.equals("berry")?bushBerry:bushRound;
+            else if(o.type.equals("bush")) {image=o.material.equals("wild-grass")?wildGrass:o.material.equals("spiky")?bushSpiky:o.material.equals("tiered")?bushTiered:o.material.equals("flower")?bushFlower:o.material.equals("berry")?bushBerry:bushRound;mirror=o.material.equals("wild-grass") && ("W".equals(o.edge)||"E".equals(o.edge));}
             else if(o.type.equals("mailbox")) image=mailboxBirdhouse;
             else {boolean back=o.material.equals("N")||o.material.equals("W"),opened=openStorage.contains(o.column+","+o.row);
                 mirror=o.material.equals("N")||o.material.equals("E");
@@ -819,7 +819,7 @@ public final class WeatherSkyView extends View {
             } else if(front) {
                 Bitmap sprite=surfaceImage(o);if(sprite==null)continue;
                 boolean flipped=((o.type.equals("sunflower") || o.type.equals("storage-box") || o.type.equals("selling-box")) && (o.material.equals("N")||o.material.equals("E")))
-                        || (o.type.equals("tree") && o.material.startsWith("conifer") && ("W".equals(o.edge)||"E".equals(o.edge)));
+                        || ((o.type.equals("tree") && o.material.startsWith("conifer") || o.type.equals("bush") && o.material.equals("wild-grass")) && ("W".equals(o.edge)||"E".equals(o.edge)));
                 if(fenceOverlaps(image,f,mirror,sprite,surfaceSpriteBounds(o),flipped))return true;
             }
         }

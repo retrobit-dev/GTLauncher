@@ -64,7 +64,7 @@ final class PreviewWorld20 {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 3 && version != 7 && version != 8) throw new JSONException("Unsupported world version");
+        if (version > 3 && version != 7 && version != 8 && version != 9) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         if(version>=7 && !w.has("orangeTrees")) throw new JSONException("Unsupported world version");
         // Flat conifer-only worlds are supported. Stacks and other tree kinds remain rejected.
@@ -104,9 +104,11 @@ final class PreviewWorld20 {
             for(int i=0;i<trees.length();i++) {
                 Object value=trees.get(i);if(!(value instanceof JSONObject)) throw new JSONException("Unsupported object");
                 JSONObject tree=(JSONObject)value;keys(tree,"column","row","kind","size","facing");
-                if(!"conifer".equals(string(tree,"kind"))) throw new JSONException("Unsupported object");
+                String kind=string(tree,"kind");
+                if(!"conifer".equals(kind) && !(version>=9 && "wild-grass".equals(kind))) throw new JSONException("Unsupported object");
                 int footprint=2;
                 if(tree.has("size")) {if(version<8 || integer(tree,"size",1,1)!=1)throw new JSONException("Unsupported object");footprint=1;}
+                if("wild-grass".equals(kind) && (!tree.has("size") || footprint!=1)) throw new JSONException("Unsupported object");
                 if(tree.has("facing"))facing(tree,"facing");
                 int tc=integer(tree,"column",0,size-footprint),tr=integer(tree,"row",0,size-footprint);
                 for(int y=tr;y<tr+footprint;y++)for(int x=tc;x<tc+footprint;x++) {

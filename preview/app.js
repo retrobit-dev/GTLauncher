@@ -53,9 +53,12 @@
   const coniferTreeImage = new Image();
   coniferTreeImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};
   coniferTreeImage.src='./assets/conifer-tree.png?v=1';
-  const treeSprite=tree=>tree.kind==='conifer'?coniferTreeImage:orangeTreeImage;
+  const wildGrassImage=new Image();wildGrassImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};wildGrassImage.src='./assets/wild-grass-selected.png?v=1';
+  const treeSprite=tree=>tree.kind==='wild-grass'?wildGrassImage:tree.kind==='conifer'?coniferTreeImage:orangeTreeImage;
   const treeSize=tree=>tree.size===1?1:2;
-  const treeVisualScale=tree=>treeSize(tree)/2;
+  const treeVisualScale=tree=>tree.kind==='wild-grass'?14/60:treeSize(tree)/2;
+  const treeWidth=tree=>tree.kind==='wild-grass'?28:ORANGE_TREE_WIDTH*treeVisualScale(tree);
+  const treeHeight=tree=>ORANGE_TREE_HEIGHT*treeVisualScale(tree);
   // Preserve the approved artwork's aspect ratio at a 60-unit height.
   const ORANGE_TREE_HEIGHT=60, ORANGE_TREE_WIDTH=ORANGE_TREE_HEIGHT*512/490;
   const PLAYER_WIDTH = 13.5;
@@ -1870,7 +1873,7 @@
           const m=mask.getContext('2d');m.drawImage(sprite,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);
           characterShadowMasks.set(sprite,mask);
         }
-        const scale=treeVisualScale(tree),width=ORANGE_TREE_WIDTH*scale,height=ORANGE_TREE_HEIGHT*scale;
+        const scale=treeVisualScale(tree),width=treeWidth(tree),height=treeHeight(tree);
         const anchor=orangeTreeAnchor(tree), projection=window.TreeShadow.projection(anchor,lightPoint,width,height,LANGIT_MATAHARI_LIFT,orangeTreeSway(tree)*scale);
         ctx.save();ctx.translate(anchor.x,anchor.y);ctx.scale(projection.scale,projection.scale);ctx.transform(1,0,projection.shear,projection.vertical,0,0);
         if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
@@ -1923,7 +1926,7 @@
     const sprite=treeSprite(tree);
     if(!sprite.complete || !sprite.naturalWidth)return;
     const centre=orangeTreeAnchor(tree);
-    const scale=treeVisualScale(tree),bottom=centre.y, width=ORANGE_TREE_WIDTH*scale,height=ORANGE_TREE_HEIGHT*scale;
+    const scale=treeVisualScale(tree),bottom=centre.y, width=treeWidth(tree),height=treeHeight(tree);
     const sway=orangeTreeSway(tree)*scale;
     ctx.save();applyIslandTransform();ctx.translate(centre.x,bottom);ctx.transform(1,0,-sway/height,1,0,0);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
@@ -1939,7 +1942,7 @@
   }
   function drawOrangeDrop(tree) {
     const world=window.worldManager?.getActive(),now=Date.now();
-    if(tree.kind==='conifer' || !window.OrangeDrops?.available(world,tree,now))return;
+    if(tree.kind!==undefined || !window.OrangeDrops?.available(world,tree,now))return;
     const p=orangeDropPosition(tree), progress=window.OrangeDrops.falling(now,REDUCED_MOTION);
     const y=p.y-(1-progress*progress)*ORANGE_TREE_HEIGHT*.58;
     ctx.save();applyIslandTransform();ctx.fillStyle='#b76a25';ctx.fillRect(p.x-1.5,y-1,3,3);
@@ -2629,7 +2632,7 @@
           let data=houseHitCache.get(sprite);
           if(!data){const c=document.createElement('canvas');c.width=128;c.height=128;const h=c.getContext('2d',{willReadFrequently:true});h.drawImage(sprite,0,0,128,128);data=h.getImageData(0,0,128,128).data;houseHitCache.set(sprite,data);}
           const centre=orangeTreeAnchor(tree),bottom=centre.y,scale=treeVisualScale(tree);
-          const width=ORANGE_TREE_WIDTH*scale,height=ORANGE_TREE_HEIGHT*scale;
+          const width=treeWidth(tree),height=treeHeight(tree);
           const x=point.x-centre.x+(point.y-bottom)*orangeTreeSway(tree)*scale/height;
           let u=(x+width/2)/width,v=(point.y-(bottom-height))/height;
           if(u<0||u>=1||v<0||v>=1)continue;

@@ -319,6 +319,37 @@ public class PortalImportTest {
             try {WorldStore.parseExport(copy.toString());fail("must reject unsupported, invalid or colliding data");}catch(JSONException expected){}
         }
     }
+    @Test public void placeAndImportWildGrassWithoutLosingWorld() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1))));
+        String before=p.getString("worlds_v1",null);
+        assertFalse(store.placeWildGrass("home",5,5));assertFalse(store.placeWildGrass("home",20,0));
+        assertEquals(before,p.getString("worlds_v1",null));
+        assertTrue(store.placeWildGrass("home",6,5));WorldStore.World w=store.activeWorld();
+        assertEquals(9,w.previewData.version);assertEquals("wild-grass",w.surfaces.get(0).material);assertEquals("bush",w.surfaces.get(0).type);
+        assertFalse(WorldStore.portableSmall(w.surfaces.get(0)));assertFalse(store.moveCharacter("home",6,5,"E"));
+        assertFalse(store.placeWildGrass("home",6,5));assertFalse(store.tillTile("home",6,5));
+        assertFalse(store.moveSelectedObject("home",null,w.surfaces.get(0),5,5));
+        assertTrue(store.moveSelectedObject("home",null,w.surfaces.get(0),7,5));
+        assertFalse(store.moveSelectedObject("home",null,w.surfaces.get(0),8,5));
+        assertEquals(7,store.activeWorld().surfaces.get(0).column);
+        assertTrue(store.tillTile("home",5,6));assertEquals(9,store.activeWorld().previewData.version);
+        String json=store.activeWorld().previewData.toJson();
+        assertEquals("wild-grass",WorldStore.parseExport(json).surfaces.get(0).material);
+        String saved=p.getString("worlds_v1",null);
+        try {store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1)));fail("older format erases grass");}catch(JSONException expected){}
+        assertEquals(saved,p.getString("worlds_v1",null));
+        org.json.JSONObject malformed=new org.json.JSONObject(json);malformed.put("version",8);
+        try {WorldStore.parseExport(malformed.toString());fail("grass requires v9");}catch(JSONException expected){}
+    }
+    @Test public void mixedFlatConiferAndGrassIsLossless() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(coniferWorld())));
+        assertTrue(store.placeWildGrass("home",7,5));
+        WorldStore.World w=store.activeWorld();assertEquals(3,w.surfaces.size());assertEquals(9,w.previewData.version);
+        assertEquals("wild-grass",w.surfaces.get(2).material);assertFalse(store.placeWildGrass("home",11,11));
+        assertEquals(3,WorldStore.parseExport(w.previewData.toJson()).surfaces.size());
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {
