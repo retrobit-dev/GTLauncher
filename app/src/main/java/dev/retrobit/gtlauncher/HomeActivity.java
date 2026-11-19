@@ -805,7 +805,7 @@ public class HomeActivity extends Activity {
                 Toast.makeText(this,"Pilih world datar dengan karakter untuk menempatkan objek.",Toast.LENGTH_LONG).show();return;
             }
             LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(16),dp(8),dp(16),dp(8));
-            TextView group=new TextView(this);group.setText("Tanaman");group.setTextColor(Color.rgb(52,75,59));group.setTypeface(null,android.graphics.Typeface.BOLD);panel.addView(group);
+            TextView group=new TextView(this);group.setText("Tanaman dan pohon");group.setTextColor(Color.rgb(52,75,59));group.setTypeface(null,android.graphics.Typeface.BOLD);panel.addView(group);
             GridLayout grid=new GridLayout(this);grid.setColumnCount(2);panel.addView(grid);
             LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);
             card.setPadding(dp(8),dp(8),dp(8),dp(8));card.setBackgroundResource(R.drawable.bg_portal_button);

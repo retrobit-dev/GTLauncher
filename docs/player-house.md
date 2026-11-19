@@ -20,4 +20,4 @@ Titik sudut pondasi belakang kanan kini dikalibrasi terpisah dari sisi kiri agar
 
 ## Katalog objek
 
-Katalog preview disusun dalam grid dengan kelompok **Bangunan** dan **Pohon**. Ketuk kartu objek untuk memulai penempatan; ukuran tapak ditampilkan pada kartu dan ketersediaan rumah tetap mengikuti aturan satu rumah per world. Katalog ini masih khusus preview; editor/katalog native Android belum tersedia.
+Katalog preview disusun dalam grid dengan kelompok **Bangunan** dan **Tanaman dan pohon**. Ketuk kartu objek untuk memulai penempatan; ukuran tapak ditampilkan pada kartu dan ketersediaan rumah tetap mengikuti aturan satu rumah per world. Android memiliki katalog terbatas untuk rumput liar; katalog dan editor lengkap belum tersedia di Android.

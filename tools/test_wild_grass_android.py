@@ -2,7 +2,7 @@ from pathlib import Path
 root=Path('app/src/main/java/dev/retrobit/gtlauncher')
 home=(root/'HomeActivity.java').read_text();view=(root/'WeatherSkyView.java').read_text();store=(root/'WorldStore.java').read_text();parser=(root/'PreviewWorld20.java').read_text()
 assert 'setPositiveButton("Katalog objek"' in home
-assert 'GridLayout grid=new GridLayout(this)' in home and 'setText("Tanaman")' in home
+assert 'GridLayout grid=new GridLayout(this)' in home and 'setText("Tanaman dan pohon")' in home
 assert 'placeWildGrassAt(event.getX(),event.getY())' in home
 assert 'worldStore.placeWildGrass(id,tile.column,tile.row)' in home
 assert 'WorldStore.isPreviewGrass(object)' in home
