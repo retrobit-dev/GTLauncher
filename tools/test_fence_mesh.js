@@ -1,6 +1,8 @@
 const assert=require('node:assert/strict');const {faces,contains}=require('../preview/fence-mesh.js');
 for(const b of [{x:14,y:7},{x:14,y:-7}]) {
  const a={x:0,y:0},wood=faces(a,b,'wood'),stone=faces(a,b,'stone');
+ const railEnd=wood[0].points,expectedU=b.y<0?.04:.96,nearX=b.x*expectedU;
+ assert(Math.abs((railEnd[0].x+railEnd[1].x)/2-nearX)<1e-8,'near end face switches with slope');
  assert.equal(wood.length,14);assert.equal(stone.length,28);
  for(const material of [wood,stone])for(const face of material) {
   assert.equal(face.points.length,4);assert(face.points.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)));

@@ -29,11 +29,14 @@ public class ElevatedTerrainGeometryTest {
         assertEquals(new PortalTravel.Tile(0,0),ElevatedTerrainGeometry.tileAt(cx-7,cy+12,2,h,160,100,28,14,8,20));
         assertEquals(null,ElevatedTerrainGeometry.tileAt(cx-7,cy+60,2,h,160,100,28,14,8,20));
     }
-    @Test public void fenceJunctionsOnlyMergeAtEqualElevation() {
+    @Test public void fenceJunctionSharesWoodPostAcrossElevations() {
         WorldStore.SurfaceObject a=new WorldStore.SurfaceObject("fence",0,0,"S","preview-wood","{}"), b=new WorldStore.SurfaceObject("fence",1,0,"S","preview-wood","{}");
         java.util.List<WorldStore.SurfaceObject> fences=java.util.Arrays.asList(a,b);
         java.util.Map<WorldStore.SurfaceObject,FenceJoins.Join> flat=FenceJoins.plan(fences,o->1),stepped=FenceJoins.plan(fences,o->o==a?1:2);
         assertTrue(flat.get(a).linkB || flat.get(a).linkA);assertTrue(flat.get(b).linkA || flat.get(b).linkB);
         assertFalse(stepped.get(a).linkA || stepped.get(a).linkB);assertFalse(stepped.get(b).linkA || stepped.get(b).linkB);
+        assertTrue(stepped.get(a).postB);assertFalse(stepped.get(b).postA);assertEquals(1,stepped.get(a).postExtraB);
+        java.util.List<FenceMesh.Face> faces=FenceMesh.faces(0,0,14,7,false,stepped.get(a));
+        boolean extendsAbove=false;for(FenceMesh.Face face:faces)for(int i=1;i<face.points.length;i+=2)if(face.points[i]<-15)extendsAbove=true;assertTrue(extendsAbove);
     }
 }

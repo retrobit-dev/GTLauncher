@@ -30,7 +30,8 @@ final class FenceMesh {
     private float x(float u,float v){return ax+(bx-ax)*u+nx*v;}
     private float y(float u,float v,float z){return ay+(by-ay)*u+ny*v-z;}
     private void box(float u0,float u1,float v0,float v1,float z0,float z1,int top,int front,int side) {
-        faces.add(new Face(side,x(u1,v0),y(u1,v0,z0),x(u1,v1),y(u1,v1,z0),x(u1,v1),y(u1,v1,z1),x(u1,v0),y(u1,v0,z1)));
+        float near=by>=ay?u1:u0;
+        faces.add(new Face(side,x(near,v0),y(near,v0,z0),x(near,v1),y(near,v1,z0),x(near,v1),y(near,v1,z1),x(near,v0),y(near,v0,z1)));
         faces.add(new Face(front,x(u0,v1),y(u0,v1,z0),x(u1,v1),y(u1,v1,z0),x(u1,v1),y(u1,v1,z1),x(u0,v1),y(u0,v1,z1)));
         faces.add(new Face(top,x(u0,v0),y(u0,v0,z1),x(u1,v0),y(u1,v0,z1),x(u1,v1),y(u1,v1,z1),x(u0,v1),y(u0,v1,z1)));
     }
@@ -60,8 +61,8 @@ final class FenceMesh {
         } else {
             m.box(joins!=null && joins.linkA?0:.04f,joins!=null && joins.linkB?1:.96f,-.30f,.30f,5.2f,7.3f,0xffc69c68,0xffa6784f,0xff80583b);
             m.box(joins!=null && joins.linkA?0:.04f,joins!=null && joins.linkB?1:.96f,-.30f,.30f,10.1f,12.2f,0xffc69c68,0xffa6784f,0xff80583b);
-            if(joins==null || joins.postA)m.box(-.065f,.065f,-.65f,.65f,0,15,0xffd0ab79,0xffa67c56,0xff79543d);
-            if(joins==null || joins.postB)m.box(.935f,1.065f,-.65f,.65f,0,15,0xffd0ab79,0xffa67c56,0xff79543d);
+            if(joins==null || joins.postA)m.box(-.065f,.065f,-.65f,.65f,0,15+8*(joins==null?0:joins.postExtraA),0xffd0ab79,0xffa67c56,0xff79543d);
+            if(joins==null || joins.postB)m.box(.935f,1.065f,-.65f,.65f,0,15+8*(joins==null?0:joins.postExtraB),0xffd0ab79,0xffa67c56,0xff79543d);
             m.mark(.18f,.43f,.305f,6.1f,6.3f,0xff8e694a);m.mark(.50f,.77f,.305f,11,11.2f,0xff8e694a);
         }
         return m.faces;
