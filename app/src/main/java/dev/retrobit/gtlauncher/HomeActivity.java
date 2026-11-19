@@ -937,8 +937,7 @@ public class HomeActivity extends Activity {
                 // Legacy saves may start inside a house. They can escape, but cannot re-enter.
                 for(WorldStore.House house:world.houses)if(house.covers(c,d) && !house.covers(a,b))return false;
                 for(WorldStore.SurfaceObject o:world.surfaces) if(o.type.equals("fence")) {
-                    int x=o.column+(o.edge.equals("E")?1:o.edge.equals("W")?-1:0),y=o.row+(o.edge.equals("S")?1:o.edge.equals("N")?-1:0);
-                    if((o.column==a && o.row==b && x==c && y==d) || (o.column==c && o.row==d && x==a && y==b)) return false;
+                    if(FenceEdges.blocks(o.column,o.row,o.edge,a,b,c,d)) return false;
                 }
                 return true;
             }

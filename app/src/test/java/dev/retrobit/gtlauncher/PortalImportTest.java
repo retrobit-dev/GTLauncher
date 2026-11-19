@@ -319,6 +319,14 @@ public class PortalImportTest {
             try {WorldStore.parseExport(copy.toString());fail("must reject unsupported, invalid or colliding data");}catch(JSONException expected){}
         }
     }
+    @Test public void fenceBoundaryBlocksBothDirectionsOnly() {
+        assertTrue(FenceEdges.blocks(4,5,"E",4,5,5,5));
+        assertTrue(FenceEdges.blocks(5,5,"W",5,5,4,5));
+        assertTrue(FenceEdges.blocks(4,6,"N",4,5,4,6));
+        assertFalse(FenceEdges.blocks(4,5,"E",4,5,4,6));
+        assertFalse(FenceEdges.blocks(4,5,"E",4,5,5,6));
+        assertFalse(FenceEdges.blocks(4,5,"?",4,5,5,5));
+    }
     @Test public void placeAndImportWildGrassWithoutLosingWorld() throws JSONException {
         SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
         assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1))));
