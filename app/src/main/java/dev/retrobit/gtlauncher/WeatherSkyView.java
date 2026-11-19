@@ -322,6 +322,7 @@ public final class WeatherSkyView extends View {
     }
     private float waterDepthAt(int column, int row) {
         if (worldTerrain == null || column < 0 || row < 0 || column >= ISLAND_GRID_SIZE || row >= ISLAND_GRID_SIZE) return 0f;
+        for(BridgeGeometry.Bridge bridge:worldTerrain.bridges)if(BridgeGeometry.indexAt(bridge,column,row)>=0)return 0f;
         return worldTerrain.tile(column,row)==3 ? ISLAND_GRASS_BAND_DEPTH : 0f;
     }
     private float visualWaterDepth() {
@@ -392,6 +393,7 @@ public final class WeatherSkyView extends View {
         for(int i=0;i<12;i++) {walkFront[i]=BitmapFactory.decodeResource(getResources(),frontFrames[i]);walkBack[i]=BitmapFactory.decodeResource(getResources(),backFrames[i]);}
         int[] runFrontFrames={R.drawable.character_run_front_00, R.drawable.character_run_front_01, R.drawable.character_run_front_02, R.drawable.character_run_front_03, R.drawable.character_run_front_04, R.drawable.character_run_front_05, R.drawable.character_run_front_06, R.drawable.character_run_front_07, R.drawable.character_run_front_08, R.drawable.character_run_front_09, R.drawable.character_run_front_10, R.drawable.character_run_front_11},runBackFrames={R.drawable.character_run_back_00, R.drawable.character_run_back_01, R.drawable.character_run_back_02, R.drawable.character_run_back_03, R.drawable.character_run_back_04, R.drawable.character_run_back_05, R.drawable.character_run_back_06, R.drawable.character_run_back_07, R.drawable.character_run_back_08, R.drawable.character_run_back_09, R.drawable.character_run_back_10, R.drawable.character_run_back_11};
         for(int i=0;i<12;i++) {runFront[i]=BitmapFactory.decodeResource(getResources(),runFrontFrames[i]);runBack[i]=BitmapFactory.decodeResource(getResources(),runBackFrames[i]);}
+        bridgeWood=BitmapFactory.decodeResource(getResources(),R.drawable.bridge_wood);bridgeStone=BitmapFactory.decodeResource(getResources(),R.drawable.bridge_stone);
         coniferTree = BitmapFactory.decodeResource(getResources(),R.drawable.cemara_laut_redesign);
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.simple_house_aligned);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.simple_house_back_aligned);
@@ -487,6 +489,7 @@ public final class WeatherSkyView extends View {
         worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects);
         grassConnections=GrassConnections.pairs(worldSurfaces);fenceJoins=FenceJoins.plan(worldSurfaces);invalidate();
     }
+    private Bitmap bridgeWood,bridgeStone;
     private PreviewWorld20 worldTerrain;
     private PondLife pondLife;
     private double pondWindX=0,pondWindY=0,pondWindLast=-1;
@@ -544,6 +547,16 @@ public final class WeatherSkyView extends View {
             paint.setColor(Color.WHITE);paint.setAlpha(alpha);paint.setFilterBitmap(true);canvas.drawBitmap(wildGrass,null,new RectF(-11,-11,11,0),paint);canvas.restoreToCount(saved);
         }
         paint.setAlpha(255);
+    }
+    private void drawBridges(Canvas canvas) {
+        if(worldTerrain==null)return;
+        for(BridgeGeometry.Bridge b:worldTerrain.bridges){
+            Bitmap image=b.material.equals("wood")?bridgeWood:bridgeStone;if(image==null)continue;
+            int c=b.column+(b.axis.equals("E")?1:0),r=b.row+(b.axis.equals("S")?1:0);
+            float x=SCENE_WIDTH/2f+(c-r)*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(c+r)*ISLAND_TILE_HEIGHT/2f;
+            float width=ISLAND_TILE_WIDTH*2.35f,height=ISLAND_TILE_WIDTH*1.56f;int save=canvas.save();canvas.translate(x,y);if(b.axis.equals("E"))canvas.scale(-1,1);
+            paint.setColor(Color.WHITE);paint.setAlpha(255);canvas.drawBitmap(image,null,new RectF(-width/2,-height*.62f,width/2,height*.38f),paint);canvas.restoreToCount(save);
+        }
     }
     private void drawSurfaceSprites(Canvas canvas,boolean front) {
         drawGrassBridges(canvas,front);
@@ -1453,6 +1466,7 @@ public final class WeatherSkyView extends View {
         drawRoads(scene);
         drawGameplayRoute(scene);
         drawSurfaceObjectShadows(scene, shadowLight, cloudCover, code);
+        drawBridges(scene);
         drawHouses(scene,false);
         drawFences(scene, false);
         drawSurfaceSprites(scene, false);

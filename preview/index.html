@@ -8,8 +8,9 @@
   <link rel="stylesheet" href="./styles.css?v=live-sky-66">
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./fence-edges.js?v=1" defer></script>
-  <script src="./worlds.js?v=44" defer></script>
-  <script src="./object-editor.js?v=24" defer></script>
+  <script src="./bridge-geometry.js?v=2" defer></script>
+  <script src="./worlds.js?v=45" defer></script>
+  <script src="./object-editor.js?v=25" defer></script>
   <script src="./pond-life.js?v=1" defer></script>
   <script src="./house-geometry.js?v=2" defer></script>
   <script src="./orange-tree-motion.js?v=2" defer></script>
@@ -24,11 +25,11 @@
   <script src="./fence-joins.js?v=1" defer></script>
   <script src="./player-idle-bow.js?v=8" defer></script>
   <script src="./sparrow-pet.js?v=5" defer></script>
-  <script src="./app.js?v=sky-271" defer></script>
+  <script src="./app.js?v=sky-272" defer></script>
   <script src="./preview-modes.js?v=2" defer></script>
   <script src="./editor-camera.js?v=7" defer></script>
   <script src="./terrain-tools.js?v=grass-top-107" defer></script>
-  <script src="./gameplay-path.js?v=108" defer></script>
+  <script src="./gameplay-path.js?v=109" defer></script>
   <script src="./gameplay-movement.js?v=22" defer></script>
   <script src="./season-estimate.js?v=1" defer></script>
   <script src="./hud.js?v=9" defer></script>
@@ -192,6 +193,8 @@
       <section id="catalog-panel-buildings" class="catalog-group" role="tabpanel" aria-labelledby="catalog-tab-buildings">
         <h4 id="catalog-buildings-title">Bangunan</h4>
         <div class="catalog-grid">
+          <button id="catalog-place-bridge-wood" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-wood.png" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">3×1 block</span></button>
+          <button id="catalog-place-bridge-stone" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-stone.png" alt=""></span><strong>Jembatan batu</strong><span class="catalog-footprint">3×1 block</span></button>
           <button id="catalog-place-fence-wood" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/fence-mesh-wood.png?v=1" alt=""></span><strong>Pagar kayu</strong><span class="catalog-footprint">Sisi tile</span></button>
           <button id="catalog-place-fence-stone" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/fence-mesh-stone.png?v=1" alt=""></span><strong>Pagar batu</strong><span class="catalog-footprint">Sisi tile</span></button>
           <button id="catalog-place-house" type="button" class="catalog-tile" aria-label="Tempatkan rumah player, tapak 3 kali 3" aria-describedby="catalog-house-status">

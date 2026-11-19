@@ -2,6 +2,7 @@ package dev.retrobit.gtlauncher;
 
 import org.junit.Test;
 import org.json.JSONException;
+import org.json.JSONObject;
 import android.content.SharedPreferences;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
@@ -318,6 +319,17 @@ public class PortalImportTest {
             if(scenario==5){t.put("column",10);t.put("row",10);}
             try {WorldStore.parseExport(copy.toString());fail("must reject unsupported, invalid or colliding data");}catch(JSONException expected){}
         }
+    }
+    @Test public void flatBridgesArePersistedAndProtectOldImports() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);JSONObject source=new JSONObject(portableWorld(3,1));source.getJSONObject("world").getJSONArray("tiles").put(10*20+11,3);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(source.toString())));assertTrue(store.placePreviewBridge("home",10,10,"E","wood"));
+        WorldStore.World saved=store.activeWorld();assertEquals(15,saved.previewData.version);assertEquals(1,saved.previewData.bridges.size());assertTrue(saved.previewData.canStep(10,10,11,10));assertFalse(saved.previewData.canStep(11,10,11,9));
+        assertTrue(saved.previewData.onBridge(11,10));assertFalse(store.placePreviewBridge("home",10,10,"E","stone"));
+        BridgeGeometry.Bridge bridge=saved.previewData.bridges.get(0);assertFalse(store.editPreviewBridge("home",bridge,-1,10,false));assertTrue(store.editPreviewBridge("home",bridge,12,10,false));saved=store.activeWorld();assertEquals(12,saved.previewData.bridges.get(0).column);assertFalse(store.editPreviewBridge("home",bridge,0,0,true));
+        assertTrue(store.editPreviewBridge("home",saved.previewData.bridges.get(0),10,10,false));saved=store.activeWorld();String before=p.getString("worlds_v1",null);
+        try{store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1)));fail("older import would discard bridges");}catch(JSONException expected){}assertEquals(before,p.getString("worlds_v1",null));
+        JSONObject root=new JSONObject(saved.previewData.toJson());root.put("version",14);try{WorldStore.parseExport(root.toString());fail("old version cannot contain bridges");}catch(JSONException expected){}
+        assertTrue(store.editPreviewBridge("home",saved.previewData.bridges.get(0),0,0,true));assertEquals(0,store.activeWorld().previewData.bridges.size());
     }
     @Test public void grassToppedBlocksRoundTripAndRejectOldImports() throws JSONException {
         SharedPreferences p=prefs();WorldStore store=new WorldStore(p);

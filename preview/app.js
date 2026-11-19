@@ -41,6 +41,7 @@
   // Full-image gait frames keep hands and feet connected to the body.
   const gaitFrames = Object.fromEntries(['walk','run'].map(mode => [mode,Object.fromEntries(['front','back'].map(side => [side,
     Array.from({length:12},(_,i)=>{const image=new Image();image.src=`./assets/character-${mode}/${side}-${String(i).padStart(2,'0')}.png?v=short-stocky-1`;return image;})]))]));
+  const bridgeSprites=Object.fromEntries(['wood','stone'].map(kind=>{const img=new Image();img.onload=()=>{if(REDUCED_MOTION)drawFrame();};img.src=`./assets/bridge-${kind}.png?v=1`;return [kind,img];}));
   const houseImage = new Image();
   houseImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
   houseImage.src = './assets/simple-house-aligned.png?v=1';
@@ -1729,7 +1730,7 @@
   function waterDepth(column,row) {
     const world=window.worldManager?.getActive(), size=world?.gridSize;
     if (!world?.tiles || !Number.isInteger(column) || !Number.isInteger(row) || column<0 || row<0 || column>=size || row>=size) return 0;
-    return world.tiles[row*size+column]===3 ? BLOCK_HEIGHT : 0;
+    return world.tiles[row*size+column]===3 && !(world.bridges||[]).some(b=>window.BridgeGeometry?.indexAt(b,{column,row})>=0) ? BLOCK_HEIGHT : 0;
   }
   function characterWaterDepth(character) {
     return Number.isFinite(character.waterDepth) ? Math.max(0,Math.min(BLOCK_HEIGHT,character.waterDepth)) : waterDepth(character.column,character.row);
@@ -1864,6 +1865,7 @@
       shadows.push({anchor: {x: centre.x, y: bottom},
         width: 84 * house.scale, depth: islandTileHeight * 3 * house.scale, height: 85 * house.scale});
     }
+    for(const bridge of world.bridges||[]){const p=bridgeBounds(bridge);shadows.push({anchor:{x:p.x,y:p.y},width:p.w*.8,depth:islandTileHeight*1.4,height:4});}
     const trees=world.orangeTrees||[], fences=world.fences||[];
     if (!shadows.length && !trees.length && !fences.length) return;
     const lightPoint = sunPlanePosition(light.hourAngleDegrees);
@@ -1911,6 +1913,18 @@
     const centre=characterCentre({column:house.column+1,row:house.row+1});
     const geometry=window.HouseGeometry.create(ISLAND_TILE_WIDTH,islandTileHeight,house.scale);
     return {centre,geometry,bottom:centre.y+geometry.halfDepth,mirror:house.facing==='N'||house.facing==='E'};
+  }
+  let editingBridgeSelection=null;
+  function bridgeBounds(bridge) {
+    const centre=characterCentre({column:bridge.column+(bridge.axis==='E'?1:0),row:bridge.row+(bridge.axis==='S'?1:0),blockHeight:surfaceHeight(bridge.column,bridge.row)});
+    return {x:centre.x,y:centre.y,w:ISLAND_TILE_WIDTH*2.35,h:ISLAND_TILE_WIDTH*1.56};
+  }
+  function drawBridge(bridge) {
+    const image=bridgeSprites[bridge.material];if(!image?.complete || !image.naturalWidth)return;
+    const p=bridgeBounds(bridge);ctx.save();applyIslandTransform();ctx.translate(p.x,p.y);if(bridge.axis==='E')ctx.scale(-1,1);
+    ctx.imageSmoothingEnabled=true;ctx.drawImage(image,-p.w/2,-p.h*.62,p.w,p.h);
+    if(editingBridgeSelection && editingBridgeSelection.column===bridge.column && editingBridgeSelection.row===bridge.row && editingBridgeSelection.axis===bridge.axis){ctx.strokeStyle='#fff4a8';ctx.lineWidth=.6;ctx.strokeRect(-p.w/2,-p.h*.62,p.w,p.h);}
+    ctx.restore();
   }
   function drawHouse() {
     const house = editingHouseDraft || window.worldManager?.getHouse?.();
@@ -2456,6 +2470,7 @@
     const visibleHouse=editingHouseDraft || window.worldManager?.getHouse?.();
     const visiblePlayer=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
     const objectWorld=worldForObjects(),joins=fenceJoins(objectWorld);
+    for(const bridge of objectWorld?.bridges||[])drawBridge(bridge);
     const sceneObjects=(objectWorld?.orangeTrees||[]).map(tree=>({depth:tree.column+tree.row+treeSize(tree)-1,draw:()=>{drawOrangeTree(tree,motionTime,sceneWeather);drawOrangeDrop(tree);}}));
     for(const [a,b] of grassPairs(objectWorld))sceneObjects.push({depth:(a.column+a.row+b.column+b.row)/2,draw:()=>drawGrassBridge(a,b)});
     (objectWorld?.fences||[]).forEach((f,i)=>sceneObjects.push({depth:f.column+f.row+((f.edge==='S'||f.edge==='E')?.5:-.5),draw:()=>drawFence(f,joins[i])}));
@@ -2723,10 +2738,12 @@
     },
     centre: characterCentre,
     fenceAt, fenceGeometry,
+    bridgeAt(point) {const tile=this.tileAt(point);if(!tile)return null;const all=window.worldManager?.getActive()?.bridges||[];for(let i=all.length-1;i>=0;i--)if(window.BridgeGeometry.indexAt(all[i],tile)>=0)return i;return null;},
+    setSelectedBridge(b) {editingBridgeSelection=b;if(REDUCED_MOTION)drawFrame();},
     setObjectDrag(kind,index,value) {
       const world=window.worldManager?.getActive();
       if(!world || !value){objectDragWorld=null;} else {
-        const key=kind==='fence'?'fences':'orangeTrees',items=(world[key]||[]).map((o,i)=>i===index?{...value}:o);
+        const key=kind==='bridge'?'bridges':kind==='fence'?'fences':'orangeTrees',items=(world[key]||[]).map((o,i)=>i===index?{...value}:o);
         objectDragWorld={...world,[key]:items};
       }
       if(REDUCED_MOTION)drawFrame();

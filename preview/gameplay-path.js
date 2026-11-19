@@ -1,5 +1,5 @@
 // Exact-tile routing on legacy and 20x20/25x25/50x50/100x100 preview worlds, without changing saved data.
-(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.GameplayPath=factory();})(typeof window!=='undefined'?window:globalThis,()=>{
+(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory(require('./bridge-geometry.js'));else root.GameplayPath=factory(root.BridgeGeometry);})(typeof window!=='undefined'?window:globalThis,(BridgeGeometry)=>{
   'use strict';
   function find(world,start,end,house,nearestDry=false) {
     const size=[20,25,50,100].includes(world?.gridSize)?world.gridSize:9;
@@ -21,11 +21,11 @@
     if(!startOnTile || (!nearestDry && (!inside(end) || !pass(end) || (inHouse(end) && !(start.column===end.column && start.row===end.row)))))return null;
     const key=p=>p.row*size+p.column, queue=[start], prev=new Map([[key(start),null]]);
     for(let i=0;i<queue.length;i++) {
-      const p=queue[i]; if(nearestDry ? (key(p)!==key(start) && pass(p) && !inHouse(p) && world.tiles?.[key(p)]!==3) : (p.column===end.column&&p.row===end.row)) {
+      const p=queue[i]; if(nearestDry ? (key(p)!==key(start) && pass(p) && !inHouse(p) && (world.tiles?.[key(p)]!==3 || (world.bridges||[]).some(b=>BridgeGeometry?.indexAt(b,p)>=0))) : (p.column===end.column&&p.row===end.row)) {
         const route=[];let n=key(p);while(n!==null){route.push({column:n%size,row:Math.floor(n/size)});n=prev.get(n);}return route.reverse();
       }
       for(const [dx,dy] of [[0,-1],[1,0],[0,1],[-1,0]]) {
-        const next={column:p.column+dx,row:p.row+dy};if(!pass(next)||(world.fences||[]).some(f=>{const d={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[f.edge];return d && ((p.column===f.column && p.row===f.row && next.column===f.column+d[0] && next.row===f.row+d[1]) || (next.column===f.column && next.row===f.row && p.column===f.column+d[0] && p.row===f.row+d[1]));})||Math.abs(height(p)-height(next))>1||prev.has(key(next)) || (escaping && !inHouse(p) && inHouse(next)))continue;
+        const next={column:p.column+dx,row:p.row+dy};if(!pass(next)||((world.bridges||[]).length && (!BridgeGeometry || !BridgeGeometry.permitsStep(world.bridges,p,next)))||(world.fences||[]).some(f=>{const d={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[f.edge];return d && ((p.column===f.column && p.row===f.row && next.column===f.column+d[0] && next.row===f.row+d[1]) || (next.column===f.column && next.row===f.row && p.column===f.column+d[0] && p.row===f.row+d[1]));})||Math.abs(height(p)-height(next))>1||prev.has(key(next)) || (escaping && !inHouse(p) && inHouse(next)))continue;
         prev.set(key(next),key(p));queue.push(next);
       }
     }

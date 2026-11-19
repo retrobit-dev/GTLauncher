@@ -15,9 +15,10 @@ final class PreviewWorld20 {
     private final String json;
     final String id;
     private final BlockTerrain terrain;
+    final java.util.List<BridgeGeometry.Bridge> bridges;
 
-    private PreviewWorld20(String json, String id, int size, int version, BlockTerrain terrain) {
-        this.json = json; this.id = id; this.size = size; this.version = version; this.terrain = terrain;
+    private PreviewWorld20(String json, String id, int size, int version, BlockTerrain terrain,java.util.List<BridgeGeometry.Bridge> bridges) {
+        this.json = json; this.id = id; this.size = size; this.version = version; this.terrain = terrain;this.bridges=java.util.Collections.unmodifiableList(new java.util.ArrayList<>(bridges));
     }
     int tile(int column, int row) {
         if (column < 0 || row < 0 || column >= size || row >= size) throw new IndexOutOfBoundsException();
@@ -28,8 +29,9 @@ final class PreviewWorld20 {
         int tile = tile(column, row); return tile != 0;
     }
     boolean canStep(int fromColumn,int fromRow,int toColumn,int toRow) {
-        return terrain.canStep(fromColumn,fromRow,toColumn,toRow);
+        return terrain.canStep(fromColumn,fromRow,toColumn,toRow) && BridgeGeometry.permitsStep(bridges,fromColumn,fromRow,toColumn,toRow);
     }
+    boolean onBridge(int c,int r) {for(BridgeGeometry.Bridge bridge:bridges)if(BridgeGeometry.indexAt(bridge,c,r)>=0)return true;return false;}
     String toJson() { return json; }
     private static void keys(JSONObject object, String... allowed) throws JSONException {
         Set<String> names = new HashSet<>(Arrays.asList(allowed));
@@ -64,11 +66,11 @@ final class PreviewWorld20 {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 3 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14) throw new JSONException("Unsupported world version");
+        if (version > 3 && version != 7 && version != 8 && version != 9 && version != 10 && version != 11 && version != 12 && version != 13 && version != 14 && version != 15) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         if(version>=7 && version<13 && !w.has("orangeTrees")) throw new JSONException("Unsupported world version");
         // Flat conifer-only worlds are supported. Stacks and other tree kinds remain rejected.
-        keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","orangeTrees","fences");
+        keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","orangeTrees","fences","bridges");
         if(version<7 && w.has("orangeTrees")) throw new JSONException("Unsupported field: orangeTrees");
         String id=string(w,"id"), name=string(w,"name"), description=string(w,"description"), color=string(w,"color");
         if (!id.matches("[A-Za-z0-9_-]{1,128}") || id.equals("base") || name.trim().isEmpty() || name.length()>48
@@ -143,6 +145,18 @@ final class PreviewWorld20 {
                 if(!seen.add(key))throw new JSONException("Duplicate fence edge");
             }
         }
-        return new PreviewWorld20(root.toString(),id,size,version,BlockTerrain.parse(size,source,null));
+        java.util.List<BridgeGeometry.Bridge> bridges=new java.util.ArrayList<>();
+        if(w.has("bridges")) {
+            if(version<15 || !(w.get("bridges") instanceof JSONArray))throw new JSONException("Unsupported bridges");
+            JSONArray entries=w.getJSONArray("bridges");if(entries.length()>size*size/3)throw new JSONException("Too many bridges");
+            for(int i=0;i<entries.length();i++) {JSONObject b=entries.getJSONObject(i);keys(b,"column","row","axis","material");bridges.add(new BridgeGeometry.Bridge(integer(b,"column",0,size-1),integer(b,"row",0,size-1),string(b,"axis"),string(b,"material")));}
+            final boolean[] blocked=new boolean[size*size];
+            if(house instanceof JSONObject){JSONObject h=(JSONObject)house;int hc=h.getInt("column"),hr=h.getInt("row");for(int y=hr;y<hr+3;y++)for(int x=hc;x<hc+3;x++)blocked[y*size+x]=true;}
+            JSONArray trees=w.optJSONArray("orangeTrees");if(trees!=null)for(int i=0;i<trees.length();i++){JSONObject t=trees.getJSONObject(i);int x=t.getInt("column"),y=t.getInt("row"),n=t.optInt("size",2);for(int dy=0;dy<n;dy++)for(int dx=0;dx<n;dx++)blocked[(y+dy)*size+x+dx]=true;}
+            JSONArray fences=w.optJSONArray("fences");if(fences!=null)for(int i=0;i<fences.length();i++){JSONObject f=fences.getJSONObject(i);int x=f.getInt("column"),y=f.getInt("row");blocked[y*size+x]=true;String e=f.getString("edge");int nx=x+(e.equals("E")?1:e.equals("W")?-1:0),ny=y+(e.equals("S")?1:e.equals("N")?-1:0);if(nx>=0 && nx<size && ny>=0 && ny<size)blocked[ny*size+nx]=true;}
+            BridgeGeometry.Terrain ground=new BridgeGeometry.Terrain(){public int size(){return size;}public int tile(int c,int r){return tiles[r*size+c];}public int height(int c,int r){return tiles[r*size+c]==0?0:1;}public boolean obstructed(int c,int r){return blocked[r*size+c];}};
+            if(!BridgeGeometry.valid(bridges,ground))throw new JSONException("Invalid bridge footprint");
+        }
+        return new PreviewWorld20(root.toString(),id,size,version,BlockTerrain.parse(size,source,null),bridges);
     }
 }
