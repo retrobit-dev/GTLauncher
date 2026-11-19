@@ -220,7 +220,7 @@
   function same(a, b) {
     if (!a || !b) return a === b;
     return a.visible === b.visible && a.column === b.column && a.row === b.row
-      && a.scale === b.scale && a.facing === b.facing;
+      && a.scale === b.scale && a.facing === b.facing && (a.opacity ?? 0) === (b.opacity ?? 0);
   }
   function current(type = selectedType) {
     const obj = type === 'block' ? selectedBlock : type === 'house' ? window.worldManager.getHouse() : type==='bridge' ? window.worldManager.getActive().bridges?.[selectedBridgeIndex] : type==='tree' ? window.worldManager.getActive().orangeTrees?.[selectedTreeIndex] : type==='fence' ? window.worldManager.getActive().fences?.[selectedFenceIndex] : window.worldManager.getCharacter();
@@ -332,6 +332,9 @@
     editButton.setAttribute('aria-pressed', String(editing));
     canvas.classList.toggle('is-editing', editing);
     status.hidden = !editing;
+    const opacityControl=$('house-transparency-control'),opacity=$('house-transparency');
+    opacityControl.hidden=!(editing && selected && selectedType==='house');
+    if(!opacityControl.hidden){opacity.value=String(current()?.opacity ?? 0);$('house-transparency-value').textContent=`${opacity.value}%`;}
     detailsButton.hidden = !editing || !selected || (selectedType==='tree'||selectedType==='fence'||selectedType==='bridge'||selectedType==='block');
     selectButton.hidden = !editing || (selected && selectedType === 'character') || !window.worldManager.getCharacter().visible;
     selectHouse.hidden = !editing || (selected && selectedType === 'house') || !window.worldManager.getHouse();
@@ -421,12 +424,20 @@
     $('object-message').textContent = '';
     if (!dialog.open) dialog.showModal();
   });
+  $('house-transparency').addEventListener('input',event=>{$('house-transparency-value').textContent=`${event.target.value}%`;});
+  $('house-transparency').addEventListener('change',event=>{
+    if(!editing || !selected || selectedType!=='house')return;
+    const config=current(),value=Number(event.target.value);
+    if(value===0)delete config.opacity;else config.opacity=value;
+    if(recordEdit(config)){refresh();syncControls();tell('EDITING · Transparansi rumah disimpan bersama world.');}
+    else {syncControls();tell('EDITING · Transparansi tidak dapat disimpan.');}
+  });
   $('object-scale').addEventListener('input', syncScale);
   $('object-close').addEventListener('click', () => dialog.close());
   $('object-cancel').addEventListener('click', () => dialog.close());
   form.addEventListener('submit', event => {
     event.preventDefault();
-    const config = {visible: $('object-visible').checked, column: Number(columns.value),
+    const config = {...current(), visible: $('object-visible').checked, column: Number(columns.value),
       row: Number(rows.value), scale: Number($('object-scale').value) / 100,
       facing: current().facing};
     if (recordEdit(config)) {

@@ -479,3 +479,8 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 
 .catalog-bulk { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px; }
 .catalog-check { width:20px; height:20px; flex:none; accent-color:#496c54; }
+
+.house-transparency-control { display:flex; align-items:center; gap:8px; font:600 12px system-ui; color:#3b5946; }
+.house-transparency-control[hidden] { display:none; }
+.house-transparency-control input { width:130px; accent-color:#4b6a55; }
+.house-transparency-control output { min-width:3em; }

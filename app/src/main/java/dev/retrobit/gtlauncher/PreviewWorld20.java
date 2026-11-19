@@ -70,7 +70,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 17) throw new JSONException("Unsupported world version");
+        if (version > 18) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         if(w.has("blockStacks") && version<4 || version==4 && !w.has("blockStacks"))throw new JSONException("Invalid block stacks version");
         keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","blockStacks","orangeTrees","fences","bridges");
@@ -105,7 +105,8 @@ final class PreviewWorld20 implements StackWater.Terrain {
         Object house=w.get("house");
         if (house != JSONObject.NULL) {
             if (!(house instanceof JSONObject)) throw new JSONException("Invalid house");
-            JSONObject h=(JSONObject)house; keys(h,"column","row","scale","facing","visible");
+            JSONObject h=(JSONObject)house; keys(h,"column","row","scale","facing","visible","opacity");
+            if(h.has("opacity")) {if(version<18)throw new JSONException("Unsupported house opacity");int opacity=integer(h,"opacity",0,90);if(opacity%5!=0)throw new JSONException("Invalid house opacity");}
             int hc=integer(h,"column",0,size-3), hr=integer(h,"row",0,size-3);
             if (h.has("scale")) scale(h,"scale"); if (h.has("facing")) facing(h,"facing"); if (h.has("visible")) bool(h,"visible");
             int level=terrain.height(hc,hr);

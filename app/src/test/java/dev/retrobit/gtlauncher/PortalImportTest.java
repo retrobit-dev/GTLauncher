@@ -248,6 +248,17 @@ public class PortalImportTest {
                 .put("showCharacter",true).put("characterColumn",5).put("characterRow",5).put("characterScale",1).put("characterFacing","S");
         return new org.json.JSONObject().put("format","gtlauncher-preview-world").put("version",version).put("world",w).toString();
     }
+    @Test public void previewHouseOpacityPersistsAndDowngradeIsRejected() throws Exception {
+        JSONObject root=new JSONObject(portableWorld(18,1));
+        root.getJSONObject("world").put("house",new JSONObject().put("column",0).put("row",0).put("scale",1).put("facing","S").put("visible",true).put("opacity",40));
+        WorldStore store=new WorldStore(prefs());assertTrue(store.upsertAndSelect(WorldStore.parseExport(root.toString())));
+        assertEquals(40,store.activeWorld().houses.get(0).opacity);assertEquals(40,store.activeWorld().houseOpacity);
+        assertTrue(store.moveSelectedObject("home",store.activeWorld().houses.get(0),null,10,10));
+        assertEquals(40,store.activeWorld().houses.get(0).opacity);
+        JSONObject older=new JSONObject(store.activeWorld().previewData.toJson());older.put("version",17);older.getJSONObject("world").getJSONObject("house").remove("opacity");
+        try{store.upsertAndSelect(WorldStore.parseExport(older.toString()));fail("downgrade must not erase transparency");}catch(JSONException expected){}
+        assertEquals(40,store.activeWorld().houses.get(0).opacity);
+    }
     @Test public void differentSchemasNeverOverwriteAndPreservePreferences() throws JSONException {
         String bush="{\"type\":\"bush\",\"column\":1,\"row\":1,\"variant\":\"tiered\"}";
         SharedPreferences p=prefs();WorldStore store=new WorldStore(p);

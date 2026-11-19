@@ -2528,7 +2528,8 @@
       const points=projection?[[0,0],[256,0],[512,0],[0,490],[256,490],[512,490]].map(([x,y])=>window.HouseGeometry.project(projection.geometry,x,y)):[];
       const xs=points.map(p=>projection.centre.x+p.x*(projection.mirror?-1:1)),ys=points.map(p=>projection.bottom+p.y);
       const bounds=projection?{left:Math.min(...xs),right:Math.max(...xs),top:Math.min(...ys),bottom:Math.max(...ys)}:null;
-      ctx.save();if(projection && coversCharacter(visiblePlayer,p=>houseAt(p,visibleHouse),bounds))ctx.globalAlpha*=.5;drawHouse();ctx.restore();
+      ctx.save();ctx.globalAlpha*=(100-(visibleHouse.opacity ?? 0))/100;
+      if(projection && coversCharacter(visiblePlayer,p=>houseAt(p,visibleHouse),bounds))ctx.globalAlpha*=.5;drawHouse();ctx.restore();
     }});
     if(visiblePlayer?.visible)sceneObjects.push({depth:visiblePlayer.column+visiblePlayer.row,draw:()=>drawMainCharacter(motionTime)});
     sceneObjects.sort((a,b)=>a.depth-b.depth);for(const object of sceneObjects)object.draw();

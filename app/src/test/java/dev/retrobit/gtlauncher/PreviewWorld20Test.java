@@ -19,6 +19,12 @@ public class PreviewWorld20Test {
         try { PreviewWorld20.parse(o.toString()); fail("invalid or unsupported data must be rejected"); }
         catch (org.json.JSONException expected) { }
     }
+    @Test public void houseTransparencyRequiresV18AndRoundTrips() throws Exception {
+        JSONObject root=sample(),house=root.getJSONObject("world").getJSONObject("house");house.put("opacity",40);
+        rejected(root);root.put("version",17);rejected(root);root.put("version",18);
+        assertEquals(40,new JSONObject(PreviewWorld20.parse(root.toString()).toJson()).getJSONObject("world").getJSONObject("house").getInt("opacity"));
+        house.put("opacity",41);rejected(root);house.put("opacity",95);rejected(root);house.put("opacity","40");rejected(root);
+    }
     @Test public void allTerrainAndHouseRoundTrip() throws Exception {
         JSONObject root=sample(), w=root.getJSONObject("world");
         w.getJSONArray("tiles").put(399,0).put(398,2).put(397,3).put(396,4).put(395,5);

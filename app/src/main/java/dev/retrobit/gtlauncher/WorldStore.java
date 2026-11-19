@@ -302,7 +302,7 @@ final class WorldStore {
         JSONObject w=new JSONObject(data.toJson()).getJSONObject("world");
         JSONObject h=w.isNull("house") ? null : w.getJSONObject("house");
         List<House> houses=new ArrayList<>();
-        if(h!=null) houses.add(new House(h.getInt("column"),h.getInt("row"),h.optDouble("scale",1),h.optString("facing","S"),h.optBoolean("visible",true),null,null,-1));
+        if(h!=null) houses.add(new House(h.getInt("column"),h.getInt("row"),h.optDouble("scale",1),h.optString("facing","S"),h.optBoolean("visible",true),null,null,h.has("opacity")?h.getInt("opacity"):-1));
         House first=houses.isEmpty()?null:houses.get(0);
         List<SurfaceObject> trees=new ArrayList<>();
         if(w.has("orangeTrees")) {
@@ -323,7 +323,7 @@ final class WorldStore {
         World result=new World(data.id,w.getString("name"),w.getString("description"),w.getString("color"),
                 w.getBoolean("showCharacter"),w.getInt("characterColumn"),w.getInt("characterRow"),w.getDouble("characterScale"),w.getString("characterFacing"),
                 first!=null,first!=null && first.visible,first==null?0:first.column,first==null?0:first.row,first==null?1:first.scale,
-                first==null?"S":first.facing,null,null,-1,32,new ArrayList<>(),trees,houses);
+                first==null?"S":first.facing,null,null,first==null?-1:first.opacity,32,new ArrayList<>(),trees,houses);
         result.previewData=data; return result;
     }
 
@@ -424,6 +424,7 @@ final class WorldStore {
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
                     if(world.previewData.version<4 && old.previewData.hasStacks())throw new JSONException("Older preview format cannot replace stacked terrain");
+                    if(world.previewData.version<18 && old.houses.stream().anyMatch(h->h.opacity>=0))throw new JSONException("Older preview format cannot replace house opacity");
                     if(world.previewData.version<17 && old.surfaces.stream().anyMatch(o->o.type.equals("fence") && o.material.equals("preview-stone-tall")))throw new JSONException("Older preview format cannot replace tall walls");
                     if(world.previewData.version<16 && old.previewData.bridges.stream().anyMatch(b->b.length!=3))throw new JSONException("Older preview format cannot replace bridge length");
                     if(!old.previewData.bridges.isEmpty() && world.previewData.version<15)throw new JSONException("Older preview format cannot replace bridges");
