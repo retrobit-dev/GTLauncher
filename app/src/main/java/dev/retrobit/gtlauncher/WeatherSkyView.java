@@ -289,6 +289,7 @@ public final class WeatherSkyView extends View {
     private java.util.List<PortalTravel.Portal> worldPortals = java.util.Collections.emptyList();
     private boolean portalWalkActive;
     private java.util.List<WorldStore.SurfaceObject> worldSurfaces = java.util.Collections.emptyList();
+    private java.util.List<GrassConnections.Pair> grassConnections=java.util.Collections.emptyList();
     private java.util.List<WorldStore.House> worldHouses=java.util.Collections.emptyList();
     private String characterFacing = "S";
     private boolean showCharacter;
@@ -390,7 +391,7 @@ public final class WeatherSkyView extends View {
         for(int i=0;i<12;i++) {walkFront[i]=BitmapFactory.decodeResource(getResources(),frontFrames[i]);walkBack[i]=BitmapFactory.decodeResource(getResources(),backFrames[i]);}
         int[] runFrontFrames={R.drawable.character_run_front_00, R.drawable.character_run_front_01, R.drawable.character_run_front_02, R.drawable.character_run_front_03, R.drawable.character_run_front_04, R.drawable.character_run_front_05, R.drawable.character_run_front_06, R.drawable.character_run_front_07, R.drawable.character_run_front_08, R.drawable.character_run_front_09, R.drawable.character_run_front_10, R.drawable.character_run_front_11},runBackFrames={R.drawable.character_run_back_00, R.drawable.character_run_back_01, R.drawable.character_run_back_02, R.drawable.character_run_back_03, R.drawable.character_run_back_04, R.drawable.character_run_back_05, R.drawable.character_run_back_06, R.drawable.character_run_back_07, R.drawable.character_run_back_08, R.drawable.character_run_back_09, R.drawable.character_run_back_10, R.drawable.character_run_back_11};
         for(int i=0;i<12;i++) {runFront[i]=BitmapFactory.decodeResource(getResources(),runFrontFrames[i]);runBack[i]=BitmapFactory.decodeResource(getResources(),runBackFrames[i]);}
-        coniferTree = BitmapFactory.decodeResource(getResources(),R.drawable.cemara_laut);
+        coniferTree = BitmapFactory.decodeResource(getResources(),R.drawable.cemara_laut_redesign);
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.simple_house_aligned);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.simple_house_back_aligned);
         houseWideImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide);houseWideBackImage=BitmapFactory.decodeResource(getResources(),R.drawable.house_redesign_wide_back);
@@ -482,7 +483,8 @@ public final class WeatherSkyView extends View {
         ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
         ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2f;
         String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;gameplayCamera.reset();cameraFrameTime=0;}
-        worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects); invalidate();
+        worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects);
+        grassConnections=GrassConnections.pairs(worldSurfaces);invalidate();
     }
     private PreviewWorld20 worldTerrain;
     private PondLife pondLife;
@@ -528,7 +530,22 @@ public final class WeatherSkyView extends View {
         double speed=weather==null?4:weather.windSpeedKmh,direction=weather==null?90:weather.windDirectionDegrees;
         return OrangeTreeMotion.sway(animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled(),speed,direction,headingDegrees,plantMotionSeconds,o.column,o.row);
     }
+    private void drawGrassBridges(Canvas canvas,boolean front) {
+        if(wildGrass==null)return;
+        for(GrassConnections.Pair pair:grassConnections) {
+            float depth=(pair.a.column+pair.a.row+pair.b.column+pair.b.row)/2f;
+            if(showCharacter && (depth>=visualColumn()+visualRow())!=front || !showCharacter && front)continue;
+            RectF a=surfaceSpriteBounds(pair.a),b=surfaceSpriteBounds(pair.b);float x=(a.centerX()+b.centerX())/2f,y=(a.bottom+b.bottom)/2f;
+            int alpha=Math.round(255*(100-Math.max(Math.max(0,pair.a.opacity),Math.max(0,pair.b.opacity)))/100f);
+            int groundSave=canvas.save();setClipIslandSurface(canvas);paint.setStyle(Paint.Style.FILL);paint.setColor(Color.argb(Math.round(36*alpha/255f),28,49,35));canvas.drawOval(new RectF(x-4.5f,y-.55f,x+4.5f,y+.55f),paint);canvas.restoreToCount(groundSave);
+            double sway=(plantSway(pair.a,1)+plantSway(pair.b,1))/2;
+            int saved=canvas.save();canvas.translate(x,y);canvas.skew((float)(-sway/11),0);
+            paint.setColor(Color.WHITE);paint.setAlpha(alpha);paint.setFilterBitmap(true);canvas.drawBitmap(wildGrass,null,new RectF(-11,-11,11,0),paint);canvas.restoreToCount(saved);
+        }
+        paint.setAlpha(255);
+    }
     private void drawSurfaceSprites(Canvas canvas,boolean front) {
+        drawGrassBridges(canvas,front);
         for(WorldStore.SurfaceObject o:worldSurfaces) {
             if(o.type.equals("road") || o.type.equals("fence") || o.type.equals("flower")) continue;
             float depth=o.column+o.row+WorldStore.surfaceFootprint(o)-1;
@@ -545,11 +562,12 @@ public final class WeatherSkyView extends View {
             }
             if(image==null)continue;RectF g=surfaceSpriteBounds(o);
             int alpha=Math.round(255*(100-Math.max(0,o.opacity))/100f);
-            if(!(o.type.equals("tree") && (o.material.equals("orange") || o.material.startsWith("conifer")))) {
+            {
+                int contactSave=canvas.save();setClipIslandSurface(canvas);
                 boolean grass=o.type.equals("bush") && (o.material.equals("wild-grass") || o.material.startsWith("preview-bush"));
                 paint.setColor(grass?Color.argb(Math.round(46*alpha/255f),28,49,35):Color.argb(Math.round(35*alpha/255f),12,23,40));paint.setStyle(Paint.Style.FILL);
                 float contactWidth=grass?5f*WorldStore.surfaceFootprint(o):g.width()*.3f,contactDepth=grass?.65f*WorldStore.surfaceFootprint(o):1f;
-                canvas.drawOval(new RectF(g.centerX()-contactWidth,g.bottom-contactDepth,g.centerX()+contactWidth,g.bottom+contactDepth),paint);
+                canvas.drawOval(new RectF(g.centerX()-contactWidth,g.bottom-contactDepth,g.centerX()+contactWidth,g.bottom+contactDepth),paint);canvas.restoreToCount(contactSave);
             }
             paint.setColor(Color.WHITE);paint.setAlpha(alpha);paint.setFilterBitmap(true);int saved=canvas.save();
             if(o.type.equals("tree") && (o.material.equals("orange") || o.material.startsWith("conifer"))) {
@@ -1044,7 +1062,7 @@ public final class WeatherSkyView extends View {
             float scale=(float)house.scale,x=SCENE_WIDTH/2f+(house.column-house.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
             float y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(house.column+house.row+2)*ISLAND_TILE_HEIGHT/2f;
             int originalAlpha=paint.getAlpha();paint.setAlpha(Math.round(originalAlpha*(100-Math.max(0,house.opacity))/100f));
-            drawObjectSilhouette(canvas,image,x,y,70*scale*(wide?7f/6:1),(wide?100:74)*scale,lightPoint,"N".equals(house.facing)||"E".equals(house.facing));
+            drawObjectSilhouette(canvas,image,x,wide?y+ISLAND_TILE_HEIGHT*1.25f*scale:houseBottom(house,new HouseGeometry(ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,scale)),70*scale*(wide?7f/6:1),(wide?100:74)*scale,lightPoint,"N".equals(house.facing)||"E".equals(house.facing));
             paint.setAlpha(originalAlpha);
         }
         // Project the current orange-tree bitmap's alpha, including its wind deformation.

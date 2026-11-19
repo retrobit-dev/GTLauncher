@@ -515,6 +515,7 @@ final class WorldStore {
         for(int i=0;i<worlds.size();i++) { World w=worlds.get(i); if(w.id.equals(worldId) && w.showCharacter) {
             if(!w.tileExists(column,row) || (houseCovers(w.houses,column,row) && (column!=w.characterColumn || row!=w.characterRow))) return false;
             if(w.previewData!=null) for(SurfaceObject object:w.surfaces) {
+                if(walkThrough(object))continue;
                 int size=surfaceFootprint(object);
                 if(column>=object.column && row>=object.row && column<object.column+size && row<object.row+size)return false;
             }
@@ -531,6 +532,7 @@ final class WorldStore {
     static int treeFootprint(SurfaceObject object) {
         return object.material.equals("banana") || object.material.equals("palm") || object.material.equals("conifer-small")?1:2;
     }
+    static boolean walkThrough(SurfaceObject object) {return object!=null && object.type.equals("bush");}
     static int surfaceFootprint(SurfaceObject object) {
         if(object.type.equals("tree"))return treeFootprint(object);
         return isPreviewBush(object) && object.material.endsWith("-large")?2:1;
@@ -704,7 +706,7 @@ final class WorldStore {
         for(PortalTravel.Portal p:destination.portals) if(p.id.equals(from.destinationPortalId)) to=p;
         final World dest=destination;
         PortalTravel.Terrain terrain=new PortalTravel.Terrain() {
-            public boolean canStand(int c,int r){if(houseCovers(dest.houses,c,r))return false;for(SurfaceObject o:dest.surfaces) {if(o.type.equals("tree") && c>=o.column && c<o.column+((o.material.equals("banana") || o.material.equals("palm"))?1:2) && r>=o.row && r<o.row+((o.material.equals("banana") || o.material.equals("palm"))?1:2)) return false;if((o.type.equals("bush")||o.type.equals("sunflower")||o.type.equals("mailbox")||o.type.equals("storage-box")||o.type.equals("selling-box")||(o.type.equals("road") && "water".equals(o.material))) && o.column==c && o.row==r)return false;}return true;}
+            public boolean canStand(int c,int r){if(houseCovers(dest.houses,c,r))return false;for(SurfaceObject o:dest.surfaces) {if(o.type.equals("tree") && c>=o.column && c<o.column+((o.material.equals("banana") || o.material.equals("palm"))?1:2) && r>=o.row && r<o.row+((o.material.equals("banana") || o.material.equals("palm"))?1:2)) return false;if((o.type.equals("sunflower")||o.type.equals("mailbox")||o.type.equals("storage-box")||o.type.equals("selling-box")||(o.type.equals("road") && "water".equals(o.material))) && o.column==c && o.row==r)return false;}return true;}
             public boolean canStep(int a,int b,int c,int d){return true;}
         };
         if(!PortalTravel.canTravel(from,to,new PortalTravel.Tile(source.characterColumn,source.characterRow),terrain)) return false;

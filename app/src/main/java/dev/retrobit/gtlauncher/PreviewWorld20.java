@@ -122,7 +122,7 @@ final class PreviewWorld20 {
                 int tc=integer(tree,"column",0,size-footprint),tr=integer(tree,"row",0,size-footprint);
                 for(int y=tr;y<tr+footprint;y++)for(int x=tc;x<tc+footprint;x++) {
                     int index=y*size+x;
-                    if(occupied[index] || tiles[index]==0 || tiles[index]==3 || (show && x==c && y==r))throw new JSONException("Object collision");
+                    if(occupied[index] || tiles[index]==0 || tiles[index]==3 || (show && x==c && y==r && "conifer".equals(kind)))throw new JSONException("Object collision");
                     if(house instanceof JSONObject) {JSONObject h=(JSONObject)house;int hc=h.getInt("column"),hr=h.getInt("row");
                         if(x>=hc && x<hc+3 && y>=hr && y<hr+3)throw new JSONException("Object collision");}
                     occupied[index]=true;

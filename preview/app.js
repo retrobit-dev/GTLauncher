@@ -52,7 +52,7 @@
   orangeTreeImage.src = './assets/orange-tree-pixel.png?v=1';
   const coniferTreeImage = new Image();
   coniferTreeImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};
-  coniferTreeImage.src='./assets/cemara-laut.png?v=1';
+  coniferTreeImage.src='./assets/cemara-laut-redesign.png?v=1';
   const wildGrassImage=new Image();wildGrassImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};wildGrassImage.src='./assets/wild-grass-selected.png?v=3';
   const bushImage=new Image();bushImage.onload=()=>{if(REDUCED_MOTION)drawFrame();};bushImage.src='./assets/bush-selected.png?v=1';
   const bushFlowerImage=new Image(),bushBerryImage=new Image();for(const [image,path] of [[bushFlowerImage,'jasmine'],[bushBerryImage,'mulberry']]){image.onload=()=>{if(REDUCED_MOTION)drawFrame();};image.src=`./assets/bush-${path}.png?v=1`;}
@@ -999,29 +999,24 @@
     return x+hw>=0 && x-hw<=WIDTH && y+hh+extra*islandZoom>=0 && y-hh<=HEIGHT;
   }
 
+  let surfaceClipCache={tiles:null,stacks:null,path:null};
   function clipIslandSurface() {
-    const tiles = window.worldManager?.getActive()?.tiles;
-    const visible = tiles ? ISLAND_TILES.filter(tile => tileVisible(tile)) : [];
-    const holes = visible.filter(tile => !tiles[tile.row * ISLAND_GRID_SIZE + tile.column]);
-    const present = visible.filter(tile => tiles[tile.row * ISLAND_GRID_SIZE + tile.column]);
-    const points = islandSurfacePoints();
-    function traceSurface() {
-      ctx.moveTo(points[0][0], points[0][1]);
-      for (let i=1; i<points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
-      ctx.closePath();
+    const world=window.worldManager?.getActive(),tiles=world?.tiles,stacks=world?.blockStacks;
+    if(surfaceClipCache.tiles!==tiles || surfaceClipCache.stacks!==stacks || surfaceClipCache.tileHeight!==islandTileHeight || surfaceClipCache.gridSize!==ISLAND_GRID_SIZE || !surfaceClipCache.path) {
+      const path=new Path2D();
+      if(!tiles) {
+        const points=islandSurfacePoints();path.moveTo(points[0][0],points[0][1]);
+        for(const [x,y] of points.slice(1))path.lineTo(x,y);path.closePath();
+      }
+      for(const tile of tiles ? ISLAND_TILES : []) {
+        if(!tiles[tile.row*ISLAND_GRID_SIZE+tile.column])continue;
+        const height=surfaceHeight(tile.column,tile.row), y=tile.y-Math.max(0,height-1)*BLOCK_HEIGHT;
+        const hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
+        path.moveTo(tile.x,y-hh);path.lineTo(tile.x+hw,y);path.lineTo(tile.x,y+hh);path.lineTo(tile.x-hw,y);path.closePath();
+      }
+      surfaceClipCache={tiles,stacks,path,tileHeight:islandTileHeight,gridSize:ISLAND_GRID_SIZE};
     }
-    function traceTile(tile) {
-      const hw=ISLAND_TILE_WIDTH/2, hh=islandTileHeight/2;
-      ctx.moveTo(tile.x,tile.y-hh); ctx.lineTo(tile.x+hw,tile.y);
-      ctx.lineTo(tile.x,tile.y+hh); ctx.lineTo(tile.x-hw,tile.y); ctx.closePath();
-    }
-    ctx.beginPath();
-    if (!holes.length) { traceSurface(); ctx.clip(); }
-    else if (holes.length < present.length) {
-      // Subtract visible holes from a single diamond rather than clipping to
-      // hundreds of individual grass tiles on every animation frame.
-      traceSurface(); holes.forEach(traceTile); ctx.clip('evenodd');
-    } else { present.forEach(traceTile); ctx.clip(); }
+    ctx.clip(surfaceClipCache.path);
   }
 
   // Chooses which body is currently lighting the scene: the sun whenever it is up, otherwise the
@@ -1844,9 +1839,8 @@
     const house = editingHouseDraft || window.worldManager.getHouse?.();
     const houseSprite = house && (house.facing === 'N' || house.facing === 'W') ? houseBackImage : houseImage;
     if (house?.visible && houseSprite.complete && houseSprite.naturalWidth) {
-      const centre = characterCentre({column: house.column + 1, row: house.row + 1});
-      // Anchor to the front base of the sprite, so the smaller shadow remains visible.
-      shadows.push({anchor: {x: centre.x, y: centre.y + 1.5 * islandTileHeight * house.scale},
+      const {centre,bottom} = houseProjection(house);
+      shadows.push({anchor: {x: centre.x, y: bottom},
         width: 84 * house.scale, depth: islandTileHeight * 3 * house.scale, height: 85 * house.scale});
     }
     const trees=world.orangeTrees||[];
@@ -1957,10 +1951,9 @@
     const scale=treeVisualScale(tree),bottom=centre.y, width=treeWidth(tree),height=treeHeight(tree);
     const sway=objectSway(tree);
     ctx.save();applyIslandTransform();
-    if(tree.kind==='wild-grass'||tree.kind==='bush') {
-      // A small contact shadow touches the root even when the projected shadow points away.
-      ctx.fillStyle='rgba(28,49,35,0.18)';ctx.beginPath();ctx.ellipse(centre.x,bottom,tree.kind==='bush'?5*treeSize(tree):5,0.65*treeSize(tree),0,0,Math.PI*2);ctx.fill();
-    }
+    // Contact is anchored to the same bottom as the artwork, and clipped to top faces.
+    ctx.save();clipIslandSurface();ctx.fillStyle='rgba(28,49,35,0.18)';ctx.beginPath();
+    ctx.ellipse(centre.x,bottom,tree.kind==='bush'?5*treeSize(tree):tree.kind==='wild-grass'?5:Math.min(width*.16,8*treeSize(tree)),0.65*treeSize(tree),0,0,Math.PI*2);ctx.fill();ctx.restore();
     ctx.translate(centre.x,bottom);ctx.transform(1,0,-sway/height,1,0,0);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
@@ -1976,6 +1969,20 @@
     }
   }
 
+  let grassPairsCache={trees:null,stacks:null,pairs:[]};
+  function grassPairs(world) {
+    const trees=world?.orangeTrees,stacks=world?.blockStacks;
+    if(grassPairsCache.trees!==trees || grassPairsCache.stacks!==stacks)grassPairsCache={trees,stacks,pairs:window.GrassClusters?.pairs(trees,surfaceHeight)||[]};
+    return grassPairsCache.pairs;
+  }
+  function drawGrassBridge(a,b) {
+    if(!wildGrassImage.complete || !wildGrassImage.naturalWidth)return;
+    const p=orangeTreeAnchor(a),q=orangeTreeAnchor(b),x=(p.x+q.x)/2,y=(p.y+q.y)/2;
+    const sway=(objectSway(a)+objectSway(b))/2;
+    ctx.save();applyIslandTransform();ctx.save();clipIslandSurface();ctx.fillStyle='rgba(28,49,35,.14)';ctx.beginPath();ctx.ellipse(x,y,4.5,.55,0,0,Math.PI*2);ctx.fill();ctx.restore();
+    ctx.translate(x,y);ctx.transform(1,0,-sway/11,1,0,0);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    ctx.drawImage(wildGrassImage,-11,-11,22,11);ctx.restore();
+  }
   function orangeDropPosition(tree) {
     const p=orangeTreeAnchor(tree);return {x:p.x+6,y:p.y+1};
   }
@@ -2382,6 +2389,7 @@
     const visibleHouse=editingHouseDraft || window.worldManager?.getHouse?.();
     const visiblePlayer=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
     const sceneObjects=(window.worldManager?.getActive()?.orangeTrees||[]).map(tree=>({depth:tree.column+tree.row+treeSize(tree)-1,draw:()=>{drawOrangeTree(tree,motionTime,sceneWeather);drawOrangeDrop(tree);}}));
+    for(const [a,b] of grassPairs(window.worldManager?.getActive()))sceneObjects.push({depth:(a.column+a.row+b.column+b.row)/2,draw:()=>drawGrassBridge(a,b)});
     if(visibleHouse?.visible)sceneObjects.push({depth:visibleHouse.column+visibleHouse.row+2,draw:drawHouse});
     if(visiblePlayer?.visible)sceneObjects.push({depth:visiblePlayer.column+visiblePlayer.row,draw:()=>drawMainCharacter(motionTime)});
     sceneObjects.sort((a,b)=>a.depth-b.depth);for(const object of sceneObjects)object.draw();
@@ -2654,6 +2662,7 @@
     setSelectedTree(tree) {editingTreeSelection=tree ? {...tree} : null;if(REDUCED_MOTION)drawFrame();},
     orangeTreeAnchor,
     plantSway(tree) { return objectSway(tree); },
+    grassPairs() {return grassPairs(window.worldManager?.getActive()).map(([a,b])=>[{column:a.column,row:a.row},{column:b.column,row:b.row}]);},
     orangeDropPosition,
     orangeDropAt(point) {
       const world=window.worldManager?.getActive(),now=Date.now();

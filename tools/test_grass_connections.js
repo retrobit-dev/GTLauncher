@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+const {pairs}=require('../preview/grass-clusters.js');
+const {find}=require('../preview/gameplay-path.js');
+const a={column:1,row:1,kind:'wild-grass',size:1},b={column:2,row:1,kind:'wild-grass',size:1},c={column:2,row:2,kind:'wild-grass',size:1},d={column:0,row:0,kind:'wild-grass',size:1};
+assert.deepEqual(pairs([a,b,c,d],()=>1),[[a,b],[b,c]]);
+assert.deepEqual(pairs([a,b,c,d],(x,y)=>x===2&&y===1?2:1),[]);
+const w={gridSize:20,tiles:Array(400).fill(1),orangeTrees:[a,b,c,{column:3,row:1,kind:'bush',size:2},{column:6,row:1,kind:'conifer',size:1}]};
+assert(find(w,{column:0,row:1},{column:3,row:1},null));
+assert(find(w,{column:3,row:1},{column:4,row:2},null));
+assert.equal(find(w,{column:0,row:1},{column:6,row:1},null),null);
+console.log('Grass cardinal and elevation joins; passable plants and solid trees: OK');

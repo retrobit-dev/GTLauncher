@@ -327,7 +327,8 @@ public class PortalImportTest {
         assertEquals(before,p.getString("worlds_v1",null));
         assertTrue(store.placeWildGrass("home",6,5));WorldStore.World w=store.activeWorld();
         assertEquals(9,w.previewData.version);assertEquals("wild-grass",w.surfaces.get(0).material);assertEquals("bush",w.surfaces.get(0).type);
-        assertFalse(WorldStore.portableSmall(w.surfaces.get(0)));assertFalse(store.moveCharacter("home",6,5,"E"));
+        assertFalse(WorldStore.portableSmall(w.surfaces.get(0)));assertTrue(store.moveCharacter("home",6,5,"E"));
+        assertEquals(6,WorldStore.parseExport(store.activeWorld().previewData.toJson()).characterColumn);assertTrue(store.moveCharacter("home",5,5,"W"));
         assertFalse(store.placeWildGrass("home",6,5));assertFalse(store.tillTile("home",6,5));
         assertFalse(store.moveSelectedObject("home",null,w.surfaces.get(0),5,5));
         assertTrue(store.moveSelectedObject("home",null,w.surfaces.get(0),7,5));
@@ -392,7 +393,7 @@ public class PortalImportTest {
         assertTrue(store.placePreviewPlant("home",7,7,"bush",2,"flower"));
         WorldStore.World w=store.activeWorld();assertEquals(12,w.previewData.version);WorldStore.SurfaceObject bush=w.surfaces.get(0);
         assertEquals(2,WorldStore.surfaceFootprint(bush));assertEquals("preview-bush-flower-large",bush.material);
-        assertFalse(store.moveCharacter("home",8,8,"S"));assertFalse(store.placeWildGrass("home",8,8));
+        assertTrue(store.moveCharacter("home",8,8,"S"));assertEquals(8,WorldStore.parseExport(store.activeWorld().previewData.toJson()).characterColumn);assertTrue(store.moveCharacter("home",5,5,"N"));assertFalse(store.placeWildGrass("home",8,8));
         assertFalse(store.placePreviewPlant("home",19,19,"bush",2,"berry"));
         assertFalse(store.placePreviewPlant("home",8,8,"bush",1,"berry"));
         assertTrue(store.placePreviewPlant("home",11,11,"bush",1,"berry"));

@@ -42,6 +42,7 @@
     return true;
   }
   function treeAt(world,column,row) { return (world.orangeTrees||[]).some(t=>column>=t.column && column<t.column+(t.size||2) && row>=t.row && row<t.row+(t.size||2)); }
+  function solidTreeAt(world,column,row) { return (world.orangeTrees||[]).some(t=>t.kind!=='wild-grass' && t.kind!=='bush' && column>=t.column && column<t.column+(t.size||2) && row>=t.row && row<t.row+(t.size||2)); }
   function validTreeGround(world, tiles, stacks=world.blockStacks) {
     const size=world.gridSize;
     for(const t of world.orangeTrees||[]) {
@@ -196,7 +197,7 @@
       || typeof config.visible !== 'boolean' || !Number.isInteger(config.column) || config.column < 0 || config.column >= (activeWorld().gridSize || 9)
       || !Number.isInteger(config.row) || config.row < 0 || config.row >= (activeWorld().gridSize || 9)
       || !Number.isFinite(config.scale) || config.scale < 0.5 || config.scale > 1.5
-      || !['N', 'E', 'S', 'W'].includes(config.facing) || (config.visible && treeAt(activeWorld(),config.column,config.row))) return false;
+      || !['N', 'E', 'S', 'W'].includes(config.facing) || (config.visible && solidTreeAt(activeWorld(),config.column,config.row))) return false;
     const worlds = state.worlds.map(world => world.id === id ? {...world,
       showCharacter: config.visible, characterColumn: config.column,
       characterRow: config.row, characterScale: config.scale, characterFacing: config.facing} : world);
@@ -241,7 +242,7 @@
     const world=activeWorld(), size=world.gridSize;
     if(id==='base' || world.id!==id || ![20,25,50,100].includes(size) || !Array.isArray(world.tiles) || JSON.stringify(world.orangeTrees||[])!==JSON.stringify(expected) || !validOrangeTrees(next,size))return false;
     const candidate={...world,orangeTrees:next}, player=getCharacter(world), house=getHouse(world);
-    if(!validTreeGround(candidate,world.tiles) || (player.visible && treeAt(candidate,player.column,player.row)))return false;
+    if(!validTreeGround(candidate,world.tiles) || (player.visible && (solidTreeAt(candidate,player.column,player.row) || (treeAt(candidate,player.column,player.row) && !treeAt(world,player.column,player.row)))))return false;
     if(house) for(let r=house.row;r<house.row+3;r++)for(let c=house.column;c<house.column+3;c++) if(treeAt(candidate,c,r))return false;
     return commit({...state,worlds:state.worlds.map(w=>{if(w.id!==id)return w;const updated={...w};if(next.length)updated.orangeTrees=next.map(t=>({...t}));else delete updated.orangeTrees;return updated;})});
   }
@@ -284,7 +285,7 @@
         || !['N','E','S','W'].includes(w.characterFacing) || !validHouse(w.house,w.gridSize)
         || !w.tiles[w.characterRow*w.gridSize+w.characterColumn]) return fail();
       if (w.house) for (let r=w.house.row;r<w.house.row+3;r++) for (let c=w.house.column;c<w.house.column+3;c++) if (!w.tiles[r*w.gridSize+c]) return fail();
-      if (!levelHouse(w,w.house) || !validTreeGround(w,w.tiles) || (w.showCharacter && treeAt(w,w.characterColumn,w.characterRow))) return fail();
+      if (!levelHouse(w,w.house) || !validTreeGround(w,w.tiles) || (w.showCharacter && solidTreeAt(w,w.characterColumn,w.characterRow))) return fail();
       if(w.house) for(let r=w.house.row;r<w.house.row+3;r++)for(let c=w.house.column;c<w.house.column+3;c++) if(treeAt(w,c,r))return fail();
       return {version: root.version===12 ? 40 : root.version===11 ? 39 : root.version===10 ? 38 : root.version===9 ? 37 : root.version===8 ? 36 : root.version===7 ? 35 : root.version===6 ? 34 : root.version===5 ? 33 : 32, world: {...w, tiles: w.tiles.slice(), house: w.house ? {...w.house} : null}};
     }
