@@ -11,13 +11,13 @@ import java.util.Set;
 /** Strict, lossless reader for the preview's portable 20x20, 25x25, 50x50 and 100x100 formats.
  */
 final class PreviewWorld20 {
-    final int size;
+    final int size, version;
     private final String json;
     final String id;
     private final int[] tiles;
 
-    private PreviewWorld20(String json, String id, int size, int[] tiles) {
-        this.json = json; this.id = id; this.size = size; this.tiles = tiles;
+    private PreviewWorld20(String json, String id, int size, int version, int[] tiles) {
+        this.json = json; this.id = id; this.size = size; this.version = version; this.tiles = tiles;
     }
     int tile(int column, int row) {
         if (column < 0 || row < 0 || column >= size || row >= size) throw new IndexOutOfBoundsException();
@@ -60,7 +60,8 @@ final class PreviewWorld20 {
         JSONObject root = new JSONObject(input);
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
-        int version = integer(root,"version",1,3);
+        int version = integer(root,"version",1,Integer.MAX_VALUE);
+        if (version > 3) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles");
         String id=string(w,"id"), name=string(w,"name"), description=string(w,"description"), color=string(w,"color");
@@ -87,6 +88,6 @@ final class PreviewWorld20 {
             if (h.has("scale")) scale(h,"scale"); if (h.has("facing")) facing(h,"facing"); if (h.has("visible")) bool(h,"visible");
             for (int y=hr;y<hr+3;y++) for (int x=hc;x<hc+3;x++) if (tiles[y*size+x]==0) throw new JSONException("House on empty tile");
         }
-        return new PreviewWorld20(root.toString(),id,size,tiles);
+        return new PreviewWorld20(root.toString(),id,size,version,tiles);
     }
 }

@@ -401,7 +401,17 @@ final class WorldStore {
         boolean found = false;
         for (int i = 0; i < existing.size(); i++) {
             if (existing.get(i).id.equals(world.id)) {
-                if(existing.get(i).previewData!=null && world.previewData==null) throw new JSONException("Legacy export cannot replace terrain");
+                World old=existing.get(i);
+                // These are separate schemas: a preview file has no legacy objects/portals,
+                // and a legacy file has no portable terrain. Neither can replace the other.
+                if ((old.previewData==null)!=(world.previewData==null))
+                    throw new JSONException("World format cannot replace different format");
+                if(old.previewData!=null && world.previewData.version<old.previewData.version) {
+                    int maxTile=world.previewData.version==1?1:world.previewData.version==2?5:6;
+                    for(int row=0;row<old.previewData.size;row++) for(int col=0;col<old.previewData.size;col++)
+                        if(old.previewData.tile(col,row)>maxTile)
+                            throw new JSONException("Older preview format cannot replace newer terrain");
+                }
                 if(world.formatVersion<21 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("flower") && !java.util.Arrays.asList("rose","tulip","lavender","daisy","marigold","bluebell").contains(o.material)))throw new JSONException("Legacy export cannot replace flower variant");
                 if(world.formatVersion<21 && hasOverlappingFlowers(existing.get(i).surfaces))throw new JSONException("Legacy export cannot replace overlapping flowers");
                 if(world.formatVersion<20 && existing.get(i).surfaces.stream().anyMatch(o->o.type.equals("flower")))throw new JSONException("Legacy export cannot replace flowers");

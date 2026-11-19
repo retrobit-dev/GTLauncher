@@ -240,6 +240,43 @@ public class PortalImportTest {
         WorldStore.House old=store.activeWorld().houses.get(0);assertFalse(store.moveSelectedObject("home",old,null,11,11));assertFalse(store.moveSelectedObject("home",old,null,19,19));
         assertTrue(store.moveSelectedObject("home",old,null,15,15));assertEquals(15,store.activeWorld().houses.get(0).column);assertEquals(3,store.activeWorld().previewData.tile(20,20));assertFalse(store.moveSelectedObject("home",old,null,6,6));
     }
+    private String portableWorld(int version, int firstTile) throws JSONException {
+        org.json.JSONArray tiles=new org.json.JSONArray();for(int i=0;i<400;i++) tiles.put(i==0?firstTile:1);
+        org.json.JSONObject w=new org.json.JSONObject().put("id","home").put("name","Home").put("description","")
+                .put("color","#a8c795").put("gridSize",20).put("tiles",tiles).put("house",org.json.JSONObject.NULL)
+                .put("showCharacter",true).put("characterColumn",5).put("characterRow",5).put("characterScale",1).put("characterFacing","S");
+        return new org.json.JSONObject().put("format","gtlauncher-preview-world").put("version",version).put("world",w).toString();
+    }
+    @Test public void differentSchemasNeverOverwriteAndPreservePreferences() throws JSONException {
+        String bush="{\"type\":\"bush\",\"column\":1,\"row\":1,\"variant\":\"tiered\"}";
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(world(bush))));
+        String before=p.getString("worlds_v1",null),active=store.activeId();
+        try {store.upsertAndSelect(WorldStore.parseExport(portableWorld(2,1)));fail("portable format must not erase legacy objects");} catch(JSONException expected) {}
+        assertEquals(before,p.getString("worlds_v1",null));assertEquals(active,store.activeId());assertEquals(1,store.activeWorld().surfaces.size());
+        p=prefs();store=new WorldStore(p);assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(2,1))));
+        before=p.getString("worlds_v1",null);active=store.activeId();
+        try {store.upsertAndSelect(WorldStore.parseExport(world(bush)));fail("legacy format must not erase terrain");} catch(JSONException expected) {}
+        assertEquals(before,p.getString("worlds_v1",null));assertEquals(active,store.activeId());assertNotNull(store.activeWorld().previewData);
+    }
+    @Test public void oldPortableVersionCannotEraseTilledTerrain() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,6))));
+        String before=p.getString("worlds_v1",null);
+        try {store.upsertAndSelect(WorldStore.parseExport(portableWorld(2,1)));fail("v2 must not erase tilled terrain");} catch(JSONException expected) {}
+        assertEquals(before,p.getString("worlds_v1",null));assertEquals(6,store.activeWorld().previewData.tile(0,0));
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,1))));
+    }
+    @Test public void newerPortableVersionsAreRejectedWithoutChangingStoredWorld() throws JSONException {
+        SharedPreferences p=prefs();WorldStore store=new WorldStore(p);
+        assertTrue(store.upsertAndSelect(WorldStore.parseExport(portableWorld(3,6))));
+        String before=p.getString("worlds_v1",null),active=store.activeId();
+        for(int version=4;version<=7;version++) {
+            try {store.upsertAndSelect(WorldStore.parseExport(portableWorld(version,1)));fail("unsupported version");}
+            catch(JSONException expected) {assertEquals("Unsupported world version",expected.getMessage());}
+            assertEquals(before,p.getString("worlds_v1",null));assertEquals(active,store.activeId());
+        }
+    }
     private SharedPreferences prefs() {
         Map<String,String> data=new HashMap<>();
         return (SharedPreferences) Proxy.newProxyInstance(getClass().getClassLoader(),new Class[]{SharedPreferences.class},(proxy,method,args)-> {

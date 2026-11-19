@@ -1095,7 +1095,13 @@ public class HomeActivity extends Activity {
             closeDrawer();
             Toast.makeText(this, "World " + world.name + " disimpan dan dibuka.", Toast.LENGTH_LONG).show();
         } catch (JSONException | IllegalStateException error) {
-            Toast.makeText(this, "World tidak dapat disimpan; data lama tidak ditimpa.", Toast.LENGTH_LONG).show();
+            String message=error.getMessage();
+            String notice="World format cannot replace different format".equals(message)
+                    ? "ID sudah digunakan world dengan format berbeda; data lama tidak ditimpa."
+                    : "Older preview format cannot replace newer terrain".equals(message)
+                    ? "Versi world lama tidak dapat mengganti terrain baru; data lama tidak ditimpa."
+                    : "World tidak dapat disimpan; data lama tidak ditimpa.";
+            Toast.makeText(this, notice, Toast.LENGTH_LONG).show();
         }
     }
 
