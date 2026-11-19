@@ -10,28 +10,28 @@ preview=root/'preview/assets/pet-sparrow.png'
 image.save(preview,optimize=True)
 (root/'app/src/main/res/drawable-nodpi/pet_sparrow.png').write_bytes(preview.read_bytes())
 
-# Composite the raised wing study onto the chosen bird; all other pixels stay fixed.
-from PIL import ImageDraw, ImageChops
-wing_source,box=extract(root/'preview/assets/character-redraw/sparrow-wing-study.png')
-full=Image.new('RGBA',(1024,1024));full.alpha_composite(wing_source,(box[0],box[1]))
-mask=Image.new('L',full.size)
-ImageDraw.Draw(mask).polygon([(559,383),(676,295),(784,127),(803,70),(830,69),(840,118),(869,103),(890,120),(892,150),(920,148),(933,170),(929,207),(932,229),(910,300),(887,384),(836,474),(763,549),(689,601),(609,584),(570,535)],fill=255)
-full.putalpha(ImageChops.multiply(full.getchannel('A'),mask))
-wing=full.crop((559,69,934,602)).resize((105,138),Image.Resampling.LANCZOS)
-flap=image.copy();flap.alpha_composite(wing,(72,2))
+# Replace the folded-wing area with the clean raised-wing study. A replacement
+# mask (rather than alpha overlay) also removes the old folded feathers.
+from PIL import ImageDraw
+flight,_=extract(root/'preview/assets/character-redraw/sparrow-flight-clean-study.png')
+flight=flight.resize((192,192),Image.Resampling.LANCZOS)
+mask=Image.new('L',flight.size)
+ImageDraw.Draw(mask).polygon([(96,0),(192,0),(192,145),(150,146),(130,145),(100,136),(86,120),(82,100),(80,83),(95,65)],fill=255)
+flap=image.copy();flap.paste(flight,(0,0),mask)
 flap_path=root/'preview/assets/pet-sparrow-flap.png';flap.save(flap_path,optimize=True)
 (root/'app/src/main/res/drawable-nodpi/pet_sparrow_flap.png').write_bytes(flap_path.read_bytes())
 
 # Rear three-quarter artwork faces right with its tail pointing left, like the rear player.
 back,back_box=extract(root/'preview/assets/character-redraw/sparrow-back-facing-corrected.png')
-source,source_box=extract(root/'preview/assets/character-redraw/sparrow-back-facing-wing.png')
+source,source_box=extract(root/'preview/assets/character-redraw/sparrow-back-flight-clean-study.png')
 base=Image.new('RGBA',(1024,1024));base.alpha_composite(back,back_box[:2])
-wing_source=Image.new('RGBA',(1024,1024));wing_source.alpha_composite(source,source_box[:2])
-mask=Image.new('L',wing_source.size)
-ImageDraw.Draw(mask).polygon([(247,170),(330,72),(425,70),(548,237),(608,338),(626,495),(554,582),(425,621),(315,549),(248,420)],fill=255)
-wing_source.putalpha(ImageChops.multiply(wing_source.getchannel('A'),mask))
-wing=wing_source.crop((240,65,630,625)).resize((405,575),Image.Resampling.LANCZOS)
-flap=base.copy();flap.alpha_composite(wing,(275,54))
+flap=Image.new('RGBA',(1024,1024));flap.alpha_composite(source,source_box[:2])
+# Retain the resting head and feet to keep their position fixed across frames;
+# the body under the raised wing comes from the clean flight art, not the folded wing.
+mask=Image.new('L',base.size);draw=ImageDraw.Draw(mask)
+draw.polygon([(535,145),(850,145),(850,410),(745,420),(690,390),(625,370),(560,335)],fill=255)
+draw.rectangle((0,755,1023,1023),fill=255)
+flap.paste(base,(0,0),mask)
 for name,frame in [('pet-sparrow-back.png',base),('pet-sparrow-back-flap.png',flap)]:
     frame=frame.crop((80,50,900,900)).resize((192,192),Image.Resampling.LANCZOS)
     out=root/'preview/assets'/name;frame.save(out,optimize=True)

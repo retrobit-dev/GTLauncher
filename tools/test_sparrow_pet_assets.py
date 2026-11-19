@@ -9,6 +9,11 @@ flap=root/'preview/assets/pet-sparrow-flap.png'
 assert flap.read_bytes()==(root/'app/src/main/res/drawable-nodpi/pet_sparrow_flap.png').read_bytes()
 f=Image.open(flap).convert('RGBA')
 assert f.size==im.size and f.crop((0,0,65,192)).tobytes()==im.crop((0,0,65,192)).tobytes() and f.tobytes()!=im.tobytes()
+# Guard against layering the raised wing over the original folded wing.
+from build_player_idle_selected import extract
+clean,_=extract(root/'preview/assets/character-redraw/sparrow-flight-clean-study.png')
+clean=clean.resize((192,192),Image.Resampling.LANCZOS)
+assert f.crop((100,95,145,130)).tobytes()==clean.crop((100,95,145,130)).tobytes()
 for name in ('pet-sparrow-back.png','pet-sparrow-back-flap.png'):
     file=root/'preview/assets'/name
     assert file.read_bytes()==(root/'app/src/main/res/drawable-nodpi'/name.replace('-','_')).read_bytes()
