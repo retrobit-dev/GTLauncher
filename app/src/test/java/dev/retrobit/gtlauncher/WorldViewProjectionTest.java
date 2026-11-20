@@ -24,4 +24,17 @@ public class WorldViewProjectionTest {
   JSONObject bad=new JSONObject(original);bad.getJSONArray("ramps").getJSONObject(0).put("direction","X");
   try{WorldViewProjection.project(bad,1);fail("bad direction must be rejected");}catch(JSONException expected){}
  }
+ @Test public void rotatedPickingReturnsOriginalRampTile() throws Exception {
+  int size=20;JSONArray tiles=new JSONArray(),stacks=new JSONArray();for(int i=0;i<size*size;i++){boolean ramp=i==8*size+6;tiles.put(ramp?4:0);JSONArray stack=new JSONArray();if(ramp)stack.put(1).put(2).put(4);stacks.put(stack);}
+  JSONObject world=new JSONObject().put("id","asymmetric").put("name","Rotated").put("description","").put("color","#a8c795").put("gridSize",size).put("tiles",tiles).put("blockStacks",stacks).put("showCharacter",true).put("characterColumn",6).put("characterRow",8).put("characterFacing","E").put("characterScale",1).put("house",JSONObject.NULL).put("ramps",new JSONArray().put(new JSONObject().put("column",6).put("row",8).put("direction","E").put("material",5)));
+  PreviewWorld20 terrain=PreviewWorld20.parse(new JSONObject().put("format","gtlauncher-preview-world").put("version",21).put("world",world).toString());String before=terrain.toJson();
+  for(int q:new int[]{0,1,2,3,-1}){
+   WorldViewRotation.Point p=WorldViewRotation.point(6,8,size,q);float cx=(float)(200+(p.column-p.row)*14),cy=(float)(100+(p.column+p.row)*7-8);String d=WorldViewRotation.direction("E",q);RampGeometry.Shape shape=RampGeometry.create(d,28,14,4);
+   java.util.List<RampGeometry.Vertex[]> faces=new java.util.ArrayList<>();faces.add(shape.top);for(RampGeometry.Vertex[] face:shape.sides){boolean u=true,v=true;for(RampGeometry.Vertex point:face){u&=point.u==1;v&=point.v==1;}if(u||v)faces.add(face);}if(d.equals("E")||d.equals("S"))faces.add(shape.highFace);
+   for(RampGeometry.Vertex[] face:faces){float x=cx,y=cy;for(RampGeometry.Vertex vertex:face){x+=(float)vertex.x/face.length;y+=(float)vertex.y/face.length;}assertEquals(new PortalTravel.Tile(6,8),WorldViewProjection.pickWorld(terrain,q,x,y,200,100,28,14,4,20));}
+   assertNull(WorldViewProjection.pickWorld(terrain,q,-999,-999,200,100,28,14,4,20));
+  }
+  assertEquals(before,terrain.toJson());
+ }
+
 }

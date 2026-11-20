@@ -1,5 +1,5 @@
 // Pure quarter-turn camera geometry. Never rotate or rewrite world records.
-(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory();else root.WorldViewRotation=factory();})(typeof window!=='undefined'?window:globalThis,()=>{
+(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory(require('./ramp-geometry.js'));else root.WorldViewRotation=factory(root.RampGeometry);})(typeof window!=='undefined'?window:globalThis,(RampGeometry)=>{
   'use strict';
   const directions=['N','E','S','W'];
   const turns=n=>Number.isInteger(n)?((n%4)+4)%4:null;
@@ -58,5 +58,33 @@
       return result;
     }catch(_){return null;}
   }
-  return Object.freeze({point,direction,rectangle,fence,bridge,projectWorld});
+  // Pick the frontmost visible surface in camera space, returning WORLD coordinates.
+  // Height data and ramp directions are read from the source, never transformed in place.
+  function pickWorld(world,quarterTurns,x,y,originX,originY,tileWidth,tileHeight,blockHeight,baseDepth=0) {
+    const q=turns(quarterTurns),size=world?.gridSize;
+    if(q===null || !Number.isInteger(size) || size<1 || !Array.isArray(world.tiles) || world.tiles.length!==size*size ||
+       ![x,y,originX,originY,tileWidth,tileHeight,blockHeight,baseDepth].every(Number.isFinite) || tileWidth<=0 || tileHeight<=0 || blockHeight<=0)return null;
+    if(world.blockStacks!==undefined && (!Array.isArray(world.blockStacks) || world.blockStacks.length!==size*size || world.blockStacks.some(s=>!Array.isArray(s))))return null;
+    if(world.ramps!==undefined && (!Array.isArray(world.ramps) || !RampGeometry))return null;
+    const ramps=new Map();
+    for(const r of world.ramps||[]){
+      if(!r || !Number.isInteger(r.column) || !Number.isInteger(r.row) || r.column<0 || r.row<0 || r.column>=size || r.row>=size || !direction(r.direction,q) || ramps.has(`${r.column},${r.row}`))return null;
+      ramps.set(`${r.column},${r.row}`,r.direction);
+    }
+    function worldPoint(c,r){return point(c,r,size,-q);}
+    function height(c,r){if(c<0 || r<0 || c>=size || r>=size)return 0;const p=worldPoint(c,r),i=p.row*size+p.column;return world.blockStacks?world.blockStacks[i].length:(world.tiles[i]?1:0);}
+    for(let diagonal=2*size-2;diagonal>=0;diagonal--)for(let r=size-1;r>=0;r--) {
+      const c=diagonal-r;if(c<0 || c>=size)continue;const h=height(c,r);if(h<=0)continue;
+      const p=worldPoint(c,r),cx=originX+(c-r)*tileWidth/2,cy=originY+(c+r)*tileHeight/2-(h-1)*blockHeight,dx=x-cx,hw=tileWidth/2,hh=tileHeight/2;
+      const ramp=ramps.get(`${p.column},${p.row}`),viewDirection=ramp?direction(ramp,q):null;
+      if(viewDirection && RampGeometry.hit(viewDirection,tileWidth,tileHeight,blockHeight,dx,y-cy))return p;
+      if(Math.abs(dx)/hw+Math.abs(y-cy)/hh<=1)return p;
+      if(Math.abs(dx)<=hw){
+        const neighbor=height(c+(dx>=0?1:0),r+(dx<0?1:0)),face=Math.max(0,h-neighbor)*blockHeight+(neighbor===0?Math.max(0,baseDepth-blockHeight):0),edgeY=cy+hh*(1-Math.abs(dx)/hw);
+        if(face>0 && y>=edgeY && y<=edgeY+face)return p;
+      }
+    }
+    return null;
+  }
+  return Object.freeze({point,direction,rectangle,fence,bridge,projectWorld,pickWorld});
 });
