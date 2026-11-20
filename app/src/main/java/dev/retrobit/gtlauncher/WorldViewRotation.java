@@ -33,12 +33,12 @@ final class WorldViewRotation {
         if(column<0 || row<0 || column>=size || row>=size)return null;
         Point p=point(column,row,size,turns);String d=direction(edge,turns);return p==null||d==null?null:new Edge((int)p.column,(int)p.row,d);
     }
-    static Bridge bridge(int column,int row,String axis,int length,int size,int turns) {
-        if(!("E".equals(axis)||"S".equals(axis)) || length<3 || length>5 || column<0 || row<0 || size<1 || column>=size || row>=size)return null;
-        int endC=column+("E".equals(axis)?length-1:0),endR=row+("S".equals(axis)?length-1:0);
-        if(endC>=size || endR>=size)return null;
-        Point a=point(column,row,size,turns),b=point(endC,endR,size,turns);
-        return new Bridge((int)Math.min(a.column,b.column),(int)Math.min(a.row,b.row),a.row==b.row?"E":"S",length);
+    static Bridge bridge(int column,int row,String axis,int length,int size,int turns) {return bridge(column,row,axis,length,1,size,turns);}
+    static Bridge bridge(int column,int row,String axis,int length,int width,int size,int turns) {
+        if(width<1 || !("E".equals(axis)||"S".equals(axis)))return null;
+        Rect r=rectangle(column,row,axis.equals("E")?length:width,axis.equals("S")?length:width,size,turns);
+        if(r==null)return null;
+        return new Bridge(r.column,r.row,r.width==length?"E":"S",length);
     }
     private WorldViewRotation(){}
 }

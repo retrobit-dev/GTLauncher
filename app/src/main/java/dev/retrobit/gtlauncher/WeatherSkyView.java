@@ -419,7 +419,7 @@ public final class WeatherSkyView extends View {
         for(int i=0;i<12;i++) {walkFront[i]=BitmapFactory.decodeResource(getResources(),frontFrames[i]);walkBack[i]=BitmapFactory.decodeResource(getResources(),backFrames[i]);}
         int[] runFrontFrames={R.drawable.character_run_front_00, R.drawable.character_run_front_01, R.drawable.character_run_front_02, R.drawable.character_run_front_03, R.drawable.character_run_front_04, R.drawable.character_run_front_05, R.drawable.character_run_front_06, R.drawable.character_run_front_07, R.drawable.character_run_front_08, R.drawable.character_run_front_09, R.drawable.character_run_front_10, R.drawable.character_run_front_11},runBackFrames={R.drawable.character_run_back_00, R.drawable.character_run_back_01, R.drawable.character_run_back_02, R.drawable.character_run_back_03, R.drawable.character_run_back_04, R.drawable.character_run_back_05, R.drawable.character_run_back_06, R.drawable.character_run_back_07, R.drawable.character_run_back_08, R.drawable.character_run_back_09, R.drawable.character_run_back_10, R.drawable.character_run_back_11};
         for(int i=0;i<12;i++) {runFront[i]=BitmapFactory.decodeResource(getResources(),runFrontFrames[i]);runBack[i]=BitmapFactory.decodeResource(getResources(),runBackFrames[i]);}
-        bridgeWood=BitmapFactory.decodeResource(getResources(),R.drawable.bridge_wood_reference);bridgeStone=BitmapFactory.decodeResource(getResources(),R.drawable.bridge_stone_reference);
+        bridgeWood=BitmapFactory.decodeResource(getResources(),R.drawable.bridge_wood_reference);bridgeStone=BitmapFactory.decodeResource(getResources(),R.drawable.bridge_stone_reference);bridgeWoodWide=BitmapFactory.decodeResource(getResources(),R.drawable.bridge_wood_wide);bridgeStoneWide=BitmapFactory.decodeResource(getResources(),R.drawable.bridge_stone_wide);
         coniferTree = BitmapFactory.decodeResource(getResources(),R.drawable.cemara_laut_redesign);
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.simple_house_aligned);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.simple_house_back_aligned);
@@ -526,7 +526,7 @@ public final class WeatherSkyView extends View {
         if(worldViewTurns==0)projectWorldSurfaces();
         invalidate();
     }
-    private Bitmap bridgeWood,bridgeStone;
+    private Bitmap bridgeWood,bridgeStone,bridgeWoodWide,bridgeStoneWide;
     // Runtime camera copy only. Saved world coordinates are never rewritten.
     private PreviewWorld20 sourceWorldTerrain,worldTerrain;
     private String cachedWorldJson;
@@ -660,15 +660,15 @@ public final class WeatherSkyView extends View {
     private void drawBridges(Canvas canvas) {
         if(worldTerrain==null)return;
         for(BridgeGeometry.Bridge b:worldTerrain.bridges){
-            Bitmap image=b.material.equals("wood")?bridgeWood:bridgeStone;if(image==null)continue;
-            float half=(b.length-1)/2f,c=b.column+(b.axis.equals("E")?half:0),r=b.row+(b.axis.equals("S")?half:0);
+            Bitmap image=b.width>1?(b.material.equals("wood")?bridgeWoodWide:bridgeStoneWide):(b.material.equals("wood")?bridgeWood:bridgeStone);if(image==null)continue;
+            float half=(b.length-1)/2f,c=b.column+(b.axis.equals("E")?half:(b.width-1)/2f),r=b.row+(b.axis.equals("S")?half:(b.width-1)/2f);
             float x=SCENE_WIDTH/2f+(c-r)*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(c+r)*ISLAND_TILE_HEIGHT/2f-elevationAt(b.column,b.row);
             int save=canvas.save();canvas.translate(x,y);if(b.axis.equals("E"))canvas.scale(-1,1);
             // Map the three deck landmarks onto exactly length by one tile.
-            float px=b.material.equals("wood")?0:35,py=b.material.equals("wood")?284:253;
-            float ux=b.material.equals("wood")?430:415,uy=b.material.equals("wood")?-237:-203;
-            float vx=b.material.equals("wood")?131:123,vy=b.material.equals("wood")?75:68;
-            float det=ux*vy-uy*vx,lx=b.length*ISLAND_TILE_WIDTH/2f,ly=-b.length*ISLAND_TILE_HEIGHT/2f,wx=ISLAND_TILE_WIDTH/2f,wy=ISLAND_TILE_HEIGHT/2f;
+            float px=b.width>1?50:b.material.equals("wood")?0:35,py=b.width>1?250:b.material.equals("wood")?284:253;
+            float ux=b.width>1?285:b.material.equals("wood")?430:415,uy=b.width>1?-165:b.material.equals("wood")?-237:-203;
+            float vx=b.width>1?126:b.material.equals("wood")?131:123,vy=b.width>1?90:b.material.equals("wood")?75:68;
+            float det=ux*vy-uy*vx,lx=b.length*ISLAND_TILE_WIDTH/2f,ly=-b.length*ISLAND_TILE_HEIGHT/2f,wx=b.width*ISLAND_TILE_WIDTH/2f,wy=b.width*ISLAND_TILE_HEIGHT/2f;
             float a=(lx*vy-wx*uy)/det,cx=(wx*ux-lx*vx)/det,bb=(ly*vy-wy*uy)/det,d=(wy*ux-ly*vx)/det;
             float midX=px+(ux+vx)/2f,midY=py+(uy+vy)/2f;
             android.graphics.Matrix deck=new android.graphics.Matrix();deck.setValues(new float[]{a,cx,-a*midX-cx*midY,bb,d,-bb*midX-d*midY,0,0,1});canvas.concat(deck);

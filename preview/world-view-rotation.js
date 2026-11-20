@@ -24,10 +24,9 @@
   }
   function bridge(b,size,q) {
     if(!b || !['E','S'].includes(b.axis) || ![3,4,5].includes(b.length??3) || !Number.isInteger(b.column) || !Number.isInteger(b.row))return null;
-    const length=b.length??3,other={column:b.column+(b.axis==='E'?length-1:0),row:b.row+(b.axis==='S'?length-1:0)};
-    if(b.column<0 || b.row<0 || other.column>=size || other.row>=size)return null;
-    const a=point(b.column,b.row,size,q),z=point(other.column,other.row,size,q);if(!a||!z)return null;
-    return {column:Math.min(a.column,z.column),row:Math.min(a.row,z.row),axis:a.row===z.row?'E':'S',length};
+    const length=b.length??3,width=b.width??1;
+    const r=rectangle(b.column,b.row,b.axis==='E'?length:width,b.axis==='S'?length:width,size,q);if(!r)return null;
+    return {column:r.column,row:r.row,axis:r.width===length?'E':'S',length};
   }
   // Build an isolated camera-space world snapshot; the source is never changed.
   // Only known coordinate-bearing records are transformed. This is not storage.

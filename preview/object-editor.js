@@ -63,7 +63,7 @@
     if(character.visible){const snapshot=window.sceneEditing?.characterCatalogIcon?.();row(`Karakter · ${columnLabel(character.column)}${character.row+1}`,snapshot || `assets/main-character${['N','W'].includes(character.facing)?'-back':''}.png?v=short-stocky-1`,null,0,null,true);if(!snapshot && ['W','E'].includes(character.facing))libraryList.lastElementChild.querySelector('img').style.transform='scaleX(-1)';}
     if(house)row(`Rumah player · ${columnLabel(house.column)}${house.row+1}${house.visible?'':' (tersembunyi)'}`,'assets/simple-house-aligned.png',null,0,null,true);
     (world.orangeTrees||[]).forEach((t,i)=>{const label=t.kind==='bush'?(t.variant==='flower'?'Semak melati':t.variant==='berry'?'Semak murbei':'Semak'):t.kind==='wild-grass'?'Rumput liar':t.kind==='conifer'?'Pohon cemara laut':'Pohon jeruk';const image=t.kind==='bush'?(t.variant==='flower'?'assets/bush-jasmine.png':t.variant==='berry'?'assets/bush-mulberry.png':'assets/bush-selected.png'):t.kind==='wild-grass'?'assets/wild-grass-selected.png':t.kind==='conifer'?'assets/cemara-laut-redesign.png':'assets/orange-tree-pixel.png';row(`${label} · ${columnLabel(t.column)}${t.row+1}`,image,'trees',i,t);});
-    (world.bridges||[]).forEach((b,i)=>row(`Jembatan ${b.material==='wood'?'kayu':'batu'} · ${columnLabel(b.column)}${b.row+1} · ${b.length||3}×1`,`assets/bridge-${b.material}.png`,'bridges',i,b));
+    (world.bridges||[]).forEach((b,i)=>row(`Jembatan ${b.material==='wood'?'kayu':'batu'} · ${columnLabel(b.column)}${b.row+1} · ${b.length||3}×${b.width||1}`,`assets/bridge-${b.material}${b.width?'-wide':'-reference'}.png`,'bridges',i,b));
     (world.fences||[]).forEach((f,i)=>row(`${f.material==='stone-tall'?'Tembok tinggi':f.material==='wood'?'Pagar kayu':'Pagar batu'} · ${columnLabel(f.column)}${f.row+1} · ${f.edge}`,`assets/fence-mesh-${f.material}.png`,'fences',i,f));
     if(!libraryList.childElementCount){const empty=document.createElement('p');empty.textContent='Belum ada objek yang ditampilkan.';libraryList.append(empty);}
   }
@@ -183,8 +183,8 @@
     event.preventDefault(); event.stopImmediatePropagation(); placementPointer=event.pointerId;
     const tile=scene()?.tileAt(scene().toLocal(event.clientX,event.clientY));
     if(placingBridge) {
-      const before=window.worldManager.getActive().bridges||[],next=tile && [...before,{...tile,axis:bridgeAxis,material:placingBridge.material,...(placingBridge.length===3?{}:{length:placingBridge.length})}];
-      if(!next || !saveBridges(before,next)){tell(`EDITING · Pilih ${placingBridge.length} block rata dan bebas; kedua ujung harus kering.`);return;}
+      const before=window.worldManager.getActive().bridges||[],next=tile && [...before,{...tile,axis:bridgeAxis,material:placingBridge.material,width:placingBridge.length===5?3:2,...(placingBridge.length===3?{}:{length:placingBridge.length})}];
+      if(!next || !saveBridges(before,next)){tell(`EDITING · Pilih area ${placingBridge.length}×${placingBridge.length===5?3:2} block rata dan bebas; kedua ujung harus kering.`);return;}
       selectedType='bridge';selectedBridgeIndex=before.length;selected=true;refresh();syncControls();tell('EDITING · Jembatan ditempatkan. Ketuk tile lain atau Batal.');return;
     }
     if(placingFence) {

@@ -423,6 +423,7 @@ final class WorldStore {
                 if ((old.previewData==null)!=(world.previewData==null))
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
+                    if(world.previewData.version<22 && old.previewData.bridges.stream().anyMatch(b->b.width>1))throw new JSONException("Older preview format cannot replace wide bridges");
                     if(world.previewData.version<21 && old.previewData.hasRamps())throw new JSONException("Older preview format cannot replace ramps");
                     if(world.previewData.version<4 && old.previewData.hasStacks())throw new JSONException("Older preview format cannot replace stacked terrain");
                     if(world.previewData.version<20 && old.previewData.hasBlockOpacity())throw new JSONException("Older preview format cannot replace block opacity");

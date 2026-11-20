@@ -361,13 +361,13 @@
     const keys = (value, allowed) => record(value) && Object.keys(value).every(key => allowed.includes(key));
     let root;
     try { root = JSON.parse(text.replace(/^\uFEFF/, '')); } catch (_) { return fail(); }
-    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21].includes(root.version)) {
+    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22].includes(root.version)) {
       const w = root.world;
       if (!keys(w, WORLD_KEYS) || ![20,25,50,100].includes(w.gridSize) || !Array.isArray(w.tiles) || w.tiles.length !== w.gridSize * w.gridSize
         || w.tiles.some(t => !validTile(t) || (t > (root.version === 1 ? 1 : root.version === 2 ? 5 : root.version < 14 ? 6 : 10)))
         || (root.version < 5 && w.orangeTrees !== undefined) || (root.version < 6 && w.orangeTrees?.some(t=>t.facing!==undefined)) || (root.version < 7 && w.orangeTrees?.some(t=>t.kind!==undefined)) || (root.version < 8 && w.orangeTrees?.some(t=>t.size!==undefined)) || (root.version < 9 && w.orangeTrees?.some(t=>t.kind==='wild-grass')) || (root.version < 10 && w.orangeTrees?.some(t=>t.kind==='bush')) || (root.version < 11 && w.orangeTrees?.some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined))) || (root.version < 12 && w.orangeTrees?.some(t=>t.plantId!==undefined || t.plantedAt!==undefined)) || !validOrangeTrees(w.orangeTrees,w.gridSize)
         || (root.version < 13 && w.fences !== undefined) || (root.version < 17 && w.fences?.some(f=>f.material==='stone-tall')) || !validFences(w.fences,w)
-        || (root.version < 15 && w.bridges !== undefined) || (root.version < 16 && w.bridges?.some(b=>b.length!==undefined)) || !validBridges(w)
+        || (root.version < 22 && w.bridges?.some(b=>b.width!==undefined)) || (root.version < 15 && w.bridges !== undefined) || (root.version < 16 && w.bridges?.some(b=>b.length!==undefined)) || !validBridges(w)
         || (root.version < 14 && Array.isArray(w.blockStacks) && w.blockStacks.some(stack=>Array.isArray(stack) && stack.some(t=>t>6)))
         || (root.version < 20 && w.blockOpacity !== undefined) || !validBlockOpacity(w.blockOpacity,w)
         || (root.version < 21 && w.ramps !== undefined) || !validRamps(w.ramps,w)
@@ -444,6 +444,7 @@
       $('world-import-prompt').textContent = `World “${existing.name}” sudah ada dengan ID yang sama. Ganti isinya dengan data dari berkas?`;
       $('world-import-confirm').hidden = false; return;
     }
+    if(existing?.bridges?.some(b=>b.width!==undefined) && (pendingImport.previewVersion ?? 0)<22) {cancelImport();render();announce('Berkas lama tidak mendukung jembatan lebar; data tidak diubah.');return;}
     if(existing?.ramps?.length && (pendingImport.previewVersion ?? 0)<21) {cancelImport();render();announce('Berkas lama tidak mendukung ramp; data tidak diubah.');return;}
     if(existing?.blockOpacity?.length && (pendingImport.previewVersion ?? 0)<20) {cancelImport();render();announce('Berkas lama tidak mendukung transparansi block; data tidak diubah.');return;}
     if(existing && (pendingImport.previewVersion ?? 0)<19 && [existing.orangeTrees,existing.fences,existing.bridges].some(items=>items?.some(item=>item.opacity !== undefined))) {cancelImport();render();announce('Berkas lama tidak mendukung transparansi objek; data tidak diubah.');return;}
@@ -651,7 +652,7 @@
         const character = getCharacter(world);
         const snapshot = {...world, showCharacter: character.visible, characterColumn: character.column, characterRow: character.row,
           characterScale: character.scale, characterFacing: character.facing, house: getHouse(world)};
-        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.ramps !== undefined ? 21 : snapshot.blockOpacity !== undefined ? 20 : [snapshot.orangeTrees,snapshot.fences,snapshot.bridges].some(items=>items?.some(item=>item.opacity!==undefined)) ? 19 : snapshot.house?.opacity !== undefined ? 18 : snapshot.fences?.some(f=>f.material==='stone-tall') ? 17 : snapshot.bridges?.some(b=>b.length!==undefined) ? 16 : snapshot.bridges!==undefined ? 15 : (snapshot.tiles.some(t=>t>6) || snapshot.blockStacks?.some(stack=>stack.some(t=>t>6))) ? 14 : snapshot.fences!==undefined ? 13 : snapshot.orangeTrees?.some(t=>t.plantId!==undefined) ? 12 : snapshot.orangeTrees?.some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined)) ? 11 : snapshot.orangeTrees?.some(t=>t.kind==='bush') ? 10 : snapshot.orangeTrees?.some(t=>t.kind==='wild-grass') ? 9 : snapshot.orangeTrees?.some(t=>t.size!==undefined) ? 8 : snapshot.orangeTrees?.some(t=>t.kind!==undefined) ? 7 : snapshot.orangeTrees?.some(t=>t.facing!==undefined) ? 6 : snapshot.orangeTrees !== undefined ? 5 : snapshot.blockStacks ? 4 : snapshot.tiles.some(t => t === 6) ? 3 : snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
+        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.bridges?.some(b=>b.width!==undefined) ? 22 : snapshot.ramps !== undefined ? 21 : snapshot.blockOpacity !== undefined ? 20 : [snapshot.orangeTrees,snapshot.fences,snapshot.bridges].some(items=>items?.some(item=>item.opacity!==undefined)) ? 19 : snapshot.house?.opacity !== undefined ? 18 : snapshot.fences?.some(f=>f.material==='stone-tall') ? 17 : snapshot.bridges?.some(b=>b.length!==undefined) ? 16 : snapshot.bridges!==undefined ? 15 : (snapshot.tiles.some(t=>t>6) || snapshot.blockStacks?.some(stack=>stack.some(t=>t>6))) ? 14 : snapshot.fences!==undefined ? 13 : snapshot.orangeTrees?.some(t=>t.plantId!==undefined) ? 12 : snapshot.orangeTrees?.some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined)) ? 11 : snapshot.orangeTrees?.some(t=>t.kind==='bush') ? 10 : snapshot.orangeTrees?.some(t=>t.kind==='wild-grass') ? 9 : snapshot.orangeTrees?.some(t=>t.size!==undefined) ? 8 : snapshot.orangeTrees?.some(t=>t.kind!==undefined) ? 7 : snapshot.orangeTrees?.some(t=>t.facing!==undefined) ? 6 : snapshot.orangeTrees !== undefined ? 5 : snapshot.blockStacks ? 4 : snapshot.tiles.some(t => t === 6) ? 3 : snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
         const blob = new Blob([json], {type:'application/json'});
         const url = URL.createObjectURL(blob);
         const safeName = world.name.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'world';

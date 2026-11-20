@@ -42,6 +42,7 @@
   const gaitFrames = Object.fromEntries(['walk','run'].map(mode => [mode,Object.fromEntries(['front','back'].map(side => [side,
     Array.from({length:12},(_,i)=>{const image=new Image();image.src=`./assets/character-${mode}/${side}-${String(i).padStart(2,'0')}.png?v=short-stocky-1`;return image;})]))]));
   const bridgeSprites=Object.fromEntries(['wood','stone'].map(kind=>{const img=new Image();img.onload=()=>{if(REDUCED_MOTION)drawFrame();};img.src=`./assets/bridge-${kind}-reference.png?v=1`;return [kind,img];}));
+  const wideBridgeSprites=Object.fromEntries(['wood','stone'].map(kind=>{const img=new Image();img.onload=()=>{if(REDUCED_MOTION)drawFrame();};img.src=`./assets/bridge-${kind}-wide.png?v=1`;return [kind,img];}));
   const houseImage = new Image();
   houseImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
   houseImage.src = './assets/simple-house-aligned.png?v=1';
@@ -1967,13 +1968,13 @@
   let editingBridgeSelection=null;
   function bridgeBounds(bridge) {
     const half=((bridge.length||3)-1)/2;
-    const centre=characterCentre({column:bridge.column+(bridge.axis==='E'?half:0),row:bridge.row+(bridge.axis==='S'?half:0),blockHeight:surfaceHeight(bridge.column,bridge.row)});
+    const centre=characterCentre({column:bridge.column+(bridge.axis==='E'?half:((bridge.width||1)-1)/2),row:bridge.row+(bridge.axis==='S'?half:((bridge.width||1)-1)/2),blockHeight:surfaceHeight(bridge.column,bridge.row)});
     return {x:centre.x,y:centre.y,w:ISLAND_TILE_WIDTH*2.35,h:ISLAND_TILE_WIDTH*1.56};
   }
   function drawBridge(bridge) {
-    const image=bridgeSprites[bridge.material];if(!image?.complete || !image.naturalWidth)return;
+    const image=(bridge.width ? wideBridgeSprites : bridgeSprites)[bridge.material];if(!image?.complete || !image.naturalWidth)return;
     const p=bridgeBounds(bridge);ctx.save();ctx.globalAlpha*=(100-(bridge.opacity ?? 0))/100;applyIslandTransform();ctx.translate(p.x,p.y);if((viewQuarterTurns%2===0?bridge.axis:bridge.axis==='E'?'S':'E')==='E')ctx.scale(-1,1);
-    const m=window.BridgeGeometry.spriteTransform(bridge.material,bridge.length||3,ISLAND_TILE_WIDTH,islandTileHeight);
+    const m=window.BridgeGeometry.spriteTransform(bridge.material,bridge.length||3,ISLAND_TILE_WIDTH,islandTileHeight,bridge.width||1);
     ctx.transform(m.a,m.b,m.c,m.d,m.e,m.f);
     ctx.imageSmoothingEnabled=true;ctx.drawImage(image,0,0);
     if(editingBridgeSelection && editingBridgeSelection.column===bridge.column && editingBridgeSelection.row===bridge.row && editingBridgeSelection.axis===bridge.axis){ctx.strokeStyle='#fff4a8';ctx.lineWidth=4;ctx.strokeRect(0,0,image.naturalWidth,image.naturalHeight);}
@@ -2898,9 +2899,9 @@
     bridgeAt(point) {
       const all=worldForObjects()?.bridges||[];
       for(let i=all.length-1;i>=0;i--) {
-        const bridge=all[i],image=bridgeSprites[bridge.material];if(!image?.complete || !image.naturalWidth)continue;
+        const bridge=all[i],image=(bridge.width ? wideBridgeSprites : bridgeSprites)[bridge.material];if(!image?.complete || !image.naturalWidth)continue;
         const p=bridgeBounds(bridge),mirror=(viewQuarterTurns%2===0?bridge.axis:bridge.axis==='E'?'S':'E')==='E';
-        const m=window.BridgeGeometry.spriteTransform(bridge.material,bridge.length||3,ISLAND_TILE_WIDTH,islandTileHeight);
+        const m=window.BridgeGeometry.spriteTransform(bridge.material,bridge.length||3,ISLAND_TILE_WIDTH,islandTileHeight,bridge.width||1);
         const x=(point.x-p.x)*(mirror?-1:1)-m.e,y=point.y-p.y-m.f,det=m.a*m.d-m.b*m.c;
         const sx=(m.d*x-m.c*y)/det,sy=(m.a*y-m.b*x)/det;
         if(spriteOpaqueAt(image,sx/image.naturalWidth,sy/image.naturalHeight))return i;

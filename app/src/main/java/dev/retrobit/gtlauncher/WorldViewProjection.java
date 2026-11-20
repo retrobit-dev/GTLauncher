@@ -28,7 +28,7 @@ final class WorldViewProjection {
             if(edge==null)throw new JSONException("Invalid fence");fence.put("column",edge.column);fence.put("row",edge.row);fence.put("edge",edge.edge);
         }
         JSONArray bridges=optionalArray(out,"bridges");if(bridges!=null)for(int i=0;i<bridges.length();i++){
-            JSONObject bridge=bridges.getJSONObject(i);WorldViewRotation.Bridge b=WorldViewRotation.bridge(integer(bridge,"column"),integer(bridge,"row"),bridge.getString("axis"),bridge.has("length")?integer(bridge,"length"):3,size,turns);
+            JSONObject bridge=bridges.getJSONObject(i);WorldViewRotation.Bridge b=WorldViewRotation.bridge(integer(bridge,"column"),integer(bridge,"row"),bridge.getString("axis"),bridge.has("length")?integer(bridge,"length"):3,bridge.has("width")?integer(bridge,"width"):1,size,turns);
             if(b==null)throw new JSONException("Invalid bridge");bridge.put("column",b.column);bridge.put("row",b.row);bridge.put("axis",b.axis);
         }
         for(String name:new String[]{"blockOpacity","ramps"}) {

@@ -85,7 +85,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 21) throw new JSONException("Unsupported world version");
+        if (version > 22) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         if(w.has("blockStacks") && version<4 || version==4 && !w.has("blockStacks"))throw new JSONException("Invalid block stacks version");
         keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","blockStacks","blockOpacity","ramps","orangeTrees","fences","bridges");
@@ -192,7 +192,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
         if(w.has("bridges")) {
             if(version<15 || !(w.get("bridges") instanceof JSONArray))throw new JSONException("Unsupported bridges");
             JSONArray entries=w.getJSONArray("bridges");if(entries.length()>size*size/3)throw new JSONException("Too many bridges");
-            for(int i=0;i<entries.length();i++) {JSONObject b=entries.getJSONObject(i);keys(b,"column","row","axis","material","length","opacity");int opacity=objectOpacity(b,version);if(version<16 && b.has("length"))throw new JSONException("Unsupported bridge length");int length=b.has("length")?integer(b,"length",4,5):3;bridges.add(new BridgeGeometry.Bridge(integer(b,"column",0,size-1),integer(b,"row",0,size-1),string(b,"axis"),string(b,"material"),length,opacity));}
+            for(int i=0;i<entries.length();i++) {JSONObject b=entries.getJSONObject(i);keys(b,"column","row","axis","material","length","width","opacity");if(version<22 && b.has("width"))throw new JSONException("Unsupported bridge width");int opacity=objectOpacity(b,version);if(version<16 && b.has("length"))throw new JSONException("Unsupported bridge length");int length=b.has("length")?integer(b,"length",4,5):3;bridges.add(new BridgeGeometry.Bridge(integer(b,"column",0,size-1),integer(b,"row",0,size-1),string(b,"axis"),string(b,"material"),length,b.has("width")?integer(b,"width",2,3):1,opacity));}
             final boolean[] blocked=new boolean[size*size];
             if(house instanceof JSONObject){JSONObject h=(JSONObject)house;int hc=h.getInt("column"),hr=h.getInt("row");for(int y=hr;y<hr+3;y++)for(int x=hc;x<hc+3;x++)blocked[y*size+x]=true;}
             JSONArray trees=w.optJSONArray("orangeTrees");if(trees!=null)for(int i=0;i<trees.length();i++){JSONObject t=trees.getJSONObject(i);int x=t.getInt("column"),y=t.getInt("row"),n=t.optInt("size",2);for(int dy=0;dy<n;dy++)for(int dx=0;dx<n;dx++)blocked[(y+dy)*size+x+dx]=true;}
@@ -208,7 +208,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
             if(house instanceof JSONObject){JSONObject h=(JSONObject)house;int hc=h.getInt("column"),hr=h.getInt("row");for(int y=hr;y<hr+3;y++)for(int x=hc;x<hc+3;x++)blocked[y*size+x]=true;}
             JSONArray trees=w.optJSONArray("orangeTrees");if(trees!=null)for(int j=0;j<trees.length();j++){JSONObject t=trees.getJSONObject(j);int tc=t.getInt("column"),tr=t.getInt("row"),n=t.optInt("size",2);for(int dy=0;dy<n;dy++)for(int dx=0;dx<n;dx++)blocked[(tr+dy)*size+tc+dx]=true;}
             JSONArray fences=w.optJSONArray("fences");if(fences!=null)for(int j=0;j<fences.length();j++){JSONObject f=fences.getJSONObject(j);blocked[f.getInt("row")*size+f.getInt("column")]=true;}
-            for(BridgeGeometry.Bridge bridge:bridges)for(int j=0;j<bridge.length;j++){int x=bridge.column+(bridge.axis.equals("E")?j:0),y=bridge.row+(bridge.axis.equals("S")?j:0);blocked[y*size+x]=true;}
+            for(BridgeGeometry.Bridge bridge:bridges)for(int j=0;j<bridge.length;j++)for(int k=0;k<bridge.width;k++){int x=bridge.column+(bridge.axis.equals("E")?j:k),y=bridge.row+(bridge.axis.equals("S")?j:k);blocked[y*size+x]=true;}
             for(int i=0;i<ramps.length();i++) {
                 JSONObject ramp=ramps.getJSONObject(i);keys(ramp,"column","row","direction","material");
                 int x=integer(ramp,"column",0,size-1),y=integer(ramp,"row",0,size-1),index=y*size+x,material=integer(ramp,"material",1,10);

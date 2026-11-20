@@ -41,3 +41,12 @@ for(const [material,points] of Object.entries({wood:[[0,284],[430,47],[131,359]]
  near(-(u.x-p.x),-length*w/2);near(-(v.x-p.x),-w/2);
 }
 console.log('Calibrated bridge deck edges match 3/4/5 by 1 tile footprint: OK');
+for(const axis of ['E','S'])for(const length of [3,4,5]){
+ const width=length===5?3:2,bridge={column:5,row:5,axis,material:'wood',...(length===3?{}:{length}),width},cells=b.cells(bridge);
+ assert.equal(cells.length,length*width);const w={gridSize:20,tiles:Array(400).fill(1)};assert(b.valid(w,[bridge]));
+ const cell=(i,j)=>({column:5+(axis==='E'?i:j),row:5+(axis==='S'?i:j)});
+ for(let j=0;j<width;j++){assert(b.permitsStep([bridge],cell(0,j),cell(1,j)));if(j+1<width)assert(b.permitsStep([bridge],cell(1,j),cell(1,j+1)));w.tiles[cell(0,j).row*20+cell(0,j).column]=3;assert(!b.valid(w,[bridge]));w.tiles[cell(0,j).row*20+cell(0,j).column]=1;}
+ assert(!b.permitsStep([bridge],cell(1,0),axis==='E'?{column:6,row:4}:{column:4,row:6}));
+ for(let q=0;q<4;q++){const r=require('../preview/world-view-rotation').bridge(bridge,20,q);assert(r);const actual=new Set(b.cells({...bridge,...r}).map(p=>`${p.column},${p.row}`));for(const p of cells){const t=require('../preview/world-view-rotation').point(p.column,p.row,20,q);assert(actual.has(`${t.column},${t.row}`));}}
+}
+console.log('Wide bridges validate every tile, allow lateral deck movement, block side entry, and rotate all cells: OK');

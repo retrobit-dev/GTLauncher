@@ -63,7 +63,10 @@ Rencana desain jembatan lebar: 3×2, 4×2 dan 5×3; kayu mengikuti
 vertikal hanya di kedua ujung, tanpa tiang tengah. Studi visual disimpan di
 `artwork/bridge-wood-wide-sprite-study.png` dan
 `artwork/bridge-stone-wide-sprite-study.png`; keduanya belum menjadi aset
-runtime (studi batu masih mengandung block sekeliling). Ukuran baru belum
-didukung format world atau gameplay Android. Sebelum penerapan diperlukan
-versi data baru, validasi seluruh tapak, rotasi dan traversal multi-tile serta
-perlindungan data bridge 1 tile lama dan impor versi lama.
+runtime (studi batu masih mengandung block sekeliling). Ukuran baru memakai format preview v22, validasi seluruh tapak, rotasi dan
+traversal multi-tile; bridge 1 tile lama tetap dibaca tanpa migrasi. Versi
+lama tidak boleh mengganti world yang memiliki jembatan lebar. Sprite ini
+masih menggunakan transformasi affine sehingga tiang dapat terlihat miring
+pada beberapa variasi: perbaikan visual tiang vertikal masih diperlukan.
+Android sudah mendukung impor dan gambar v22 pada level kode, tetapi belum
+diuji di perangkat.
