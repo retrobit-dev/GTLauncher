@@ -24,3 +24,10 @@ Format lama belum mencatat asal-usul lapisan. Tingkat nol dianggap dasar; empat
 lapisan awal `[2,2,2,2]` serta rumput di atasnya dikenali sebagai template dasar.
 Karena ini berdasarkan isi stack, lapisan hasil edit yang menyerupai template
 juga mengikuti tampilan dasar. Perubahan belum diuji di perangkat Android.
+
+Pada world lama dengan rumput dasar yang sudah tertutup block, renderer tidak
+lagi menggambar tutup, garis, atau detail rumput pada lapisan tertutup itu;
+permukaannya mengikuti warna tanah agar tidak muncul garis hijau di tengah sisi
+pulau. Tanah dasar digelapkan, sementara rumput teratas tetap berpola. Tes
+`tools/test_soil_green_seam_browser.js` memeriksa stack lama `[1,2,2,2,1]`,
+garis pada rumput yang terlihat, serta memastikan data world tidak berubah.

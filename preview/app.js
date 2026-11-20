@@ -1252,6 +1252,8 @@
     polygon(shape.topFace,top);ctx.restore();
   }
 
+  // A single darker color for the structural earth on both sides.
+  function baseSoilColor(palette) { return blendColor(palette.soilLight, "#000000", .16); }
   function drawGrassTile(tile, palette, sunlight, material = 1, level = 0, baseLayer = level === 0, coveredBaseGrass = false) {
     const raised = level > 0;
     const borders = material === 3 ? waterBorders(tile.column,tile.row,level) : null;
@@ -1268,7 +1270,7 @@
       : baseMaterial === 2 ? blendColor(palette.soilLight, '#d49d65', 0.4)
       : baseMaterial === 4 ? blendColor(terrain[4],palette.soilDark,0.08)
       : blendColor(terrain[baseMaterial] || terrain[2], palette.grassDark, 0.12);
-    if(baseMaterial===2 && baseLayer)fill=palette.soilLight;
+    if(baseMaterial===2 && baseLayer)fill=baseSoilColor(palette);
     else if(baseMaterial!==1 && !lightTile)fill=blendColor(fill,'#000000',.06);
     const halfWidth = ISLAND_TILE_WIDTH / 2 - (material===3 || baseLayer ? 0 : 0.05);
     const halfHeight = islandTileHeight / 2 - (material===3 || baseLayer ? 0 : 0.025);
@@ -1286,7 +1288,7 @@
     const leftSideDepth = raised ? BLOCK_HEIGHT : leftPerimeterFace ? ISLAND_GRASS_BAND_DEPTH : ISLAND_TILE_SIDE_DEPTH;
     const rightSideDepth = raised ? BLOCK_HEIGHT : rightPerimeterFace ? ISLAND_GRASS_BAND_DEPTH : ISLAND_TILE_SIDE_DEPTH;
     const baseSoil=baseLayer && (baseMaterial===2 || coveredBaseGrass);
-    const sideFill=coveredBaseGrass ? palette.soilLight : fill;
+    const sideFill=coveredBaseGrass ? baseSoilColor(palette) : fill;
     if (!borders || borders.left) drawGrassTileSide(tile.x, tile.y,
       leftPerimeterFace ? ISLAND_TILE_WIDTH / 2 : halfWidth,
       leftPerimeterFace ? islandTileHeight / 2 : halfHeight,
@@ -1304,7 +1306,8 @@
       ctx.restore();
     }
     // Each top stays solid; direct sunlight adds only a uniform, subtle color lift.
-    drawSunlitIslandDiamond(tile.x, tile.y, halfWidth, halfHeight,
+    if(coveredBaseGrass) drawSmoothIslandDiamond(tile.x,tile.y,halfWidth,halfHeight,cornerRadius,sideFill,sideFill);
+    else drawSunlitIslandDiamond(tile.x, tile.y, halfWidth, halfHeight,
       cornerRadius, grassTop ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage) : fill, sunlight);
     if (material === 3) {
       ctx.restore();
@@ -1350,13 +1353,13 @@
       ctx.restore();
     }
     // A subtle dark edge keeps individual grass tiles legible without a green rim.
-    if(material===1 || grassTop) {
+    if(!coveredBaseGrass && (material===1 || grassTop)) {
       ctx.save();ctx.beginPath();traceSmoothIslandDiamond(tile.x,tile.y,halfWidth,halfHeight,cornerRadius);
       ctx.strokeStyle=blendColor(grassTop ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage) : fill,"#000000",.18);ctx.lineWidth=.28;ctx.lineJoin="round";ctx.stroke();ctx.restore();
     }
     // Stable sparse variants match Android's sheet and hash; no world data is changed.
     const variant = grassDetailVariant(tile.column, tile.row);
-    if ((material === 1 || grassTop) && variant && grassDetailImage.complete && grassDetailImage.naturalWidth === 1280) {
+    if (!coveredBaseGrass && (material === 1 || grassTop) && variant && grassDetailImage.complete && grassDetailImage.naturalWidth === 1280) {
       ctx.save();
       ctx.globalAlpha *= 0.45 + 0.55 * clamp(sunlight.strength * 2, 0, 1);
       ctx.imageSmoothingEnabled = true;
@@ -1423,7 +1426,7 @@
     const minY = middleY + grassBandDepth;
     const maxY = soilFrontY + ISLAND_DEPTH;
     drawSmoothIslandPath(() => traceRoundedIslandPolygon(vertices, 2.2),
-      minX, minY, maxX, maxY, palette.soilLight, palette.soilLight);
+      minX, minY, maxX, maxY, baseSoilColor(palette), baseSoilColor(palette));
   }
 
   function traceRoundedIslandPolygon(vertices, cornerRadius) {
@@ -2349,8 +2352,8 @@
           const left=worldNeighbor(tile.column,tile.row,'S'),right=worldNeighbor(tile.column,tile.row,'E');
           const empty=p=>p.column<0 || p.row<0 || p.column>=ISLAND_GRID_SIZE || p.row>=ISLAND_GRID_SIZE || !tileData[p.row*ISLAND_GRID_SIZE+p.column];
           const leftOpen=empty(left),rightOpen=empty(right);
-          if (leftOpen) drawSmoothIslandPolygon([[tile.x-hw,tile.y],[tile.x,tile.y+hh],[tile.x,tile.y+hh+ISLAND_DEPTH],[tile.x-hw,tile.y+ISLAND_DEPTH]], palette.soilLight, palette.soilLight);
-          if (rightOpen) drawSmoothIslandPolygon([[tile.x,tile.y+hh],[tile.x+hw,tile.y],[tile.x+hw,tile.y+ISLAND_DEPTH],[tile.x,tile.y+hh+ISLAND_DEPTH]], palette.soilLight, palette.soilLight);
+          if (leftOpen) drawSmoothIslandPolygon([[tile.x-hw,tile.y],[tile.x,tile.y+hh],[tile.x,tile.y+hh+ISLAND_DEPTH],[tile.x-hw,tile.y+ISLAND_DEPTH]], baseSoilColor(palette), baseSoilColor(palette));
+          if (rightOpen) drawSmoothIslandPolygon([[tile.x,tile.y+hh],[tile.x+hw,tile.y],[tile.x+hw,tile.y+ISLAND_DEPTH],[tile.x,tile.y+hh+ISLAND_DEPTH]], baseSoilColor(palette), baseSoilColor(palette));
           drawGrassTile(tile, palette, sunlight, stack ? stack[0] : tileData[index],0,stack ? !!window.BaseTerrain?.isBaseLayer(stack,0) : true,!!stack && stack.length>1 && stack[0]===1);ctx.restore();
         }
         if (stack) for(let level=1;level<stack.length;level++) {
@@ -2393,8 +2396,8 @@
     ], rightBandLight, rightBandShade);
 
     // The narrow underside uses soil colors, not a green ledge.
-    const grassLedgeLight = palette.soilLight;
-    const grassLedgeDark = palette.soilLight;
+    const grassLedgeLight = baseSoilColor(palette);
+    const grassLedgeDark = baseSoilColor(palette);
     drawSmoothIslandPolygon([
       [leftX, middleY + grassBandDepth], [centerX, bottomY + grassBandDepth],
       [centerX, soilFrontY + grassBandDepth], [soilLeftX, middleY + grassBandDepth]
