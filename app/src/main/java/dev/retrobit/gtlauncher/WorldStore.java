@@ -423,6 +423,7 @@ final class WorldStore {
                 if ((old.previewData==null)!=(world.previewData==null))
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
+                    if(world.previewData.version<27 && old.previewData.bridges.stream().anyMatch(b->b.inset))throw new JSONException("Older preview format cannot replace inset bridges");
                     if(world.previewData.version<26 && old.previewData.bridges.stream().anyMatch(b->b.centered))throw new JSONException("Older preview format cannot replace centered bridges");
                     if(world.previewData.version<25 && old.previewData.bridges.stream().anyMatch(b->b.free))throw new JSONException("Older preview format cannot replace free bridges");
                     if(world.previewData.version<24 && old.previewData.bridges.stream().anyMatch(b->b.overWater))throw new JSONException("Older preview format cannot replace water bridges");

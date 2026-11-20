@@ -95,3 +95,23 @@ for(const axis of ['E','S']) for(const length of [3,4,5]) {
  for(let q=0;q<4;q++){const rotated=require('../preview/world-view-rotation').bridge(bridge,20,q);assert(rotated);assert(b.valid(world,[{...bridge,column:rotated.column,row:rotated.row,axis:rotated.axis}]));}
 }
 console.log('Centered two-tile deck reserves side cells, retains center route and rotates: OK');
+// Inset posts and rails fit inside the 1-tile deck in projected ground space,
+// even at the editor's flattest tilt. Check width and both end margins.
+for(const length of [3,4,5])for(const elevation of [5,25,53]){
+ const w=28,h=w*Math.sin(elevation*Math.PI/180),corners=b.wideDeck(length,1,w,h),rails=b.insetRails(corners,length,2);
+ const [a,u,,v]=corners;
+ const uv=p=>{const x=p.x-a.x,y=p.y-a.y;return {along:(x/(w/2)-y/(h/2))/(2*length),across:(x/(w/2)+y/(h/2))/2};};
+ // Offset each post/rail back down to its ramp ground elevation before checking.
+ for(let i=0;i<4;i++)for(let side=0;side<2;side++){
+   const t=[.22/length,1/length,1-1/length,1-.22/length][i],p={...rails[i][side]};p.y+=b.rise(t,length,2);
+   for(const dx of [-.825,.825])for(const dy of [-Math.min(.35,h*.035)-.175,Math.min(.35,h*.035)+.175]){
+     const q=uv({x:p.x+dx,y:p.y+dy});assert(q.across>=0&&q.across<=1);assert(q.along>=0&&q.along<=1);
+   }
+ }
+ const post=rails[0][0];assert(b.wideContains({x:post.x,y:post.y-2},corners,4,length,.65,true));
+}
+for(const axis of ['E','S']) {
+ const world={gridSize:20,tiles:Array(400).fill(1)},bridge={column:0,row:0,axis,material:'wood',gap:true,free:true,deck:1,inset:true};
+ assert(b.valid(world,[bridge]));assert(!b.valid(world,[{...bridge,centered:true}]));
+}
+console.log('One-tile inset posts and rail footprint, picking and edge placement: OK');

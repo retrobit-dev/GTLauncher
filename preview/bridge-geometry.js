@@ -14,7 +14,7 @@
     if(!Number.isInteger(size) || !Array.isArray(world.tiles) || world.tiles.length!==size*size || !Array.isArray(bridges))return false;
     const occupied=new Set(),house=world.house;
     for(const bridge of bridges){
-      if(!bridge || Object.keys(bridge).some(k=>!['column','row','axis','material','length','width','opacity','gap','overWater','free','deck','centered'].includes(k)) || (bridge.opacity!==undefined && (!Number.isInteger(bridge.opacity) || bridge.opacity<0 || bridge.opacity>90 || bridge.opacity%5!==0)) || (bridge.free!==undefined && (bridge.free!==true || bridge.gap!==true || bridge.width!==undefined || !Number.isInteger(bridge.deck) || bridge.deck<1 || bridge.deck>32)) || (bridge.centered!==undefined && (bridge.centered!==true || bridge.free!==true)) || (bridge.free!==true && bridge.deck!==undefined) || (bridge.gap!==undefined && bridge.gap!==true) || (bridge.overWater!==undefined && (bridge.overWater!==true || bridge.gap!==true)) || (Object.hasOwn(bridge,'length') && ![4,5].includes(bridge.length)))return false;
+      if(!bridge || Object.keys(bridge).some(k=>!['column','row','axis','material','length','width','opacity','gap','overWater','free','deck','centered','inset'].includes(k)) || (bridge.opacity!==undefined && (!Number.isInteger(bridge.opacity) || bridge.opacity<0 || bridge.opacity>90 || bridge.opacity%5!==0)) || (bridge.free!==undefined && (bridge.free!==true || bridge.gap!==true || bridge.width!==undefined || !Number.isInteger(bridge.deck) || bridge.deck<1 || bridge.deck>32)) || (bridge.centered!==undefined && (bridge.centered!==true || bridge.free!==true)) || (bridge.inset!==undefined && (bridge.inset!==true || bridge.free!==true || bridge.centered!==undefined)) || (bridge.free!==true && bridge.deck!==undefined) || (bridge.gap!==undefined && bridge.gap!==true) || (bridge.overWater!==undefined && (bridge.overWater!==true || bridge.gap!==true)) || (Object.hasOwn(bridge,'length') && ![4,5].includes(bridge.length)))return false;
       const footprint=cells(bridge);if(!footprint)return false;let height=null;
       for(let i=0;i<footprint.length;i++){
         const p=footprint[i],{column:c,row:r}=p;if(c<0 || r<0 || c>=size || r>=size)return false;
@@ -89,6 +89,14 @@
     const at=(p,q,t)=>({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t-rise(t,length,height)});
     return [0,1/length,1-1/length,1].map(t=>[at(a,b,t),at(d,c,t)]);
   }
+  // Rails/posts sit inside the deck: .22 tile from both long sides and ends.
+  function insetRails(corners,length,height) {
+    const [a,b,,d]=corners, across=.22, end=.22/length;
+    return [end,1/length,1-1/length,1-end].map(t=>[across,1-across].map(v=>({
+      x:a.x+(b.x-a.x)*t+(d.x-a.x)*v,
+      y:a.y+(b.y-a.y)*t+(d.y-a.y)*v-rise(t,length,height)
+    })));
+  }
   // Return the profile at a continuous tile coordinate; zero outside the deck.
   function riseAt(bridges,column,row,blockHeight) {
     if(!Number.isFinite(column)||!Number.isFinite(row))return 0;
@@ -104,14 +112,18 @@
   }
   function polygonContains(point,poly) {let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++) {const a=poly[i],b=poly[j];if((a.y>point.y)!==(b.y>point.y) && point.x<(b.x-a.x)*(point.y-a.y)/(b.y-a.y)+a.x)inside=!inside;}return inside;}
   function postContains(p,posts,half=2) {return posts.some(a=>{const dx=Math.abs(p.x-a.x),dy=p.y-(a.y+2);return dx<=half && dy>=-10.5+dx/half && dy<=-dx/half;});}
-  function wideContains(point,corners,railHeight=4,length=3,postHalf=2) {
-    if(postContains(point,corners,postHalf))return true;
+  function wideContains(point,corners,railHeight=4,length=3,postHalf=2,inset=false) {
+    const railSections=inset?insetRails(corners,length,railHeight*.5):profilePoints(corners,length,railHeight*.5);
+    if(inset){
+      const posts=[...railSections[0],...railSections[railSections.length-1]];
+      if(posts.some(p=>Math.abs(point.x-p.x)<=postHalf && point.y>=p.y-railHeight-.5 && point.y<=p.y+.5))return true;
+    } else if(postContains(point,corners,postHalf))return true;
     const sections=profilePoints(corners,length,railHeight*.5),[a,b,c,d]=corners;
     for(let i=0;i<sections.length-1;i++)if(polygonContains(point,[sections[i][0],sections[i+1][0],sections[i+1][1],sections[i][1]]))return true;
-    const rails=[];for(let i=0;i<sections.length-1;i++)for(let side=0;side<2;side++)rails.push([sections[i][side],sections[i+1][side]]);
+    const rails=[];for(let i=0;i<railSections.length-1;i++)for(let side=0;side<2;side++)rails.push([railSections[i][side],railSections[i+1][side]]);
     for(const [p,q] of rails) {const vx=q.x-p.x,vy=q.y-p.y,t=Math.max(0,Math.min(1,((point.x-p.x)*vx+(point.y-(p.y-railHeight))*vy)/(vx*vx+vy*vy))),dx=point.x-(p.x+t*vx),dy=point.y-(p.y-railHeight+t*vy);if(dx*dx+dy*dy<=1)return true;}
     for(let i=0;i<sections.length-1;i++){const p=sections[i][1],q=sections[i+1][1];if(polygonContains(point,[p,q,{x:q.x,y:q.y+2.5},{x:p.x,y:p.y+2.5}]))return true;}
     return polygonContains(point,[b,c,{x:c.x,y:c.y+2.5},{x:b.x,y:b.y+2.5}]);
   }
-  return Object.freeze({LENGTH,cells,indexAt,valid,deckHeight,permitsStep,spriteTransform,wideDeck,profilePoints,rise,riseAt,wideContains});
+  return Object.freeze({LENGTH,cells,indexAt,valid,deckHeight,permitsStep,spriteTransform,wideDeck,profilePoints,insetRails,rise,riseAt,wideContains});
 });

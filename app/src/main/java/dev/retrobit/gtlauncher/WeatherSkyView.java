@@ -675,6 +675,13 @@ public final class WeatherSkyView extends View {
         bridgePostFace(canvas,new float[]{x,y-8.5f,x+half,y-9.5f,x+half,y-1,x,y},wood?0xff78472f:0xff756b61,outline,alpha);
         bridgePostFace(canvas,new float[]{x-half,y-9.5f,x,y-10.5f,x+half,y-9.5f,x,y-8.5f},wood?0xffc9895e:0xffb7a896,outline,alpha);
     }
+    private void drawInsetBridgePost(Canvas canvas,float x,float y,boolean wood,int alpha) {
+        float h=.65f,cap=Math.min(.35f,ISLAND_TILE_HEIGHT*.035f),top=y-BLOCK_HEIGHT;
+        int outline=wood?0xff57362c:0xff514942;
+        bridgePostFace(canvas,new float[]{x-h,top,x,top+cap,x,y,x-h,y-cap},wood?0xffa45f3d:0xff988879,outline,alpha);
+        bridgePostFace(canvas,new float[]{x,top+cap,x+h,top,x+h,y-cap,x,y},wood?0xff78472f:0xff756b61,outline,alpha);
+        bridgePostFace(canvas,new float[]{x-h,top,x,top-cap,x+h,top,x,top+cap},wood?0xffc9895e:0xffb7a896,outline,alpha);
+    }
     private void drawWideBridge(Canvas canvas,BridgeGeometry.Bridge bridge,int alpha) {
         float lx=bridge.length*ISLAND_TILE_WIDTH/2f,ly=-bridge.length*ISLAND_TILE_HEIGHT/2f,wx=(bridge.centered?2:bridge.width)*ISLAND_TILE_WIDTH/2f,wy=(bridge.centered?2:bridge.width)*ISLAND_TILE_HEIGHT/2f;
         float ax=-(lx+wx)/2,ay=-(ly+wy)/2,bx=ax+lx,by=ay+ly,dx=ax+wx,dy=ay+wy,cx=bx+wx,cy=by+wy;
@@ -691,10 +698,19 @@ public final class WeatherSkyView extends View {
         int rows=bridge.length*(wood?4:2);
         for(int i=1;i<rows;i++){float t=(float)i/rows,z=BridgeGeometry.rise(t,bridge.length,BLOCK_HEIGHT*.5f);canvas.drawLine(ax+(bx-ax)*t,ay+(by-ay)*t-z,dx+(cx-dx)*t,dy+(cy-dy)*t-z,paint);}
         if(!wood)for(int i=1;i<(bridge.centered?2:bridge.width)*2;i++){float t=(float)i/((bridge.centered?2:bridge.width)*2);for(int j=0;j<3;j++)canvas.drawLine(leftX[j]+(rightX[j]-leftX[j])*t,leftY[j]+(rightY[j]-leftY[j])*t,leftX[j+1]+(rightX[j+1]-leftX[j+1])*t,leftY[j+1]+(rightY[j+1]-leftY[j+1])*t,paint);}
-        for(int pass=0;pass<2;pass++){paint.setColor(pass==0?(wood?0xff71442f:0xff6f645b):(wood?0xffcb936a:0xffc6b9a7));paint.setAlpha(alpha);paint.setStrokeWidth(pass==0?(bridge.centered?1.25f:2):.55f);
-            for(int j=0;j<3;j++){canvas.drawLine(leftX[j],leftY[j]-BLOCK_HEIGHT,leftX[j+1],leftY[j+1]-BLOCK_HEIGHT,paint);canvas.drawLine(rightX[j],rightY[j]-BLOCK_HEIGHT,rightX[j+1],rightY[j+1]-BLOCK_HEIGHT,paint);}}
+        float[] railLX=leftX,railLY=leftY,railRX=rightX,railRY=rightY;
+        if(bridge.inset){
+            railLX=new float[4];railLY=new float[4];railRX=new float[4];railRY=new float[4];
+            float[] ts={.22f/bridge.length,1f/bridge.length,1f-1f/bridge.length,1f-.22f/bridge.length};
+            for(int i=0;i<4;i++){float t=ts[i],z=BridgeGeometry.rise(t,bridge.length,BLOCK_HEIGHT*.5f);
+                railLX[i]=ax+(bx-ax)*t+(dx-ax)*.22f;railLY[i]=ay+(by-ay)*t+(dy-ay)*.22f-z;
+                railRX[i]=ax+(bx-ax)*t+(dx-ax)*.78f;railRY[i]=ay+(by-ay)*t+(dy-ay)*.78f-z;}
+        }
+        for(int pass=0;pass<2;pass++){paint.setColor(pass==0?(wood?0xff71442f:0xff6f645b):(wood?0xffcb936a:0xffc6b9a7));paint.setAlpha(alpha);paint.setStrokeWidth(pass==0?(bridge.inset ? .7f : bridge.centered ? 1.25f : 2):.55f);
+            for(int j=0;j<3;j++){canvas.drawLine(railLX[j],railLY[j]-BLOCK_HEIGHT,railLX[j+1],railLY[j+1]-BLOCK_HEIGHT,paint);canvas.drawLine(railRX[j],railRY[j]-BLOCK_HEIGHT,railRX[j+1],railRY[j+1]-BLOCK_HEIGHT,paint);}}
         paint.setStyle(Paint.Style.FILL);
-        drawWideBridgePost(canvas,ax,ay+2,wood,alpha,bridge.centered?1.25f:2);drawWideBridgePost(canvas,bx,by+2,wood,alpha,bridge.centered?1.25f:2);drawWideBridgePost(canvas,cx,cy+2,wood,alpha,bridge.centered?1.25f:2);drawWideBridgePost(canvas,dx,dy+2,wood,alpha,bridge.centered?1.25f:2);
+        if(bridge.inset){for(int i:new int[]{0,3}){drawInsetBridgePost(canvas,railLX[i],railLY[i],wood,alpha);drawInsetBridgePost(canvas,railRX[i],railRY[i],wood,alpha);}}
+        else {drawWideBridgePost(canvas,ax,ay+2,wood,alpha,bridge.centered?1.25f:2);drawWideBridgePost(canvas,bx,by+2,wood,alpha,bridge.centered?1.25f:2);drawWideBridgePost(canvas,cx,cy+2,wood,alpha,bridge.centered?1.25f:2);drawWideBridgePost(canvas,dx,dy+2,wood,alpha,bridge.centered?1.25f:2);}
     }
     private void drawBridges(Canvas canvas) {
         if(worldTerrain==null)return;

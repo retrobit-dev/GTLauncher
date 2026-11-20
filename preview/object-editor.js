@@ -89,7 +89,7 @@
     const fence=id.match(/^catalog-place-fence-(wood|stone)$/);
     if(fence)return {key:'fences',object:{...position,edge:source.key==='fences'?source.object.edge:'S',material:fence[1]}};
     const bridge=id.match(/^catalog-place-bridge-(wood|stone)(?:-(4|5))?$/);
-    if(bridge)return {key:'bridges',object:{...position,axis:source.key==='bridges'?source.object.axis:'E',material:bridge[1],...(source.key==='bridges' ? (source.object.gap?{gap:true,...(source.object.overWater?{overWater:true}:{}),...(source.object.free?{free:true,deck:source.object.deck,...(source.object.centered?{centered:true}:{})}:{})}:{}) : {gap:true,free:true,deck:bridgeDeck(position),centered:true}),...(bridge[2]?{length:Number(bridge[2])}:{})}};
+    if(bridge)return {key:'bridges',object:{...position,axis:source.key==='bridges'?source.object.axis:'E',material:bridge[1],...(source.key==='bridges' ? (source.object.gap?{gap:true,...(source.object.overWater?{overWater:true}:{}),...(source.object.free?{free:true,deck:source.object.deck,...(source.object.centered?{centered:true}:source.object.inset?{inset:true}:{})}:{})}:{}) : {gap:true,free:true,deck:bridgeDeck(position),inset:true}),...(bridge[2]?{length:Number(bridge[2])}:{})}};
     return null;
   }
   libraryDialog.addEventListener('click',event=>{
@@ -195,7 +195,7 @@
     event.preventDefault(); event.stopImmediatePropagation(); placementPointer=event.pointerId;
     const tile=scene()?.tileAt(scene().toLocal(event.clientX,event.clientY));
     if(placingBridge) {
-      const before=window.worldManager.getActive().bridges||[],next=tile && [...before,{...tile,axis:bridgeAxis,material:placingBridge.material,gap:true,free:true,deck:bridgeDeck(tile),centered:true,...(placingBridge.length===3?{}:{length:placingBridge.length})}];
+      const before=window.worldManager.getActive().bridges||[],next=tile && [...before,{...tile,axis:bridgeAxis,material:placingBridge.material,gap:true,free:true,deck:bridgeDeck(tile),inset:true,...(placingBridge.length===3?{}:{length:placingBridge.length})}];
       if(!next || !saveBridges(before,next)){tell(`EDITING · Tapak jembatan harus di dalam world dan tidak bertumpuk dengan objek lain.`);return;}
       selectedType='bridge';selectedBridgeIndex=before.length;selected=true;refresh();syncControls();tell('EDITING · Jembatan ditempatkan. Ketuk tile lain atau Batal.');return;
     }
