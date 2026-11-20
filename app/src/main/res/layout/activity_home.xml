@@ -18,11 +18,11 @@
     <!-- Unsupported worlds retain their orientation and explain the limitation on tap. -->
     <ImageButton android:id="@+id/island_turn_left" android:layout_width="40dp" android:layout_height="40.5dp"
         android:layout_gravity="right|center_vertical" android:layout_marginRight="16dp"
-        android:padding="2dp" android:background="@android:color/transparent" android:src="@drawable/island_turn_arrow_pixel_outline" android:scaleType="fitCenter"
+        android:padding="2dp" android:background="@android:color/transparent" android:src="@drawable/island_turn_arrow_detailed" android:scaleType="fitCenter"
         android:contentDescription="Putar pulau 90 derajat ke kiri" />
     <ImageButton android:id="@+id/island_turn_right" android:layout_width="40dp" android:layout_height="40.5dp"
         android:layout_gravity="left|center_vertical" android:layout_marginLeft="16dp"
-        android:padding="2dp" android:background="@android:color/transparent" android:src="@drawable/island_turn_arrow_pixel_outline" android:scaleType="fitCenter" android:scaleX="-1"
+        android:padding="2dp" android:background="@android:color/transparent" android:src="@drawable/island_turn_arrow_detailed" android:scaleType="fitCenter" android:scaleX="-1"
         android:contentDescription="Putar pulau 90 derajat ke kanan" />
 
     <!-- Launcher status is present in every world, including worlds without a character. -->
