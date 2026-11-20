@@ -1990,12 +1990,28 @@ public final class WeatherSkyView extends View {
         int[][] neighbours={{column,row+1},{column+1,row},{column-1,row},{column,row-1}};
         for(int i=0;i<4;i++) {int nc=neighbours[i][0],nr=neighbours[i][1];if(!hasWaterfall(column,row,nc,nr))continue;
             float[] e=edges[i];float depth=(terrainHeight(column,row)-terrainHeight(nc,nr))*BLOCK_HEIGHT;
-            Path path=new Path();path.moveTo(e[0],e[1]);path.lineTo(e[2],e[3]);path.lineTo(e[2],e[3]+depth);path.lineTo(e[0],e[1]+depth);path.close();
+            float dx=i==0||i==2?-hw:hw,dy=i==0||i==1?hh:-hh;
+            float ax=e[0]+dx*.5f,ay=e[1]+dy*.5f+depth,bx=e[2]+dx*.5f,by=e[3]+dy*.5f+depth;
+            Path path=new Path();path.moveTo(e[0],e[1]);path.lineTo(e[2],e[3]);path.lineTo(bx,by);path.lineTo(ax,ay);path.close();
             int save=canvas.save();paint.setStyle(Paint.Style.FILL);paint.setColor(0xad69ccd7);canvas.drawPath(path,paint);canvas.clipPath(path);
-            paint.setStyle(Paint.Style.STROKE);paint.setColor(0x99dafaf4);paint.setStrokeWidth(.65f);float phase=animationEnabled?(float)(plantMotionSeconds*5%5):0;
-            for(int k=1;k<=5;k++){float f=k/6f,px=e[0]+(e[2]-e[0])*f,py=e[1]+(e[3]-e[1])*f;for(float q=phase-5;q<depth;q+=5){float from=Math.max(0,q),to=Math.min(depth,q+2.3f);if(to>from)canvas.drawLine(px,py+from,px,py+to,paint);}}
-            paint.setStyle(Paint.Style.FILL);canvas.restoreToCount(save);
+            paint.setStyle(Paint.Style.STROKE);paint.setColor(0x99dafaf4);paint.setStrokeWidth(.65f);float phase=animationEnabled?(float)(plantMotionSeconds*.38%1):0;
+            for(int k=1;k<=5;k++){float f=k/6f,px=e[0]+(e[2]-e[0])*f,py=e[1]+(e[3]-e[1])*f;for(int j=-1;j<=2;j++){float from=Math.max(0,j*.5f+phase),to=Math.min(1,j*.5f+phase+.22f);if(to>from)canvas.drawLine(px+dx*.5f*from,py+(dy*.5f+depth)*from,px+dx*.5f*to,py+(dy*.5f+depth)*to,paint);}}
+            canvas.restoreToCount(save);paint.setColor(0xeb705b42);paint.setStrokeWidth(1.15f);canvas.drawLine(e[0],e[1],ax,ay,paint);canvas.drawLine(e[2],e[3],bx,by,paint);paint.setStyle(Paint.Style.FILL);
         }
+    }
+    private PreviewWorld20 waterFlowWorld;
+    private String[] waterFlowDirections;
+    private void drawWaterFlow(Canvas canvas,int column,int row,float x,float y,float hw,float hh) {
+        if(waterFlowWorld!=worldTerrain){waterFlowWorld=worldTerrain;waterFlowDirections=new String[worldTerrain.size()*worldTerrain.size()];}
+        int index=row*worldTerrain.size()+column;
+        WaterFlow.Terrain terrain=new WaterFlow.Terrain(){public int size(){return worldTerrain.size();}public int height(int c,int r){return worldTerrain.height(c,r);}public int block(int c,int r,int level){return worldTerrain.block(c,r,level);}};
+        String d=waterFlowDirections[index];if(d==null){d=WaterFlow.direction(terrain,column,row);waterFlowDirections[index]=d;}if(d==null)return;
+        float dx=(d.equals("E")||d.equals("N"))?hw:-hw,dy=(d.equals("E")||d.equals("S"))?hh:-hh;
+        float phase=animationEnabled?(float)(plantMotionSeconds*.3%1):0;
+        Path path=new Path();path.moveTo(x,y-hh);path.lineTo(x+hw,y);path.lineTo(x,y+hh);path.lineTo(x-hw,y);path.close();int save=canvas.save();canvas.clipPath(path);
+        paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.45f);paint.setColor(0x7adcfaF5);
+        for(int j=-1;j<=1;j++){float ox=-dy*1.5f*j,oy=dx*.375f*j;for(int k=-1;k<=1;k++){float p=k*.5f+phase-.5f;canvas.drawLine(x+ox+dx*p,y+oy+dy*p,x+ox+dx*(p+.18f),y+oy+dy*(p+.18f),paint);}}
+        paint.setStyle(Paint.Style.FILL);canvas.restoreToCount(save);
     }
     private void drawPondLife(Canvas canvas, float x, float y, int index) {
         if(pondLife==null || index<0 || index>=pondLife.cells.length || pondLife.cells[index]==null)return;
@@ -2117,6 +2133,7 @@ public final class WeatherSkyView extends View {
                     for(float[] p:new float[][]{{-.52f,-.02f},{.29f,-.30f},{.53f,.04f},{-.22f,.29f}})canvas.drawRect(x+p[0]*(hw-.05f),y+p[1]*(hh-.025f),x+p[0]*(hw-.05f)+.55f,y+p[1]*(hh-.025f)+.45f,paint);
                     paint.setStrokeCap(oldCap);
                 }
+                if(material==3 && level==height-1 && worldTerrain.rampDirection(column,row)==null)drawWaterFlow(canvas,column,row,x,y,hw,hh);
                 if(material==3 && level==height-1) drawPondLife(canvas,x,y,row*ISLAND_GRID_SIZE+column);
             }
             if(layer!=-1)canvas.restoreToCount(layer);

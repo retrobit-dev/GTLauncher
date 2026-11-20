@@ -1218,21 +1218,31 @@
       backLeft:[[x,y-hh],[x-hw,y]],backRight:[[x+hw,y],[x,y-hh]]};
     for(const [side,drop] of Object.entries(falls)) {
       const [a,b]=edges[side],depth=drop*BLOCK_HEIGHT;
-      ctx.save();ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);
-      ctx.lineTo(b[0],b[1]+depth);ctx.lineTo(a[0],a[1]+depth);ctx.closePath();
+      const [dx,dy]=side==='left'?[-hw,hh]:side==='right'?[hw,hh]:side==='backLeft'?[-hw,-hh]:[hw,-hh];
+      const endA=[a[0]+dx*.5,a[1]+dy*.5+depth],endB=[b[0]+dx*.5,b[1]+dy*.5+depth];
+      ctx.save();ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...b);ctx.lineTo(...endB);ctx.lineTo(...endA);ctx.closePath();
       ctx.fillStyle='rgba(105,204,215,0.68)';ctx.fill();ctx.clip();
       ctx.strokeStyle='rgba(218,250,244,0.60)';ctx.lineWidth=.65;ctx.lineCap='round';
-      const phase=REDUCED_MOTION ? 0 : (motionTime*5)%5;
-      for(let i=1;i<=5;i++) {
-        const fraction=i/6, px=a[0]+(b[0]-a[0])*fraction, py=a[1]+(b[1]-a[1])*fraction;
-        for(let k=-1;k*5+phase<depth;k++) {
-          const start=Math.max(0,k*5+phase), end=Math.min(depth,k*5+phase+2.3);
-          if(end>start){ctx.beginPath();ctx.moveTo(px,py+start);ctx.lineTo(px,py+end);ctx.stroke();}
-        }
-      }
+      const phase=REDUCED_MOTION ? 0 : (motionTime*.38)%1;
+      for(let i=1;i<=5;i++) {const f=i/6,px=a[0]+(b[0]-a[0])*f,py=a[1]+(b[1]-a[1])*f;
+        for(let k=-1;k<=2;k++){const start=Math.max(0,k*.5+phase),end=Math.min(1,k*.5+phase+.22);if(end>start){ctx.beginPath();ctx.moveTo(px+dx*.5*start,py+(dy*.5+depth)*start);ctx.lineTo(px+dx*.5*end,py+(dy*.5+depth)*end);ctx.stroke();}}}
       ctx.restore();
+      // The two outer banks frame the slope while both water ends stay open.
+      ctx.save();ctx.strokeStyle='rgba(112,91,66,.92)';ctx.lineWidth=1.15;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(...a);ctx.lineTo(...endA);ctx.moveTo(...b);ctx.lineTo(...endB);ctx.stroke();ctx.restore();
     }
   }
+  function drawWaterFlow(tile,time,world) {
+    const direction=window.WaterFlow?.direction(world,tile.column,tile.row);if(!direction)return;
+    const view=viewFacing(direction),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
+    const vector=view==='E'?[hw,hh]:view==='S'?[-hw,hh]:view==='W'?[-hw,-hh]:[hw,-hh];
+    const [dx,dy]=vector,phase=REDUCED_MOTION?0:(time*.3)%1;
+    ctx.save();ctx.beginPath();ctx.moveTo(tile.x,tile.y-hh);ctx.lineTo(tile.x+hw,tile.y);ctx.lineTo(tile.x,tile.y+hh);ctx.lineTo(tile.x-hw,tile.y);ctx.closePath();ctx.clip();
+    ctx.strokeStyle='rgba(220,250,245,.48)';ctx.lineWidth=.45;ctx.lineCap='round';
+    for(let j=-1;j<=1;j++){const ox=-dy*1.5*j,oy=dx*.375*j;for(let k=-1;k<=1;k++){const p=k*.5+phase-.5;ctx.beginPath();ctx.moveTo(tile.x+ox+dx*p,tile.y+oy+dy*p);ctx.lineTo(tile.x+ox+dx*(p+.18),tile.y+oy+dy*(p+.18));ctx.stroke();}}
+    ctx.restore();
+  }
+
   // Ramps inherit block proportions and use their own selected material.
   // Faces use the same material palette as blocks and only front-facing sides.
   function drawRamp(tile, direction, material, palette) {
@@ -2389,6 +2399,10 @@
           if(buried && level<stack.length-1)continue;
           const raised={...tile,y:tile.y-level*BLOCK_HEIGHT};
           if(tileVisible(raised,BLOCK_HEIGHT)){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawGrassTile(raised,palette,sunlight,stack[level],level,!!window.BaseTerrain?.isBaseLayer(stack,level),level<stack.length-1 && stack[level]===1 && !!window.BaseTerrain?.isBaseLayer(stack,level));ctx.restore();}
+        }
+        if(tileData[index]===3 && !ramps.has(index)) {
+          const level=stack ? stack.length-1 : 0,topTile={...tile,y:tile.y-level*BLOCK_HEIGHT};
+          if(tileVisible(topTile,BLOCK_HEIGHT)){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawWaterFlow(topTile,motionTime,activeWorld);ctx.restore();}
         }
         if(tileData[index]===3 && pond?.byTile.has(index)) {
           const level=stack ? stack.length-1 : 0, topTile={...tile,y:tile.y-level*BLOCK_HEIGHT};

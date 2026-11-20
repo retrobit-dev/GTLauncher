@@ -99,3 +99,14 @@ pemilihan preview mengikuti dek yang lebih lebar. Tool ramp preview memakai
 satu bentuk; tombol kiri/kanan memutar arah sebelum penempatan atau setelah
 ramp dipilih, dan tombol hapus menghapus ramp terpilih. Android membaca arah
 ramp yang sama, tetapi tampilan dan interaksi belum diuji di perangkat.
+
+Prototipe tampilan air: preview dan renderer Android menggambar jalur air
+terjun miring dengan dua tepi penahan, beserta kilau bergerak di permukaan air.
+Arah saat ini disimpulkan dari tetangga: turunan terdekat diprioritaskan,
+selain itu memakai sumbu sambungan terpanjang (seri memilih timur). Ini tidak
+menambah data atau mengubah world; arah cabang dan air diam belum dapat diatur
+manual. Render dan sambungan pada ramp air, pertemuan beberapa air terjun,
+serta Android perangkat masih perlu diuji dan disempurnakan. Aturan penempatan
+jembatan khusus lubang belum diterapkan: format v22 lama mengharuskan seluruh
+sel ditopang, sehingga dukungan lubang juga memerlukan perubahan validasi,
+penyimpanan posisi player, routing dan impor Android yang kompatibel.
