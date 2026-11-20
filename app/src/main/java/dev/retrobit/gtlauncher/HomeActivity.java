@@ -289,8 +289,8 @@ public class HomeActivity extends Activity {
 
         // Preview mode switches live outside the simulated tablet. The launcher opens in gameplay.
         setMapMode(true);
-        findViewById(R.id.island_turn_left).setOnClickListener(v->turnGameplayWorld(-1));
-        findViewById(R.id.island_turn_right).setOnClickListener(v->turnGameplayWorld(1));
+        findViewById(R.id.island_turn_left).setOnClickListener(v->turnGameplayWorld(1));
+        findViewById(R.id.island_turn_right).setOnClickListener(v->turnGameplayWorld(-1));
         final WorldStore.SurfaceObject[] dragSurface={null};
         final WorldStore.House[] dragHouse={null};
         final PortalTravel.Tile[] dragStart={null};

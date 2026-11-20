@@ -40,3 +40,11 @@ pose pada pemeriksaan ini; aset Android identik dengan aset preview, namun
 tampilan perangkat Android belum diverifikasi.
 
 Pose duduk tampak belakang menggunakan patch tangan kanan dari konsep yang disetujui, disejajarkan ke sprite semula; kepala, badan, kaki, dan tangan kiri tetap pada posisi semula. Bayangan kontak mengikuti telapak baru. Frame hampir duduk tetap menggunakan pose lama dan perubahan memakai crossfade, sehingga transisi dapat menunjukkan bayangan ganda. Aset preview dan Android sama; Android belum diuji pada perangkat.
+
+Preview kini mengikuti perubahan preferensi pengurangan gerakan perangkat tanpa
+perlu memuat ulang halaman: saat preferensi diaktifkan idle berhenti, dan saat
+dimatikan penghitung dimulai lagi. Pemeriksaan browser mencakup world baru lima
+lapisan, peralihan editor ke gameplay, piksel pose yang terlihat, dan gerakan
+serta perubahan preferensi. Pemeriksaan ini tidak membuktikan penyebab animasi
+tidak muncul pada perangkat pengguna; halaman tersembunyi, mode editor, posisi
+air dan preferensi gerakan tetap mempengaruhi idle.

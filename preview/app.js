@@ -177,7 +177,8 @@
   const ISLAND_BODY_SHADOW_DRIFT = 10;
   const FALLBACK = { latitude: -6.7097, longitude: 111.3476, fallback: true };
   const REFRESH_INTERVAL = 10 * 60 * 1000;
-  const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let REDUCED_MOTION = motionPreference.matches;
   const CLOUD_SHAPES = [
     ['000000000000001110011110000000',
       '000000022211321111111110000000',
@@ -2595,6 +2596,7 @@
     framePending = true;
     window.requestAnimationFrame(timestamp => {
       framePending = false;
+      if (REDUCED_MOTION) return;
       if (timestamp - lastAnimatedFrame < 1000 / (gameplayDraft || gameplayCameraMoving || window.worldManager?.getActive()?.orangeTrees?.length ? 30 : cameraMode==='gameplay' && window.worldManager?.getCharacter()?.visible && idleSitAmount<1 ? 30 : 8)) { scheduleFrame(); return; }
       lastAnimatedFrame = timestamp;
       drawFrame();
@@ -3095,8 +3097,15 @@
       if (REDUCED_MOTION) drawFrame();
     }
   });
-  document.getElementById('island-turn-left')?.addEventListener('click',()=>window.sceneEditing.turnIsland(-1));
-  document.getElementById('island-turn-right')?.addEventListener('click',()=>window.sceneEditing.turnIsland(1));
+  // Respond when the device preference changes without needing a page reload.
+  motionPreference.addEventListener('change', event => {
+    REDUCED_MOTION=event.matches;idleBowController.reset();
+    idleBowAmount=0;idleSitAmount=0;idleBowSprite=null;lastAnimatedFrame=-Infinity;
+    drawFrame();
+  });
+
+  document.getElementById('island-turn-left')?.addEventListener('click',()=>window.sceneEditing.turnIsland(1));
+  document.getElementById('island-turn-right')?.addEventListener('click',()=>window.sceneEditing.turnIsland(-1));
   drawFrame();
   initializeWeather();
 })();

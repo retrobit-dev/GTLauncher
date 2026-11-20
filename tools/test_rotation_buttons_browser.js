@@ -18,7 +18,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
   for(const side of [iconSizes.l,iconSizes.r]){assert(Math.abs(side.width-iconSizes.dock.width)<1);assert(Math.abs(side.height-iconSizes.dock.height)<1);}
   assert(iconSizes.loaded);assert.equal(iconSizes.rightMirrored,'matrix(-1, 0, 0, 1, 0, 0)');
   const initial=await page.evaluate(()=>sceneEditing.camera().quarterTurns);
-  await right.click({timeout:90000});assert.equal(await page.evaluate(()=>sceneEditing.camera().quarterTurns),(initial+1)%4);
+  await right.click({timeout:90000});assert.equal(await page.evaluate(()=>sceneEditing.camera().quarterTurns),(initial+3)%4);
   await left.click({timeout:90000});assert.equal(await page.evaluate(()=>sceneEditing.camera().quarterTurns),initial);
  }
  assert.equal(await page.evaluate(()=>JSON.stringify(worldManager.getActive())),before);assert.deepEqual(errors,[]);
