@@ -8,12 +8,12 @@
   <link rel="stylesheet" href="./styles.css?v=rotation-74">
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./fence-edges.js?v=1" defer></script>
-  <script src="./bridge-geometry.js?v=wide-23" defer></script>
+  <script src="./bridge-geometry.js?v=rail-24" defer></script>
   <script src="./ramp-geometry.js?v=4" defer></script>
   <script src="./base-terrain.js?v=4" defer></script>
   <script src="./world-view-rotation.js?v=wide22-2" defer></script>
   <script src="./worlds.js?v=wide-24" defer></script>
-  <script src="./object-editor.js?v=wide-36" defer></script>
+  <script src="./object-editor.js?v=bridge-37" defer></script>
   <script src="./pond-life.js?v=1" defer></script>
   <script src="./house-geometry.js?v=2" defer></script>
   <script src="./orange-tree-motion.js?v=2" defer></script>
@@ -29,7 +29,7 @@
   <script src="./fence-joins.js?v=2" defer></script>
   <script src="./player-idle-bow.js?v=8" defer></script>
   <script src="./sparrow-pet.js?v=6" defer></script>
-  <script src="./app.js?v=sky-303" defer></script>
+  <script src="./app.js?v=sky-304" defer></script>
   <script src="./preview-modes.js?v=2" defer></script>
   <script src="./editor-camera.js?v=7" defer></script>
   <script src="./terrain-tools.js?v=ramp-109" defer></script>
@@ -203,12 +203,12 @@
       <section id="catalog-panel-buildings" class="catalog-group" role="tabpanel" aria-labelledby="catalog-tab-buildings">
         <h4 id="catalog-buildings-title">Bangunan</h4>
         <div class="catalog-grid">
-          <button id="catalog-place-bridge-wood" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-wood-wide.png" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">3×2 block</span></button>
-          <button id="catalog-place-bridge-wood-4" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-wood-wide.png" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">4×2 block</span></button>
-          <button id="catalog-place-bridge-wood-5" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-wood-wide.png" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">5×3 block</span></button>
-          <button id="catalog-place-bridge-stone" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-stone-wide.png" alt=""></span><strong>Jembatan batu</strong><span class="catalog-footprint">3×2 block</span></button>
-          <button id="catalog-place-bridge-stone-4" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-stone-wide.png" alt=""></span><strong>Jembatan batu</strong><span class="catalog-footprint">4×2 block</span></button>
-          <button id="catalog-place-bridge-stone-5" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-stone-wide.png" alt=""></span><strong>Jembatan batu</strong><span class="catalog-footprint">5×3 block</span></button>
+          <button id="catalog-place-bridge-wood" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-wood-wide.png" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">3×1 block</span></button>
+          <button id="catalog-place-bridge-wood-4" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-wood-wide.png" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">4×1 block</span></button>
+          <button id="catalog-place-bridge-wood-5" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-wood-wide.png" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">5×1 block</span></button>
+          <button id="catalog-place-bridge-stone" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-stone-wide.png" alt=""></span><strong>Jembatan batu</strong><span class="catalog-footprint">3×1 block</span></button>
+          <button id="catalog-place-bridge-stone-4" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-stone-wide.png" alt=""></span><strong>Jembatan batu</strong><span class="catalog-footprint">4×1 block</span></button>
+          <button id="catalog-place-bridge-stone-5" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-stone-wide.png" alt=""></span><strong>Jembatan batu</strong><span class="catalog-footprint">5×1 block</span></button>
           <button id="catalog-place-fence-wood" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/fence-mesh-wood.png?v=1" alt=""></span><strong>Pagar kayu</strong><span class="catalog-footprint">Sisi tile</span></button>
           <button id="catalog-place-fence-stone" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/fence-mesh-stone.png?v=1" alt=""></span><strong>Pagar batu</strong><span class="catalog-footprint">Sisi tile</span></button>
           <button id="catalog-place-house" type="button" class="catalog-tile" aria-label="Tempatkan rumah player, tapak 3 kali 3" aria-describedby="catalog-house-status">

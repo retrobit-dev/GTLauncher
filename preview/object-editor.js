@@ -183,8 +183,8 @@
     event.preventDefault(); event.stopImmediatePropagation(); placementPointer=event.pointerId;
     const tile=scene()?.tileAt(scene().toLocal(event.clientX,event.clientY));
     if(placingBridge) {
-      const before=window.worldManager.getActive().bridges||[],next=tile && [...before,{...tile,axis:bridgeAxis,material:placingBridge.material,width:placingBridge.length===5?3:2,...(placingBridge.length===3?{}:{length:placingBridge.length})}];
-      if(!next || !saveBridges(before,next)){tell(`EDITING · Pilih area ${placingBridge.length}×${placingBridge.length===5?3:2} block rata dan bebas; kedua ujung harus kering.`);return;}
+      const before=window.worldManager.getActive().bridges||[],next=tile && [...before,{...tile,axis:bridgeAxis,material:placingBridge.material,...(placingBridge.length===3?{}:{length:placingBridge.length})}];
+      if(!next || !saveBridges(before,next)){tell(`EDITING · Pilih area ${placingBridge.length}×1 block rata dan bebas; kedua ujung harus kering.`);return;}
       selectedType='bridge';selectedBridgeIndex=before.length;selected=true;refresh();syncControls();tell('EDITING · Jembatan ditempatkan. Ketuk tile lain atau Batal.');return;
     }
     if(placingFence) {

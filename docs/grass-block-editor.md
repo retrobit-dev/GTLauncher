@@ -52,11 +52,10 @@ sehingga bisa terlihat di atas/bawah dek; tapak dan data tersimpan tidak diubah.
 Pipit juga digambar di editor preview, selain gameplay; gambar yang terlambat
 selesai dimuat meminta render ulang ketika animasi dikurangi.
 
-Di editor preview, hit jembatan mengikuti alpha sprite yang diproyeksikan,
+Di editor preview, hit jembatan mengikuti bentuk dek, tiang dan pegangan,
 bukan seluruh tile tapaknya. Pemilihan block menolak titik di luar permukaan
 atau sisi stack yang terlihat. Rumah, karakter, tanaman dan pagar memakai
-mask sprite atau geometri masing-masing. Ukuran baru jembatan belum diterapkan;
-pemilihan konsep batu dan konfirmasi detail masih diperlukan.
+mask sprite atau geometri masing-masing.
 
 Rencana desain jembatan lebar: 3×2, 4×2 dan 5×3; kayu mengikuti
 `artwork/bridge-wood-3x2-choice.png`, batu mengikuti bentuk kayu. Penyangga
@@ -70,3 +69,18 @@ tiang tetap vertikal pada setiap ukuran dan arah, sementara dek sejajar
 sisi block. Sprite ilustrasi tetap dipakai di katalog.
 Android sudah mendukung impor dan gambar v22 pada level kode, tetapi belum
 diuji di perangkat.
+
+Katalog menempatkan kembali jembatan 3×1, 4×1, dan 5×1; pegangan
+menghubungkan empat tiang ujung pada tinggi satu block. Jembatan lebar yang
+sudah ada tetap lebar dan tidak dimigrasi, agar world lama aman. Geometri
+jembatan dan area sentuhnya memakai dek, tiang dan pegangan yang sama.
+Outline gelap pada block yang ditempati karakter ditambahkan di preview dan
+Android, mengikuti tile terdekat saat bergerak. Pada ramp dan ketika tile
+tertutup objek, tampilan outline belum diuji khusus.
+
+Slider manual preview ada di bawah tablet saat rumah, tanaman, pagar,
+jembatan atau satu tingkat block dipilih; rentang 0–90% per 5%, disimpan
+ketika perubahan selesai. Tes block, rumah dan jembatan telah dijalankan;
+tes gabungan tanaman/pagar belum berhasil diverifikasi pada putaran ini.
+Fade otomatis block yang menutupi objek masih belum diterapkan; Android tidak
+menyediakan editor slider dan pengujiannya di perangkat masih diperlukan.

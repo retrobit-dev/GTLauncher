@@ -59,9 +59,11 @@
   }
   function polygonContains(point,poly) {let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++) {const a=poly[i],b=poly[j];if((a.y>point.y)!==(b.y>point.y) && point.x<(b.x-a.x)*(point.y-a.y)/(b.y-a.y)+a.x)inside=!inside;}return inside;}
   function postContains(p,posts) {return posts.some(a=>{const dx=Math.abs(p.x-a.x),dy=p.y-(a.y+2);return dx<=2 && dy>=-10.5+dx/2 && dy<=-dx/2;});}
-  function wideContains(point,corners) {
+  function wideContains(point,corners,railHeight=4) {
     if(postContains(point,corners) || polygonContains(point,corners))return true;
-    const [a,b,c,d]=corners;return polygonContains(point,[d,c,{x:c.x,y:c.y+2.5},{x:d.x,y:d.y+2.5}]) || polygonContains(point,[b,c,{x:c.x,y:c.y+2.5},{x:b.x,y:b.y+2.5}]);
+    const [a,b,c,d]=corners;
+    for(const [p,q] of [[a,b],[d,c]]) {const vx=q.x-p.x,vy=q.y-p.y,t=Math.max(0,Math.min(1,((point.x-p.x)*vx+(point.y-(p.y-railHeight))*vy)/(vx*vx+vy*vy))),dx=point.x-(p.x+t*vx),dy=point.y-(p.y-railHeight+t*vy);if(dx*dx+dy*dy<=1)return true;}
+    return polygonContains(point,[d,c,{x:c.x,y:c.y+2.5},{x:d.x,y:d.y+2.5}]) || polygonContains(point,[b,c,{x:c.x,y:c.y+2.5},{x:b.x,y:b.y+2.5}]);
   }
   return Object.freeze({LENGTH,cells,indexAt,valid,permitsStep,spriteTransform,wideDeck,wideContains});
 });
