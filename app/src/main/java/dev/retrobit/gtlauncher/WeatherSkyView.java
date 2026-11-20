@@ -683,12 +683,14 @@ public final class WeatherSkyView extends View {
         bridgePostFace(canvas,new float[]{x-h,top,x,top-cap,x+h,top,x,top+cap},wood?0xffc9895e:0xffb7a896,outline,alpha);
     }
     private void drawWideBridge(Canvas canvas,BridgeGeometry.Bridge bridge,int alpha) {
-        float lx=bridge.length*ISLAND_TILE_WIDTH/2f,ly=-bridge.length*ISLAND_TILE_HEIGHT/2f,wx=(bridge.centered?2:bridge.width)*ISLAND_TILE_WIDTH/2f,wy=(bridge.centered?2:bridge.width)*ISLAND_TILE_HEIGHT/2f;
+        float span=bridge.inset?bridge.length-1:bridge.length;
+        float lx=span*ISLAND_TILE_WIDTH/2f,ly=-span*ISLAND_TILE_HEIGHT/2f,wx=(bridge.centered?2:bridge.width)*ISLAND_TILE_WIDTH/2f,wy=(bridge.centered?2:bridge.width)*ISLAND_TILE_HEIGHT/2f;
         float ax=-(lx+wx)/2,ay=-(ly+wy)/2,bx=ax+lx,by=ay+ly,dx=ax+wx,dy=ay+wy,cx=bx+wx,cy=by+wy;
         boolean wood=bridge.material.equals("wood");int outline=wood?0xff57362c:0xff514942;
-        float[] steps={0f,1f/bridge.length,1f-1f/bridge.length,1f};
+        float shoulder=bridge.inset ? .5f/span : 1f/span;
+        float[] steps={0f,shoulder,1f-shoulder,1f};
         float[] leftX=new float[4],leftY=new float[4],rightX=new float[4],rightY=new float[4];
-        for(int i=0;i<4;i++){float t=steps[i],z=BridgeGeometry.rise(t,bridge.length,BLOCK_HEIGHT*.5f);leftX[i]=ax+(bx-ax)*t;leftY[i]=ay+(by-ay)*t-z;rightX[i]=dx+(cx-dx)*t;rightY[i]=dy+(cy-dy)*t-z;}
+        for(int i=0;i<4;i++){float t=steps[i],z=BridgeGeometry.rise(t,bridge.length,BLOCK_HEIGHT*.5f,bridge.inset);leftX[i]=ax+(bx-ax)*t;leftY[i]=ay+(by-ay)*t-z;rightX[i]=dx+(cx-dx)*t;rightY[i]=dy+(cy-dy)*t-z;}
         for(int i=0;i<3;i++){
             bridgePostFace(canvas,new float[]{rightX[i],rightY[i],rightX[i+1],rightY[i+1],rightX[i+1],rightY[i+1]+2.5f,rightX[i],rightY[i]+2.5f},wood?0xff895033:0xff827465,outline,alpha);
             bridgePostFace(canvas,new float[]{leftX[i],leftY[i],leftX[i+1],leftY[i+1],rightX[i+1],rightY[i+1],rightX[i],rightY[i]},wood?0xffbd8054:0xffb3a391,outline,alpha);
@@ -696,13 +698,13 @@ public final class WeatherSkyView extends View {
         bridgePostFace(canvas,new float[]{bx,by,cx,cy,cx,cy+2.5f,bx,by+2.5f},wood?0xff6c3e2d:0xff6d6258,outline,alpha);
         paint.setStyle(Paint.Style.STROKE);paint.setColor(wood?0xff855033:0xff897c70);paint.setAlpha(alpha);paint.setStrokeWidth(.35f);
         int rows=bridge.length*(wood?4:2);
-        for(int i=1;i<rows;i++){float t=(float)i/rows,z=BridgeGeometry.rise(t,bridge.length,BLOCK_HEIGHT*.5f);canvas.drawLine(ax+(bx-ax)*t,ay+(by-ay)*t-z,dx+(cx-dx)*t,dy+(cy-dy)*t-z,paint);}
+        for(int i=1;i<rows;i++){float t=(float)i/rows,z=BridgeGeometry.rise(t,bridge.length,BLOCK_HEIGHT*.5f,bridge.inset);canvas.drawLine(ax+(bx-ax)*t,ay+(by-ay)*t-z,dx+(cx-dx)*t,dy+(cy-dy)*t-z,paint);}
         if(!wood)for(int i=1;i<(bridge.centered?2:bridge.width)*2;i++){float t=(float)i/((bridge.centered?2:bridge.width)*2);for(int j=0;j<3;j++)canvas.drawLine(leftX[j]+(rightX[j]-leftX[j])*t,leftY[j]+(rightY[j]-leftY[j])*t,leftX[j+1]+(rightX[j+1]-leftX[j+1])*t,leftY[j+1]+(rightY[j+1]-leftY[j+1])*t,paint);}
         float[] railLX=leftX,railLY=leftY,railRX=rightX,railRY=rightY;
         if(bridge.inset){
             railLX=new float[4];railLY=new float[4];railRX=new float[4];railRY=new float[4];
-            float[] ts={.22f/bridge.length,1f/bridge.length,1f-1f/bridge.length,1f-.22f/bridge.length};
-            for(int i=0;i<4;i++){float t=ts[i],z=BridgeGeometry.rise(t,bridge.length,BLOCK_HEIGHT*.5f);
+            float[] ts={.22f/span,shoulder,1f-shoulder,1f-.22f/span};
+            for(int i=0;i<4;i++){float t=ts[i],z=BridgeGeometry.rise(t,bridge.length,BLOCK_HEIGHT*.5f,bridge.inset);
                 railLX[i]=ax+(bx-ax)*t+(dx-ax)*.22f;railLY[i]=ay+(by-ay)*t+(dy-ay)*.22f-z;
                 railRX[i]=ax+(bx-ax)*t+(dx-ax)*.78f;railRY[i]=ay+(by-ay)*t+(dy-ay)*.78f-z;}
         }

@@ -81,20 +81,22 @@
     return [p,{x:p.x+u.x,y:p.y+u.y},{x:p.x+u.x+v.x,y:p.y+u.y+v.y},{x:p.x+v.x,y:p.y+v.y}];
   }
   // End tiles form straight ramps to a level deck, raised by half a block.
-  function rise(t,length,height) {
-    return Math.max(0,Math.min(1,t*length,(1-t)*length))*height;
+  function rise(t,length,height,centerEnds=false) {
+    const slope=centerEnds?2*(length-1):length;
+    return Math.max(0,Math.min(1,t*slope,(1-t)*slope))*height;
   }
-  function profilePoints(corners,length,height) {
+  function profilePoints(corners,length,height,centerEnds=false) {
     const [a,b,c,d]=corners;
-    const at=(p,q,t)=>({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t-rise(t,length,height)});
-    return [0,1/length,1-1/length,1].map(t=>[at(a,b,t),at(d,c,t)]);
+    const at=(p,q,t)=>({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t-rise(t,length,height,centerEnds)});
+    const shoulder=centerEnds ? .5/(length-1) : 1/length;
+    return [0,shoulder,1-shoulder,1].map(t=>[at(a,b,t),at(d,c,t)]);
   }
   // Rails/posts sit inside the deck: .22 tile from both long sides and ends.
-  function insetRails(corners,length,height) {
-    const [a,b,,d]=corners, across=.22, end=.22/length;
-    return [end,1/length,1-1/length,1-end].map(t=>[across,1-across].map(v=>({
+  function insetRails(corners,length,height,centerEnds=false) {
+    const [a,b,,d]=corners, across=.22, span=centerEnds?length-1:length, end=.22/span, shoulder=centerEnds ? .5/span : 1/span;
+    return [end,shoulder,1-shoulder,1-end].map(t=>[across,1-across].map(v=>({
       x:a.x+(b.x-a.x)*t+(d.x-a.x)*v,
-      y:a.y+(b.y-a.y)*t+(d.y-a.y)*v-rise(t,length,height)
+      y:a.y+(b.y-a.y)*t+(d.y-a.y)*v-rise(t,length,height,centerEnds)
     })));
   }
   // Return the profile at a continuous tile coordinate; zero outside the deck.
@@ -105,20 +107,20 @@
       const along=b.axis==='E'?column-b.column:row-b.row;
       const across=b.axis==='E'?row-b.row:column-b.column;
       if(across<-.5 || across>(b.width??1)-.5)continue;
-      const length=b.length??3,t=(along+.5)/length;
-      if(t>=0 && t<=1)result=Math.max(result,rise(t,length,blockHeight*.5));
+      const length=b.length??3,t=b.inset?along/(length-1):(along+.5)/length;
+      if(t>=0 && t<=1)result=Math.max(result,rise(t,length,blockHeight*.5,!!b.inset));
     }
     return result;
   }
   function polygonContains(point,poly) {let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++) {const a=poly[i],b=poly[j];if((a.y>point.y)!==(b.y>point.y) && point.x<(b.x-a.x)*(point.y-a.y)/(b.y-a.y)+a.x)inside=!inside;}return inside;}
   function postContains(p,posts,half=2) {return posts.some(a=>{const dx=Math.abs(p.x-a.x),dy=p.y-(a.y+2);return dx<=half && dy>=-10.5+dx/half && dy<=-dx/half;});}
   function wideContains(point,corners,railHeight=4,length=3,postHalf=2,inset=false) {
-    const railSections=inset?insetRails(corners,length,railHeight*.5):profilePoints(corners,length,railHeight*.5);
+    const railSections=inset?insetRails(corners,length,railHeight*.5,true):profilePoints(corners,length,railHeight*.5);
     if(inset){
       const posts=[...railSections[0],...railSections[railSections.length-1]];
       if(posts.some(p=>Math.abs(point.x-p.x)<=postHalf && point.y>=p.y-railHeight-.5 && point.y<=p.y+.5))return true;
     } else if(postContains(point,corners,postHalf))return true;
-    const sections=profilePoints(corners,length,railHeight*.5),[a,b,c,d]=corners;
+    const sections=profilePoints(corners,length,railHeight*.5,inset),[a,b,c,d]=corners;
     for(let i=0;i<sections.length-1;i++)if(polygonContains(point,[sections[i][0],sections[i+1][0],sections[i+1][1],sections[i][1]]))return true;
     const rails=[];for(let i=0;i<railSections.length-1;i++)for(let side=0;side<2;side++)rails.push([railSections[i][side],railSections[i+1][side]]);
     for(const [p,q] of rails) {const vx=q.x-p.x,vy=q.y-p.y,t=Math.max(0,Math.min(1,((point.x-p.x)*vx+(point.y-(p.y-railHeight))*vy)/(vx*vx+vy*vy))),dx=point.x-(p.x+t*vx),dy=point.y-(p.y-railHeight+t*vy);if(dx*dx+dy*dy<=1)return true;}

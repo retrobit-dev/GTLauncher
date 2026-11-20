@@ -98,12 +98,12 @@ console.log('Centered two-tile deck reserves side cells, retains center route an
 // Inset posts and rails fit inside the 1-tile deck in projected ground space,
 // even at the editor's flattest tilt. Check width and both end margins.
 for(const length of [3,4,5])for(const elevation of [5,25,53]){
- const w=28,h=w*Math.sin(elevation*Math.PI/180),corners=b.wideDeck(length,1,w,h),rails=b.insetRails(corners,length,2);
+ const w=28,h=w*Math.sin(elevation*Math.PI/180),corners=b.wideDeck(length-1,1,w,h),rails=b.insetRails(corners,length,2,true);
  const [a,u,,v]=corners;
- const uv=p=>{const x=p.x-a.x,y=p.y-a.y;return {along:(x/(w/2)-y/(h/2))/(2*length),across:(x/(w/2)+y/(h/2))/2};};
+ const uv=p=>{const x=p.x-a.x,y=p.y-a.y;return {along:(x/(w/2)-y/(h/2))/(2*(length-1)),across:(x/(w/2)+y/(h/2))/2};};
  // Offset each post/rail back down to its ramp ground elevation before checking.
  for(let i=0;i<4;i++)for(let side=0;side<2;side++){
-   const t=[.22/length,1/length,1-1/length,1-.22/length][i],p={...rails[i][side]};p.y+=b.rise(t,length,2);
+   const t=[.22/(length-1),.5/(length-1),1-.5/(length-1),1-.22/(length-1)][i],p={...rails[i][side]};p.y+=b.rise(t,length,2,true);
    for(const dx of [-.825,.825])for(const dy of [-Math.min(.35,h*.035)-.175,Math.min(.35,h*.035)+.175]){
      const q=uv({x:p.x+dx,y:p.y+dy});assert(q.across>=0&&q.across<=1);assert(q.along>=0&&q.along<=1);
    }
@@ -115,3 +115,14 @@ for(const axis of ['E','S']) {
  assert(b.valid(world,[bridge]));assert(!b.valid(world,[{...bridge,centered:true}]));
 }
 console.log('One-tile inset posts and rail footprint, picking and edge placement: OK');
+
+for(const length of [3,4,5])for(const axis of ['E','S']) {
+ const bridge={column:6,row:6,axis,material:'wood',gap:true,free:true,deck:1,inset:true,...(length===3?{}:{length})};
+ const h=t=>b.riseAt([bridge],6+(axis==='E'?t:0),6+(axis==='S'?t:0),4);
+ for(const t of [-.5,0,length-1,length-.5])assert.equal(h(t),0);
+ for(const t of [.5,length-1.5])assert(Math.abs(h(t)-2)<1e-8);
+ assert.equal(h(.25),1);assert(Math.abs(h(length-1.25)-1)<1e-8);
+ const [a,c,,d]=b.wideDeck(length-1,1,28,12);
+ assert.equal(c.x-a.x,(length-1)*14);assert.equal(c.y-a.y,-(length-1)*6);
+}
+console.log('New bridge ramp ends at both endpoint block centers: OK');

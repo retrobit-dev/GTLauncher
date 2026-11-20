@@ -11,6 +11,16 @@ public class InsetBridgeCheck {
   PreviewWorld20 p=PreviewWorld20.parse(root.toString());if(!p.canStand(5,5) || !p.canStep(5,5,6,5) || !p.canStep(6,5,7,5) || p.footHeight(6,5)!=1)throw new AssertionError("bridge route");
   for(int q=0;q<4;q++){PreviewWorld20 r=WorldViewProjection.projectTerrain(p,q);BridgeGeometry.Bridge rb=r.bridges.get(0);if(!rb.free || !rb.inset || rb.deck!=1 || r.footHeight(rb.column,rb.row)!=1)throw new AssertionError("rotated deck");}
   root.put("version",26);boolean rejected=false;try{PreviewWorld20.parse(root.toString());}catch(JSONException e){rejected=true;}if(!rejected)throw new AssertionError("older format accepted inset bridge");
+  for(String axis:new String[]{"E","S"})for(int length:new int[]{3,4,5}) {
+   BridgeGeometry.Bridge bridge=new BridgeGeometry.Bridge(5,5,axis,"wood",length,1,-1,true,false,true,1,false,true);
+   java.util.List<BridgeGeometry.Bridge> list=java.util.Collections.singletonList(bridge);
+   for(float along:new float[]{-.5f,0,length-1,length-.5f}) {
+    float col=5+(axis.equals("E")?along:0),row=5+(axis.equals("S")?along:0);
+    if(BridgeGeometry.riseAt(list,col,row,4)!=0)throw new AssertionError("end center height");
+   }
+   float col=5+(axis.equals("E")?.5f:0),row=5+(axis.equals("S")?.5f:0);
+   if(Math.abs(BridgeGeometry.riseAt(list,col,row,4)-2)>.0001)throw new AssertionError("ramp rise");
+  }
   System.out.println("Android inset bridge parsing, ramp, routing, rotation and version guard: OK");
  }
 }
