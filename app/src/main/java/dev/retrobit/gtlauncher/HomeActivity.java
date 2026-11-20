@@ -277,6 +277,7 @@ public class HomeActivity extends Activity {
         skyView.setLocation(FALLBACK_LATITUDE, FALLBACK_LONGITUDE);
         worldStore = new WorldStore(getSharedPreferences("worlds", MODE_PRIVATE),new InventoryStore(getSharedPreferences(INVENTORY_PREFS,MODE_PRIVATE)));
         applyActiveWorld();
+        if(worldStore.heightResetFailed())Toast.makeText(this,"Tinggi pulau belum dapat dikurangi dengan aman; data world tidak ditimpa.",Toast.LENGTH_LONG).show();
         drawerScreen = findViewById(R.id.app_drawer_screen);
         appCountView = findViewById(R.id.app_count);
         emptyView = findViewById(R.id.empty_message);

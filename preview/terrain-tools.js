@@ -95,7 +95,7 @@
     const stacks=world.blockStacks ? world.blockStacks.map(stack=>stack.slice()) : world.tiles.map(tile=>tile?[tile]:[]);
     const stack=stacks[index];
     if(tool==='add') {
-      if(stack.length>=32) {status.textContent='Tinggi maksimum 32 block.';return;}
+      if(stack.length>=5) {status.textContent='Tinggi maksimum 5 block.';return;}
       stack.push(value);
     } else if(tool==='erase') {
       if(!stack.length) {status.textContent='Tidak ada block untuk dihapus.';return;}

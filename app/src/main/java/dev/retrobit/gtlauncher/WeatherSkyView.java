@@ -56,7 +56,7 @@ public final class WeatherSkyView extends View {
     private static final float WATER_SURFACE_DROP=0f;
     // The green cap overhangs the narrower soil body along the front perimeter.
     private static final float ISLAND_GRASS_OVERHANG = 4.0f;
-    private static final int ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
+    private int ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
     private static final int ISLAND_BASE_BOTTOM_MARGIN = 8;
     private static final float ISLAND_VERTICAL_LIFT = 7.5f;
     private static final float ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
@@ -608,11 +608,10 @@ public final class WeatherSkyView extends View {
         sourceWorldTerrain=terrain;
         try {worldTerrain=cameraTerrain(worldViewTurns);}
         catch(org.json.JSONException ex){worldViewTurns=0;worldTerrain=terrain;worldRotationAllowed=false;}
-        if(terrain!=null) {
-            ISLAND_GRID_SIZE=terrain.size;
-            ISLAND_TOP=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN-ISLAND_DEPTH-ISLAND_GRID_SIZE*ISLAND_TILE_HEIGHT;
-            ISLAND_CENTER_Y=ISLAND_TOP+ISLAND_GRID_SIZE*ISLAND_TILE_HEIGHT/2f;
-        }
+        ISLAND_DEPTH=terrain!=null && terrain.hasStacks()?BLOCK_HEIGHT:terrain!=null && terrain.hasRamps()?BLOCK_HEIGHT*4:BLOCK_HEIGHT*5;
+        if(terrain!=null)ISLAND_GRID_SIZE=terrain.size;
+        ISLAND_TOP=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN-ISLAND_DEPTH-ISLAND_GRID_SIZE*ISLAND_TILE_HEIGHT;
+        ISLAND_CENTER_Y=ISLAND_TOP+ISLAND_GRID_SIZE*ISLAND_TILE_HEIGHT/2f;
         projectWorldSurfaces();updateSurfaceJoins();
         pondLife=worldTerrain==null ? null : PondLife.build(worldTerrain.size,worldTerrain::tile);
         invalidate();

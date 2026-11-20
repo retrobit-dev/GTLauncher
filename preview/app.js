@@ -97,12 +97,15 @@
   function baseFitZoom() { return 9 / ISLAND_GRID_SIZE; }
   // Interior tile faces stay shallow; exposed perimeter faces extend through the grass band.
   const ISLAND_TILE_SIDE_DEPTH = 2.5;
-  // Half-height grass block band above the unchanged 16-unit soil underside.
+  // The base island is five block-heights; saved stacks include their own layers.
   const ISLAND_GRASS_BAND_DEPTH = 4;
   const ISLAND_SOIL_BAND_DEPTH = 16;
   // The green cap overhangs the narrower soil body along the front perimeter.
   const ISLAND_GRASS_OVERHANG = 4;
-  const ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
+  function islandDepthFor(world) {
+    return world?.blockStacks ? ISLAND_GRASS_BAND_DEPTH : (world?.ramps?.length ? ISLAND_GRASS_BAND_DEPTH*4 : ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH);
+  }
+  let ISLAND_DEPTH = islandDepthFor(window.worldManager?.getActive());
   // World levels and the grass block band share the same half-height.
   const BLOCK_HEIGHT = ISLAND_GRASS_BAND_DEPTH;
   const WATER_SURFACE_DROP = 0;
@@ -2854,6 +2857,8 @@
       cameraWorldId = nextWorldId;
       gameplayFollowCentre = null; gameplayFollowTime = null; gameplayCameraMoving = false;
     }
+    const nextDepth=islandDepthFor(window.worldManager?.getActive());
+    if(nextDepth!==ISLAND_DEPTH){ISLAND_DEPTH=nextDepth;rebuildIslandProjection();gameplayFollowCentre=null;gameplayFollowTime=null;}
     const nextSize = nextWorldId === 'base' ? 50 : (window.worldManager?.getActive()?.gridSize || 9);
     if (nextSize !== ISLAND_GRID_SIZE) {
       ISLAND_GRID_SIZE = nextSize;
@@ -2963,6 +2968,7 @@
   // canvas bounds and island zoom, so dragging remains correct on different device sizes.
   window.sceneEditing = Object.freeze({
     camera() { return {zoom: editorZoom, renderZoom: islandZoom, panX: cameraPanX, panY: cameraPanY,quarterTurns:viewQuarterTurns,elevation:islandCameraElevation}; },
+    islandBodyDepth() { return ISLAND_DEPTH; },
     editorObjectsHidden() { return objectsHidden(); },
     setEditorObjectsHidden(hidden) {
       if(cameraMode!=='editor' || typeof hidden!=='boolean')return false;

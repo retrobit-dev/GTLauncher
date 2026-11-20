@@ -4,6 +4,8 @@
   const HOME_BACKUP_PREFIX = 'gtlauncher.home-before-25.';
   const BRIDGE_RESET_MARKER = 'gtlauncher.bridge-redesign-reset.v1';
   const BRIDGE_BACKUP = 'gtlauncher.worlds-before-bridge-redesign.v1';
+  const HEIGHT_MARKER = 'gtlauncher.island-five-blocks.v1';
+  const HEIGHT_BACKUP = 'gtlauncher.worlds-before-five-blocks.v1';
   const BASE = Object.freeze({id: 'base', name: 'Base World', description: 'Dasar bersama untuk semua world.', color: null});
   const BUILT_INS = [BASE];
   const dialog = document.getElementById('world-dialog');
@@ -55,7 +57,7 @@
     return true;
   }
   function replaceRamps(id,expected,next) {
-    const world=activeWorld();if(id==='base' || world.id!==id || JSON.stringify(world.ramps||[])!==JSON.stringify(expected) || !validRamps(next,world))return false;
+    const world=activeWorld();if(id==='base' || world.id!==id || JSON.stringify(world.ramps||[])!==JSON.stringify(expected) || !validRamps(next,world) || next.some(r=>(world.blockStacks?.[r.row*world.gridSize+r.column]?.length ?? (world.tiles[r.row*world.gridSize+r.column]?1:0))>=5))return false;
     const player=getCharacter(world);
     if(player.visible) {
       const atPlayer=r=>r.column===player.column && r.row===player.row;
@@ -294,6 +296,39 @@
     } catch (_) {storageError='Jembatan belum dihapus dengan aman. Periksa penyimpanan atau posisi karakter; data cadangan tetap tersedia.';return false;}
   }
   const bridgesReset = resetPlacedBridges();
+  function islandStackCuts(world) {
+    const ramps=new Set((world.ramps||[]).map(r=>r.row*world.gridSize+r.column));
+    return (world.blockStacks||[]).map((s,i)=>Math.max(0,s.length-(ramps.has(i)?4:5)));
+  }
+  function trimIslandStacks(world) {
+    const cuts=islandStackCuts(world);if(!cuts.some(Boolean))return world;
+    const size=world.gridSize;
+    const result={...world,blockStacks:world.blockStacks.map((s,i)=>s.slice(cuts[i]))};
+    if(world.blockOpacity)result.blockOpacity=world.blockOpacity.flatMap(o=>{const level=o.level-cuts[o.row*size+o.column];return level<0?[]:[{...o,level}];});
+    if(world.bridges)result.bridges=world.bridges.map(b=>b.free?{...b,deck:Math.max(1,b.deck-cuts[b.row*size+b.column])}:b);
+    if(result.house){let height=null;for(let r=result.house.row;r<result.house.row+3;r++)for(let c=result.house.column;c<result.house.column+3;c++){
+      const idx=r*size+c,h=result.blockStacks[idx].length;if(!result.tiles[idx] || result.tiles[idx]===3 || (height!==null && h!==height))throw new Error('Unsafe house after trimming');height=h;
+    }}
+    if(!validStacks(result.blockStacks,result.tiles,size) || !validBlockOpacity(result.blockOpacity,result) || !validRamps(result.ramps,result) || !validTreeGround(result,result.tiles) || !validFences(result.fences,result) || !validBridges(result))throw new Error('Unsafe terrain after trimming');
+    return result;
+  }
+  function reduceOldIslands() {
+    if(storageError)return false;
+    try {
+      if(localStorage.getItem(HEIGHT_MARKER)==='done')return false;
+      if(localStorage.getItem(KEY)!==loadedRaw)throw new Error('Concurrent world change');
+      const affected=state.worlds.some(w=>islandStackCuts(w).some(Boolean));
+      if(affected) {
+        const next={...state,worlds:state.worlds.map(trimIslandStacks)};
+        if(localStorage.getItem(HEIGHT_BACKUP)===null)localStorage.setItem(HEIGHT_BACKUP,loadedRaw);
+        if(localStorage.getItem(HEIGHT_BACKUP)!==loadedRaw)throw new Error('Backup mismatch');
+        if(localStorage.getItem(KEY)!==loadedRaw)throw new Error('Concurrent world change');
+        const raw=JSON.stringify(next);localStorage.setItem(KEY,raw);loadedRaw=raw;state=next;
+      }
+      localStorage.setItem(HEIGHT_MARKER,'done');return affected;
+    } catch (_) {storageError='Tinggi world belum dapat dikurangi dengan aman. Data lama tidak ditimpa; periksa cadangan dan objek.';return false;}
+  }
+  const islandsReduced=reduceOldIslands();
   // Home is upgraded only when the complete saved state is readable; a copy of
   // the original storage is kept before any write, including terrain holes.
   function upgradeHome25() {
@@ -471,6 +506,7 @@
   function applyImport(replace) {
     if (!pendingImport || storageError) return;
     const {world, version} = pendingImport;
+    if(islandStackCuts(world).some(Boolean)){cancelImport();announce('Berkas melebihi lima block per tile termasuk ramp; impor dibatalkan tanpa mengubah data.');return;}
     // Re-read immediately before a destructive write, including changes from other tabs.
     storageError = ''; const latest = readState();
     if (storageError) { state = latest; render(); cancelImport(); announce(storageError); return; }
@@ -550,6 +586,7 @@
     const active = activeWorld();
     activeLabel.textContent = storageError ? `World: ${displayName(active)} · Data bermasalah` : `World: ${displayName(active)}`;
     $('world-backup').hidden = !storageError && !state.worlds.some(w => [20,25,50,100].includes(w.gridSize));
+    try { $('world-backup-height').hidden = !localStorage.getItem(HEIGHT_BACKUP); } catch (_) { $('world-backup-height').hidden = true; }
     try { $('world-backup-bridge').hidden = !localStorage.getItem(BRIDGE_BACKUP); } catch (_) { $('world-backup-bridge').hidden = true; }
     try { $('world-backup-home').hidden = !Object.keys(localStorage).some(key => key.startsWith(HOME_BACKUP_PREFIX)); }
     catch (_) { $('world-backup-home').hidden = true; }
@@ -631,6 +668,12 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       announce('Cadangan data asli diunduh. Data di browser tidak diubah.');
     } catch (_) { announce('Cadangan tidak dapat dibaca dari penyimpanan browser.'); }
+  });
+  $('world-backup-height').addEventListener('click', () => {
+    try {const raw=localStorage.getItem(HEIGHT_BACKUP);if(!raw){announce('Cadangan tinggi pulau tidak ditemukan.');return;}
+      const url=URL.createObjectURL(new Blob([raw],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='gtlauncher-sebelum-lima-block.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      announce('Cadangan sebelum pengurangan tinggi diunduh.');
+    } catch (_) {announce('Cadangan tinggi pulau tidak dapat dibaca.');}
   });
   $('world-backup-bridge').addEventListener('click', () => {
     try {const raw=localStorage.getItem(BRIDGE_BACKUP);if(!raw){announce('Cadangan jembatan tidak ditemukan.');return;}
@@ -804,7 +847,8 @@
     const world = activeWorld(), size = world.gridSize;
     if (id === 'base' || world.id !== id || ![20,25,50,100].includes(size) || !Array.isArray(stacks)) return false;
     const tiles = stacks.map(stack => Array.isArray(stack) && stack.length ? stack[stack.length-1] : 0);
-    if (!validStacks(stacks, tiles, size) || !validTreeGround(world,tiles,stacks) || !validFences(world.fences,world,tiles,stacks) || !validBridges({...world,tiles,blockStacks:stacks})) return false;
+    const rampIndices=new Set((world.ramps||[]).map(r=>r.row*size+r.column));
+    if (stacks.some((stack,i)=>Array.isArray(stack) && stack.length>(rampIndices.has(i)?4:5)) || !validStacks(stacks, tiles, size) || !validTreeGround(world,tiles,stacks) || !validFences(world.fences,world,tiles,stacks) || !validBridges({...world,tiles,blockStacks:stacks})) return false;
     const character = getCharacter(world), house = getHouse(world);
     const original=world.blockStacks || world.tiles.map(t=>t?[t]:[]);
     if((world.ramps||[]).some(r=>JSON.stringify(stacks[r.row*size+r.column])!==JSON.stringify(original[r.row*size+r.column])))return false;
@@ -852,7 +896,8 @@
   }
   window.worldManager = Object.freeze({getActive: activeWorld, baseStackAt: (column,row) => window.BaseTerrain?.stack(column,row) ?? null, replaceRamps, replaceBlockOpacity, replaceBridges, replaceObjectGroup, replaceCatalogObjects, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, replacePlayerHouse, replaceOrangeTrees, replaceFences, updateTiles, updateBlockStacks, tillTile});
   render();
-  if (bridgesReset) announce('Jembatan lama dihapus. Cadangan world sebelum perubahan tersedia untuk diunduh.');
+  if (islandsReduced) announce('Tumpukan lama dikurangi menjadi maksimal lima block. Cadangan tersedia untuk diunduh.');
+  else if (bridgesReset) announce('Jembatan lama dihapus. Cadangan world sebelum perubahan tersedia untuk diunduh.');
   else if (homeUpgraded) announce('Home diperbarui menjadi 25×25. Cadangan sebelum perubahan tersedia untuk diunduh.');
   else if (storageError) announce(storageError);
 })();
