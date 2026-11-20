@@ -56,3 +56,9 @@ for(const length of [3,4,5]) {
  for(const p of poly){assert(b.wideContains({x:p.x,y:p.y-4},poly),'vertical post hit above corner');}
 }
 console.log('Wide decks align to tile edges and corner posts stay vertical: OK');
+{
+  const normal=b.wideDeck(3,1,16,8),extra=b.wideDeck(3,1,16,8,.1);
+  assert(extra[0].x<normal[0].x && extra[0].y<normal[0].y);
+  assert(extra[3].x>normal[3].x && extra[3].y>normal[3].y);
+  console.log('Bridge long sides extend beyond tile edges: OK');
+}

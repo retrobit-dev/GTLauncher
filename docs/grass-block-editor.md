@@ -92,3 +92,10 @@ terdekat mempertahankan kemampuan menyeberangi air untuk menghindari karakter
 terjebak. Perubahan Android baru diuji typecheck, bukan perangkat. Aturan
 jembatan khusus lubang, air terjun berbentuk ramp dan arah animasi air belum
 diterapkan; aturan penempatan jembatan lama masih berlaku.
+
+Sisi panjang dek dan pegangan jembatan kini menjorok 0,1 tile keluar dari
+batas pada tiap sisi; tapak logis dan world tersimpan tidak diubah. Area
+pemilihan preview mengikuti dek yang lebih lebar. Tool ramp preview memakai
+satu bentuk; tombol kiri/kanan memutar arah sebelum penempatan atau setelah
+ramp dipilih, dan tombol hapus menghapus ramp terpilih. Android membaca arah
+ramp yang sama, tetapi tampilan dan interaksi belum diuji di perangkat.

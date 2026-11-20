@@ -52,7 +52,8 @@
     return {a,b,c,d,e:-a*cx-c*cy,f:-b*cx-d*cy};
   }
   // Construct deck and posts in world space, so vertical posts are never sheared.
-  function wideDeck(length,width,tileWidth,tileHeight) {
+  function wideDeck(length,width,tileWidth,tileHeight,overhang=0) {
+    width+=2*overhang;
     const u={x:length*tileWidth/2,y:-length*tileHeight/2},v={x:width*tileWidth/2,y:width*tileHeight/2};
     const p={x:-(u.x+v.x)/2,y:-(u.y+v.y)/2};
     return [p,{x:p.x+u.x,y:p.y+u.y},{x:p.x+u.x+v.x,y:p.y+u.y+v.y},{x:p.x+v.x,y:p.y+v.y}];

@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="./styles.css?v=rotation-74">
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./fence-edges.js?v=1" defer></script>
-  <script src="./bridge-geometry.js?v=rail-24" defer></script>
+  <script src="./bridge-geometry.js?v=rail-25" defer></script>
   <script src="./ramp-geometry.js?v=4" defer></script>
   <script src="./base-terrain.js?v=4" defer></script>
   <script src="./world-view-rotation.js?v=wide22-2" defer></script>
@@ -29,10 +29,10 @@
   <script src="./fence-joins.js?v=2" defer></script>
   <script src="./player-idle-bow.js?v=8" defer></script>
   <script src="./sparrow-pet.js?v=6" defer></script>
-  <script src="./app.js?v=sky-304" defer></script>
+  <script src="./app.js?v=sky-305" defer></script>
   <script src="./preview-modes.js?v=2" defer></script>
   <script src="./editor-camera.js?v=7" defer></script>
-  <script src="./terrain-tools.js?v=ramp-109" defer></script>
+  <script src="./terrain-tools.js?v=ramp-110" defer></script>
   <script src="./gameplay-path.js?v=water-block-3" defer></script>
   <script src="./jump-motion.js?v=2" defer></script>
   <script src="./gameplay-movement.js?v=ramp-2" defer></script>
@@ -99,6 +99,7 @@
       <button id="terrain-pick" type="button" aria-label="Ambil jenis block" title="Ambil jenis block" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 17 9-9M13 6l5 5m-1-8 4 4-3 3-4-4zM7 17l-3 4 4-1 2-2"/></svg></button>
       <button id="terrain-fill" type="button" aria-label="Isi area block" title="Isi area block" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13 12 5l8 8-8 7zM8 9l8 8M14 4 9 2M20 18v3"/></svg></button>
       <button id="terrain-ramp" type="button" aria-label="Ramp" title="Tempatkan atau hapus ramp" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 14 5l7 4v9l-7 3-11-4zM3 17l11-1 7-7M14 16v5"/></svg></button>
+      <div id="terrain-ramp-rotate" class="object-rotate-controls" hidden><button id="ramp-rotate-left" type="button" aria-label="Putar ramp ke kiri" title="Putar ramp ke kiri">↶</button><button id="ramp-rotate-right" type="button" aria-label="Putar ramp ke kanan" title="Putar ramp ke kanan">↷</button><button id="ramp-remove" type="button" aria-label="Hapus ramp terpilih" title="Hapus ramp terpilih">×</button></div>
       <select id="terrain-ramp-direction" aria-label="Arah naik ramp" hidden><option value="N">Utara ↑</option><option value="E">Timur →</option><option value="S">Selatan ↓</option><option value="W">Barat ←</option></select>
       <div class="block-picker" id="block-picker">
         <span class="block-picker-label visually-hidden" id="block-picker-label">Block</span>

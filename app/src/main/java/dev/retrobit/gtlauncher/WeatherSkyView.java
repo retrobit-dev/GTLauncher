@@ -669,7 +669,7 @@ public final class WeatherSkyView extends View {
         bridgePostFace(canvas,new float[]{x-2,y-9.5f,x,y-10.5f,x+2,y-9.5f,x,y-8.5f},wood?0xffc9895e:0xffb7a896,outline,alpha);
     }
     private void drawWideBridge(Canvas canvas,BridgeGeometry.Bridge bridge,int alpha) {
-        float lx=bridge.length*ISLAND_TILE_WIDTH/2f,ly=-bridge.length*ISLAND_TILE_HEIGHT/2f,wx=bridge.width*ISLAND_TILE_WIDTH/2f,wy=bridge.width*ISLAND_TILE_HEIGHT/2f;
+        float lx=bridge.length*ISLAND_TILE_WIDTH/2f,ly=-bridge.length*ISLAND_TILE_HEIGHT/2f,wx=(bridge.width+.2f)*ISLAND_TILE_WIDTH/2f,wy=(bridge.width+.2f)*ISLAND_TILE_HEIGHT/2f;
         float ax=-(lx+wx)/2,ay=-(ly+wy)/2,bx=ax+lx,by=ay+ly,dx=ax+wx,dy=ay+wy,cx=bx+wx,cy=by+wy;
         boolean wood=bridge.material.equals("wood");int outline=wood?0xff57362c:0xff514942;
         bridgePostFace(canvas,new float[]{dx,dy,cx,cy,cx,cy+2.5f,dx,dy+2.5f},wood?0xff895033:0xff827465,outline,alpha);

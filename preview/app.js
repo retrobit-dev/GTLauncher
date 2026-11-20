@@ -1972,7 +1972,7 @@
     return {x:centre.x,y:centre.y,w:ISLAND_TILE_WIDTH*2.35,h:ISLAND_TILE_WIDTH*1.56};
   }
   function drawWideBridge(bridge) {
-    const corners=window.BridgeGeometry.wideDeck(bridge.length||3,bridge.width||1,ISLAND_TILE_WIDTH,islandTileHeight),[a,b,c,d]=corners,wood=bridge.material==='wood';
+    const corners=window.BridgeGeometry.wideDeck(bridge.length||3,bridge.width||1,ISLAND_TILE_WIDTH,islandTileHeight,.1),[a,b,c,d]=corners,wood=bridge.material==='wood';
     const path=(points,fill)=>{ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(const p of points.slice(1))ctx.lineTo(p.x,p.y);ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=wood?'#57362c':'#514942';ctx.lineWidth=.35;ctx.stroke();};
     const down=p=>({x:p.x,y:p.y+2.5});
     path([d,c,down(c),down(d)],wood?'#895033':'#827465');path([b,c,down(c),down(b)],wood?'#6c3e2d':'#6d6258');
@@ -2918,7 +2918,7 @@
         const bridge=all[i];
         const p=bridgeBounds(bridge),mirror=(viewQuarterTurns%2===0?bridge.axis:bridge.axis==='E'?'S':'E')==='E';
         const local={x:(point.x-p.x)*(mirror?-1:1),y:point.y-p.y};
-        if(window.BridgeGeometry.wideContains(local,window.BridgeGeometry.wideDeck(bridge.length||3,bridge.width||1,ISLAND_TILE_WIDTH,islandTileHeight),BLOCK_HEIGHT))return i;
+        if(window.BridgeGeometry.wideContains(local,window.BridgeGeometry.wideDeck(bridge.length||3,bridge.width||1,ISLAND_TILE_WIDTH,islandTileHeight,.1),BLOCK_HEIGHT))return i;
       }
       return null;
     },

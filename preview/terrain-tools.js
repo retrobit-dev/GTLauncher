@@ -37,19 +37,31 @@
   updateBlockPreview();
   const buttons=Object.fromEntries(['draw','add','erase','pick','fill','ramp'].map(name=>[name,document.getElementById('terrain-'+name)]));
   if (!stage || !canvas || !material || !status || !pan || !scene?.tileAt || !worlds?.updateTiles || Object.values(buttons).some(x=>!x)) return;
-  let tool=null, gesture=null, lastWorld=worlds.getActive().id;
+  let tool=null, gesture=null, selectedRamp=null, lastWorld=worlds.getActive().id;
   function select(next) {
     if(gesture && window.editorBlockHistory) window.editorBlockHistory.end();
-    tool=next; gesture=null;
+    tool=next; gesture=null;selectedRamp=null;
     for (const [name, button] of Object.entries(buttons)) button.setAttribute('aria-pressed', String(name===tool));
     canvas.classList.toggle('is-terrain-editing',Boolean(tool));
-    document.getElementById('terrain-ramp-direction').hidden=tool!=='ramp';
-    const hint={draw:'Ketuk atau seret untuk mengganti block yang sudah ada.',add:'Ketuk atau seret untuk menambah block di atas block atau pada sel kosong.',erase:'Ketuk atau seret untuk menghapus block paling atas.',pick:'Ketuk block untuk mengambil jenisnya.',fill:'Ketuk untuk mengisi area block yang tersambung.',ramp:'Pilih material dan arah naik, lalu ketuk block penyangga. Ketuk ramp yang sama untuk menghapus.'};
+    document.getElementById('terrain-ramp-rotate').hidden=tool!=='ramp';
+    const hint={draw:'Ketuk atau seret untuk mengganti block yang sudah ada.',add:'Ketuk atau seret untuk menambah block di atas block atau pada sel kosong.',erase:'Ketuk atau seret untuk menghapus block paling atas.',pick:'Ketuk block untuk mengambil jenisnya.',fill:'Ketuk untuk mengisi area block yang tersambung.',ramp:'Pilih material, letakkan atau pilih ramp, lalu gunakan tombol putar atau hapus.'};
     status.textContent=tool ? hint[tool] : '';
   }
   for (const [name,button] of Object.entries(buttons)) button.addEventListener('click',()=>{
     if (pan.getAttribute('aria-pressed')==='true') pan.click();
     select(tool===name?null:name);
+  });
+  for(const [id,step] of [['ramp-rotate-left',-1],['ramp-rotate-right',1]])document.getElementById(id).addEventListener('click',()=>{
+    const direction=document.getElementById('terrain-ramp-direction'),dirs=['N','E','S','W'];
+    const world=worlds.getActive(),before=world.ramps||[],current=selectedRamp && before.find(r=>r.column===selectedRamp.column && r.row===selectedRamp.row);
+    const nextDirection=dirs[(dirs.indexOf(current?.direction ?? direction.value)+step+4)%4];
+    if(current){const next=before.map(r=>r===current?{...r,direction:nextDirection}:{...r});if(!window.editorRampHistory?.update(world.id,next)){status.textContent='Ramp tidak dapat diputar.';return;}}
+    direction.value=nextDirection;status.textContent=current?'Ramp diputar.':'Arah ramp diputar; ketuk block penyangga.';
+  });
+  document.getElementById('ramp-remove').addEventListener('click',()=>{
+    const world=worlds.getActive(),before=world.ramps||[],current=selectedRamp && before.find(r=>r.column===selectedRamp.column && r.row===selectedRamp.row);
+    if(!current){status.textContent='Pilih ramp yang akan dihapus.';return;}
+    if(window.editorRampHistory?.update(world.id,before.filter(r=>r!==current).map(r=>({...r})))){selectedRamp=null;status.textContent='Ramp dihapus.';}else status.textContent='Ramp tidak dapat dihapus.';
   });
   pan.addEventListener('click',()=>{if(pan.getAttribute('aria-pressed')==='true') select(null);});
   document.getElementById('mode-gameplay').addEventListener('click',()=>select(null));
@@ -68,10 +80,11 @@
     if(tool==='ramp') {
       if(!previous){status.textContent='Ramp membutuhkan block penyangga.';return;}
       const direction=document.getElementById('terrain-ramp-direction').value,before=world.ramps||[],existing=before.find(r=>r.column===point.column && r.row===point.row);
-      const next=before.filter(r=>r!==existing).map(r=>({...r}));
-      const removing=existing && existing.direction===direction && existing.material===value;
-      if(!removing)next.push({...point,direction,material:value});
-      status.textContent=window.editorRampHistory?.update(world.id,next) ? (removing?'Ramp dihapus.':'Ramp disimpan. Android memerlukan versi dengan dukungan world v21.') : 'Ramp tidak disimpan; periksa block, player, dan objek pada tapak.';
+      if(existing){selectedRamp={...point};document.getElementById('terrain-ramp-direction').value=existing.direction;status.textContent='Ramp dipilih; putar atau hapus dengan tombol.';return;}
+      const next=before.map(r=>({...r}));next.push({...point,direction,material:value});
+      const saved=window.editorRampHistory?.update(world.id,next);
+      if(saved)selectedRamp={...point};
+      status.textContent=saved ? 'Ramp disimpan; gunakan tombol putar untuk mengubah arahnya.' : 'Ramp tidak disimpan; periksa block, player, dan objek pada tapak.';
       return;
     }
     if(tool==='pick') {
