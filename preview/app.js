@@ -1797,6 +1797,8 @@
   }
 
   let editingDraft = null, editingHouseDraft = null, gameplayDraft = null, gameplayRoute = null;
+  let editorObjectsHidden = false;
+  const objectsHidden = () => cameraMode==='editor' && editorObjectsHidden;
   let editingSelected = false, editingHouseSelected = false;
   function surfaceHeight(column,row) {
     const world=window.worldManager?.getActive(), size=world?.gridSize;
@@ -1936,7 +1938,7 @@
   }
   function drawSurfaceObjectShadows(light, cloudCover, code) {
     const world = worldForObjects();
-    if (!world || world.id === 'base') return;
+    if (objectsHidden() || !world || world.id === 'base') return;
     const shadows = [];
     const house = editingHouseDraft || window.worldManager.getHouse?.();
     const houseSprite = house && (viewFacing(house.facing) === 'N' || viewFacing(house.facing) === 'W') ? houseBackImage : houseImage;
@@ -2197,6 +2199,7 @@
     ctx.restore();
   }
   function fenceAt(point) {
+    if(objectsHidden())return null;
     const world=worldForObjects(),fences=world?.fences||[],joins=fenceJoins(world);
     // Use the same painter order as drawing, including stable array order for ties.
     const order=fences.map((f,i)=>({i,depth:fenceViewDepth(f)})).sort((a,b)=>b.depth-a.depth || b.i-a.i);
@@ -2685,19 +2688,19 @@
     drawGameplayRoute();
     drawHoeTarget();
     drawSelectedBlock();
-    const visibleHouse=editingHouseDraft || window.worldManager?.getHouse?.();
+    const visibleHouse=objectsHidden()?null:(editingHouseDraft || window.worldManager?.getHouse?.());
     const visiblePlayer=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
     const objectWorld=worldForObjects(),joins=fenceJoins(objectWorld);
-    for(const bridge of objectWorld?.bridges||[])drawBridge(bridge);
+    if(!objectsHidden())for(const bridge of objectWorld?.bridges||[])drawBridge(bridge);
     drawStandingBlock();
-    const sceneObjects=(objectWorld?.orangeTrees||[]).map(tree=>({depth:treeViewDepth(tree),draw:()=>{
+    const sceneObjects=(objectsHidden()?[]:(objectWorld?.orangeTrees||[])).map(tree=>({depth:treeViewDepth(tree),draw:()=>{
       const foreground=visiblePlayer?.visible && treeViewDepth(tree)>=viewDepth(visiblePlayer.column,visiblePlayer.row);
       ctx.save();ctx.globalAlpha*=(100-(tree.opacity ?? 0))/100;const t=foreground?orangeTreeAnchor(tree):null,w=foreground?treeWidth(tree):0,h=foreground?treeHeight(tree):0;
       if(foreground && coversCharacter(visiblePlayer,p=>treeContains(tree,p),{left:t.x-w/2-3,right:t.x+w/2+3,top:t.y-h,bottom:t.y}))ctx.globalAlpha*=.5;
       drawOrangeTree(tree,motionTime,sceneWeather);drawOrangeDrop(tree);ctx.restore();
     }}));
-    for(const [a,b] of grassPairs(objectWorld))sceneObjects.push({depth:(viewDepth(a.column,a.row)+viewDepth(b.column,b.row))/2,draw:()=>drawGrassBridge(a,b)});
-    (objectWorld?.fences||[]).forEach((f,i)=>sceneObjects.push({depth:fenceViewDepth(f),draw:()=>drawFence(f,joins[i])}));
+    for(const [a,b] of objectsHidden()?[]:grassPairs(objectWorld))sceneObjects.push({depth:(viewDepth(a.column,a.row)+viewDepth(b.column,b.row))/2,draw:()=>drawGrassBridge(a,b)});
+    (objectsHidden()?[]:(objectWorld?.fences||[])).forEach((f,i)=>sceneObjects.push({depth:fenceViewDepth(f),draw:()=>drawFence(f,joins[i])}));
     if(visibleHouse?.visible)sceneObjects.push({depth:viewDepth(visibleHouse.column+1,visibleHouse.row+1)+2,draw:()=>{
       const foreground=visiblePlayer?.visible && viewDepth(visibleHouse.column+1,visibleHouse.row+1)+2>=viewDepth(visiblePlayer.column,visiblePlayer.row);
       const projection=foreground && window.HouseGeometry?houseProjection(visibleHouse):null;
@@ -2920,7 +2923,7 @@
 
   const houseHitCache = new WeakMap();
   function houseAt(point, house) {
-    if (!house?.visible) return false;
+    if (objectsHidden() || !house?.visible) return false;
     const back=viewFacing(house.facing)==='N'||viewFacing(house.facing)==='W', mirror=viewFacing(house.facing)==='N'||viewFacing(house.facing)==='E';
     const image=back?houseBackImage:houseImage;
     if(!image.complete || !image.naturalWidth || !image.naturalHeight) return false;
@@ -2940,6 +2943,14 @@
   // canvas bounds and island zoom, so dragging remains correct on different device sizes.
   window.sceneEditing = Object.freeze({
     camera() { return {zoom: editorZoom, renderZoom: islandZoom, panX: cameraPanX, panY: cameraPanY,quarterTurns:viewQuarterTurns,elevation:islandCameraElevation}; },
+    editorObjectsHidden() { return objectsHidden(); },
+    setEditorObjectsHidden(hidden) {
+      if(cameraMode!=='editor' || typeof hidden!=='boolean')return false;
+      if(editorObjectsHidden===hidden)return true;
+      editorObjectsHidden=hidden;
+      window.dispatchEvent(new CustomEvent('editorobjectsvisibilitychange',{detail:{hidden}}));
+      drawFrame();return true;
+    },
     setEditorElevation(value) {
       if(cameraMode!=='editor' || !Number.isFinite(value))return false;
       const next=clamp(value,MIN_ISLAND_CAMERA_ELEVATION,MAX_ISLAND_CAMERA_ELEVATION);
@@ -3010,6 +3021,7 @@
     centre: characterCentre,
     fenceAt, fenceGeometry,
     bridgeAt(point) {
+      if(objectsHidden())return null;
       const all=worldForObjects()?.bridges||[];
       for(let i=all.length-1;i>=0;i--) {
         const bridge=all[i];
@@ -3067,6 +3079,7 @@
       return null;
     },
     orangeTreeAt(point) {
+      if(objectsHidden())return null;
       try {
         const trees=window.worldManager?.getActive()?.orangeTrees || [];
         const order=trees.map((tree,i)=>({i,depth:treeViewDepth(tree)})).sort((a,b)=>b.depth-a.depth || b.i-a.i);
@@ -3112,7 +3125,7 @@
     },
     tileAt(point) {
       const world=window.worldManager?.getActive();
-      for(const bridge of world?.bridges||[])if(bridge.gap)for(const tile of window.BridgeGeometry.cells(bridge)||[]){const p=characterCentre(tile),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;if(Math.abs(point.x-p.x)/hw+Math.abs(point.y-p.y)/hh<=1)return tile;}
+      for(const bridge of objectsHidden()?[]:(world?.bridges||[]))if(bridge.gap)for(const tile of window.BridgeGeometry.cells(bridge)||[]){const p=characterCentre(tile),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;if(Math.abs(point.x-p.x)/hw+Math.abs(point.y-p.y)/hh<=1)return tile;}
       if(viewQuarterTurns && world?.tiles && window.WorldViewRotation) {
         const hit=window.WorldViewRotation.pickWorld(world,viewQuarterTurns,point.x,point.y,WIDTH/2,islandTop+islandTileHeight/2,ISLAND_TILE_WIDTH,islandTileHeight,BLOCK_HEIGHT,ISLAND_DEPTH);
         if(hit)return hit;

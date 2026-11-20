@@ -491,3 +491,13 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .island-turn-controls button img {display:block;width:100%;height:100%;object-fit:contain;image-rendering:auto}
 #island-turn-right img {transform:scaleX(-1)}
 .island-turn-controls button:focus-visible {outline:2px solid #111;outline-offset:2px}
+
+/* Camera tilt and object visibility sit above the tablet on the left. */
+.editor-upper-left { left:0; right:auto; }
+.editor-upper-left .objects-hidden-mark { display:none; }
+.editor-upper-left #editor-objects-toggle[aria-pressed="true"] .objects-hidden-mark { display:block; }
+.editor-upper-left .visually-hidden { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+@media (max-width:400px) {
+  .preview-stage[data-mode="editor"] .device-wrap { margin-top:70px; }
+  .editor-upper-left { top:-70px; }
+}

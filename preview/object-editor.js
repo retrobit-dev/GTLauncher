@@ -120,6 +120,16 @@
   const areaBox=document.createElement('div');areaBox.className='object-selection-area';areaBox.hidden=true;canvas.parentElement.append(areaBox);
   const pointers = new Map();
   function clearGroup(){group=null;areaGesture=null;areaBox.hidden=true;scene()?.setObjectGroup?.([],[]);}
+  window.addEventListener('editorobjectsvisibilitychange', event=>{
+    if(!editing || !event.detail?.hidden)return;
+    clearGroup();selected=false;selectedTreeIndex=null;selectedFenceIndex=null;selectedBridgeIndex=null;selectedBlock=null;
+    selectingObject=false;movingObject=false;placingHouse=false;placingOrange=false;placingFence=null;placingBridge=null;placementWorld=null;placementPointer=null;
+    cancelGesture();tell('EDITING · Objek disembunyikan; data tetap tersimpan.');
+  });
+  // Starting placement or replacement reveals objects so they cannot be edited invisibly.
+  libraryDialog.addEventListener('click',event=>{
+    if(event.target.closest('[id^="catalog-place-"]') && scene()?.editorObjectsHidden?.())scene().setEditorObjectsHidden(false);
+  },true);
   function groupSnapshot(){const w=window.worldManager.getActive();return {trees:(w.orangeTrees||[]).map(t=>({...t})),fences:(w.fences||[]).map(f=>({...f}))};}
   function saveGroup(before,next){applyingHistory=true;let ok;try{ok=window.worldManager.replaceObjectGroup(worldId,before,next);}finally{applyingHistory=false;}if(ok){history.undo.push({type:'group',value:before});if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();}return ok;}
   function showGroup(){const w=window.worldManager.getActive();scene()?.setObjectGroup?.(group?.trees.map(i=>w.orangeTrees[i])||[],group?.fences.map(i=>w.fences[i])||[]);}
@@ -577,7 +587,7 @@
       selectingObject=false;draft=null;refresh();syncControls();tell(selected?(selectedType==='block'?`EDITING · Block ${columnLabel(selectedBlock.column)}${selectedBlock.row+1}, tingkat ${selectedBlock.level+1} dipilih.`:'EDITING · Objek dipilih.'):'EDITING · Tidak ada objek atau block di titik ini.');return;
     }
     const inside=p=>p.x>=Math.min(g.local.x,end.x) && p.x<=Math.max(g.local.x,end.x) && p.y>=Math.min(g.local.y,end.y) && p.y<=Math.max(g.local.y,end.y);
-    const trees=[],fences=[];(w.orangeTrees||[]).forEach((t,i)=>{if(inside(scene().orangeTreeAnchor(t)))trees.push(i);});(w.fences||[]).forEach((f,i)=>{const {a,b}=scene().fenceGeometry(f);if(inside({x:(a.x+b.x)/2,y:(a.y+b.y)/2}))fences.push(i);});
+    const trees=[],fences=[];(scene().editorObjectsHidden?.()?[]:(w.orangeTrees||[])).forEach((t,i)=>{if(inside(scene().orangeTreeAnchor(t)))trees.push(i);});(scene().editorObjectsHidden?.()?[]:(w.fences||[])).forEach((f,i)=>{const {a,b}=scene().fenceGeometry(f);if(inside({x:(a.x+b.x)/2,y:(a.y+b.y)/2}))fences.push(i);});
     const first=trees.length?w.orangeTrees[trees[0]]:fences.length?w.fences[fences[0]]:null;
     group=first?{trees,fences,anchor:{column:first.column,row:first.row}}:null;selected=false;selectingObject=false;showGroup();refresh();syncControls();tell(group?`EDITING · ${trees.length+fences.length} objek dipilih. Gunakan Geser atau Hapus.`:'EDITING · Tidak ada titik dasar objek di area.');
   },true);

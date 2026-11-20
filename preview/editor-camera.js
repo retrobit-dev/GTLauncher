@@ -17,6 +17,9 @@
     $('editor-tilt-down').disabled = elevation <= 20;
     $('editor-tilt-default').disabled = elevation === 25;
     $('editor-tilt-value').textContent = `${Math.round(elevation)}°`;
+    const hidden=scene.editorObjectsHidden();
+    const toggle=$('editor-objects-toggle');toggle.setAttribute('aria-pressed',String(hidden));
+    toggle.setAttribute('aria-label',hidden?'Tampilkan objek':'Sembunyikan objek');toggle.title=hidden?'Tampilkan objek':'Sembunyikan objek';
     pan.setAttribute('aria-pressed', String(panning));
     const active = panning && stage.dataset.mode === 'editor';
     surface.hidden = !active;
@@ -34,6 +37,8 @@
   $('editor-zoom-in').addEventListener('click', () => changeZoom(0.5));
   $('editor-zoom-out').addEventListener('click', () => changeZoom(-0.5));
   $('editor-fit').addEventListener('click', reset);
+  $('editor-objects-toggle').addEventListener('click', () => {scene.setEditorObjectsHidden(!scene.editorObjectsHidden());update();});
+  window.addEventListener('editorobjectsvisibilitychange', update);
   $('editor-tilt-up').addEventListener('click', () => {scene.setEditorElevation(scene.camera().elevation+3);update();});
   $('editor-tilt-down').addEventListener('click', () => {scene.setEditorElevation(scene.camera().elevation-3);update();});
   $('editor-tilt-default').addEventListener('click', () => {scene.setEditorElevation(25);update();});

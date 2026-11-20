@@ -143,3 +143,12 @@ mengembalikan elevasi ke 25°. Zoom dan arah putar horizontal tidak direset;
 titik pandang tetap terpusat saat kemiringan berubah. Kemiringan editor disimpan
 sementara saat beralih mode, sedangkan gameplay tetap menggunakan 25°. Tidak ada
 perubahan data world dan kontrol ini tidak ditambahkan ke Android.
+
+Ketiga tombol kemiringan berada di kiri atas tablet pada Map Editor preview.
+Tombol mata di sebelahnya menyembunyikan/menampilkan objek yang ditempatkan:
+rumah, tanaman, pagar dan jembatan beserta bayangannya. Karakter, block dan
+penanda wilayah tetap terlihat. Objek tersembunyi tidak bisa dipilih dari
+kanvas; pilihan objek aktif dibatalkan saat disembunyikan. Memulai penempatan
+melalui katalog menampilkan objek kembali. Ini hanya pengaturan tampilan
+sementara di editor, bukan penghapusan atau perubahan data world; gameplay dan
+Android tetap menampilkan objek seperti biasa.
