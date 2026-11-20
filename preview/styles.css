@@ -486,6 +486,6 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .house-transparency-control output { min-width:3em; }
 
 /* Camera rotation is separate from the object-rotation tools. */
-.island-turn-controls:not([hidden]) {position:absolute;z-index:8;right:2%;bottom:15%;display:flex;gap:5px}
-.island-turn-controls button {width:30px;height:30px;border:1px solid rgba(49,76,59,.65);border-radius:7px;background:rgba(240,246,235,.85);color:#284632;font:22px/1 system-ui;cursor:pointer}
+.island-turn-controls:not([hidden]) {position:absolute;z-index:8;left:2%;right:2%;top:50%;transform:translateY(-50%);display:flex;justify-content:space-between;pointer-events:none}
+.island-turn-controls button {width:30px;height:30px;border:1px solid rgba(49,76,59,.65);border-radius:7px;background:rgba(240,246,235,.85);color:#284632;font:22px/1 system-ui;cursor:pointer;pointer-events:auto}
 .island-turn-controls button:focus-visible {outline:2px solid #111;outline-offset:2px}

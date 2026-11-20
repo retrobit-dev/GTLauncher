@@ -8,6 +8,12 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
   await page.locator('#'+mode).click({timeout:90000});
   const left=page.locator('#island-turn-left'),right=page.locator('#island-turn-right');
   assert(await left.isVisible());assert(await right.isVisible());
+  const geometry=await page.evaluate(()=>{const r=id=>document.querySelector(id).getBoundingClientRect(), display=r('.device-display'),left=r('#island-turn-left'),right=r('#island-turn-right');const middle=document.elementFromPoint(display.left+display.width/2,display.top+display.height/2);return {display:{left:display.left,right:display.right,top:display.top,height:display.height,width:display.width},left:{left:left.left,right:left.right,top:left.top,height:left.height},right:{left:right.left,right:right.right,top:right.top,height:right.height},middle:middle?.id};});
+  const centre=geometry.display.top+geometry.display.height/2;
+  assert(Math.abs(geometry.left.top+geometry.left.height/2-centre)<1);assert(Math.abs(geometry.right.top+geometry.right.height/2-centre)<1);
+  assert(geometry.left.left<geometry.display.left+geometry.display.width*.1);assert(geometry.right.right>geometry.display.right-geometry.display.width*.1);
+  assert.notEqual(geometry.middle,'island-turn-left');assert.notEqual(geometry.middle,'island-turn-right');
+  assert.notEqual(geometry.middle,'','rotation container must not intercept the middle of the screen');
   const initial=await page.evaluate(()=>sceneEditing.camera().quarterTurns);
   await right.click({timeout:90000});assert.equal(await page.evaluate(()=>sceneEditing.camera().quarterTurns),(initial+1)%4);
   await left.click({timeout:90000});assert.equal(await page.evaluate(()=>sceneEditing.camera().quarterTurns),initial);
