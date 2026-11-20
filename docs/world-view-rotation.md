@@ -2,20 +2,21 @@
 
 Permintaan: putar tampilan pulau setiap 90° ke kiri atau kanan di editor dan gameplay preview serta gameplay Android. Koordinat world, inventaris dan rute yang disimpan tidak berubah. Pilihan kamera bukan migrasi format world.
 
-`preview/world-view-rotation.js` dan `WorldViewRotation.java` menyediakan konversi koordinat kamera empat arah, kebalikannya, arah hadap, tapak persegi panjang, sisi pagar dan tapak jembatan. `projectWorld` di JavaScript dan `WorldViewProjection` di Android juga membentuk salinan world ruang-kamera tanpa mengubah data tersimpan; tes mencakup terrain, ramp, karakter, rumah, pohon, pagar, jembatan dan transparansi. Fungsi picking ruang-kamera juga tersedia dan diuji untuk permukaan, sisi block dan ramp dengan hasil koordinat world. Integrasi preview masih bersifat eksperimental dan tombolnya disembunyikan. Android menampilkan tombol di setiap world dan memiliki integrasi untuk world impor preview, termasuk rumah 3×3, tanaman, pagar, dan jembatan; world Android lama dan portal masih belum mendukung rotasi.
+`preview/world-view-rotation.js` dan `WorldViewRotation.java` menyediakan konversi koordinat kamera empat arah, kebalikannya, arah hadap, tapak persegi panjang, sisi pagar dan tapak jembatan. `projectWorld` di JavaScript dan `WorldViewProjection` di Android juga membentuk salinan world ruang-kamera tanpa mengubah data tersimpan; tes mencakup terrain, ramp, karakter, rumah, pohon, pagar, jembatan dan transparansi. Fungsi picking ruang-kamera juga tersedia dan diuji untuk permukaan, sisi block dan ramp dengan hasil koordinat world. Integrasi preview masih bersifat eksperimental; tombolnya ditampilkan pada gameplay dan editor atas permintaan pengguna. Android menampilkan tombol di setiap world dan memiliki integrasi untuk world impor preview, termasuk rumah 3×3, tanaman, pagar, dan jembatan; world Android lama dan portal masih belum mendukung rotasi.
 
 Integrasi harus menerapkan transformasi yang sama pada urutan kedalaman dan tetangga block, air/air terjun, ketinggian, arah serta sprite player/rumah, pagar, jembatan, tanaman, bayangan, kamera, titik sentuh dan jalur. Konversi balik harus dilakukan sebelum tindakan editor atau gameplay menyentuh data. Jangan memutar world JSON atau inventaris. Uji keempat orientasi pada world bertingkat asimetris, objek, air, seleksi dan pergerakan, termasuk pengembalian ke orientasi awal serta kompatibilitas world lama. Android tetap gameplay saja. Pengujian pada perangkat Android masih diperlukan.
 
-### Experimental preview wiring (not released)
+### Experimental preview wiring
 
-The preview contains an internal `sceneEditing.turnIsland` prototype and hidden controls.
+The preview exposes the `sceneEditing.turnIsland` prototype through visible controls in gameplay and editor.
 It projects tile painting, terrain neighbor faces, basic sprite facing, object depth,
-fences, ramps and tile picking without changing the world records. The controls stay
-hidden because this is **not yet a complete player-facing feature**: all editor
-selection/drag paths, bridge and grass rendering, occlusion, water/ramp junctions,
-and gameplay interaction need end-to-end verification and fixes at each orientation.
-Do not enable the preview controls until those cases have been implemented and tested. Rotation is
-transient and is not part of saved world data.
+fences, ramps and tile picking without changing the world records. This is
+**experimental**: editor selection/drag paths, bridge and grass rendering,
+occlusion, water/ramp junctions, and gameplay interactions still need additional
+end-to-end verification and fixes at each orientation. Rotation is transient and
+is not part of saved world data. `tools/test_rotation_buttons_browser.js` checks
+that both buttons are visible and work in gameplay and editor without changing
+the active world.
 
 `tools/test_rotation_integration_browser.js` checks only a small preview smoke test:
 four turns, selected tile centres, round-trip picking and unchanged world data. It
@@ -31,7 +32,7 @@ artwork picking against painter order, the house alpha hit test, an isolated
 water border, unchanged world/storage when turning, real pointer taps replacing
 four blocks, and simple adjacent-tile gameplay taps with reduced motion. It then
 reloads to check the edits and player position persist while camera rotation
-returns to zero. These checks use the internal prototype, not the hidden buttons.
+returns to zero. These checks exercise the underlying prototype rather than the buttons.
 
 `tools/test_rotation_depth_water_browser.js` additionally checks overlapping
 fence face picking in all directions and camera-side water borders/waterfalls
@@ -41,7 +42,7 @@ painter order; tree and fence picking now use their respective draw depths, with
 stable array order for ties. These checks do not test overlap *between different*
 object categories, actual rendered waterfall/ramp joins, or all face/level cases.
 
-The feature is still not ready to expose. In particular, verify visual rendering
+The feature remains experimental. In particular, verify visual rendering
 and occlusion (including bridges, grass, house and shadows), object/area selection
 and drag, ramps with water, moving-camera transitions and non-reduced-motion
 path following in all orientations. Android has limited gameplay integration as described below,
@@ -58,7 +59,7 @@ New preview worlds now start with independent 50×50 copies of the Base World
 five-block stacks. `tools/test_new_world_from_base_browser.js` also checks
 picking those stacks in all four experimental orientations, erasing one top
 block at a rotated view, undo/redo, version 4 export and reload without changing
-old worlds or inventory. This does not enable the hidden rotation controls.
+old worlds or inventory.
 
 
 ### Android: gameplay rotation
