@@ -1252,7 +1252,7 @@
     polygon(shape.topFace,top);ctx.restore();
   }
 
-  function drawGrassTile(tile, palette, sunlight, material = 1, level = 0) {
+  function drawGrassTile(tile, palette, sunlight, material = 1, level = 0, baseLayer = level === 0) {
     const raised = level > 0;
     const borders = material === 3 ? waterBorders(tile.column,tile.row,level) : null;
     const world=material===3 ? window.worldManager?.getActive() : null;
@@ -1262,16 +1262,16 @@
     if(borders && falls.right) borders.right=false;
     const grassTop=material>=7 && material<=10;
     const baseMaterial=grassTop ? ({7:2,8:4,9:5,10:6})[material] : material;
-    const lightTile = (tile.column+tile.row+level)%2 === 0;
+    const lightTile = baseLayer || (tile.column+tile.row+level)%2 === 0;
     const terrain = {2:'#ae8b68', 3:'#75cbd0', 4:'#b8b2a7', 5:'#dac695', 6:'#bd7549'};
     let fill = baseMaterial === 1 ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage)
       : baseMaterial === 2 ? blendColor(palette.soilLight, '#d49d65', 0.4)
       : baseMaterial === 4 ? blendColor(terrain[4],palette.soilDark,0.08)
       : blendColor(terrain[baseMaterial] || terrain[2], palette.grassDark, 0.12);
     if(baseMaterial!==1 && !lightTile)fill=blendColor(fill,'#000000',.06);
-    const halfWidth = ISLAND_TILE_WIDTH / 2 - (material===3 ? 0 : 0.05);
-    const halfHeight = islandTileHeight / 2 - (material===3 ? 0 : 0.025);
-    const cornerRadius = material===3 ? 0 : 1.4;
+    const halfWidth = ISLAND_TILE_WIDTH / 2 - (material===3 || baseLayer ? 0 : 0.05);
+    const halfHeight = islandTileHeight / 2 - (material===3 || baseLayer ? 0 : 0.025);
+    const cornerRadius = material===3 || baseLayer ? 0 : 1.4;
     const viewTile=viewPoint(tile.column,tile.row);
     const leftPerimeterFace = viewTile.row === ISLAND_GRID_SIZE - 1;
     const rightPerimeterFace = viewTile.column === ISLAND_GRID_SIZE - 1;
@@ -1287,11 +1287,11 @@
     if (!borders || borders.left) drawGrassTileSide(tile.x, tile.y,
       leftPerimeterFace ? ISLAND_TILE_WIDTH / 2 : halfWidth,
       leftPerimeterFace ? islandTileHeight / 2 : halfHeight,
-      leftPerimeterFace ? 0 : cornerRadius, leftSideDepth, fill, true);
+      leftPerimeterFace ? 0 : cornerRadius, leftSideDepth, fill, true, !baseLayer);
     if (!borders || borders.right) drawGrassTileSide(tile.x, tile.y,
       rightPerimeterFace ? ISLAND_TILE_WIDTH / 2 : halfWidth,
       rightPerimeterFace ? islandTileHeight / 2 : halfHeight,
-      rightPerimeterFace ? 0 : cornerRadius, rightSideDepth, fill, false);
+      rightPerimeterFace ? 0 : cornerRadius, rightSideDepth, fill, false, !baseLayer);
 
     if(baseMaterial===6) {
       // Small earthy clods on the side faces, including the grass-topped variant.
@@ -1357,16 +1357,10 @@
         ISLAND_TILE_WIDTH, islandTileHeight);
       ctx.restore();
     }
-    // A fine rim separates the grassy cap from its material and lower grass.
-    // Ordinary flat meadow tiles retain their existing seamless appearance.
-    if(grassTop || (material===1 && raised)) {
-      ctx.save();ctx.beginPath();traceSmoothIslandDiamond(tile.x,tile.y,halfWidth,halfHeight,cornerRadius);
-      ctx.strokeStyle=blendColor(palette.grassDark,palette.grass,0.3);ctx.lineWidth=.55;ctx.lineJoin='round';ctx.stroke();ctx.restore();
-    }
   }
 
   function drawGrassTileSide(centerX, centerY, halfWidth, halfHeight, cornerRadius,
-    depth, fill, leftSide) {
+    depth, fill, leftSide, outline = true) {
     const cutX = Math.min(cornerRadius, halfWidth * 0.34);
     const cutY = cutX * halfHeight / halfWidth;
     const splitY = centerY + halfHeight - cutY * 0.5;
@@ -1386,7 +1380,7 @@
         ctx.closePath();
       }, centerX - halfWidth, centerY + cutY,
       centerX, centerY + halfHeight + depth,
-      blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade+.12), .35);
+      blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade+.12), outline ? .35 : 0);
     } else {
       drawSmoothIslandPath(() => {
         ctx.moveTo(centerX, splitY);
@@ -1402,7 +1396,7 @@
         ctx.closePath();
       }, centerX, centerY + cutY,
       centerX + halfWidth, centerY + halfHeight + depth,
-      blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade+.12), .35);
+      blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade+.12), outline ? .35 : 0);
     }
   }
 
@@ -1422,24 +1416,6 @@
     const maxY = soilFrontY + ISLAND_DEPTH;
     drawSmoothIslandPath(() => traceRoundedIslandPolygon(vertices, 2.2),
       minX, minY, maxX, maxY, palette.soilLight, palette.soilDark);
-  }
-
-  // Base World retains its existing silhouette and surface elevation. Its four
-  // soil courses are visible only on the exterior, below the single grass cap.
-  function drawBaseSoilBlocks(leftX,centerX,rightX,middleY,frontY,grassDepth,palette) {
-    if(!window.BaseTerrain || window.BaseTerrain.SIZE!==ISLAND_GRID_SIZE)return;
-    const layers=window.BaseTerrain.LAYERS.length-1, n=window.BaseTerrain.SIZE;
-    const vertices=[[leftX,middleY+grassDepth],[centerX,frontY+grassDepth],[rightX,middleY+grassDepth],
-      [rightX,middleY+ISLAND_DEPTH],[centerX,frontY+ISLAND_DEPTH],[leftX,middleY+ISLAND_DEPTH]];
-    ctx.save();ctx.beginPath();traceRoundedIslandPolygon(vertices,2.2);ctx.clip();
-    for(let side=0;side<2;side++)for(let i=0;i<n;i++)for(let level=0;level<layers;level++) {
-      const a=side===0?{x:leftX,y:middleY}:{x:centerX,y:frontY},b=side===0?{x:centerX,y:frontY}:{x:rightX,y:middleY};
-      const t=i/n,u=(i+1)/n,x1=a.x+(b.x-a.x)*t,x2=a.x+(b.x-a.x)*u;
-      const y1=a.y+(b.y-a.y)*t+grassDepth+level*BLOCK_HEIGHT,y2=a.y+(b.y-a.y)*u+grassDepth+level*BLOCK_HEIGHT;
-      const fill=blendColor(side===0?palette.soilLight:palette.soilDark,'#000000',(i+level)%2?.06:0);
-      drawSmoothIslandPolygon([[x1,y1],[x2,y2],[x2,y2+BLOCK_HEIGHT],[x1,y1+BLOCK_HEIGHT]],fill,fill,blendColor(fill,'#000000',.12),.35);
-    }
-    ctx.restore();
   }
 
   function traceRoundedIslandPolygon(vertices, cornerRadius) {
@@ -2367,12 +2343,12 @@
           const leftOpen=empty(left),rightOpen=empty(right);
           if (leftOpen) drawSmoothIslandPolygon([[tile.x-hw,tile.y],[tile.x,tile.y+hh],[tile.x,tile.y+hh+ISLAND_DEPTH],[tile.x-hw,tile.y+ISLAND_DEPTH]], palette.soilLight, palette.soilDark);
           if (rightOpen) drawSmoothIslandPolygon([[tile.x,tile.y+hh],[tile.x+hw,tile.y],[tile.x+hw,tile.y+ISLAND_DEPTH],[tile.x,tile.y+hh+ISLAND_DEPTH]], palette.soilDark, palette.soilDark);
-          drawGrassTile(tile, palette, sunlight, stack ? stack[0] : tileData[index]);ctx.restore();
+          drawGrassTile(tile, palette, sunlight, stack ? stack[0] : tileData[index],0,stack ? !!window.BaseTerrain?.isBaseLayer(stack,0) : true);ctx.restore();
         }
         if (stack) for(let level=1;level<stack.length;level++) {
           if(buried && level<stack.length-1)continue;
           const raised={...tile,y:tile.y-level*BLOCK_HEIGHT};
-          if(tileVisible(raised,BLOCK_HEIGHT)){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawGrassTile(raised,palette,sunlight,stack[level],level);ctx.restore();}
+          if(tileVisible(raised,BLOCK_HEIGHT)){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawGrassTile(raised,palette,sunlight,stack[level],level,!!window.BaseTerrain?.isBaseLayer(stack,level));ctx.restore();}
         }
         if(tileData[index]===3 && pond?.byTile.has(index)) {
           const level=stack ? stack.length-1 : 0, topTile={...tile,y:tile.y-level*BLOCK_HEIGHT};
@@ -2393,9 +2369,8 @@
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.
     drawIslandSoilBody(soilLeftX, centerX, soilRightX,
       middleY, soilFrontY, grassBandDepth, palette);
-    if(activeWorld?.id==='base')drawBaseSoilBlocks(soilLeftX,centerX,soilRightX,middleY,soilFrontY,grassBandDepth,palette);
-    // A side-shaded average of the two tile hues fills rounded joints without a third green.
-    const grassTileJoin = blendColor(palette.grassTileSoftFern, palette.grassTileFernSage, 0.5);
+    // Match the base grass surface under its edges.
+    const grassTileJoin = palette.grassTileSoftFern;
     const leftBandLight = blendColor(grassTileJoin, '#000000', 0.08);
     const leftBandShade = blendColor(grassTileJoin, '#000000', 0.22);
     const rightBandLight = blendColor(grassTileJoin, '#000000', 0.16);
@@ -2409,9 +2384,9 @@
       [rightX, middleY + grassBandDepth], [centerX, bottomY + grassBandDepth]
     ], rightBandLight, rightBandShade);
 
-    // A darker underside makes the overhang read as a distinct grass platform above the soil.
-    const grassLedgeLight = blendColor(palette.grassWall, palette.grassDark, 0.16);
-    const grassLedgeDark = blendColor(palette.grassWall, palette.grassDark, 0.32);
+    // The narrow underside uses soil colors, not a green ledge.
+    const grassLedgeLight = palette.soilLight;
+    const grassLedgeDark = palette.soilDark;
     drawSmoothIslandPolygon([
       [leftX, middleY + grassBandDepth], [centerX, bottomY + grassBandDepth],
       [centerX, soilFrontY + grassBandDepth], [soilLeftX, middleY + grassBandDepth]

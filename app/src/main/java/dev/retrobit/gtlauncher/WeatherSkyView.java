@@ -1851,10 +1851,8 @@ public final class WeatherSkyView extends View {
         // One rounded, uninterrupted soil slab sits inside the wider grass cap.
         drawIslandSoilBody(canvas, soilLeftX, centerX, soilRightX,
                 middleY, soilFrontY, grassBandDepth, palette);
-        if((surfaceWorldId.isEmpty() || surfaceWorldId.equals("base")) && ISLAND_GRID_SIZE==BaseTerrain.SIZE)
-            drawBaseSoilBlocks(canvas,soilLeftX,centerX,soilRightX,middleY,soilFrontY,grassBandDepth,palette);
-        // A side-shaded average of the two tile hues fills rounded joints without a third green.
-        int grassTileJoin = blend(palette.grassTileSoftFern, palette.grassTileFernSage, 0.5);
+        // Match the base grass surface under its edges.
+        int grassTileJoin = palette.grassTileSoftFern;
         int leftBandLight = blend(grassTileJoin, Color.BLACK, 0.08);
         int leftBandShade = blend(grassTileJoin, Color.BLACK, 0.22);
         int rightBandLight = blend(grassTileJoin, Color.BLACK, 0.16);
@@ -1868,9 +1866,9 @@ public final class WeatherSkyView extends View {
                 rightX, middleY + grassBandDepth, centerX, bottomY + grassBandDepth,
                 rightBandLight, rightBandShade, 0, 0.0f);
 
-        // A darker underside makes the overhang read as a distinct grass platform above the soil.
-        int grassLedgeLight = blend(palette.grassWall, palette.grassDark, 0.16);
-        int grassLedgeDark = blend(palette.grassWall, palette.grassDark, 0.32);
+        // The narrow underside uses soil colors, not a green ledge.
+        int grassLedgeLight = palette.soilLight;
+        int grassLedgeDark = palette.soilDark;
         drawSmoothIslandQuad(canvas,
                 leftX, middleY + grassBandDepth,
                 centerX, bottomY + grassBandDepth,
@@ -1893,9 +1891,7 @@ public final class WeatherSkyView extends View {
             for (int row = 0; row < ISLAND_GRID_SIZE; row++) {
                 int column = diagonal - row;
                 if (column < 0 || column >= ISLAND_GRID_SIZE) continue;
-                char columnLabel = ISLAND_COLUMN_LABELS.charAt(column);
-                int rowLabel = row + 1;
-                boolean lightTile = ((columnLabel - 'A') + rowLabel - 1) % 2 == 0;
+                boolean lightTile = true;
                 float tileX = centerX + (column - row) * ISLAND_TILE_WIDTH / 2.0f;
                 float tileY = topY + ISLAND_TILE_HEIGHT / 2.0f
                         + (column + row) * ISLAND_TILE_HEIGHT / 2.0f;
@@ -1989,6 +1985,12 @@ public final class WeatherSkyView extends View {
         }
         canvas.restoreToCount(save);
     }
+    // Saved formats have no provenance; recognize only the intact Base soil prefix.
+    private static boolean isBaseTemplateLayer(PreviewWorld20 terrain,int c,int r,int level) {
+        if(terrain.height(c,r)<4)return level==0 && !terrain.hasStacks();
+        for(int i=0;i<4;i++)if(terrain.block(c,r,i)!=2)return false;
+        return level<4 || (level==4 && terrain.height(c,r)>4 && terrain.block(c,r,4)==1);
+    }
     private void drawPortableTerrain(Canvas canvas, IslandPalette palette, IslandSunlight sunlight) {
         for(int diagonal=0;diagonal<ISLAND_GRID_SIZE*2-1;diagonal++) for(int row=0;row<ISLAND_GRID_SIZE;row++) {
             int column=diagonal-row;
@@ -2007,13 +2009,14 @@ public final class WeatherSkyView extends View {
                 drawSmoothIslandQuad(canvas,x-hw,y,x,y+hh,x,y+hh+ISLAND_DEPTH,x-hw,y+ISLAND_DEPTH,palette.soilLight,palette.soilDark,0,0f);
             if(level==0 && !worldTerrain.canStand(column+1,row))
                 drawSmoothIslandQuad(canvas,x,y+hh,x+hw,y,x+hw,y+ISLAND_DEPTH,x,y+hh+ISLAND_DEPTH,palette.soilDark,palette.soilDark,0,0f);
-            if(material==1) drawGrassTile(canvas,x,y,(column+row+level)%2==0,column,row,palette,sunlight,level>0);
+            boolean baseLayer=isBaseTemplateLayer(worldTerrain,column,row,level);
+            if(material==1) drawGrassTile(canvas,x,y,baseLayer || (column+row+level)%2==0,column,row,palette,sunlight,level>0,baseLayer);
             else {
                 boolean grassTop=material>=7 && material<=10;
                 int baseMaterial=grassTop ? (material==7?2:material==8?4:material==9?5:6) : material;
                 int[] colors={0,0,0xffae8b68,0xff75cbd0,0xffb8b2a7,0xffdac695,0xffbd7549};
                 int fill=baseMaterial==2 ? blend(palette.soilLight,0xffd49d65,0.4) : baseMaterial==4 ? blend(colors[baseMaterial],palette.soilDark,0.08) : blend(colors[baseMaterial],palette.grassDark,0.12);
-                if((column+row+level)%2!=0)fill=blend(fill,Color.BLACK,.06);
+                if(!baseLayer && (column+row+level)%2!=0)fill=blend(fill,Color.BLACK,.06);
                 boolean leftWater = material==3 && waterAtLevel(column,row+1,level);
                 boolean rightWater = material==3 && waterAtLevel(column+1,row,level);
                 if (material==3) {
@@ -2022,8 +2025,8 @@ public final class WeatherSkyView extends View {
                             blend(palette.soilLight,0xffdac695,0.45),sunlight);
                     canvas.saveLayerAlpha(x-hw-2,y-hh-2,x+hw+2,y+hh+sideDepth+2,163,Canvas.ALL_SAVE_FLAG);
                 }
-                if (!leftWater && !(material==3 && level==height-1 && hasWaterfall(column,row,column,row+1))) drawGrassTileSide(canvas,x,y,hw,hh,material==3?0:1.4f,sideDepth,fill,true);
-                if (!rightWater && !(material==3 && level==height-1 && hasWaterfall(column,row,column+1,row))) drawGrassTileSide(canvas,x,y,hw,hh,material==3?0:1.4f,sideDepth,fill,false);
+                if (!leftWater && !(material==3 && level==height-1 && hasWaterfall(column,row,column,row+1))) drawGrassTileSide(canvas,x,y,hw,hh,material==3 || baseLayer?0:1.4f,sideDepth,fill,true,!baseLayer);
+                if (!rightWater && !(material==3 && level==height-1 && hasWaterfall(column,row,column+1,row))) drawGrassTileSide(canvas,x,y,hw,hh,material==3 || baseLayer?0:1.4f,sideDepth,fill,false,!baseLayer);
                 if(baseMaterial==6) {
                     paint.setStyle(Paint.Style.FILL);paint.setColor(0x73582d1d);
                     for(float[] p:new float[][]{{-.68f,.32f},{-.26f,.74f},{.35f,.65f},{.72f,.28f}}) {
@@ -2031,7 +2034,7 @@ public final class WeatherSkyView extends View {
                         canvas.drawRect(px,py,px+.65f,py+.45f,paint);
                     }
                 }
-                drawSunlitIslandDiamond(canvas,x,y,material==3?hw:hw-0.05f,material==3?hh:hh-0.025f,material==3?0:1.4f,grassTop ? ((column+row+level)%2==0?palette.grassTileSoftFern:palette.grassTileFernSage) : fill,sunlight);
+                drawSunlitIslandDiamond(canvas,x,y,material==3 || baseLayer?hw:hw-0.05f,material==3 || baseLayer?hh:hh-0.025f,material==3 || baseLayer?0:1.4f,grassTop ? ((column+row+level)%2==0?palette.grassTileSoftFern:palette.grassTileFernSage) : fill,sunlight);
                 if (material==3) {
                     canvas.restore();
                     // Solid exposed soil walls frame the water; shared water edges stay open.
@@ -2072,14 +2075,6 @@ public final class WeatherSkyView extends View {
                     paint.setStyle(Paint.Style.FILL);paint.setColor(0x8f5b3220);
                     for(float[] p:new float[][]{{-.52f,-.02f},{.29f,-.30f},{.53f,.04f},{-.22f,.29f}})canvas.drawRect(x+p[0]*(hw-.05f),y+p[1]*(hh-.025f),x+p[0]*(hw-.05f)+.55f,y+p[1]*(hh-.025f)+.45f,paint);
                     paint.setStrokeCap(oldCap);
-                }
-                if(grassTop) {
-                    // Outline only the grassy cap; keep the original material on its sides.
-                    traceSmoothIslandDiamond(islandPolyPath,x,y,hw-.05f,hh-.025f,1.4f);
-                    Paint.Join oldJoin=paint.getStrokeJoin();
-                    paint.setStyle(Paint.Style.STROKE);paint.setColor(blend(palette.grassDark,palette.grass,0.3));
-                    paint.setStrokeWidth(.55f);paint.setStrokeJoin(Paint.Join.ROUND);canvas.drawPath(islandPolyPath,paint);
-                    paint.setStrokeJoin(oldJoin);paint.setStyle(Paint.Style.FILL);
                 }
                 if(material==3 && level==height-1) drawPondLife(canvas,x,y,row*ISLAND_GRID_SIZE+column);
             }
@@ -2219,16 +2214,16 @@ public final class WeatherSkyView extends View {
     private void drawGrassTile(Canvas canvas, float centerX, float centerY, boolean lightTile,
                                int column, int row, IslandPalette palette,
                                IslandSunlight sunlight) {
-        drawGrassTile(canvas,centerX,centerY,lightTile,column,row,palette,sunlight,false);
+        drawGrassTile(canvas,centerX,centerY,lightTile,column,row,palette,sunlight,false,true);
     }
     private void drawGrassTile(Canvas canvas, float centerX, float centerY, boolean lightTile,
                                int column, int row, IslandPalette palette,
-                               IslandSunlight sunlight,boolean raised) {
+                               IslandSunlight sunlight,boolean raised,boolean baseLayer) {
         int fill = lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage;
         // Keep adjacent top tiles nearly touching while retaining rounded corners.
-        float halfWidth = ISLAND_TILE_WIDTH / 2.0f - 0.05f;
-        float halfHeight = ISLAND_TILE_HEIGHT / 2.0f - 0.025f;
-        float cornerRadius = 1.4f;
+        float halfWidth = ISLAND_TILE_WIDTH / 2.0f - (baseLayer ? 0f : 0.05f);
+        float halfHeight = ISLAND_TILE_HEIGHT / 2.0f - (baseLayer ? 0f : 0.025f);
+        float cornerRadius = baseLayer ? 0f : 1.4f;
 
         boolean leftPerimeterFace = row == ISLAND_GRID_SIZE - 1;
         boolean rightPerimeterFace = column == ISLAND_GRID_SIZE - 1;
@@ -2239,12 +2234,12 @@ public final class WeatherSkyView extends View {
                 leftPerimeterFace ? ISLAND_TILE_WIDTH / 2.0f : halfWidth,
                 leftPerimeterFace ? ISLAND_TILE_HEIGHT / 2.0f : halfHeight,
                 leftPerimeterFace ? 0.0f : cornerRadius,
-                leftSideDepth, fill, true);
+                leftSideDepth, fill, true, !baseLayer);
         drawGrassTileSide(canvas, centerX, centerY,
                 rightPerimeterFace ? ISLAND_TILE_WIDTH / 2.0f : halfWidth,
                 rightPerimeterFace ? ISLAND_TILE_HEIGHT / 2.0f : halfHeight,
                 rightPerimeterFace ? 0.0f : cornerRadius,
-                rightSideDepth, fill, false);
+                rightSideDepth, fill, false, !baseLayer);
 
         // Each top stays solid; direct sunlight adds only a uniform, subtle color lift.
         drawSunlitIslandDiamond(canvas, centerX, centerY, halfWidth, halfHeight,
@@ -2265,6 +2260,11 @@ public final class WeatherSkyView extends View {
     private void drawGrassTileSide(Canvas canvas, float centerX, float centerY,
                                    float halfWidth, float halfHeight, float cornerRadius,
                                    float depth, int fill, boolean leftSide) {
+        drawGrassTileSide(canvas,centerX,centerY,halfWidth,halfHeight,cornerRadius,depth,fill,leftSide,true);
+    }
+    private void drawGrassTileSide(Canvas canvas, float centerX, float centerY,
+                                   float halfWidth, float halfHeight, float cornerRadius,
+                                   float depth, int fill, boolean leftSide,boolean outline) {
         float cutX = Math.min(cornerRadius, halfWidth * 0.34f);
         float cutY = cutX * halfHeight / halfWidth;
         float splitY = centerY + halfHeight - cutY * 0.5f;
@@ -2286,7 +2286,7 @@ public final class WeatherSkyView extends View {
                     centerX - halfWidth, centerY + cutY,
                     centerX, centerY + halfHeight + depth,
                     blend(fill, Color.BLACK, sideShade),
-                    blend(fill, Color.BLACK, sideShade), blend(fill, Color.BLACK, sideShade+.12f), .35f);
+                    blend(fill, Color.BLACK, sideShade), blend(fill, Color.BLACK, sideShade+.12f), outline ? .35f : 0f);
         } else {
             islandPolyPath.moveTo(centerX, splitY);
             islandPolyPath.quadTo(centerX + cutX * 0.5f,
@@ -2303,7 +2303,7 @@ public final class WeatherSkyView extends View {
                     centerX, centerY + cutY,
                     centerX + halfWidth, centerY + halfHeight + depth,
                     blend(fill, Color.BLACK, sideShade),
-                    blend(fill, Color.BLACK, sideShade), blend(fill, Color.BLACK, sideShade+.12f), .35f);
+                    blend(fill, Color.BLACK, sideShade), blend(fill, Color.BLACK, sideShade+.12f), outline ? .35f : 0f);
         }
     }
 
@@ -2347,19 +2347,6 @@ public final class WeatherSkyView extends View {
         paint.setAlpha(previousAlpha);
         paint.setStyle(previousStyle);
         canvas.restore();
-    }
-
-    /** Four exposed soil block courses in the built-in Base World only. */
-    private void drawBaseSoilBlocks(Canvas canvas,float leftX,float centerX,float rightX,float middleY,float frontY,float grassDepth,IslandPalette palette) {
-        int save=canvas.save();canvas.clipPath(islandBodyPath);
-        for(int side=0;side<2;side++)for(int i=0;i<BaseTerrain.SIZE;i++)for(int level=0;level<BaseTerrain.HEIGHT-1;level++) {
-            float ax=side==0?leftX:centerX,ay=side==0?middleY:frontY,bx=side==0?centerX:rightX,by=side==0?frontY:middleY;
-            float t=(float)i/BaseTerrain.SIZE,u=(float)(i+1)/BaseTerrain.SIZE;
-            float x1=ax+(bx-ax)*t,x2=ax+(bx-ax)*u,y1=ay+(by-ay)*t+grassDepth+level*BLOCK_HEIGHT,y2=ay+(by-ay)*u+grassDepth+level*BLOCK_HEIGHT;
-            int fill=blend(side==0?palette.soilLight:palette.soilDark,Color.BLACK,(i+level)%2==0?0:.06);
-            drawSmoothIslandQuad(canvas,x1,y1,x2,y2,x2,y2+BLOCK_HEIGHT,x1,y1+BLOCK_HEIGHT,fill,fill,blend(fill,Color.BLACK,.12),.35f);
-        }
-        canvas.restoreToCount(save);
     }
 
     private void traceRoundedIslandPolygon(Path path, float[] vertices,
