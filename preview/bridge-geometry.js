@@ -68,13 +68,38 @@
     const p={x:-(u.x+v.x)/2,y:-(u.y+v.y)/2};
     return [p,{x:p.x+u.x,y:p.y+u.y},{x:p.x+u.x+v.x,y:p.y+u.y+v.y},{x:p.x+v.x,y:p.y+v.y}];
   }
+  // End tiles form straight ramps to a level deck, raised by half a block.
+  function rise(t,length,height) {
+    return Math.max(0,Math.min(1,t*length,(1-t)*length))*height;
+  }
+  function profilePoints(corners,length,height) {
+    const [a,b,c,d]=corners;
+    const at=(p,q,t)=>({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t-rise(t,length,height)});
+    return [0,1/length,1-1/length,1].map(t=>[at(a,b,t),at(d,c,t)]);
+  }
+  // Return the profile at a continuous tile coordinate; zero outside the deck.
+  function riseAt(bridges,column,row,blockHeight) {
+    if(!Number.isFinite(column)||!Number.isFinite(row))return 0;
+    let result=0;
+    for(const b of bridges||[]) {
+      const along=b.axis==='E'?column-b.column:row-b.row;
+      const across=b.axis==='E'?row-b.row:column-b.column;
+      if(across<-.5 || across>(b.width??1)-.5)continue;
+      const length=b.length??3,t=(along+.5)/length;
+      if(t>=0 && t<=1)result=Math.max(result,rise(t,length,blockHeight*.5));
+    }
+    return result;
+  }
   function polygonContains(point,poly) {let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++) {const a=poly[i],b=poly[j];if((a.y>point.y)!==(b.y>point.y) && point.x<(b.x-a.x)*(point.y-a.y)/(b.y-a.y)+a.x)inside=!inside;}return inside;}
   function postContains(p,posts) {return posts.some(a=>{const dx=Math.abs(p.x-a.x),dy=p.y-(a.y+2);return dx<=2 && dy>=-10.5+dx/2 && dy<=-dx/2;});}
-  function wideContains(point,corners,railHeight=4) {
-    if(postContains(point,corners) || polygonContains(point,corners))return true;
-    const [a,b,c,d]=corners;
-    for(const [p,q] of [[a,b],[d,c]]) {const vx=q.x-p.x,vy=q.y-p.y,t=Math.max(0,Math.min(1,((point.x-p.x)*vx+(point.y-(p.y-railHeight))*vy)/(vx*vx+vy*vy))),dx=point.x-(p.x+t*vx),dy=point.y-(p.y-railHeight+t*vy);if(dx*dx+dy*dy<=1)return true;}
-    return polygonContains(point,[d,c,{x:c.x,y:c.y+2.5},{x:d.x,y:d.y+2.5}]) || polygonContains(point,[b,c,{x:c.x,y:c.y+2.5},{x:b.x,y:b.y+2.5}]);
+  function wideContains(point,corners,railHeight=4,length=3) {
+    if(postContains(point,corners))return true;
+    const sections=profilePoints(corners,length,railHeight*.5),[a,b,c,d]=corners;
+    for(let i=0;i<sections.length-1;i++)if(polygonContains(point,[sections[i][0],sections[i+1][0],sections[i+1][1],sections[i][1]]))return true;
+    const rails=[];for(let i=0;i<sections.length-1;i++)for(let side=0;side<2;side++)rails.push([sections[i][side],sections[i+1][side]]);
+    for(const [p,q] of rails) {const vx=q.x-p.x,vy=q.y-p.y,t=Math.max(0,Math.min(1,((point.x-p.x)*vx+(point.y-(p.y-railHeight))*vy)/(vx*vx+vy*vy))),dx=point.x-(p.x+t*vx),dy=point.y-(p.y-railHeight+t*vy);if(dx*dx+dy*dy<=1)return true;}
+    for(let i=0;i<sections.length-1;i++){const p=sections[i][1],q=sections[i+1][1];if(polygonContains(point,[p,q,{x:q.x,y:q.y+2.5},{x:p.x,y:p.y+2.5}]))return true;}
+    return polygonContains(point,[b,c,{x:c.x,y:c.y+2.5},{x:b.x,y:b.y+2.5}]);
   }
-  return Object.freeze({LENGTH,cells,indexAt,valid,deckHeight,permitsStep,spriteTransform,wideDeck,wideContains});
+  return Object.freeze({LENGTH,cells,indexAt,valid,deckHeight,permitsStep,spriteTransform,wideDeck,profilePoints,rise,riseAt,wideContains});
 });

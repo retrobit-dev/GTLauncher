@@ -90,8 +90,8 @@
     * Math.sin(islandCameraElevation * Math.PI / 180);
   // Fit the larger locked Base in the existing preview viewport; legacy worlds retain their scale.
   let islandZoom = 9 / ISLAND_GRID_SIZE;
-  let editorZoom = 7.5, cameraPanX = 0, cameraPanY = 0;
-  let cameraMode = 'gameplay', savedEditorCamera = {zoom: 7.5, panX: 0, panY: 0};
+  let editorZoom = 5, cameraPanX = 0, cameraPanY = 0;
+  let cameraMode = 'gameplay', savedEditorCamera = {zoom: 5, panX: 0, panY: 0};
   let gameplayFollowCentre = null, gameplayFollowTime = null, gameplayCameraMoving = false;
   let cameraWorldId = window.worldManager?.getActive()?.id;
   function baseFitZoom() { return 9 / ISLAND_GRID_SIZE; }
@@ -291,7 +291,7 @@
   }
   rebuildIslandProjection();
   function defaultEditorCamera() {
-    const [anchorX, anchorY] = islandAnchor(), zoom = 7.5;
+    const [anchorX, anchorY] = islandAnchor(), zoom = 5;
     return {zoom, panX: WIDTH / 2 - anchorX - (WIDTH / 2 - anchorX) * baseFitZoom() * zoom,
       panY: HEIGHT * .56 - anchorY - (islandCenterY - anchorY) * baseFitZoom() * zoom};
   }
@@ -1822,6 +1822,12 @@
     return {x: WIDTH / 2 + (p.column - p.row) * ISLAND_TILE_WIDTH / 2,
       y: islandTop + islandTileHeight / 2 + (p.column + p.row) * islandTileHeight / 2 - Math.max(0,elevation-1)*BLOCK_HEIGHT};
   }
+  function characterBridgeCentre(character) {
+    const p=characterCentre(character),world=window.worldManager?.getActive();
+    p.y-=window.BridgeGeometry?.riseAt(world?.bridges,character.column,character.row,BLOCK_HEIGHT)||0;
+    return p;
+  }
+
 
   // Shared ground-shadow primitive for surface objects. Each renderer supplies a ground
   // anchor, inset footprint and visual height. Future object types must use this same helper.
@@ -1922,7 +1928,7 @@
       const m=mask.getContext('2d');m.drawImage(sprite,0,0);m.globalCompositeOperation='source-in';m.fillStyle='#0c1728';m.fillRect(0,0,mask.width,mask.height);
       characterShadowMasks.set(sprite,mask);
     }
-    const anchor=characterCentre(character), baseWidth=PLAYER_WIDTH*character.scale,
+    const anchor=characterBridgeCentre(character), baseWidth=PLAYER_WIDTH*character.scale,
       width=baseWidth*(idleBowSprite ? (idleBowSprite.naturalWidth||idleBowSprite.width)/432 : 1),height=PLAYER_HEIGHT*character.scale;
     const ray=characterShadowOffset(light.azimuth,light.altitude,height);
     if(Math.abs(ray.y)<height*.12)ray.y=(ray.y<0?-1:1)*height*.12; // visible thickness for side-lit sprites
@@ -2001,27 +2007,32 @@
   let editingBridgeSelection=null;
   function bridgeBounds(bridge) {
     const half=((bridge.length||3)-1)/2;
-    const centre=characterCentre({column:bridge.column+(bridge.axis==='E'?half:((bridge.width||1)-1)/2),row:bridge.row+(bridge.axis==='S'?half:((bridge.width||1)-1)/2),blockHeight:surfaceHeight(bridge.column,bridge.row)});
+    const centre=characterCentre({column:bridge.column+(bridge.axis==='E'?half:((bridge.width||1)-1)/2),row:bridge.row+(bridge.axis==='S'?half:((bridge.width||1)-1)/2),blockHeight:window.BridgeGeometry.deckHeight(window.worldManager?.getActive(),bridge) ?? surfaceHeight(bridge.column,bridge.row)});
     return {x:centre.x,y:centre.y,w:ISLAND_TILE_WIDTH*2.35,h:ISLAND_TILE_WIDTH*1.56};
   }
   function drawWideBridge(bridge) {
     const corners=window.BridgeGeometry.wideDeck(bridge.length||3,bridge.width||1,ISLAND_TILE_WIDTH,islandTileHeight,.1),[a,b,c,d]=corners,wood=bridge.material==='wood';
     const path=(points,fill)=>{ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(const p of points.slice(1))ctx.lineTo(p.x,p.y);ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=wood?'#57362c':'#514942';ctx.lineWidth=.35;ctx.stroke();};
-    const down=p=>({x:p.x,y:p.y+2.5});
-    path([d,c,down(c),down(d)],wood?'#895033':'#827465');path([b,c,down(c),down(b)],wood?'#6c3e2d':'#6d6258');
-    path(corners,wood?'#bd8054':'#b3a391');
+    const down=p=>({x:p.x,y:p.y+2.5}), length=bridge.length||3;
+    const sections=window.BridgeGeometry.profilePoints(corners,length,BLOCK_HEIGHT*.5);
+    for(let i=0;i<sections.length-1;i++) {
+      const [p,q]=sections[i], [r,s]=sections[i+1];
+      path([q,s,down(s),down(q)],wood?'#895033':'#827465');
+      path([p,r,s,q],wood?'#bd8054':'#b3a391');
+    }
+    path([b,c,down(c),down(b)],wood?'#6c3e2d':'#6d6258');
     ctx.strokeStyle=wood?'#855033':'#897c70';ctx.lineWidth=.35;
-    const n=(bridge.length||3)*(wood?4:2);
-    for(let i=1;i<n;i++){const t=i/n;ctx.beginPath();ctx.moveTo(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t);ctx.lineTo(d.x+(c.x-d.x)*t,d.y+(c.y-d.y)*t);ctx.stroke();}
-    if(!wood)for(let i=1;i<(bridge.width||1)*2;i++){const t=i/((bridge.width||1)*2);ctx.beginPath();ctx.moveTo(a.x+(d.x-a.x)*t,a.y+(d.y-a.y)*t);ctx.lineTo(b.x+(c.x-b.x)*t,b.y+(c.y-b.y)*t);ctx.stroke();}
-    for(const [p,q] of [[a,b],[d,c]]) {ctx.strokeStyle=wood?'#71442f':'#6f645b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.x,p.y-BLOCK_HEIGHT);ctx.lineTo(q.x,q.y-BLOCK_HEIGHT);ctx.stroke();ctx.strokeStyle=wood?'#cb936a':'#c6b9a7';ctx.lineWidth=.55;ctx.stroke();}
+    const n=length*(wood?4:2);
+    for(let i=1;i<n;i++){const t=i/n,z=window.BridgeGeometry.rise(t,length,BLOCK_HEIGHT*.5);ctx.beginPath();ctx.moveTo(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t-z);ctx.lineTo(d.x+(c.x-d.x)*t,d.y+(c.y-d.y)*t-z);ctx.stroke();}
+    if(!wood)for(let i=1;i<(bridge.width||1)*2;i++){const t=i/((bridge.width||1)*2);ctx.beginPath();sections.forEach(([p,q],index)=>{const x=p.x+(q.x-p.x)*t,y=p.y+(q.y-p.y)*t;if(index)ctx.lineTo(x,y);else ctx.moveTo(x,y);});ctx.stroke();}
+    for(const side of [0,1]) {ctx.strokeStyle=wood?'#71442f':'#6f645b';ctx.lineWidth=2;ctx.beginPath();sections.forEach((pair,index)=>{const p=pair[side];if(index)ctx.lineTo(p.x,p.y-BLOCK_HEIGHT);else ctx.moveTo(p.x,p.y-BLOCK_HEIGHT);});ctx.stroke();ctx.strokeStyle=wood?'#cb936a':'#c6b9a7';ctx.lineWidth=.55;ctx.stroke();}
     for(const post of corners) {const x=post.x,y=post.y+2;
       path([{x:x-2,y:y-9.5},{x,y:y-8.5},{x,y},{x:x-2,y:y-1}],wood?'#a45f3d':'#988879');
       path([{x,y:y-8.5},{x:x+2,y:y-9.5},{x:x+2,y:y-1},{x,y}],wood?'#78472f':'#756b61');
       path([{x:x-2,y:y-9.5},{x,y:y-10.5},{x:x+2,y:y-9.5},{x,y:y-8.5}],wood?'#c9895e':'#b7a896');
     }
     if(editingBridgeSelection && editingBridgeSelection.column===bridge.column && editingBridgeSelection.row===bridge.row && editingBridgeSelection.axis===bridge.axis){
-      ctx.strokeStyle='#fff4a8';ctx.lineWidth=.65;ctx.beginPath();ctx.moveTo(a.x,a.y);for(const p of [b,c,d])ctx.lineTo(p.x,p.y);ctx.closePath();ctx.stroke();
+      ctx.strokeStyle='#fff4a8';ctx.lineWidth=.65;ctx.beginPath();ctx.moveTo(...[sections[0][0].x,sections[0][0].y]);for(const pair of sections.slice(1))ctx.lineTo(pair[0].x,pair[0].y);for(const pair of sections.slice().reverse())ctx.lineTo(pair[1].x,pair[1].y);ctx.closePath();ctx.stroke();
     }
   }
   function drawBridge(bridge) {
@@ -2137,7 +2148,7 @@
   // This is an approximation, not a pixel-perfect character mask.
   function coversCharacter(player, hit, bounds) {
     if(!player?.visible || !window.sceneEditing)return false;
-    const anchor=characterCentre(player), scale=player.scale || 1;
+    const anchor=characterBridgeCentre(player), scale=player.scale || 1;
     const bottom=anchor.y+.5*scale+characterWaterDepth(player)-(player.jumpHeight||0), height=PLAYER_HEIGHT*scale, width=PLAYER_WIDTH*scale;
     if(bounds && (anchor.x+width/2<=bounds.left || anchor.x-width/2>=bounds.right || bottom<=bounds.top || bottom-height>=bounds.bottom))return false;
     for(let yi=1;yi<10;yi++)for(let xi=1;xi<6;xi++) {
@@ -2222,11 +2233,11 @@
     if(cameraMode!=='gameplay' || !gameplayRoute || gameplayRoute.tiles.length<2)return;
     const {tiles,next}=gameplayRoute, character=gameplayDraft || window.worldManager?.getCharacter();
     const remaining=tiles.slice(Math.max(1,next));if(!remaining.length)return;
-    const start=characterCentre(character || tiles[0]);
+    const start=characterBridgeCentre(character || tiles[0]);
     ctx.save();applyIslandTransform();ctx.lineJoin='round';ctx.lineCap='butt';ctx.setLineDash([2.5,2]);
     ctx.strokeStyle='#000';ctx.lineWidth=.5;ctx.beginPath();ctx.moveTo(start.x,start.y);
-    for(const tile of remaining){const p=characterCentre(tile);ctx.lineTo(p.x,p.y);}ctx.stroke();
-    const p=characterCentre(remaining[remaining.length-1]),hw=ISLAND_TILE_WIDTH/2-1,hh=islandTileHeight/2-.5;
+    for(const tile of remaining){const p=characterBridgeCentre(tile);ctx.lineTo(p.x,p.y);}ctx.stroke();
+    const p=characterBridgeCentre(remaining[remaining.length-1]),hw=ISLAND_TILE_WIDTH/2-1,hh=islandTileHeight/2-.5;
     ctx.beginPath();ctx.moveTo(p.x,p.y-hh);ctx.lineTo(p.x+hw,p.y);ctx.lineTo(p.x,p.y+hh);ctx.lineTo(p.x-hw,p.y);ctx.closePath();ctx.stroke();ctx.restore();
   }
   function drawStandingBlock() {
@@ -2235,7 +2246,7 @@
     const column=Math.round(character.column),row=Math.round(character.row);
     const size=world.gridSize||ISLAND_GRID_SIZE;
     if(column<0 || row<0 || column>=size || row>=size || (world.tiles && !world.tiles[row*size+column] && window.BridgeGeometry?.deckHeight(world,{column,row})==null))return;
-    const {x,y}=characterCentre({column,row}),hw=ISLAND_TILE_WIDTH/2-.45,hh=islandTileHeight/2-.25;
+    const {x,y}=characterBridgeCentre({column,row}),hw=ISLAND_TILE_WIDTH/2-.45,hh=islandTileHeight/2-.25;
     const ramp=world.ramps?.find(r=>r.column===column && r.row===row),shape=ramp && window.RampGeometry?.create(viewFacing(ramp.direction),ISLAND_TILE_WIDTH,islandTileHeight,BLOCK_HEIGHT);
     ctx.save();applyIslandTransform();ctx.strokeStyle='rgba(30,44,31,.86)';ctx.lineWidth=1.1;ctx.lineJoin='round';ctx.beginPath();
     if(shape){ctx.moveTo(x+shape.topFace[0].x,y+shape.topFace[0].y);for(const p of shape.topFace.slice(1))ctx.lineTo(x+p.x,y+p.y);}
@@ -2250,7 +2261,7 @@
     const column=Math.round(character.column)+offset[0],row=Math.round(character.row)+offset[1];
     const size=world.gridSize||ISLAND_GRID_SIZE;
     if(column<0 || row<0 || column>=size || row>=size || (world.tiles && !world.tiles[row*size+column] && window.BridgeGeometry?.deckHeight(world,{column,row})==null))return;
-    const {x,y}=characterCentre({column,row}),hw=ISLAND_TILE_WIDTH/2-.5,hh=islandTileHeight/2-.3;
+    const {x,y}=characterBridgeCentre({column,row}),hw=ISLAND_TILE_WIDTH/2-.5,hh=islandTileHeight/2-.3;
     ctx.save();applyIslandTransform();ctx.strokeStyle='#fff';ctx.lineWidth=1.2;ctx.lineJoin='round';ctx.beginPath();
     ctx.moveTo(x,y-hh);ctx.lineTo(x+hw,y);ctx.lineTo(x,y+hh);ctx.lineTo(x-hw,y);ctx.closePath();ctx.stroke();ctx.restore();
   }
@@ -2270,7 +2281,7 @@
     const mirror = viewFacing(character.facing) === 'W' || viewFacing(character.facing) === 'E';
     const sprite = back ? playerBackImage : playerImage;
     if (!sprite.complete || !sprite.naturalWidth) return;
-    const anchor = characterCentre(character), depth=characterWaterDepth(character), x=anchor.x;
+    const anchor = characterBridgeCentre(character), depth=characterWaterDepth(character), x=anchor.x;
     const seatWeight=idleBowSprite ? window.PlayerIdleBow.seatGroundWeight(idleSitAmount) : 0;
     // Put the hips, rather than the frontmost boot, on the tile's surface.
     const seatY=back?778:725;
@@ -2807,7 +2818,7 @@
     islandElevationOutput.textContent = `${DEFAULT_ISLAND_CAMERA_ELEVATION}°`;
   }
   if (islandZoomInput) islandZoomInput.value = '750';
-  if (islandZoomOutput) islandZoomOutput.textContent = '7.5';
+  if (islandZoomOutput) islandZoomOutput.textContent = '5';
   if (islandZoomInput) islandZoomInput.addEventListener('input', applyIslandCameraSettings);
   if (islandCameraReset) {
     islandCameraReset.addEventListener('click', () => {
@@ -2838,7 +2849,7 @@
     if (nextSize !== ISLAND_GRID_SIZE) {
       ISLAND_GRID_SIZE = nextSize;
       gameplayFollowCentre = null; gameplayFollowTime = null; gameplayCameraMoving = false;
-      editorZoom = 7.5; cameraPanX = 0; cameraPanY = 0;
+      editorZoom = 5; cameraPanX = 0; cameraPanY = 0;
       islandZoom = baseFitZoom() * editorZoom;
       rebuildIslandProjection();
     }
@@ -2876,12 +2887,12 @@
     }, true);
   }
 
-  // Gameplay uses 7.5 times the editor's default fit scale, independent of its camera controls.
+  // Gameplay uses 7.5 times the base fit scale, independent of editor zoom.
   function applyGameplayCamera() {
     editorZoom = 1;
     islandZoom = baseFitZoom() * 7.5;
     const character = gameplayDraft || window.worldManager?.getCharacter();
-    const target = character?.visible ? characterCentre(character) : {x: WIDTH / 2, y: islandCenterY};
+    const target = character?.visible ? characterBridgeCentre(character) : {x: WIDTH / 2, y: islandCenterY};
     // Ease toward the closest point of the dead zone, independently of frame rate.
     const now=performance.now(), dt=gameplayFollowTime===null?0:clamp((now-gameplayFollowTime)/1000,0,.1);
     gameplayFollowTime=now;
@@ -3027,7 +3038,7 @@
         const bridge=all[i];
         const p=bridgeBounds(bridge),mirror=(viewQuarterTurns%2===0?bridge.axis:bridge.axis==='E'?'S':'E')==='E';
         const local={x:(point.x-p.x)*(mirror?-1:1),y:point.y-p.y};
-        if(window.BridgeGeometry.wideContains(local,window.BridgeGeometry.wideDeck(bridge.length||3,bridge.width||1,ISLAND_TILE_WIDTH,islandTileHeight,.1),BLOCK_HEIGHT))return i;
+        if(window.BridgeGeometry.wideContains(local,window.BridgeGeometry.wideDeck(bridge.length||3,bridge.width||1,ISLAND_TILE_WIDTH,islandTileHeight,.1),BLOCK_HEIGHT,bridge.length||3))return i;
       }
       return null;
     },
@@ -3106,7 +3117,7 @@
     },
     hit(point, character) {
       if (!character.visible) return false;
-      const {x, y: surfaceY} = characterCentre(character);
+      const {x, y: surfaceY} = characterBridgeCentre(character);
       const y=surfaceY+.5*character.scale+characterWaterDepth(character)-(character.jumpHeight||0)+(idleBowSprite?(800-(viewFacing(character.facing)==='N'||viewFacing(character.facing)==='W'?778:725))/800*PLAYER_HEIGHT*character.scale*window.PlayerIdleBow.seatGroundWeight(idleSitAmount):0);
       const sprite=idleBowSprite || activeCharacterSprite(character);
       const width=PLAYER_WIDTH*character.scale*(idleBowSprite?(idleBowSprite.naturalWidth||idleBowSprite.width)/432:1),height=PLAYER_HEIGHT*character.scale;
@@ -3125,7 +3136,7 @@
     },
     tileAt(point) {
       const world=window.worldManager?.getActive();
-      for(const bridge of objectsHidden()?[]:(world?.bridges||[]))if(bridge.gap)for(const tile of window.BridgeGeometry.cells(bridge)||[]){const p=characterCentre(tile),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;if(Math.abs(point.x-p.x)/hw+Math.abs(point.y-p.y)/hh<=1)return tile;}
+      for(const bridge of objectsHidden()?[]:(world?.bridges||[]))if(bridge.gap)for(const tile of window.BridgeGeometry.cells(bridge)||[]){const p=characterBridgeCentre(tile),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;if(Math.abs(point.x-p.x)/hw+Math.abs(point.y-p.y)/hh<=1)return tile;}
       if(viewQuarterTurns && world?.tiles && window.WorldViewRotation) {
         const hit=window.WorldViewRotation.pickWorld(world,viewQuarterTurns,point.x,point.y,WIDTH/2,islandTop+islandTileHeight/2,ISLAND_TILE_WIDTH,islandTileHeight,BLOCK_HEIGHT,ISLAND_DEPTH);
         if(hit)return hit;

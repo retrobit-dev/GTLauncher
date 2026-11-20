@@ -501,3 +501,11 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
   .preview-stage[data-mode="editor"] .device-wrap { margin-top:70px; }
   .editor-upper-left { top:-70px; }
 }
+
+/* Keep the controls in a single accessible row, scrolling on narrow screens. */
+.preview-controls { flex-wrap:nowrap; justify-content:safe center; overflow-x:auto; align-items:center; }
+.weather-preview-control { width:auto; min-width:max-content; flex:0 0 auto; flex-direction:row; }
+.weather-mode-label { width:auto; max-width:130px; overflow-wrap:normal; margin:0; }
+.preview-controls > button, .house-transparency-control, .edit-status { flex:0 0 auto; }
+.preview-controls .edit-status { flex-basis:auto; max-width:180px; }
+.house-transparency-control input { width:clamp(65px,12vw,130px); }

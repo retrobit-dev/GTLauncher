@@ -62,3 +62,21 @@ console.log('Wide decks align to tile edges and corner posts stay vertical: OK')
   assert(extra[3].x>normal[3].x && extra[3].y>normal[3].y);
   console.log('Bridge long sides extend beyond tile edges: OK');
 }
+
+// Ramps begin at the outer end, rise over one tile, and remain level in the middle.
+for(const length of [3,4,5])for(const axis of ['E','S']){
+  const bridge={column:4,row:5,axis,length,width:1};
+  const at=t=>({column:4+(axis==='E'?t:0),row:5+(axis==='S'?t:0)});
+  const h=p=>b.riseAt([bridge],p.column,p.row,8);
+  assert.strictEqual(h(at(-.5)),0);
+  assert.strictEqual(h(at(0)),2);
+  assert.strictEqual(h(at(.5)),4);
+  assert(Math.abs(h(at(length-1))-2)<1e-9);
+  assert.strictEqual(h(at(length-.5)),0);
+  assert.strictEqual(h({column:0,row:0}),0);
+  const corners=b.wideDeck(length,1,16,8,.1),sections=b.profilePoints(corners,length,4);
+  assert.strictEqual(sections[0][0].y,corners[0].y);
+  assert.strictEqual(sections[3][0].y,corners[1].y);
+  assert(b.wideContains({x:(sections[1][0].x+sections[1][1].x)/2,y:(sections[1][0].y+sections[1][1].y)/2},corners,8,length));
+}
+console.log('Sloped bridge ends, continuous player rise, and picking: OK');

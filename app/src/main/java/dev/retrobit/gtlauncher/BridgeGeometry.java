@@ -45,6 +45,21 @@ final class BridgeGeometry {
         }
         return true;
     }
+    /** Straight endpoint ramps and level middle, without modifying stored heights. */
+    static float rise(float t,int length,float height) {
+        return Math.max(0,Math.min(1,Math.min(t*length,(1-t)*length)))*height;
+    }
+    static float riseAt(java.util.List<Bridge> bridges,float column,float row,float blockHeight) {
+        float result=0;
+        for(Bridge b:bridges){
+            float along="E".equals(b.axis)?column-b.column:row-b.row;
+            float across="E".equals(b.axis)?row-b.row:column-b.column;
+            if(across<-.5f || across>b.width-.5f)continue;
+            float t=(along+.5f)/b.length;
+            if(t>=0 && t<=1)result=Math.max(result,rise(t,b.length,blockHeight*.5f));
+        }
+        return result;
+    }
     static boolean permitsStep(java.util.List<Bridge> bridges,int fromC,int fromR,int toC,int toR) {
         if(Math.abs(fromC-toC)+Math.abs(fromR-toR)!=1)return false;
         for(Bridge b:bridges){int a=indexAt(b,fromC,fromR),z=indexAt(b,toC,toR);if(a<0 && z<0)continue;

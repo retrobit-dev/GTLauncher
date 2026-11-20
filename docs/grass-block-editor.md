@@ -165,3 +165,8 @@ seleksi/pijakan tetap dipertahankan. Renderer Android belum diuji di perangkat.
 jembatan dengan ujung menurun; belum diterapkan ke world atau gameplay. Gambar
 konsep bukan acuan ukuran: bentuk ramp, lebar satu tile, dan tiang ujung tanpa
 tiang tengah perlu dijaga saat implementasi.
+
+### Jembatan dan kamera editor
+Dek jembatan kayu maupun batu mempunyai ramp lurus sepanjang satu tile pada masing-masing ujung, naik setengah tinggi block ke bagian tengah; rail mengikuti profil dan tiang tetap di empat sudut luar. Tapak dan data world v23–v25 tidak diubah. Gerakan karakter mengikuti profil visual; aturan rute dan ketinggian dek tersimpan tetap sama. Karena jembatan bebas dapat ditempatkan pada tinggi berbeda dari block di ujungnya, bentuk ini tidak menjamin sambungan fisik ke setiap block di bawahnya. Pemilihan jembatan di editor mengikuti profil; pemilihan tile gameplay Android masih memakai geometri tile datar.
+
+Zoom awal Map Editor adalah 5×, terpisah dari gameplay 7,5×. Kontrol bawah tablet berada satu baris dan dapat digeser horizontal bila ruang sempit; status dan slider tetap tersedia.

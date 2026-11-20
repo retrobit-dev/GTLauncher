@@ -586,17 +586,21 @@ public final class WeatherSkyView extends View {
     private float visualElevation() {
         String toRamp=worldTerrain==null || worldTerrain.onBridge(characterColumn,characterRow)?null:worldTerrain.rampDirection(characterColumn,characterRow);
         float target=footElevationAt(characterColumn,characterRow)+(toRamp==null?0:BLOCK_HEIGHT*.5f);
-        if(!characterStepping)return target;
+        if(!characterStepping)return target+bridgeVisualRise();
         String fromRamp=worldTerrain==null || worldTerrain.onBridge(stepFromColumn,stepFromRow)?null:worldTerrain.rampDirection(stepFromColumn,stepFromRow);
         if(fromRamp!=null || toRamp!=null) {
             String edge=characterColumn>stepFromColumn?"E":characterColumn<stepFromColumn?"W":characterRow>stepFromRow?"S":"N";
             double level=RampGeometry.stepHeight(footHeight(stepFromColumn,stepFromRow),fromRamp,footHeight(characterColumn,characterRow),toRamp,edge,stepProgress());
-            if(Double.isFinite(level))return (float)Math.max(0,(level-1)*BLOCK_HEIGHT);
+            if(Double.isFinite(level))return (float)Math.max(0,(level-1)*BLOCK_HEIGHT)+bridgeVisualRise();
         }
-        return footElevationAt(stepFromColumn,stepFromRow)*(1-stepProgress())+target*stepProgress();
+        return footElevationAt(stepFromColumn,stepFromRow)*(1-stepProgress())+target*stepProgress()+bridgeVisualRise();
+    }
+    private float bridgeVisualRise() {
+        return worldTerrain==null?0:BridgeGeometry.riseAt(worldTerrain.bridges,visualColumn(),visualRow(),BLOCK_HEIGHT);
     }
     private float visualJump() {
         if(!characterStepping || !animationEnabled)return 0;
+        if(worldTerrain!=null && (worldTerrain.onBridge(stepFromColumn,stepFromRow) || worldTerrain.onBridge(characterColumn,characterRow)) && footHeight(stepFromColumn,stepFromRow)==footHeight(characterColumn,characterRow))return 0;
         if(worldTerrain!=null && (worldTerrain.rampDirection(stepFromColumn,stepFromRow)!=null || worldTerrain.rampDirection(characterColumn,characterRow)!=null))return 0;
         return characterStepping && animationEnabled ? ElevatedTerrainGeometry.jumpHeight(footHeight(stepFromColumn,stepFromRow),footHeight(characterColumn,characterRow),stepProgress(),BLOCK_HEIGHT) : 0;
     }
@@ -675,15 +679,21 @@ public final class WeatherSkyView extends View {
         float lx=bridge.length*ISLAND_TILE_WIDTH/2f,ly=-bridge.length*ISLAND_TILE_HEIGHT/2f,wx=(bridge.width+.2f)*ISLAND_TILE_WIDTH/2f,wy=(bridge.width+.2f)*ISLAND_TILE_HEIGHT/2f;
         float ax=-(lx+wx)/2,ay=-(ly+wy)/2,bx=ax+lx,by=ay+ly,dx=ax+wx,dy=ay+wy,cx=bx+wx,cy=by+wy;
         boolean wood=bridge.material.equals("wood");int outline=wood?0xff57362c:0xff514942;
-        bridgePostFace(canvas,new float[]{dx,dy,cx,cy,cx,cy+2.5f,dx,dy+2.5f},wood?0xff895033:0xff827465,outline,alpha);
+        float[] steps={0f,1f/bridge.length,1f-1f/bridge.length,1f};
+        float[] leftX=new float[4],leftY=new float[4],rightX=new float[4],rightY=new float[4];
+        for(int i=0;i<4;i++){float t=steps[i],z=BridgeGeometry.rise(t,bridge.length,BLOCK_HEIGHT*.5f);leftX[i]=ax+(bx-ax)*t;leftY[i]=ay+(by-ay)*t-z;rightX[i]=dx+(cx-dx)*t;rightY[i]=dy+(cy-dy)*t-z;}
+        for(int i=0;i<3;i++){
+            bridgePostFace(canvas,new float[]{rightX[i],rightY[i],rightX[i+1],rightY[i+1],rightX[i+1],rightY[i+1]+2.5f,rightX[i],rightY[i]+2.5f},wood?0xff895033:0xff827465,outline,alpha);
+            bridgePostFace(canvas,new float[]{leftX[i],leftY[i],leftX[i+1],leftY[i+1],rightX[i+1],rightY[i+1],rightX[i],rightY[i]},wood?0xffbd8054:0xffb3a391,outline,alpha);
+        }
         bridgePostFace(canvas,new float[]{bx,by,cx,cy,cx,cy+2.5f,bx,by+2.5f},wood?0xff6c3e2d:0xff6d6258,outline,alpha);
-        bridgePostFace(canvas,new float[]{ax,ay,bx,by,cx,cy,dx,dy},wood?0xffbd8054:0xffb3a391,outline,alpha);
         paint.setStyle(Paint.Style.STROKE);paint.setColor(wood?0xff855033:0xff897c70);paint.setAlpha(alpha);paint.setStrokeWidth(.35f);
         int rows=bridge.length*(wood?4:2);
-        for(int i=1;i<rows;i++){float t=(float)i/rows;canvas.drawLine(ax+(bx-ax)*t,ay+(by-ay)*t,dx+(cx-dx)*t,dy+(cy-dy)*t,paint);}
-        if(!wood)for(int i=1;i<bridge.width*2;i++){float t=(float)i/(bridge.width*2);canvas.drawLine(ax+(dx-ax)*t,ay+(dy-ay)*t,bx+(cx-bx)*t,by+(cy-by)*t,paint);}
-        paint.setColor(wood?0xff71442f:0xff6f645b);paint.setAlpha(alpha);paint.setStrokeWidth(2);canvas.drawLine(ax,ay-BLOCK_HEIGHT,bx,by-BLOCK_HEIGHT,paint);canvas.drawLine(dx,dy-BLOCK_HEIGHT,cx,cy-BLOCK_HEIGHT,paint);
-        paint.setColor(wood?0xffcb936a:0xffc6b9a7);paint.setAlpha(alpha);paint.setStrokeWidth(.55f);canvas.drawLine(ax,ay-BLOCK_HEIGHT,bx,by-BLOCK_HEIGHT,paint);canvas.drawLine(dx,dy-BLOCK_HEIGHT,cx,cy-BLOCK_HEIGHT,paint);paint.setStyle(Paint.Style.FILL);
+        for(int i=1;i<rows;i++){float t=(float)i/rows,z=BridgeGeometry.rise(t,bridge.length,BLOCK_HEIGHT*.5f);canvas.drawLine(ax+(bx-ax)*t,ay+(by-ay)*t-z,dx+(cx-dx)*t,dy+(cy-dy)*t-z,paint);}
+        if(!wood)for(int i=1;i<bridge.width*2;i++){float t=(float)i/(bridge.width*2);for(int j=0;j<3;j++)canvas.drawLine(leftX[j]+(rightX[j]-leftX[j])*t,leftY[j]+(rightY[j]-leftY[j])*t,leftX[j+1]+(rightX[j+1]-leftX[j+1])*t,leftY[j+1]+(rightY[j+1]-leftY[j+1])*t,paint);}
+        for(int pass=0;pass<2;pass++){paint.setColor(pass==0?(wood?0xff71442f:0xff6f645b):(wood?0xffcb936a:0xffc6b9a7));paint.setAlpha(alpha);paint.setStrokeWidth(pass==0?2:.55f);
+            for(int j=0;j<3;j++){canvas.drawLine(leftX[j],leftY[j]-BLOCK_HEIGHT,leftX[j+1],leftY[j+1]-BLOCK_HEIGHT,paint);canvas.drawLine(rightX[j],rightY[j]-BLOCK_HEIGHT,rightX[j+1],rightY[j+1]-BLOCK_HEIGHT,paint);}}
+        paint.setStyle(Paint.Style.FILL);
         drawWideBridgePost(canvas,ax,ay+2,wood,alpha);drawWideBridgePost(canvas,bx,by+2,wood,alpha);drawWideBridgePost(canvas,cx,cy+2,wood,alpha);drawWideBridgePost(canvas,dx,dy+2,wood,alpha);
     }
     private void drawBridges(Canvas canvas) {
@@ -1345,6 +1355,7 @@ public final class WeatherSkyView extends View {
         int column=Math.round(visualColumn()),row=Math.round(visualRow());
         if(column<0 || row<0 || column>=ISLAND_GRID_SIZE || row>=ISLAND_GRID_SIZE || (worldTerrain!=null && !worldTerrain.canStand(column,row)))return;
         float x=SCENE_WIDTH/2f+(column-row)*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(column+row)*ISLAND_TILE_HEIGHT/2f-footElevationAt(column,row);
+        if(worldTerrain!=null)y-=BridgeGeometry.riseAt(worldTerrain.bridges,column,row,BLOCK_HEIGHT);
         float hw=ISLAND_TILE_WIDTH/2f-.45f,hh=ISLAND_TILE_HEIGHT/2f-.25f;
         Path path=new Path();String direction=worldTerrain==null?null:worldTerrain.rampDirection(column,row);
         RampGeometry.Shape shape=direction==null?null:RampGeometry.create(direction,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,BLOCK_HEIGHT);
