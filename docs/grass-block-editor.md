@@ -31,3 +31,9 @@ permukaannya mengikuti warna tanah agar tidak muncul garis hijau di tengah sisi
 pulau. Tanah dasar digelapkan, sementara rumput teratas tetap berpola. Tes
 `tools/test_soil_green_seam_browser.js` memeriksa stack lama `[1,2,2,2,1]`,
 garis pada rumput yang terlihat, serta memastikan data world tidak berubah.
+
+Garis hijau yang masih terlihat pada Home ternyata berasal dari garis tepi pulau
+terpisah yang digambar pada tinggi lama, bukan hanya dari rumput tertutup. Garis
+tersebut dihapus tanpa menghapus batas tile rumput. Tes
+`tools/test_soil_rim_pixels_browser.js` membuat Home baru dan memeriksa piksel
+pada posisi garis itu; pengujian tidak mengubah data world.

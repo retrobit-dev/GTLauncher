@@ -2427,9 +2427,6 @@
     if (LANGIT_MATAHARI_ENABLED) {
       drawLangitMatahari();
     }
-    const topRim = blendColor(palette.grassSeam, palette.grassDark, 0.32);
-    drawSmoothIslandLine(leftX, middleY, centerX, bottomY, topRim, 0.60);
-    drawSmoothIslandLine(centerX, bottomY, rightX, middleY, topRim, 0.60);
     ctx.restore();
   }
 

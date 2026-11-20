@@ -1914,9 +1914,6 @@ public final class WeatherSkyView extends View {
                     -LANGIT_MATAHARI_WEST_SHIFT * ISLAND_TILE_WIDTH / axisLength,
                     -LANGIT_MATAHARI_WEST_SHIFT * ISLAND_TILE_HEIGHT / axisLength);
         }
-        int topRim = blend(palette.grassSeam, palette.grassDark, 0.32);
-        drawSmoothIslandLine(canvas, leftX, middleY, centerX, bottomY, topRim, 0.60f);
-        drawSmoothIslandLine(canvas, centerX, bottomY, rightX, middleY, topRim, 0.60f);
     }
 
     private void drawWaterTopBanks(Canvas canvas, float x, float y, float hw, float hh,
