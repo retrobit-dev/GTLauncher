@@ -41,6 +41,14 @@ final class WorldViewProjection {
         }
         return out;
     }
+    /** Parse an isolated camera-space copy without changing the persisted source. */
+    static PreviewWorld20 projectTerrain(PreviewWorld20 source,int turns) throws JSONException {
+        if(source==null)return null;
+        if(Math.floorMod(turns,4)==0)return source;
+        JSONObject root=new JSONObject(source.toJson());
+        root.put("world",project(root.getJSONObject("world"),turns));
+        return PreviewWorld20.parse(root.toString());
+    }
     /** Pick using projected terrain depth while returning original world coordinates. */
     static PortalTravel.Tile pickWorld(PreviewWorld20 world,int turns,float x,float y,float originX,float originY,float tileWidth,float tileHeight,float blockHeight,float baseDepth) {
         if(world==null)return null;

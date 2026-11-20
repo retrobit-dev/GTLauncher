@@ -333,7 +333,8 @@ public final class WeatherSkyView extends View {
     void animateCharacterStep(int fromColumn,int fromRow,int toColumn,int toRow,float scale,String facing,int index,int total,int duration) {
         playerIdleBow.reset();idleBowAmount=0;idleSitAmount=0;
         setWorldCharacter(true,toColumn,toRow,scale,facing);
-        stepFromColumn=fromColumn; stepFromRow=fromRow; stepIndex=index; stepCount=total;
+        WorldViewRotation.Point from=viewPoint(fromColumn,fromRow);
+        stepFromColumn=(int)from.column; stepFromRow=(int)from.row; stepIndex=index; stepCount=total;
         stepDuration=duration; stepStarted=SystemClock.uptimeMillis();
         characterStepping=android.animation.ValueAnimator.areAnimatorsEnabled();
         postInvalidateOnAnimation();
@@ -455,9 +456,10 @@ public final class WeatherSkyView extends View {
     public void setWorldCharacter(boolean visible, int column, int row, float scale, String facing) {
         characterStepping = false;
         showCharacter = visible;
-        characterFacing = facing;
-        characterColumn = Math.max(0, Math.min(ISLAND_GRID_SIZE-1, column));
-        characterRow = Math.max(0, Math.min(ISLAND_GRID_SIZE-1, row));
+        WorldViewRotation.Point view=viewPoint(Math.max(0,Math.min(ISLAND_GRID_SIZE-1,column)),Math.max(0,Math.min(ISLAND_GRID_SIZE-1,row)));
+        characterFacing = worldViewTurns==0 ? facing : WorldViewRotation.direction(facing,worldViewTurns);
+        characterColumn = (int)view.column;
+        characterRow = (int)view.row;
         characterScale = Math.max(0.5f, Math.min(1.5f, scale));
         invalidate();
     }
@@ -484,12 +486,53 @@ public final class WeatherSkyView extends View {
         ISLAND_GRID_SIZE = worldId == null || "base".equals(worldId) ? 50 : 9;
         ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
         ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2f;
-        String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;gameplayCamera.reset();cameraFrameTime=0;}
+        String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;worldViewTurns=0;gameplayCamera.reset();cameraFrameTime=0;}
         worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects);
         updateSurfaceJoins();invalidate();
     }
     private Bitmap bridgeWood,bridgeStone;
-    private PreviewWorld20 worldTerrain;
+    // Runtime camera copy only. Saved world coordinates are never rewritten.
+    private PreviewWorld20 sourceWorldTerrain,worldTerrain;
+    private String cachedWorldJson;
+    private final PreviewWorld20[] cachedViews=new PreviewWorld20[4];
+    private PreviewWorld20 cameraTerrain(int turns) throws org.json.JSONException {
+        if(sourceWorldTerrain==null)return null;
+        String json=sourceWorldTerrain.toJson();
+        if(!json.equals(cachedWorldJson)){cachedWorldJson=json;java.util.Arrays.fill(cachedViews,null);}
+        int q=Math.floorMod(turns,4);
+        if(q==0)return sourceWorldTerrain;
+        if(cachedViews[q]==null)cachedViews[q]=WorldViewProjection.projectTerrain(sourceWorldTerrain,q);
+        return cachedViews[q];
+    }
+    private int worldViewTurns;
+    private boolean worldRotationAllowed;
+    void configureWorldRotation(boolean allowed) {
+        worldRotationAllowed=allowed;
+        if(!allowed)worldViewTurns=0;
+    }
+    boolean worldRotationAllowed() {return worldRotationAllowed && sourceWorldTerrain!=null;}
+    private WorldViewRotation.Point viewPoint(double c,double r) {
+        return WorldViewRotation.point(c,r,ISLAND_GRID_SIZE,worldViewTurns);
+    }
+    private PortalTravel.Tile originalTile(int c,int r) {
+        WorldViewRotation.Point p=WorldViewRotation.point(c,r,ISLAND_GRID_SIZE,-worldViewTurns);
+        return new PortalTravel.Tile((int)p.column,(int)p.row);
+    }
+    boolean rotateWorldView(int delta) {
+        if(!worldRotationAllowed() || characterStepping || portalWalkActive || Math.abs(delta)!=1)return false;
+        int next=Math.floorMod(worldViewTurns+delta,4);
+        final PreviewWorld20 projected;
+        try {projected=cameraTerrain(next);}
+        catch(org.json.JSONException ex){return false;}
+        WorldViewRotation.Point p=WorldViewRotation.point(characterColumn,characterRow,ISLAND_GRID_SIZE,delta);
+        characterColumn=(int)p.column;characterRow=(int)p.row;
+        characterFacing=WorldViewRotation.direction(characterFacing,delta);
+        java.util.List<PortalTravel.Tile> rotated=new java.util.ArrayList<>();
+        for(PortalTravel.Tile tile:gameplayRoute){WorldViewRotation.Point v=WorldViewRotation.point(tile.column,tile.row,ISLAND_GRID_SIZE,delta);rotated.add(new PortalTravel.Tile((int)v.column,(int)v.row));}
+        gameplayRoute=rotated;worldViewTurns=next;worldTerrain=projected;
+        pondLife=PondLife.build(worldTerrain.size,worldTerrain::tile);updateSurfaceJoins();
+        gameplayCamera.reset();cameraFrameTime=0;cancelIdleWaterAttempt();invalidate();return true;
+    }
     private PondLife pondLife;
     private double pondWindX=0,pondWindY=0,pondWindLast=-1;
     private void updateSurfaceJoins() {
@@ -518,8 +561,11 @@ public final class WeatherSkyView extends View {
         return characterStepping && animationEnabled ? ElevatedTerrainGeometry.jumpHeight(terrainHeight(stepFromColumn,stepFromRow),terrainHeight(characterColumn,characterRow),stepProgress(),BLOCK_HEIGHT) : 0;
     }
     void setWorldTerrain(PreviewWorld20 terrain) {
-        worldTerrain=terrain;updateSurfaceJoins();
-        pondLife=terrain==null ? null : PondLife.build(terrain.size,terrain::tile);
+        sourceWorldTerrain=terrain;
+        try {worldTerrain=cameraTerrain(worldViewTurns);}
+        catch(org.json.JSONException ex){worldViewTurns=0;worldTerrain=terrain;worldRotationAllowed=false;}
+        updateSurfaceJoins();
+        pondLife=worldTerrain==null ? null : PondLife.build(worldTerrain.size,worldTerrain::tile);
         if(terrain!=null) {
             ISLAND_GRID_SIZE=terrain.size;
             ISLAND_TOP=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN-ISLAND_DEPTH-ISLAND_GRID_SIZE*ISLAND_TILE_HEIGHT;
@@ -710,14 +756,17 @@ public final class WeatherSkyView extends View {
     PortalTravel.Tile groundTileAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;
         float x=islandX(sx), y=islandY(sy);
-        if(worldTerrain!=null && (worldTerrain.hasStacks() || worldTerrain.hasRamps()))return ElevatedTerrainGeometry.tileAt(x,y,worldTerrain.size,worldTerrain::height,worldTerrain::rampDirection,SCENE_WIDTH/2f,ISLAND_TOP+ISLAND_TILE_HEIGHT/2f,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,BLOCK_HEIGHT,ISLAND_DEPTH);
+        if(worldTerrain!=null && (worldTerrain.hasStacks() || worldTerrain.hasRamps())) {
+            PortalTravel.Tile hit=ElevatedTerrainGeometry.tileAt(x,y,worldTerrain.size,worldTerrain::height,worldTerrain::rampDirection,SCENE_WIDTH/2f,ISLAND_TOP+ISLAND_TILE_HEIGHT/2f,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,BLOCK_HEIGHT,ISLAND_DEPTH);
+            return hit==null?null:originalTile(hit.column,hit.row);
+        }
         float dx=(x-SCENE_WIDTH/2f)/(ISLAND_TILE_WIDTH/2f);
         float dy=(y-ISLAND_TOP-ISLAND_TILE_HEIGHT/2f)/(ISLAND_TILE_HEIGHT/2f);
         float c=(dx+dy)/2f, r=(dy-dx)/2f;
         int col=Math.round(c),row=Math.round(r);
         if(col<0 || col>=ISLAND_GRID_SIZE || row<0 || row>=ISLAND_GRID_SIZE
                 || Math.abs(c-col)>.5f || Math.abs(r-row)>.5f) return null;
-        return new PortalTravel.Tile(col,row);
+        return originalTile(col,row);
     }
     boolean characterAt(float sx,float sy) {
         if(!showCharacter || getWidth()<=0 || getHeight()<=0)return false;
@@ -1038,7 +1087,9 @@ public final class WeatherSkyView extends View {
     private java.util.List<PortalTravel.Tile> gameplayRoute = java.util.Collections.emptyList();
     private int routeNext = 1;
     void setGameplayRoute(java.util.List<PortalTravel.Tile> route,int next) {
-        gameplayRoute=route==null?java.util.Collections.emptyList():new java.util.ArrayList<>(route);
+        java.util.List<PortalTravel.Tile> viewRoute=new java.util.ArrayList<>();
+        if(route!=null)for(PortalTravel.Tile tile:route){WorldViewRotation.Point p=viewPoint(tile.column,tile.row);viewRoute.add(new PortalTravel.Tile((int)p.column,(int)p.row));}
+        gameplayRoute=viewRoute;
         routeNext=Math.max(1,next);invalidate();
     }
     void setPortalWalkActive(boolean walking) { portalWalkActive=walking; if (!walking) { characterStepping=false;characterRunning=false;setGameplayRoute(null,1); } invalidate(); }
@@ -1261,7 +1312,7 @@ public final class WeatherSkyView extends View {
                 if(attempt.equals(waterAttemptKey) && gameplayMode && showCharacter && animationEnabled
                         && android.animation.ValueAnimator.areAnimatorsEnabled() && !characterStepping && !portalWalkActive
                         && world.equals(surfaceWorldId) && column==characterColumn && row==characterRow && waterDepthAt(column,row)>0
-                        && idleWaterListener!=null) idleWaterListener.onIdleWater(world,column,row,elapsed);
+                        && idleWaterListener!=null) {PortalTravel.Tile original=originalTile(column,row);idleWaterListener.onIdleWater(world,original.column,original.row,elapsed);}
             });
         }
         if(idleBowAmount>0 || idleSitAmount>0) {

@@ -289,6 +289,8 @@ public class HomeActivity extends Activity {
 
         // Preview mode switches live outside the simulated tablet. The launcher opens in gameplay.
         setMapMode(true);
+        findViewById(R.id.island_turn_left).setOnClickListener(v->turnGameplayWorld(-1));
+        findViewById(R.id.island_turn_right).setOnClickListener(v->turnGameplayWorld(1));
         final WorldStore.SurfaceObject[] dragSurface={null};
         final WorldStore.House[] dragHouse={null};
         final PortalTravel.Tile[] dragStart={null};
@@ -758,6 +760,11 @@ public class HomeActivity extends Activity {
         mainHandler.postDelayed(groundCallback,duration);
     }
 
+    private void turnGameplayWorld(int delta) {
+        if(!gameplayMode || groundActive || !skyView.rotateWorldView(delta))
+            Toast.makeText(this,"Rotasi tersedia saat karakter tidak bergerak.",Toast.LENGTH_SHORT).show();
+    }
+
     private void applyActiveWorld() {
         groundActive=false;groundRunning=false;groundAutoWater=false;
         if(groundCallback!=null){mainHandler.removeCallbacks(groundCallback);groundCallback=null;}
@@ -765,10 +772,17 @@ public class HomeActivity extends Activity {
         skyView.setPortalWalkActive(false);
         try {
             WorldStore.World world = worldStore.activeWorld();
+            // Until object/portal hit-testing is camera-aware, allow only worlds
+            // with no such records. Never rotate a partially supported world.
+            boolean canRotate=world!=null && world.showCharacter && world.previewData!=null
+                    && world.houses.isEmpty() && world.surfaces.isEmpty() && world.portals.isEmpty()
+                    && world.previewData.bridges.isEmpty();
+            skyView.configureWorldRotation(canRotate);
             skyView.setWorldIslandTint(world == null ? null : Color.parseColor(world.color));
             skyView.setWorldPortals(world == null ? null : world.portals);
             skyView.setWorldSurfaces(world == null ? null : world.id,world == null ? null : world.surfaces);
             skyView.setWorldTerrain(world == null ? null : world.previewData);
+            findViewById(R.id.island_rotation_controls).setVisibility(skyView.worldRotationAllowed()?View.VISIBLE:View.GONE);
             refreshHarvestDisplay(world);
             skyView.setWorldHouses(world == null ? null : world.houses);
             skyView.setWorldCharacter(world != null && world.showCharacter,
@@ -776,6 +790,8 @@ public class HomeActivity extends Activity {
                     world == null ? 1.0f : (float) world.characterScale,
                     world == null ? "S" : world.characterFacing);
         } catch (JSONException | IllegalArgumentException error) {
+            skyView.configureWorldRotation(false);
+            findViewById(R.id.island_rotation_controls).setVisibility(View.GONE);
             skyView.setWorldIslandTint(null);
             skyView.setWorldPortals(null);
             skyView.setWorldSurfaces(null,null);
