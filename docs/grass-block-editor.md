@@ -57,3 +57,13 @@ bukan seluruh tile tapaknya. Pemilihan block menolak titik di luar permukaan
 atau sisi stack yang terlihat. Rumah, karakter, tanaman dan pagar memakai
 mask sprite atau geometri masing-masing. Ukuran baru jembatan belum diterapkan;
 pemilihan konsep batu dan konfirmasi detail masih diperlukan.
+
+Rencana desain jembatan lebar: 3×2, 4×2 dan 5×3; kayu mengikuti
+`artwork/bridge-wood-3x2-choice.png`, batu mengikuti bentuk kayu. Penyangga
+vertikal hanya di kedua ujung, tanpa tiang tengah. Studi visual disimpan di
+`artwork/bridge-wood-wide-sprite-study.png` dan
+`artwork/bridge-stone-wide-sprite-study.png`; keduanya belum menjadi aset
+runtime (studi batu masih mengandung block sekeliling). Ukuran baru belum
+didukung format world atau gameplay Android. Sebelum penerapan diperlukan
+versi data baru, validasi seluruh tapak, rotasi dan traversal multi-tile serta
+perlindungan data bridge 1 tile lama dan impor versi lama.
