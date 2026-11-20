@@ -37,3 +37,10 @@ terpisah yang digambar pada tinggi lama, bukan hanya dari rumput tertutup. Garis
 tersebut dihapus tanpa menghapus batas tile rumput. Tes
 `tools/test_soil_rim_pixels_browser.js` membuat Home baru dan memeriksa piksel
 pada posisi garis itu; pengujian tidak mengubah data world.
+
+Jembatan kayu dan batu menggunakan sprite baru yang terinspirasi referensi:
+kayu berdek lurus dengan balok rendah, batu melengkung dengan pembatas rendah.
+Sprite lama tetap disimpan; panjang 3, 4, dan 5 tile serta aturan penempatan,
+orientasi, dan data world tidak berubah. Pipit terbang lebih tinggi dan digambar
+di atas objek foreground agar membantu menandai karakter yang tertutup; saat
+duduk pipit tetap bertengger pada karakter. Perilaku Android belum diuji di perangkat.

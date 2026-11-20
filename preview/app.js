@@ -41,7 +41,7 @@
   // Full-image gait frames keep hands and feet connected to the body.
   const gaitFrames = Object.fromEntries(['walk','run'].map(mode => [mode,Object.fromEntries(['front','back'].map(side => [side,
     Array.from({length:12},(_,i)=>{const image=new Image();image.src=`./assets/character-${mode}/${side}-${String(i).padStart(2,'0')}.png?v=short-stocky-1`;return image;})]))]));
-  const bridgeSprites=Object.fromEntries(['wood','stone'].map(kind=>{const img=new Image();img.onload=()=>{if(REDUCED_MOTION)drawFrame();};img.src=`./assets/bridge-${kind}.png?v=1`;return [kind,img];}));
+  const bridgeSprites=Object.fromEntries(['wood','stone'].map(kind=>{const img=new Image();img.onload=()=>{if(REDUCED_MOTION)drawFrame();};img.src=`./assets/bridge-${kind}-reference.png?v=1`;return [kind,img];}));
   const houseImage = new Image();
   houseImage.onload = () => { if (REDUCED_MOTION) drawFrame(); };
   houseImage.src = './assets/simple-house-aligned.png?v=1';
@@ -2194,6 +2194,7 @@
   const sparrowBack=new Image();sparrowBack.src='./assets/pet-sparrow-back.png?v=2';
   const sparrowBackFlap=new Image();sparrowBackFlap.src='./assets/pet-sparrow-back-flap.png?v=4';
   const sparrow=window.SparrowPet.create();
+  let foregroundSparrow = null;
   function drawMainCharacter(motionTime) {
     const world = window.worldManager?.getActive();
     if (!world || world.id === 'base') return;
@@ -2251,8 +2252,10 @@
       const rest=back?sparrowBack:sparrowImage, flap=back?sparrowBackFlap:sparrowFlap;
       const bird=p.flap && flap.complete && flap.naturalWidth ? flap : rest;
       if(bird.complete && bird.naturalWidth) {
-        ctx.imageSmoothingEnabled=false;ctx.save();ctx.translate(p.x,p.y);if(mirror)ctx.scale(-1,1);
-        ctx.drawImage(bird,-size/2,-size,size,size);ctx.restore();
+        const drawBird=()=>{ctx.save();applyIslandTransform();ctx.imageSmoothingEnabled=false;ctx.translate(p.x,p.y);if(mirror)ctx.scale(-1,1);
+          ctx.drawImage(bird,-size/2,-size,size,size);ctx.restore();};
+        if(p.seat < 1) foregroundSparrow=drawBird;
+        else {ctx.save();ctx.imageSmoothingEnabled=false;ctx.translate(p.x,p.y);if(mirror)ctx.scale(-1,1);ctx.drawImage(bird,-size/2,-size,size,size);ctx.restore();}
       }
     } else if(cameraMode!=='gameplay')sparrow.reset();
     if (editingSelected) {
@@ -2597,8 +2600,11 @@
       ctx.save();ctx.globalAlpha*=(100-(visibleHouse.opacity ?? 0))/100;
       if(projection && coversCharacter(visiblePlayer,p=>houseAt(p,visibleHouse),bounds))ctx.globalAlpha*=.5;drawHouse();ctx.restore();
     }});
+    foregroundSparrow=null;
     if(visiblePlayer?.visible)sceneObjects.push({depth:viewDepth(visiblePlayer.column,visiblePlayer.row),draw:()=>drawMainCharacter(motionTime)});
     sceneObjects.sort((a,b)=>a.depth-b.depth);for(const object of sceneObjects)object.draw();
+    // Keep the flying companion visible as a player marker even behind foreground vegetation.
+    foregroundSparrow?.();
     // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
     // cloud can hang below the horizon line, and clipping it there hid the cloud while its
     // shadow still showed on the grass. Edge clamping already keeps every sprite in frame.

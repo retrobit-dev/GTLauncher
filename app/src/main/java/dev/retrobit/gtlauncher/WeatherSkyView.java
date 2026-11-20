@@ -419,7 +419,7 @@ public final class WeatherSkyView extends View {
         for(int i=0;i<12;i++) {walkFront[i]=BitmapFactory.decodeResource(getResources(),frontFrames[i]);walkBack[i]=BitmapFactory.decodeResource(getResources(),backFrames[i]);}
         int[] runFrontFrames={R.drawable.character_run_front_00, R.drawable.character_run_front_01, R.drawable.character_run_front_02, R.drawable.character_run_front_03, R.drawable.character_run_front_04, R.drawable.character_run_front_05, R.drawable.character_run_front_06, R.drawable.character_run_front_07, R.drawable.character_run_front_08, R.drawable.character_run_front_09, R.drawable.character_run_front_10, R.drawable.character_run_front_11},runBackFrames={R.drawable.character_run_back_00, R.drawable.character_run_back_01, R.drawable.character_run_back_02, R.drawable.character_run_back_03, R.drawable.character_run_back_04, R.drawable.character_run_back_05, R.drawable.character_run_back_06, R.drawable.character_run_back_07, R.drawable.character_run_back_08, R.drawable.character_run_back_09, R.drawable.character_run_back_10, R.drawable.character_run_back_11};
         for(int i=0;i<12;i++) {runFront[i]=BitmapFactory.decodeResource(getResources(),runFrontFrames[i]);runBack[i]=BitmapFactory.decodeResource(getResources(),runBackFrames[i]);}
-        bridgeWood=BitmapFactory.decodeResource(getResources(),R.drawable.bridge_wood);bridgeStone=BitmapFactory.decodeResource(getResources(),R.drawable.bridge_stone);
+        bridgeWood=BitmapFactory.decodeResource(getResources(),R.drawable.bridge_wood_reference);bridgeStone=BitmapFactory.decodeResource(getResources(),R.drawable.bridge_stone_reference);
         coniferTree = BitmapFactory.decodeResource(getResources(),R.drawable.cemara_laut_redesign);
         houseImage = BitmapFactory.decodeResource(getResources(), R.drawable.simple_house_aligned);
         houseBackImage = BitmapFactory.decodeResource(getResources(), R.drawable.simple_house_back_aligned);
@@ -1401,6 +1401,9 @@ public final class WeatherSkyView extends View {
         return sprite;
     }
     private float sparrowX;
+    private boolean pendingSparrow;
+    private float petX, petAnchorY, petSeat, petDepth, petHeadY;
+    private boolean petMirror, petBack;
     private void drawSparrowPet(Canvas canvas, double motionTime, float anchorX, float anchorY,
                                 float seat, boolean mirror, boolean back, float depth, float headY) {
         if (!gameplayMode || sparrowPet == null) return;
@@ -1410,7 +1413,7 @@ public final class WeatherSkyView extends View {
         float drift=hovering?(float)Math.sin(now/850.0)*1.6f*characterScale:0f;
         float bob=hovering?(float)Math.sin(now/450.0)*1.2f*characterScale:0f;
         sparrowX=anchorX+drift*(1-seat)+(mirror?-1:1)*.5f*characterScale*seat;
-        float py=headY+(-3.5f*characterScale+bob)*(1-seat),size=6f*characterScale;
+        float py=headY+(-18f*characterScale+bob)*(1-seat),size=6f*characterScale;
         if(seat<.5f && depth==0){paint.setColor(0x380c171e);canvas.drawOval(new RectF(sparrowX-.9f*characterScale,anchorY+.2f*characterScale,sparrowX+.9f*characterScale,anchorY+.8f*characterScale),paint);}
         paint.setColor(Color.WHITE);paint.setAlpha(255);paint.setFilterBitmap(false);
         boolean flying=hovering;
@@ -1476,8 +1479,10 @@ public final class WeatherSkyView extends View {
             paint.setStyle(Paint.Style.FILL);
         }
         float anchorY=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(visualColumn()+visualRow())*ISLAND_TILE_HEIGHT/2f-visualElevation();
-        drawSparrowPet(canvas,motionTime,x,anchorY,seatWeight,mirror,back,depth,
-                y-height+seatWeight*(back?2.9f:2.1f)*characterScale);
+        float headY=y-height+seatWeight*(back?2.9f:2.1f)*characterScale;
+        if (seatWeight < 1f) {
+            pendingSparrow=true;petX=x;petAnchorY=anchorY;petSeat=seatWeight;petMirror=mirror;petBack=back;petDepth=depth;petHeadY=headY;
+        } else drawSparrowPet(canvas,motionTime,x,anchorY,seatWeight,mirror,back,depth,headY);
     }
 
     private void drawMovingHair(Canvas canvas, Bitmap sprite, int sw, int sh, int top,
@@ -1592,11 +1597,13 @@ public final class WeatherSkyView extends View {
         drawFences(scene, false);
         drawSurfaceSprites(scene, false);
         drawPortals(scene, false);
+        pendingSparrow=false;
         drawMainCharacter(scene, motionSeconds);
         drawHouses(scene,true);
         drawPortals(scene, true);
         drawSurfaceSprites(scene, true);
         drawFences(scene, true);
+        if(pendingSparrow) drawSparrowPet(scene,motionSeconds,petX,petAnchorY,petSeat,petMirror,petBack,petDepth,petHeadY);
         drawHoeTarget(scene);
         // Shadow union is above the island and its objects but clipped to the surface.
         drawProjectedCloudShadows(scene, cloudStates, shadowLight.altitudeDegrees,
