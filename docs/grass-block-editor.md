@@ -75,8 +75,8 @@ menghubungkan empat tiang ujung pada tinggi satu block. Jembatan lebar yang
 sudah ada tetap lebar dan tidak dimigrasi, agar world lama aman. Geometri
 jembatan dan area sentuhnya memakai dek, tiang dan pegangan yang sama.
 Outline gelap pada block yang ditempati karakter ditambahkan di preview dan
-Android, mengikuti tile terdekat saat bergerak. Pada ramp dan ketika tile
-tertutup objek, tampilan outline belum diuji khusus.
+Android, mengikuti tile terdekat saat bergerak. Outline mengikuti bidang ramp dan digambar setelah dek jembatan. Tampilan
+ketika tile tertutup objek belum diuji khusus.
 
 Slider manual preview ada di bawah tablet saat rumah, tanaman, pagar,
 jembatan atau satu tingkat block dipilih; rentang 0–90% per 5%, disimpan
@@ -89,9 +89,7 @@ Rute normal preview dan Android kini menolak masuk ke permukaan air, termasuk
 ramp air, kecuali pada dek jembatan. Karakter dari world lama yang sudah
 berada di air tetap dapat meninggalkannya; pemulihan otomatis menuju daratan
 terdekat mempertahankan kemampuan menyeberangi air untuk menghindari karakter
-terjebak. Perubahan Android baru diuji typecheck, bukan perangkat. Aturan
-jembatan khusus lubang, air terjun berbentuk ramp dan arah animasi air belum
-diterapkan; aturan penempatan jembatan lama masih berlaku.
+terjebak. Perubahan Android baru diuji typecheck, bukan perangkat.
 
 Sisi panjang dek dan pegangan jembatan kini menjorok 0,1 tile keluar dari
 batas pada tiap sisi; tapak logis dan world tersimpan tidak diubah. Area
@@ -105,8 +103,15 @@ terjun miring dengan dua tepi penahan, beserta kilau bergerak di permukaan air.
 Arah saat ini disimpulkan dari tetangga: turunan terdekat diprioritaskan,
 selain itu memakai sumbu sambungan terpanjang (seri memilih timur). Ini tidak
 menambah data atau mengubah world; arah cabang dan air diam belum dapat diatur
-manual. Render dan sambungan pada ramp air, pertemuan beberapa air terjun,
-serta Android perangkat masih perlu diuji dan disempurnakan. Aturan penempatan
-jembatan khusus lubang belum diterapkan: format v22 lama mengharuskan seluruh
-sel ditopang, sehingga dukungan lubang juga memerlukan perubahan validasi,
-penyimpanan posisi player, routing dan impor Android yang kompatibel.
+manual. Ramp air kini menampilkan aliran menuruni bidang dan batas samping; pertemuan
+beberapa air terjun serta tampilan Android masih perlu diuji di perangkat.
+
+Penempatan jembatan baru menggunakan format preview v23: ukuran 3×1, 4×1
+atau 5×1 dengan kedua ujung darat setinggi sama dan seluruh bagian tengah
+satu tingkat lebih rendah. Sel tengah dapat kosong atau berisi air/block
+pada tingkat tersebut. Jalur karakter selebar satu block; gambar sisi panjang
+menjorok keluar dari tepi. Posisi karakter pada dek kosong tersimpan dan
+penghapusan dek di bawahnya ditolak. Jembatan lama tidak dimigrasi atau
+diubah aturannya, dan berkas lama tidak bisa menimpa data v23 ini. Parser,
+rotasi, routing dan renderer Android mendukungnya dalam kode, tetapi belum
+diuji dalam APK/perangkat.

@@ -14,19 +14,27 @@
     if(!Number.isInteger(size) || !Array.isArray(world.tiles) || world.tiles.length!==size*size || !Array.isArray(bridges))return false;
     const occupied=new Set(),house=world.house;
     for(const bridge of bridges){
-      if(!bridge || Object.keys(bridge).some(k=>!['column','row','axis','material','length','width','opacity'].includes(k)) || (bridge.opacity!==undefined && (!Number.isInteger(bridge.opacity) || bridge.opacity<0 || bridge.opacity>90 || bridge.opacity%5!==0)) || (Object.hasOwn(bridge,'length') && ![4,5].includes(bridge.length)))return false;
+      if(!bridge || Object.keys(bridge).some(k=>!['column','row','axis','material','length','width','opacity','gap'].includes(k)) || (bridge.opacity!==undefined && (!Number.isInteger(bridge.opacity) || bridge.opacity<0 || bridge.opacity>90 || bridge.opacity%5!==0)) || (bridge.gap!==undefined && bridge.gap!==true) || (Object.hasOwn(bridge,'length') && ![4,5].includes(bridge.length)))return false;
       const footprint=cells(bridge);if(!footprint)return false;let height=null;
       for(let i=0;i<footprint.length;i++){
         const p=footprint[i],{column:c,row:r}=p;if(c<0 || r<0 || c>=size || r>=size)return false;
         const idx=r*size+c,material=world.tiles[idx],h=world.blockStacks?world.blockStacks[idx]?.length:(material?1:0);
-        if(!material || !h || ((Math.floor(i/(bridge.width??1))===0 || Math.floor(i/(bridge.width??1))===(bridge.length??3)-1) && material===3) || (height!==null && height!==h) || occupied.has(idx))return false;
+        const section=Math.floor(i/(bridge.width??1)),end=section===0 || section===(bridge.length??3)-1;
+        if(bridge.gap){if(bridge.width!==undefined || (end ? (!material || material===3 || !h || (height!==null && h!==height)) : (height===null || h!==height-1)) || (world.ramps||[]).some(ramp=>ramp.column===c && ramp.row===r))return false;}
+        else if(!material || !h || (end && material===3) || (height!==null && height!==h))return false;
+        if(occupied.has(idx))return false;
         if(house && c>=house.column && c<house.column+3 && r>=house.row && r<house.row+3)return false;
         if((world.orangeTrees||[]).some(t=>c>=t.column && c<t.column+(t.size||2) && r>=t.row && r<t.row+(t.size||2)))return false;
         if((world.fences||[]).some(f=>{const d={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[f.edge];return (f.column===c && f.row===r) || (d && f.column+d[0]===c && f.row+d[1]===r);}))return false;
-        height=h;occupied.add(idx);
+        if(height===null)height=h;occupied.add(idx);
       }
     }
     return true;
+  }
+  function deckHeight(world,p){
+    const bridge=(world?.bridges||[]).find(b=>b.gap && indexAt(b,p)>=0);if(!bridge)return null;
+    const idx=bridge.row*world.gridSize+bridge.column;
+    return world.blockStacks?world.blockStacks[idx]?.length:(world.tiles?.[idx]?1:0);
   }
   // Side railings prevent entering or leaving except through the two end tiles.
   function permitsStep(bridges,from,to){
@@ -66,5 +74,5 @@
     for(const [p,q] of [[a,b],[d,c]]) {const vx=q.x-p.x,vy=q.y-p.y,t=Math.max(0,Math.min(1,((point.x-p.x)*vx+(point.y-(p.y-railHeight))*vy)/(vx*vx+vy*vy))),dx=point.x-(p.x+t*vx),dy=point.y-(p.y-railHeight+t*vy);if(dx*dx+dy*dy<=1)return true;}
     return polygonContains(point,[d,c,{x:c.x,y:c.y+2.5},{x:d.x,y:d.y+2.5}]) || polygonContains(point,[b,c,{x:c.x,y:c.y+2.5},{x:b.x,y:b.y+2.5}]);
   }
-  return Object.freeze({LENGTH,cells,indexAt,valid,permitsStep,spriteTransform,wideDeck,wideContains});
+  return Object.freeze({LENGTH,cells,indexAt,valid,deckHeight,permitsStep,spriteTransform,wideDeck,wideContains});
 });

@@ -10,7 +10,7 @@
     const stacks=world?.blockStacks;
     if (stacks !== undefined && (!Array.isArray(stacks) || stacks.length!==size*size ||
       stacks.some(s=>!Array.isArray(s) || s.length>32 || s.some(v=>!Number.isInteger(v)||v<1||v>10)))) return null;
-    const height=p=>stacks ? stacks[keyOf(p)].length : (!world.tiles || world.tiles[keyOf(p)]!==0 ? 1 : 0);
+    const height=p=>BridgeGeometry?.deckHeight(world,p) ?? (stacks ? stacks[keyOf(p)].length : (!world.tiles || world.tiles[keyOf(p)]!==0 ? 1 : 0));
     // In-memory ramp data only; portable world support is intentionally not enabled yet.
     // Reject malformed records instead of silently routing over unsupported terrain.
     const ramps=new Map();
@@ -29,10 +29,10 @@
     const escaping=inside(start) && inHouse(start);
     const inTree=p=>(world?.orangeTrees||[]).some(t=>t.kind!=='wild-grass' && t.kind!=='bush' && p.column>=t.column && p.column<t.column+(t.size||2) && p.row>=t.row && p.row<t.row+(t.size||2));
     const water=p=>inside(p) && (ramps.get(keyOf(p))?.material ?? world.tiles?.[keyOf(p)])===3 && !(world.bridges||[]).some(b=>BridgeGeometry?.indexAt(b,p)>=0);
-    const pass=p=>inside(p) && (nearestDry || !water(p)) && !inTree(p) && height(p)>0 && (!world.tiles || world.tiles[p.row*size+p.column]!==0) && (!inHouse(p) || escaping);
+    const pass=p=>inside(p) && (nearestDry || !water(p)) && !inTree(p) && height(p)>0 && (!world.tiles || world.tiles[p.row*size+p.column]!==0 || BridgeGeometry?.deckHeight(world,p)!=null) && (!inHouse(p) || escaping);
     // Older worlds may have a house placed on top of the character. Let the
     // character leave that starting tile, but never enter an occupied destination.
-    const startOnTile=inside(start) && height(start)>0 && (!world.tiles || world.tiles[keyOf(start)]!==0);
+    const startOnTile=inside(start) && height(start)>0 && (!world.tiles || world.tiles[keyOf(start)]!==0 || BridgeGeometry?.deckHeight(world,start)!=null);
     if(!startOnTile || (!nearestDry && (!inside(end) || !pass(end) || (inHouse(end) && !(start.column===end.column && start.row===end.row)))))return null;
     const key=p=>p.row*size+p.column, queue=[start], prev=new Map([[key(start),null]]);
     for(let i=0;i<queue.length;i++) {

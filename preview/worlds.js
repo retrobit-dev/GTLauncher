@@ -94,9 +94,11 @@
     return true;
   }
   function validBridges(world,bridges=world.bridges) {return bridges===undefined || Boolean(window.BridgeGeometry?.valid(world,bridges));}
+  function keepsPlayerDeck(world,bridges) {const player=getCharacter(world);if(!player.visible)return true;const before=window.BridgeGeometry?.deckHeight(world,player);return before==null || window.BridgeGeometry?.deckHeight({...world,bridges},player)===before;}
   function replaceBridges(id,expected,next) {
     const world=activeWorld();
     if(id==='base' || world.id!==id || JSON.stringify(world.bridges||[])!==JSON.stringify(expected) || !validBridges(world,next))return false;
+    if(!keepsPlayerDeck(world,next))return false;
     return commit({...state,worlds:state.worlds.map(w=>{if(w.id!==id)return w;const copy={...w};if(next.length)copy.bridges=next.map(b=>({...b}));else delete copy.bridges;return copy;})});
   }
   function replaceFences(id,expected,next) {
@@ -123,7 +125,7 @@
        !['trees','fences','bridges'].every(k=>Array.isArray(expected[k]) && Array.isArray(next[k])) ||
        JSON.stringify(world.orangeTrees||[])!==JSON.stringify(expected.trees) || JSON.stringify(world.fences||[])!==JSON.stringify(expected.fences) || JSON.stringify(world.bridges||[])!==JSON.stringify(expected.bridges))return false;
     const candidate={...world,orangeTrees:next.trees,fences:next.fences,bridges:next.bridges};
-    if(!validOrangeTrees(next.trees,size) || !validFences(next.fences,candidate) || !validBridges(candidate) || !validTreeGround(candidate,world.tiles))return false;
+    if(!validOrangeTrees(next.trees,size) || !validFences(next.fences,candidate) || !validBridges(candidate) || !validTreeGround(candidate,world.tiles) || !keepsPlayerDeck(world,next.bridges))return false;
     const player=getCharacter(world),house=getHouse(world);
     if(player.visible && (solidTreeAt(candidate,player.column,player.row) || (treeAt(candidate,player.column,player.row) && !treeAt(world,player.column,player.row))))return false;
     if(house)for(let r=house.row;r<house.row+3;r++)for(let c=house.column;c<house.column+3;c++)if(treeAt(candidate,c,r))return false;
@@ -283,7 +285,7 @@
   }
   function updateCharacter(id, config) {
     if (id === 'base' || activeWorld().id !== id || !state.worlds.some(world => world.id === id)
-      || !config || (activeWorld().tiles && !activeWorld().tiles[config.row * activeWorld().gridSize + config.column])
+      || !config || (activeWorld().tiles && !activeWorld().tiles[config.row * activeWorld().gridSize + config.column] && window.BridgeGeometry?.deckHeight(activeWorld(),config)==null)
       || typeof config.visible !== 'boolean' || !Number.isInteger(config.column) || config.column < 0 || config.column >= (activeWorld().gridSize || 9)
       || !Number.isInteger(config.row) || config.row < 0 || config.row >= (activeWorld().gridSize || 9)
       || !Number.isFinite(config.scale) || config.scale < 0.5 || config.scale > 1.5
@@ -361,13 +363,13 @@
     const keys = (value, allowed) => record(value) && Object.keys(value).every(key => allowed.includes(key));
     let root;
     try { root = JSON.parse(text.replace(/^\uFEFF/, '')); } catch (_) { return fail(); }
-    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22].includes(root.version)) {
+    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23].includes(root.version)) {
       const w = root.world;
       if (!keys(w, WORLD_KEYS) || ![20,25,50,100].includes(w.gridSize) || !Array.isArray(w.tiles) || w.tiles.length !== w.gridSize * w.gridSize
         || w.tiles.some(t => !validTile(t) || (t > (root.version === 1 ? 1 : root.version === 2 ? 5 : root.version < 14 ? 6 : 10)))
         || (root.version < 5 && w.orangeTrees !== undefined) || (root.version < 6 && w.orangeTrees?.some(t=>t.facing!==undefined)) || (root.version < 7 && w.orangeTrees?.some(t=>t.kind!==undefined)) || (root.version < 8 && w.orangeTrees?.some(t=>t.size!==undefined)) || (root.version < 9 && w.orangeTrees?.some(t=>t.kind==='wild-grass')) || (root.version < 10 && w.orangeTrees?.some(t=>t.kind==='bush')) || (root.version < 11 && w.orangeTrees?.some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined))) || (root.version < 12 && w.orangeTrees?.some(t=>t.plantId!==undefined || t.plantedAt!==undefined)) || !validOrangeTrees(w.orangeTrees,w.gridSize)
         || (root.version < 13 && w.fences !== undefined) || (root.version < 17 && w.fences?.some(f=>f.material==='stone-tall')) || !validFences(w.fences,w)
-        || (root.version < 22 && w.bridges?.some(b=>b.width!==undefined)) || (root.version < 15 && w.bridges !== undefined) || (root.version < 16 && w.bridges?.some(b=>b.length!==undefined)) || !validBridges(w)
+        || (root.version < 23 && w.bridges?.some(b=>b.gap)) || (root.version < 22 && w.bridges?.some(b=>b.width!==undefined)) || (root.version < 15 && w.bridges !== undefined) || (root.version < 16 && w.bridges?.some(b=>b.length!==undefined)) || !validBridges(w)
         || (root.version < 14 && Array.isArray(w.blockStacks) && w.blockStacks.some(stack=>Array.isArray(stack) && stack.some(t=>t>6)))
         || (root.version < 20 && w.blockOpacity !== undefined) || !validBlockOpacity(w.blockOpacity,w)
         || (root.version < 21 && w.ramps !== undefined) || !validRamps(w.ramps,w)
@@ -380,7 +382,7 @@
         || !Number.isInteger(w.characterRow) || w.characterRow < 0 || w.characterRow >= w.gridSize
         || !Number.isFinite(w.characterScale) || w.characterScale < .5 || w.characterScale > 1.5
         || !['N','E','S','W'].includes(w.characterFacing) || !validHouse(w.house,w.gridSize) || (root.version < 18 && w.house?.opacity !== undefined)
-        || !w.tiles[w.characterRow*w.gridSize+w.characterColumn]) return fail();
+        || (!w.tiles[w.characterRow*w.gridSize+w.characterColumn] && window.BridgeGeometry?.deckHeight(w,{column:w.characterColumn,row:w.characterRow})==null)) return fail();
       if (w.house) for (let r=w.house.row;r<w.house.row+3;r++) for (let c=w.house.column;c<w.house.column+3;c++) if (!w.tiles[r*w.gridSize+c]) return fail();
       if (!levelHouse(w,w.house) || !validTreeGround(w,w.tiles) || (w.showCharacter && solidTreeAt(w,w.characterColumn,w.characterRow))) return fail();
       if(w.house) for(let r=w.house.row;r<w.house.row+3;r++)for(let c=w.house.column;c<w.house.column+3;c++) if(treeAt(w,c,r))return fail();
@@ -444,6 +446,7 @@
       $('world-import-prompt').textContent = `World “${existing.name}” sudah ada dengan ID yang sama. Ganti isinya dengan data dari berkas?`;
       $('world-import-confirm').hidden = false; return;
     }
+    if(existing?.bridges?.some(b=>b.gap) && (pendingImport.previewVersion ?? 0)<23) {cancelImport();render();announce('Berkas lama tidak mendukung jembatan di atas lubang; data tidak diubah.');return;}
     if(existing?.bridges?.some(b=>b.width!==undefined) && (pendingImport.previewVersion ?? 0)<22) {cancelImport();render();announce('Berkas lama tidak mendukung jembatan lebar; data tidak diubah.');return;}
     if(existing?.ramps?.length && (pendingImport.previewVersion ?? 0)<21) {cancelImport();render();announce('Berkas lama tidak mendukung ramp; data tidak diubah.');return;}
     if(existing?.blockOpacity?.length && (pendingImport.previewVersion ?? 0)<20) {cancelImport();render();announce('Berkas lama tidak mendukung transparansi block; data tidak diubah.');return;}
@@ -652,12 +655,12 @@
         const character = getCharacter(world);
         const snapshot = {...world, showCharacter: character.visible, characterColumn: character.column, characterRow: character.row,
           characterScale: character.scale, characterFacing: character.facing, house: getHouse(world)};
-        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.bridges?.some(b=>b.width!==undefined) ? 22 : snapshot.ramps !== undefined ? 21 : snapshot.blockOpacity !== undefined ? 20 : [snapshot.orangeTrees,snapshot.fences,snapshot.bridges].some(items=>items?.some(item=>item.opacity!==undefined)) ? 19 : snapshot.house?.opacity !== undefined ? 18 : snapshot.fences?.some(f=>f.material==='stone-tall') ? 17 : snapshot.bridges?.some(b=>b.length!==undefined) ? 16 : snapshot.bridges!==undefined ? 15 : (snapshot.tiles.some(t=>t>6) || snapshot.blockStacks?.some(stack=>stack.some(t=>t>6))) ? 14 : snapshot.fences!==undefined ? 13 : snapshot.orangeTrees?.some(t=>t.plantId!==undefined) ? 12 : snapshot.orangeTrees?.some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined)) ? 11 : snapshot.orangeTrees?.some(t=>t.kind==='bush') ? 10 : snapshot.orangeTrees?.some(t=>t.kind==='wild-grass') ? 9 : snapshot.orangeTrees?.some(t=>t.size!==undefined) ? 8 : snapshot.orangeTrees?.some(t=>t.kind!==undefined) ? 7 : snapshot.orangeTrees?.some(t=>t.facing!==undefined) ? 6 : snapshot.orangeTrees !== undefined ? 5 : snapshot.blockStacks ? 4 : snapshot.tiles.some(t => t === 6) ? 3 : snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
+        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.bridges?.some(b=>b.gap) ? 23 : snapshot.bridges?.some(b=>b.width!==undefined) ? 22 : snapshot.ramps !== undefined ? 21 : snapshot.blockOpacity !== undefined ? 20 : [snapshot.orangeTrees,snapshot.fences,snapshot.bridges].some(items=>items?.some(item=>item.opacity!==undefined)) ? 19 : snapshot.house?.opacity !== undefined ? 18 : snapshot.fences?.some(f=>f.material==='stone-tall') ? 17 : snapshot.bridges?.some(b=>b.length!==undefined) ? 16 : snapshot.bridges!==undefined ? 15 : (snapshot.tiles.some(t=>t>6) || snapshot.blockStacks?.some(stack=>stack.some(t=>t>6))) ? 14 : snapshot.fences!==undefined ? 13 : snapshot.orangeTrees?.some(t=>t.plantId!==undefined) ? 12 : snapshot.orangeTrees?.some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined)) ? 11 : snapshot.orangeTrees?.some(t=>t.kind==='bush') ? 10 : snapshot.orangeTrees?.some(t=>t.kind==='wild-grass') ? 9 : snapshot.orangeTrees?.some(t=>t.size!==undefined) ? 8 : snapshot.orangeTrees?.some(t=>t.kind!==undefined) ? 7 : snapshot.orangeTrees?.some(t=>t.facing!==undefined) ? 6 : snapshot.orangeTrees !== undefined ? 5 : snapshot.blockStacks ? 4 : snapshot.tiles.some(t => t === 6) ? 3 : snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
         const blob = new Blob([json], {type:'application/json'});
         const url = URL.createObjectURL(blob);
         const safeName = world.name.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'world';
         showExport(url, `gtlauncher-preview-${safeName}.json`, false, json, true);
-        $('world-export-help').textContent=snapshot.ramps?.length ? 'Ramp membutuhkan Android dengan dukungan format world v21; versi lama akan menolak impor agar data tidak hilang. Tampilan belum diuji pada perangkat.' : 'JSON world dapat dicoba di Android versi terbaru. World Android dan preview tersimpan terpisah; impor tetap memvalidasi seluruh data. Tampilan Android belum diuji di perangkat.';
+        $('world-export-help').textContent=snapshot.bridges?.some(b=>b.gap) ? 'Jembatan di atas lubang membutuhkan Android yang mendukung format world v23. Android belum diuji di perangkat.' : snapshot.ramps?.length ? 'Ramp membutuhkan Android dengan dukungan format world v21; versi lama akan menolak impor agar data tidak hilang. Tampilan belum diuji pada perangkat.' : 'JSON world dapat dicoba di Android versi terbaru. World Android dan preview tersimpan terpisah; impor tetap memvalidasi seluruh data. Tampilan Android belum diuji di perangkat.';
         announce('JSON world siap untuk preview dan dapat dicoba di Android terbaru.');
         return;
       }
@@ -742,7 +745,7 @@
     if (world.blockStacks && tiles.some((t,i) => t !== world.tiles[i])) return false;
     if((world.ramps||[]).some(r=>tiles[r.row*world.gridSize+r.column]!==world.tiles[r.row*world.gridSize+r.column]))return false;
     const character = getCharacter(world), house = getHouse(world);
-    if (!tiles[character.row * world.gridSize + character.column] || !validTreeGround(world,tiles) || !validFences(world.fences,world,tiles) || !validBridges({...world,tiles})) return false;
+    if ((!tiles[character.row * world.gridSize + character.column] && window.BridgeGeometry?.deckHeight({...world,tiles},character)==null) || !validTreeGround(world,tiles) || !validFences(world.fences,world,tiles) || !validBridges({...world,tiles})) return false;
     if (house) for (let r = house.row; r < house.row + 3; r++) for (let c = house.column; c < house.column + 3; c++) if (!tiles[r * world.gridSize + c] || tiles[r * world.gridSize + c] === 3) return false;
     return commit({...state, worlds: state.worlds.map(w => {if(w.id!==id)return w;const next={...w,tiles:tiles.slice()};const kept=(w.blockOpacity||[]).filter(e=>e.level===0 && tiles[e.row*w.gridSize+e.column]===w.tiles[e.row*w.gridSize+e.column]);if(kept.length)next.blockOpacity=kept;else delete next.blockOpacity;return next;})});
   }
@@ -756,7 +759,7 @@
     if((world.ramps||[]).some(r=>JSON.stringify(stacks[r.row*size+r.column])!==JSON.stringify(original[r.row*size+r.column])))return false;
     const oldHeight = i => world.blockStacks ? world.blockStacks[i].length : (world.tiles[i] ? 1 : 0);
     const characterIndex = character.row * size + character.column;
-    if (!tiles[characterIndex] || stacks[characterIndex].length !== oldHeight(characterIndex)) return false;
+    if ((!tiles[characterIndex] && window.BridgeGeometry?.deckHeight({...world,tiles,blockStacks:stacks},character)==null) || stacks[characterIndex].length !== oldHeight(characterIndex)) return false;
     if (house) for (let r=house.row; r<house.row+3; r++) for(let c=house.column; c<house.column+3; c++) {
       const i=r*size+c;
       if (!tiles[i] || tiles[i]===3 || stacks[i].length!==oldHeight(i)) return false;

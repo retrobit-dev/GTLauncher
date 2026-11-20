@@ -74,7 +74,7 @@ final class WorldViewProjection {
     /** Pick using projected terrain depth while returning original world coordinates. */
     static PortalTravel.Tile pickWorld(PreviewWorld20 world,int turns,float x,float y,float originX,float originY,float tileWidth,float tileHeight,float blockHeight,float baseDepth) {
         if(world==null)return null;
-        ElevatedTerrainGeometry.Heights heights=(c,r)->{WorldViewRotation.Point p=WorldViewRotation.point(c,r,world.size,-turns);return world.height((int)p.column,(int)p.row);};
+        ElevatedTerrainGeometry.Heights heights=(c,r)->{WorldViewRotation.Point p=WorldViewRotation.point(c,r,world.size,-turns);return world.footHeight((int)p.column,(int)p.row);};
         ElevatedTerrainGeometry.Ramps ramps=(c,r)->{WorldViewRotation.Point p=WorldViewRotation.point(c,r,world.size,-turns);String d=world.rampDirection((int)p.column,(int)p.row);return d==null?null:WorldViewRotation.direction(d,turns);};
         PortalTravel.Tile hit=ElevatedTerrainGeometry.tileAt(x,y,world.size,heights,ramps,originX,originY,tileWidth,tileHeight,blockHeight,baseDepth);
         if(hit==null)return null;WorldViewRotation.Point p=WorldViewRotation.point(hit.column,hit.row,world.size,-turns);return new PortalTravel.Tile((int)p.column,(int)p.row);
