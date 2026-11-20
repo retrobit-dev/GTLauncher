@@ -83,3 +83,7 @@ for view in ('front','back'):
         canvas.save(dest,optimize=True)
         (ROOT/'app/src/main/res/drawable-nodpi'/name.replace('-','_')).write_bytes(dest.read_bytes())
         print(view,frame,box,canvas.getbbox())
+
+# Apply the approved rear hand study after rebuilding the base frames.
+import runpy
+runpy.run_path(str(ROOT/'tools/apply_seated_back_hand.py'), run_name='__main__')

@@ -38,3 +38,5 @@ belum terbukti sama. Pada tampak belakang kedua tangan terlihat, tetapi gambar
 dari masing-masing sisi badan belum dapat dipastikan sama. Belum ada perubahan
 pose pada pemeriksaan ini; aset Android identik dengan aset preview, namun
 tampilan perangkat Android belum diverifikasi.
+
+Pose duduk tampak belakang menggunakan patch tangan kanan dari konsep yang disetujui, disejajarkan ke sprite semula; kepala, badan, kaki, dan tangan kiri tetap pada posisi semula. Bayangan kontak mengikuti telapak baru. Frame hampir duduk tetap menggunakan pose lama dan perubahan memakai crossfade, sehingga transisi dapat menunjukkan bayangan ganda. Aset preview dan Android sama; Android belum diuji pada perangkat.

@@ -60,3 +60,7 @@ for pose in ('sitting','sit-nearly'):
     image=Image.open(root/f'preview/assets/player-idle-front-{pose}.png').convert('RGBA')
     assert hand_mean_x(image,-13,6)>hand_mean_x(old,0,0)+20, 'supporting hand should be farther back'
 print('Selected idle sprites: size, transparency, fixed boots, browser/Android parity: OK')
+
+back=Image.open(root/'preview/assets/player-idle-back-sitting.png').convert('RGBA')
+assert sum(map(skin,back.crop((825,760,880,798)).getdata()))>100, 'rear supporting hand should extend farther back'
+assert back.getpixel((0,0))[3]==0

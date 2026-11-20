@@ -1481,7 +1481,7 @@ public final class WeatherSkyView extends View {
         if(depth==0f) {
             canvas.drawOval(new RectF(x-4.6f*characterScale,y-1.25f*characterScale,x+4.6f*characterScale,y+.35f*characterScale),paint);
             if(seatWeight>0) {
-                float[][] contacts=back?new float[][]{{600,778,2.5f},{395,774,1.3f},{780,795,1.3f}}
+                float[][] contacts=back?new float[][]{{600,778,2.5f},{395,774,1.3f},{835,795,1.3f}}
                         :new float[][]{{680,725,2.5f},{850,751,1.3f}};
                 paint.setColor(Color.argb(Math.round(97*seatWeight),12,23,30));
                 for(float[] p:contacts) {

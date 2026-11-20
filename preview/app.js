@@ -1856,7 +1856,7 @@
   const characterShadowMasks=new WeakMap();
   const idleBowController=window.PlayerIdleBow.create();
   const idleBowFrames=Object.fromEntries(['front','back'].map(side=>[side,
-    ['transition','concept','sit-lowering','sit-nearly','sitting'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=12`;return image;})]));
+    ['transition','concept','sit-lowering','sit-nearly','sitting'].map(pose=>{const image=new Image();image.dataset.playerIdleBow='true';image.src=`./assets/player-idle-${side}-${pose}.png?v=13`;return image;})]));
   let idleBowAmount=0, idleSitAmount=0, idleBowSprite=null, waterEscapeKey=null;
   const idleBlend=document.createElement('canvas');idleBlend.width=512;idleBlend.height=800;
   idleBlend.dataset.playerIdleBow='true';
@@ -2283,7 +2283,7 @@
       ctx.beginPath();ctx.ellipse(x,groundY-.45*character.scale,4.6*character.scale,.8*character.scale,0,0,Math.PI*2);ctx.fill();
       if(seatWeight>0) {
         // Contact patches follow the illustrated hip and supporting palms, including mirrors.
-        const contacts=back?[[600,778,2.5],[395,774,1.3],[780,795,1.3]]:[[680,725,2.5],[850,751,1.3]];
+        const contacts=back?[[600,778,2.5],[395,774,1.3],[835,795,1.3]]:[[680,725,2.5],[850,751,1.3]];
         const dir=mirror?-1:1;ctx.globalAlpha=seatWeight;
         for(const [px,py,r] of contacts) {
           const cx=x+dir*(px-640)*width/1280,cy=y+(py-800)*height/800;
