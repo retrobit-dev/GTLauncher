@@ -15,8 +15,8 @@
         android:contentDescription="@string/blank_home_accessibility"
         android:importantForAccessibility="yes" />
 
-    <!-- Rotation is enabled only for the currently supported gameplay worlds. -->
-    <LinearLayout android:id="@+id/island_rotation_controls" android:visibility="gone"
+    <!-- Unsupported worlds retain their orientation and explain the limitation on tap. -->
+    <LinearLayout android:id="@+id/island_rotation_controls"
         android:layout_width="wrap_content" android:layout_height="wrap_content"
         android:layout_gravity="right|bottom" android:layout_marginRight="16dp" android:layout_marginBottom="86dp"
         android:orientation="horizontal">

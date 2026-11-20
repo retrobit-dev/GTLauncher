@@ -287,10 +287,36 @@ public final class WeatherSkyView extends View {
     private String surfaceWorldId="";
     private java.util.List<PortalTravel.Portal> worldPortals = java.util.Collections.emptyList();
     private boolean portalWalkActive;
+    private java.util.List<WorldStore.SurfaceObject> sourceWorldSurfaces=java.util.Collections.emptyList();
     private java.util.List<WorldStore.SurfaceObject> worldSurfaces = java.util.Collections.emptyList();
+    private final java.util.Map<WorldStore.SurfaceObject,WorldStore.SurfaceObject> originalSurfaces=new java.util.IdentityHashMap<>();
+    private WorldStore.SurfaceObject originalSurface(WorldStore.SurfaceObject view) {
+        WorldStore.SurfaceObject source=originalSurfaces.get(view);return source==null?view:source;
+    }
+    private WorldStore.SurfaceObject viewSurface(WorldStore.SurfaceObject source) {
+        if(source==null)return null;
+        for(WorldStore.SurfaceObject view:worldSurfaces) {
+            WorldStore.SurfaceObject original=originalSurface(view);
+            if(original==source || (original.raw!=null && original.raw.equals(source.raw)))return view;
+        }
+        return null;
+    }
+    private void projectWorldSurfaces() {
+        worldSurfaces=new java.util.ArrayList<>();originalSurfaces.clear();
+        for(WorldStore.SurfaceObject original:sourceWorldSurfaces) {
+            WorldStore.SurfaceObject view=worldViewTurns==0?original:WorldViewProjection.projectPreviewSurface(original,ISLAND_GRID_SIZE,worldViewTurns);
+            if(view!=null){worldSurfaces.add(view);originalSurfaces.put(view,original);}
+        }
+        if(worldViewTurns!=0)worldSurfaces.sort((a,b)->Float.compare(surfaceViewDepth(a),surfaceViewDepth(b)));
+    }
+    private float surfaceViewDepth(WorldStore.SurfaceObject o) {
+        return o.column+o.row+(o.type.equals("fence")?(("S".equals(o.edge)||"E".equals(o.edge))?.5f:-.5f):WorldStore.surfaceFootprint(o)-1);
+    }
     private java.util.Map<WorldStore.SurfaceObject,FenceJoins.Join> fenceJoins=java.util.Collections.emptyMap();
     private java.util.List<GrassConnections.Pair> grassConnections=java.util.Collections.emptyList();
+    private java.util.List<WorldStore.House> sourceWorldHouses=java.util.Collections.emptyList();
     private java.util.List<WorldStore.House> worldHouses=java.util.Collections.emptyList();
+    private final java.util.Map<WorldStore.House,WorldStore.House> originalHouses=new java.util.IdentityHashMap<>();
     private String characterFacing = "S";
     private boolean showCharacter;
     private int characterColumn = 4, characterRow = 4;
@@ -465,8 +491,16 @@ public final class WeatherSkyView extends View {
     }
 
     void setWorldHouses(java.util.List<WorldStore.House> houses) {
-        worldHouses=houses==null?new java.util.ArrayList<>():new java.util.ArrayList<>(houses);
-        worldHouses.sort((a,b)->Integer.compare(a.column+a.row,b.column+b.row));invalidate();
+        sourceWorldHouses=houses==null?java.util.Collections.emptyList():new java.util.ArrayList<>(houses);
+        projectWorldHouses();invalidate();
+    }
+    private void projectWorldHouses() {
+        worldHouses=new java.util.ArrayList<>();originalHouses.clear();
+        for(WorldStore.House original:sourceWorldHouses) {
+            WorldStore.House view=worldViewTurns==0?original:WorldViewProjection.projectSquareHouse(original,ISLAND_GRID_SIZE,worldViewTurns);
+            if(view!=null){worldHouses.add(view);originalHouses.put(view,original);}
+        }
+        worldHouses.sort((a,b)->Integer.compare(a.column+a.row,b.column+b.row));
     }
 
     void setTreePhenology(TreePhenology.Result result) {
@@ -476,7 +510,7 @@ public final class WeatherSkyView extends View {
     }
     String treeStage(String species) {return treePhenology==null?"unknown":treePhenology.stages.getOrDefault(species,"unknown");}
     void setHarvestedTrees(java.util.Set<String> trees) {harvestedTrees=new java.util.HashSet<>(trees);invalidate();}
-    private boolean isHarvested(WorldStore.SurfaceObject tree) {return harvestedTrees.contains(InventoryStore.treeKey(surfaceWorldId,tree.column,tree.row,tree.material));}
+    private boolean isHarvested(WorldStore.SurfaceObject tree) {WorldStore.SurfaceObject source=originalSurface(tree);return harvestedTrees.contains(InventoryStore.treeKey(surfaceWorldId,source.column,source.row,source.material));}
     private Bitmap treeImage(WorldStore.SurfaceObject o) {
         if(o.material.startsWith("conifer")) return coniferTree;
         if(!"ripe".equals(treeStage(o.material)) || isHarvested(o))return o.material.equals("banana")?treeBananaFruitless:o.material.equals("palm")?treeCoconutFruitless:treeDormant;
@@ -487,8 +521,10 @@ public final class WeatherSkyView extends View {
         ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
         ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2f;
         String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;worldViewTurns=0;gameplayCamera.reset();cameraFrameTime=0;}
-        worldSurfaces = objects == null ? java.util.Collections.emptyList() : new java.util.ArrayList<>(objects);
-        updateSurfaceJoins();invalidate();
+        sourceWorldSurfaces=objects==null?java.util.Collections.emptyList():new java.util.ArrayList<>(objects);
+        // The active terrain sets the actual grid size before projecting these records.
+        if(worldViewTurns==0)projectWorldSurfaces();
+        invalidate();
     }
     private Bitmap bridgeWood,bridgeStone;
     // Runtime camera copy only. Saved world coordinates are never rewritten.
@@ -530,6 +566,7 @@ public final class WeatherSkyView extends View {
         java.util.List<PortalTravel.Tile> rotated=new java.util.ArrayList<>();
         for(PortalTravel.Tile tile:gameplayRoute){WorldViewRotation.Point v=WorldViewRotation.point(tile.column,tile.row,ISLAND_GRID_SIZE,delta);rotated.add(new PortalTravel.Tile((int)v.column,(int)v.row));}
         gameplayRoute=rotated;worldViewTurns=next;worldTerrain=projected;
+        projectWorldHouses();projectWorldSurfaces();
         pondLife=PondLife.build(worldTerrain.size,worldTerrain::tile);updateSurfaceJoins();
         gameplayCamera.reset();cameraFrameTime=0;cancelIdleWaterAttempt();invalidate();return true;
     }
@@ -564,13 +601,13 @@ public final class WeatherSkyView extends View {
         sourceWorldTerrain=terrain;
         try {worldTerrain=cameraTerrain(worldViewTurns);}
         catch(org.json.JSONException ex){worldViewTurns=0;worldTerrain=terrain;worldRotationAllowed=false;}
-        updateSurfaceJoins();
-        pondLife=worldTerrain==null ? null : PondLife.build(worldTerrain.size,worldTerrain::tile);
         if(terrain!=null) {
             ISLAND_GRID_SIZE=terrain.size;
             ISLAND_TOP=SCENE_HEIGHT-ISLAND_BOTTOM_MARGIN-ISLAND_DEPTH-ISLAND_GRID_SIZE*ISLAND_TILE_HEIGHT;
             ISLAND_CENTER_Y=ISLAND_TOP+ISLAND_GRID_SIZE*ISLAND_TILE_HEIGHT/2f;
         }
+        projectWorldSurfaces();updateSurfaceJoins();
+        pondLife=worldTerrain==null ? null : PondLife.build(worldTerrain.size,worldTerrain::tile);
         invalidate();
     }
     private RectF surfaceSpriteBounds(WorldStore.SurfaceObject o) {
@@ -596,13 +633,15 @@ public final class WeatherSkyView extends View {
         return new RectF(x-width/2,bottom-height,x+width/2,bottom);
     }
     private double plantSway(WorldStore.SurfaceObject o,double factor) {
+        WorldStore.SurfaceObject source=originalSurface(o);
         double speed=weather==null?4:weather.windSpeedKmh,direction=weather==null?90:weather.windDirectionDegrees;
         return factor*PlantMotion.sway(animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled(),speed,direction,
-                headingDegrees,plantMotionSeconds,o.column,o.row,o.type,o.material);
+                headingDegrees,plantMotionSeconds,source.column,source.row,source.type,source.material);
     }
     private double orangeTreeSway(WorldStore.SurfaceObject o) {
+        WorldStore.SurfaceObject source=originalSurface(o);
         double speed=weather==null?4:weather.windSpeedKmh,direction=weather==null?90:weather.windDirectionDegrees;
-        return OrangeTreeMotion.sway(animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled(),speed,direction,headingDegrees,plantMotionSeconds,o.column,o.row);
+        return OrangeTreeMotion.sway(animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled(),speed,direction,headingDegrees,plantMotionSeconds,source.column,source.row);
     }
     private void drawGrassBridges(Canvas canvas,boolean front) {
         if(wildGrass==null)return;
@@ -787,7 +826,8 @@ public final class WeatherSkyView extends View {
         for(int i=worldSurfaces.size()-1;i>=0;i--){WorldStore.SurfaceObject o=worldSurfaces.get(i);if((o.type.equals("storage-box")||o.type.equals("selling-box")) && opaqueAt(surfaceImage(o),surfaceSpriteBounds(o),x,y,o.material.equals("N")||o.material.equals("E")))return o;}return null;
     }
     /** Hit only visible sprite pixels of the object in front of the player. */
-    boolean surfaceObjectAt(WorldStore.SurfaceObject o,float sx,float sy) {
+    boolean surfaceObjectAt(WorldStore.SurfaceObject source,float sx,float sy) {
+        WorldStore.SurfaceObject o=viewSurface(source);
         if(o==null || getWidth()<=0 || getHeight()<=0)return false;
         if(o.type.equals("fence") && o.material.startsWith("preview-")) {
             float cx=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f-elevationAt(o.column,o.row);
@@ -816,7 +856,7 @@ public final class WeatherSkyView extends View {
             WorldStore.SurfaceObject o=worldSurfaces.get(i);if(!o.type.equals("tree"))continue;
             RectF bounds=surfaceSpriteBounds(o);float hitX=x;
             if(o.material.equals("orange") || o.material.startsWith("conifer"))hitX+=(y-bounds.bottom)*(float)(orangeTreeSway(o)*(o.material.equals("conifer-small")?.5:1)/bounds.height());
-            if(opaqueAt(surfaceImage(o),bounds,hitX,y,o.material.startsWith("conifer") && ("W".equals(o.edge)||"E".equals(o.edge))))return o;
+            if(opaqueAt(surfaceImage(o),bounds,hitX,y,o.material.startsWith("conifer") && ("W".equals(o.edge)||"E".equals(o.edge))))return originalSurface(o);
         }
         return null;
     }
@@ -829,10 +869,10 @@ public final class WeatherSkyView extends View {
             float scale=(float)h.scale,cx=SCENE_WIDTH/2f+(h.column-h.row)*ISLAND_TILE_WIDTH/2f+(wide?35*scale/6:0);
             float bottom=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(h.column+h.row+2)*ISLAND_TILE_HEIGHT/2f-elevationAt(h.column,h.row)+1.25f*ISLAND_TILE_HEIGHT*scale;
             if(!wide) {
-                if(projectedHouseOpaque(h,x,y)) return h;
+                if(projectedHouseOpaque(h,x,y)) return originalHouses.get(h);
             } else {
                 float width=70*scale*7f/6,height=100*scale;
-                if(opaqueAt(houseArtwork(h),new RectF(cx-width/2,bottom-height,cx+width/2,bottom),x,y,mirror))return h;
+                if(opaqueAt(houseArtwork(h),new RectF(cx-width/2,bottom-height,cx+width/2,bottom),x,y,mirror))return originalHouses.get(h);
             }
         }
         return null;

@@ -41,6 +41,28 @@ final class WorldViewProjection {
         }
         return out;
     }
+    /** Preview plants and fence geometry in camera space; raw identity stays world-space. */
+    static WorldStore.SurfaceObject projectPreviewSurface(WorldStore.SurfaceObject object,int size,int turns) {
+        if(object==null || !(object.type.equals("tree") || object.type.equals("bush") || object.type.equals("fence")))return null;
+        if(object.type.equals("fence") && !object.material.startsWith("preview-"))return null;
+        int footprint=WorldStore.surfaceFootprint(object);
+        WorldViewRotation.Rect p=WorldViewRotation.rectangle(object.column,object.row,footprint,footprint,size,turns);
+        String edge=object.edge==null?null:WorldViewRotation.direction(object.edge,turns);
+        if(p==null || (object.edge!=null && edge==null))return null;
+        if(Math.floorMod(turns,4)==0)return object;
+        return new WorldStore.SurfaceObject(object.type,p.column,p.row,edge,object.material,object.raw,object.opacity);
+    }
+    /** Camera-space 3x3 house; interaction must still use the original house. */
+    static WorldStore.House projectSquareHouse(WorldStore.House house,int size,int turns) {
+        if(house==null)return null;
+        HouseFootprint footprint=HouseFootprint.of(house.design);
+        if(footprint.columns!=3 || footprint.rows!=3)return null;
+        WorldViewRotation.Rect p=WorldViewRotation.rectangle(house.column,house.row,3,3,size,turns);
+        String facing=WorldViewRotation.direction(house.facing,turns);
+        if(p==null || facing==null)return null;
+        if(Math.floorMod(turns,4)==0)return house;
+        return new WorldStore.House(p.column,p.row,house.scale,facing,house.visible,house.id,house.design,house.opacity);
+    }
     /** Parse an isolated camera-space copy without changing the persisted source. */
     static PreviewWorld20 projectTerrain(PreviewWorld20 source,int turns) throws JSONException {
         if(source==null)return null;

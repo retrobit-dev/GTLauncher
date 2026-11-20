@@ -24,13 +24,72 @@ public class WorldViewProjectionTest {
   JSONObject bad=new JSONObject(original);bad.getJSONArray("ramps").getJSONObject(0).put("direction","X");
   try{WorldViewProjection.project(bad,1);fail("bad direction must be rejected");}catch(JSONException expected){}
  }
+ @Test public void completePreviewObjectsProjectWithoutChangingOriginal() throws Exception {
+  int n=20;JSONArray tiles=new JSONArray(),stacks=new JSONArray();for(int i=0;i<n*n;i++){tiles.put(1);stacks.put(new JSONArray().put(2).put(1));}
+  tiles.put(12*n+10,3);stacks.put(12*n+10,new JSONArray().put(2).put(3));
+  JSONObject w=new JSONObject().put("id","complete").put("name","Complete").put("description","").put("color","#a8c795")
+   .put("gridSize",n).put("tiles",tiles).put("blockStacks",stacks).put("showCharacter",true).put("characterColumn",5).put("characterRow",5).put("characterScale",1).put("characterFacing","E")
+   .put("house",new JSONObject().put("column",2).put("row",2).put("scale",1).put("facing","S").put("visible",true).put("opacity",25))
+   .put("orangeTrees",new JSONArray().put(new JSONObject().put("column",7).put("row",2)).put(new JSONObject().put("column",11).put("row",4).put("kind","conifer").put("size",1).put("facing","W"))
+    .put(new JSONObject().put("column",12).put("row",6).put("kind","wild-grass").put("size",1)).put(new JSONObject().put("column",14).put("row",6).put("kind","bush").put("size",1).put("variant","berry").put("plantId","fruit1").put("plantedAt",0)))
+   .put("fences",new JSONArray().put(new JSONObject().put("column",6).put("row",10).put("edge","S").put("material","wood")))
+   .put("bridges",new JSONArray().put(new JSONObject().put("column",9).put("row",12).put("axis","E").put("material","wood")))
+   .put("ramps",new JSONArray().put(new JSONObject().put("column",15).put("row",15).put("direction","N").put("material",2)));
+  PreviewWorld20 original=PreviewWorld20.parse(new JSONObject().put("format","gtlauncher-preview-world").put("version",21).put("world",w).toString());
+  WorldStore.World source=WorldStore.parseExport(original.toJson());String saved=original.toJson();
+  for(int q:new int[]{0,1,2,3}) {
+   PreviewWorld20 terrain=WorldViewProjection.projectTerrain(original,q);WorldStore.World view=WorldStore.parseExport(terrain.toJson());
+   WorldStore.House expectedHouse=WorldViewProjection.projectSquareHouse(source.houses.get(0),n,q);assertTrue(WorldStore.sameHouse(expectedHouse,view.houses.get(0)));
+   assertEquals(source.surfaces.size(),view.surfaces.size());
+   for(int i=0;i<source.surfaces.size();i++){
+    WorldStore.SurfaceObject sourceObject=source.surfaces.get(i),p=WorldViewProjection.projectPreviewSurface(sourceObject,n,q),v=view.surfaces.get(i);
+    assertEquals(p.column,v.column);assertEquals(p.row,v.row);
+    if(sourceObject.type.equals("fence") || new JSONObject(sourceObject.raw).has("facing"))assertEquals(p.edge,v.edge);
+    assertEquals(p.material,v.material);assertEquals(p.opacity,v.opacity);assertEquals(sourceObject.raw,p.raw);
+   }
+   assertEquals(saved,original.toJson());
+  }
+ }
+ @Test public void previewObjectProjectionPreservesInteractionAndHarvestIdentity() throws Exception {
+  WorldStore.SurfaceObject[] sources={
+   new WorldStore.SurfaceObject("tree",3,5,"N","orange","tree-id",35),
+   new WorldStore.SurfaceObject("tree",7,6,"E","conifer-small","conifer-id",20),
+   new WorldStore.SurfaceObject("bush",12,7,"W","preview-bush-berry-large","berry-id",45),
+   new WorldStore.SurfaceObject("bush",8,3,"S","wild-grass","grass-id",-1),
+   new WorldStore.SurfaceObject("fence",10,11,"E","preview-wood","fence-id",30)
+  };
+  for(WorldStore.SurfaceObject source:sources)for(int q:new int[]{0,1,2,3,-1}) {
+   WorldStore.SurfaceObject view=WorldViewProjection.projectPreviewSurface(source,20,q);
+   int n=WorldStore.surfaceFootprint(source);WorldViewRotation.Rect expected=WorldViewRotation.rectangle(source.column,source.row,n,n,20,q);
+   assertEquals(expected.column,view.column);assertEquals(expected.row,view.row);assertEquals(WorldViewRotation.direction(source.edge,q),view.edge);
+   assertEquals(source.raw,view.raw);assertEquals(source.material,view.material);assertEquals(source.opacity,view.opacity);
+   WorldStore.SurfaceObject restored=WorldViewProjection.projectPreviewSurface(view,20,-q);
+   assertEquals(source.column,restored.column);assertEquals(source.row,restored.row);assertEquals(source.edge,restored.edge);assertEquals(source.raw,restored.raw);
+  }
+  assertNull(WorldViewProjection.projectPreviewSurface(new WorldStore.SurfaceObject("road",2,2,"N","water","road"),20,1));
+ }
+ @Test public void previewHouseProjectionKeepsOriginalInteractionIdentity() throws Exception {
+  WorldStore.House source=new WorldStore.House(3,9,1.25,"W",true,"house-1",null,35);
+  for(int q:new int[]{0,1,2,3,-1}){
+   WorldStore.House view=WorldViewProjection.projectSquareHouse(source,20,q);
+   WorldViewRotation.Rect expected=WorldViewRotation.rectangle(3,9,3,3,20,q);
+   assertEquals(expected.column,view.column);assertEquals(expected.row,view.row);
+   assertEquals(WorldViewRotation.direction("W",q),view.facing);assertEquals(35,view.opacity);assertEquals("house-1",view.id);
+   WorldStore.House restored=WorldViewProjection.projectSquareHouse(view,20,-q);
+   assertTrue(WorldStore.sameHouse(source,restored));assertEquals(3,source.column);assertEquals(9,source.row);assertEquals("W",source.facing);
+  }
+  WorldStore.House wide=new WorldStore.House(3,9,1,"S",true,"wide","wide",-1);
+  assertNull(WorldViewProjection.projectSquareHouse(wide,20,1));
+ }
  @Test public void gameplayTerrainCopyPreservesWorldAndMovement() throws Exception {
   int n=20;JSONArray tiles=new JSONArray(),stacks=new JSONArray();
   for(int i=0;i<n*n;i++){tiles.put(1);stacks.put(new JSONArray().put(2).put(1));}
   tiles.put(8*n+6,3);stacks.put(8*n+6,new JSONArray().put(2).put(3));
+  tiles.put(12*n+13,3);stacks.put(12*n+13,new JSONArray().put(2).put(3));
   JSONObject world=new JSONObject().put("id","camera").put("name","Camera").put("description","").put("color","#a8c795").put("gridSize",n)
    .put("tiles",tiles).put("blockStacks",stacks).put("showCharacter",true).put("characterColumn",2).put("characterRow",2).put("characterFacing","E").put("characterScale",1).put("house",JSONObject.NULL)
    .put("ramps",new JSONArray().put(new JSONObject().put("column",9).put("row",10).put("direction","E").put("material",4)))
+   .put("bridges",new JSONArray().put(new JSONObject().put("column",12).put("row",12).put("axis","E").put("material","wood")))
    .put("blockOpacity",new JSONArray().put(new JSONObject().put("column",6).put("row",8).put("level",1).put("opacity",35)));
   PreviewWorld20 original=PreviewWorld20.parse(new JSONObject().put("format","gtlauncher-preview-world").put("version",21).put("world",world).toString());String saved=original.toJson();
   for(int q:new int[]{0,1,2,3,-1}){
@@ -46,6 +105,9 @@ public class WorldViewProjectionTest {
    assertEquals(start.column+(end.column-start.column)*.25,step.column,0.00001);
    assertEquals(start.row+(end.row-start.row)*.25,step.row,0.00001);
    assertEquals(WorldViewRotation.direction("E",q),view.rampDirection((int)ramp.column,(int)ramp.row));
+   WorldViewRotation.Bridge bridge=WorldViewRotation.bridge(12,12,"E",3,n,q);
+   assertEquals(bridge.column,view.bridges.get(0).column);assertEquals(bridge.row,view.bridges.get(0).row);assertEquals(bridge.axis,view.bridges.get(0).axis);
+   WorldViewRotation.Point bridgeWater=WorldViewRotation.point(13,12,n,q);assertTrue(view.onBridge((int)bridgeWater.column,(int)bridgeWater.row));
    for(int c=1;c<19;c++)for(int r=1;r<19;r++)for(int[] d:new int[][]{{1,0},{0,1}}){
     WorldViewRotation.Point a=WorldViewRotation.point(c,r,n,q),b=WorldViewRotation.point(c+d[0],r+d[1],n,q);
     assertEquals(original.canStep(c,r,c+d[0],r+d[1]),view.canStep((int)a.column,(int)a.row,(int)b.column,(int)b.row));
