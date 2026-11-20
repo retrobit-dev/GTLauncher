@@ -255,6 +255,8 @@
     const [x,y]={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[d];return {column:column+x,row:row+y};
   }
   const viewDepth=(column,row)=>{const p=viewPoint(column,row);return p.column+p.row;};
+  const treeViewDepth=tree=>viewDepth(tree.column+(treeSize(tree)-1)/2,tree.row+(treeSize(tree)-1)/2)+treeSize(tree)-1;
+  const fenceViewDepth=f=>viewDepth(f.column,f.row)+((viewFacing(f.edge)==='S'||viewFacing(f.edge)==='E')?.5:-.5);
   const ISLAND_TILES = [];
   function rebuildIslandProjection() {
     islandTileHeight = ISLAND_TILE_WIDTH * Math.sin(islandCameraElevation * Math.PI / 180);
@@ -2161,7 +2163,9 @@
   }
   function fenceAt(point) {
     const world=worldForObjects(),fences=world?.fences||[],joins=fenceJoins(world);
-    for(let i=fences.length-1;i>=0;i--) {
+    // Use the same painter order as drawing, including stable array order for ties.
+    const order=fences.map((f,i)=>({i,depth:fenceViewDepth(f)})).sort((a,b)=>b.depth-a.depth || b.i-a.i);
+    for(const {i} of order) {
       const f=fences[i],g=fenceGeometry(f);
       if(window.FenceMesh.faces(g.a,g.b,f.material,joins[i]).some(face=>window.FenceMesh.contains(face.points,point.x,point.y)))return i;
     }
@@ -2583,14 +2587,14 @@
     const visiblePlayer=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
     const objectWorld=worldForObjects(),joins=fenceJoins(objectWorld);
     for(const bridge of objectWorld?.bridges||[])drawBridge(bridge);
-    const sceneObjects=(objectWorld?.orangeTrees||[]).map(tree=>({depth:viewDepth(tree.column+(treeSize(tree)-1)/2,tree.row+(treeSize(tree)-1)/2)+treeSize(tree)-1,draw:()=>{
-      const foreground=visiblePlayer?.visible && viewDepth(tree.column+(treeSize(tree)-1)/2,tree.row+(treeSize(tree)-1)/2)+treeSize(tree)-1>=viewDepth(visiblePlayer.column,visiblePlayer.row);
+    const sceneObjects=(objectWorld?.orangeTrees||[]).map(tree=>({depth:treeViewDepth(tree),draw:()=>{
+      const foreground=visiblePlayer?.visible && treeViewDepth(tree)>=viewDepth(visiblePlayer.column,visiblePlayer.row);
       ctx.save();ctx.globalAlpha*=(100-(tree.opacity ?? 0))/100;const t=foreground?orangeTreeAnchor(tree):null,w=foreground?treeWidth(tree):0,h=foreground?treeHeight(tree):0;
       if(foreground && coversCharacter(visiblePlayer,p=>treeContains(tree,p),{left:t.x-w/2-3,right:t.x+w/2+3,top:t.y-h,bottom:t.y}))ctx.globalAlpha*=.5;
       drawOrangeTree(tree,motionTime,sceneWeather);drawOrangeDrop(tree);ctx.restore();
     }}));
     for(const [a,b] of grassPairs(objectWorld))sceneObjects.push({depth:(viewDepth(a.column,a.row)+viewDepth(b.column,b.row))/2,draw:()=>drawGrassBridge(a,b)});
-    (objectWorld?.fences||[]).forEach((f,i)=>sceneObjects.push({depth:viewDepth(f.column,f.row)+((viewFacing(f.edge)==='S'||viewFacing(f.edge)==='E')?.5:-.5),draw:()=>drawFence(f,joins[i])}));
+    (objectWorld?.fences||[]).forEach((f,i)=>sceneObjects.push({depth:fenceViewDepth(f),draw:()=>drawFence(f,joins[i])}));
     if(visibleHouse?.visible)sceneObjects.push({depth:viewDepth(visibleHouse.column+1,visibleHouse.row+1)+2,draw:()=>{
       const foreground=visiblePlayer?.visible && viewDepth(visibleHouse.column+1,visibleHouse.row+1)+2>=viewDepth(visiblePlayer.column,visiblePlayer.row);
       const projection=foreground && window.HouseGeometry?houseProjection(visibleHouse):null;
@@ -2928,7 +2932,8 @@
     orangeTreeAt(point) {
       try {
         const trees=window.worldManager?.getActive()?.orangeTrees || [];
-        for(let i=trees.length-1;i>=0;i--) {
+        const order=trees.map((tree,i)=>({i,depth:treeViewDepth(tree)})).sort((a,b)=>b.depth-a.depth || b.i-a.i);
+        for(const {i} of order) {
           const tree=trees[i], sprite=treeSprite(tree);
           if(!sprite.complete || !sprite.naturalWidth)continue;
           let data=houseHitCache.get(sprite);

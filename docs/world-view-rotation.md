@@ -2,7 +2,7 @@
 
 Permintaan: putar tampilan pulau setiap 90° ke kiri atau kanan di editor dan gameplay preview serta gameplay Android. Koordinat world, inventaris dan rute yang disimpan tidak berubah. Pilihan kamera bukan migrasi format world.
 
-`preview/world-view-rotation.js` dan `WorldViewRotation.java` menyediakan konversi koordinat kamera empat arah, kebalikannya, arah hadap, tapak persegi panjang, sisi pagar dan tapak jembatan. `projectWorld` di JavaScript dan `WorldViewProjection` di Android juga membentuk salinan world ruang-kamera tanpa mengubah data tersimpan; tes mencakup terrain, ramp, karakter, rumah, pohon, pagar, jembatan dan transparansi. Fungsi picking ruang-kamera juga tersedia dan diuji untuk permukaan, sisi block dan ramp dengan hasil koordinat world. Ini **belum terhubung** ke tombol, renderer, pemilihan, atau gerakan aplikasi.
+`preview/world-view-rotation.js` dan `WorldViewRotation.java` menyediakan konversi koordinat kamera empat arah, kebalikannya, arah hadap, tapak persegi panjang, sisi pagar dan tapak jembatan. `projectWorld` di JavaScript dan `WorldViewProjection` di Android juga membentuk salinan world ruang-kamera tanpa mengubah data tersimpan; tes mencakup terrain, ramp, karakter, rumah, pohon, pagar, jembatan dan transparansi. Fungsi picking ruang-kamera juga tersedia dan diuji untuk permukaan, sisi block dan ramp dengan hasil koordinat world. Integrasi preview masih bersifat eksperimental dan tombolnya disembunyikan; Android belum terhubung ke tombol, renderer, pemilihan, atau gerakan aplikasi.
 
 Integrasi harus menerapkan transformasi yang sama pada urutan kedalaman dan tetangga block, air/air terjun, ketinggian, arah serta sprite player/rumah, pagar, jembatan, tanaman, bayangan, kamera, titik sentuh dan jalur. Konversi balik harus dilakukan sebelum tindakan editor atau gameplay menyentuh data. Jangan memutar world JSON atau inventaris. Uji keempat orientasi pada world bertingkat asimetris, objek, air, seleksi dan pergerakan, termasuk pengembalian ke orientasi awal serta kompatibilitas world lama. Android tetap gameplay saja. Pengujian pada perangkat Android masih diperlukan.
 
@@ -21,3 +21,30 @@ transient and is not part of saved world data.
 `tools/test_rotation_integration_browser.js` checks only a small preview smoke test:
 four turns, selected tile centres, round-trip picking and unchanged world data. It
 does not certify the interactions listed above.
+
+
+### Verification of the experimental preview
+
+`tools/test_rotation_interactions_browser.js` exercises all four orientations in
+an asymmetric 50×50 stacked world. It checks a raised top and level selection,
+ramp and fence/bridge picking, the tree footprint centre, overlapping tree
+artwork picking against painter order, the house alpha hit test, an isolated
+water border, unchanged world/storage when turning, real pointer taps replacing
+four blocks, and simple adjacent-tile gameplay taps with reduced motion. It then
+reloads to check the edits and player position persist while camera rotation
+returns to zero. These checks use the internal prototype, not the hidden buttons.
+
+`tools/test_rotation_depth_water_browser.js` additionally checks overlapping
+fence face picking in all directions and camera-side water borders/waterfalls
+for two unequal-height water neighbours. The overlapping-object checks exposed
+that picking previously followed reverse storage order rather than the visible
+painter order; tree and fence picking now use their respective draw depths, with
+stable array order for ties. These checks do not test overlap *between different*
+object categories, actual rendered waterfall/ramp joins, or all face/level cases.
+
+The feature is still not ready to expose. In particular, verify visual rendering
+and occlusion (including bridges, grass, house and shadows), object/area selection
+and drag, ramps with water, moving-camera transitions and non-reduced-motion
+path following in all orientations. The Android code remains a tested geometry
+foundation only, with no rotation controls or gameplay/render integration; it
+has not been tested as an APK on a device or emulator.
