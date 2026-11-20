@@ -1,0 +1,47 @@
+{
+  "source_size": [
+    432,
+    800
+  ],
+  "coordinate_system": "standing sprite pixels",
+  "landmarks": {
+    "front": {
+      "far_hip": [
+        145,
+        590
+      ],
+      "far_ankle": [
+        145,
+        690
+      ],
+      "near_hip": [
+        260,
+        590
+      ],
+      "near_ankle": [
+        260,
+        690
+      ],
+      "boot_bottom": 800
+    },
+    "back": {
+      "far_hip": [
+        150,
+        590
+      ],
+      "far_ankle": [
+        150,
+        690
+      ],
+      "near_hip": [
+        260,
+        590
+      ],
+      "near_ankle": [
+        260,
+        690
+      ],
+      "boot_bottom": 800
+    }
+  }
+}

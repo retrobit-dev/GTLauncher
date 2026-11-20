@@ -1,0 +1,12 @@
+const assert=require('assert');
+const cycle=require('../preview/character-frame-cycle');
+assert.equal(cycle.FRAME_COUNT,8);
+for(const [phase,index] of [[0,0],[Math.PI/2,2],[Math.PI,4],[3*Math.PI/2,6],[2*Math.PI,0],[-Math.PI/2,6],[NaN,0]]) assert.equal(cycle.index(phase),index);
+assert.equal(cycle.frame(null,0),null);
+assert.equal(cycle.frame(Array(8).fill(null),0),null);
+assert.equal(cycle.frame(Array(8),0),null,'reject sparse arrays');
+const frames=Array.from({length:8},(_,i)=>`frame-${i}`);
+assert.equal(cycle.frame(frames,Math.PI),'frame-4');
+frames[6]=null;assert.equal(cycle.frame(frames,0),null,'reject the entire incomplete sequence');
+assert.equal(cycle.frame(Array(7).fill('x'),0),null);
+console.log('Full-frame cycle timing, wrapping and incomplete-atlas protection: OK');

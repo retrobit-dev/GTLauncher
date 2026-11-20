@@ -1,0 +1,27 @@
+const assert=require('node:assert/strict'),{chromium}=require('playwright-core');
+(async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader']});try{
+ const page=await browser.newPage({viewport:{width:1000,height:700},reducedMotion:'reduce'});page.setDefaultTimeout(90000);
+ await page.route('**/api.open-meteo.com/**',r=>r.abort());
+ await page.addInitScript(()=>{window.__time=1800000000000;Date.now=()=>window.__time;let tiles=Array(2500).fill(1);localStorage.setItem('gtlauncher.worlds.v1',JSON.stringify({activeId:'farm',worlds:[{id:'farm',name:'Farm',description:'',color:'#a8c795',gridSize:50,tiles,showCharacter:true,characterColumn:24,characterRow:24,characterScale:1,characterFacing:'E',house:null,orangeTrees:[{column:25,row:24,kind:'bush',size:1,variant:'flower',plantId:'test-flower',plantedAt:window.__time},{column:27,row:24,kind:'bush',size:1,variant:'berry',plantId:'test-berry',plantedAt:window.__time}]}]}));});
+ await page.goto(process.env.PREVIEW_URL||'http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.BushHarvest && window.worldManager);
+ assert.equal(await page.evaluate(()=>BushHarvest.ready(worldManager.getActive(),worldManager.getActive().orangeTrees[0])),false,'starts plain');
+ await page.evaluate(()=>window.__time+=180000);
+ assert.equal(await page.evaluate(()=>BushHarvest.ready(worldManager.getActive(),worldManager.getActive().orangeTrees[0])),true);
+ await page.locator('[data-dock="hand"]').click();
+ const click=await page.evaluate(()=>{const c=worldManager.getCharacter(),p=sceneEditing.centre(c),r=document.querySelector('#sky-canvas').getBoundingClientRect(),o=sceneEditing.toLocal(r.left,r.top),z=sceneEditing.camera().renderZoom;for(let y=p.y-24;y<p.y;y+=.5)for(let x=p.x-7;x<p.x+7;x+=.5){let sx=r.left+(x-o.x)*z*r.width/320,sy=r.top+(y-o.y)*z*r.height/200;if(sceneEditing.hit({x,y},c)&&document.elementFromPoint(sx,sy)?.id==='sky-canvas')return {x:sx,y:sy};}return null});assert(click,'visible player hit');
+ await page.mouse.click(click.x,click.y);await page.waitForFunction(()=>BushHarvest.counts()?.flower===1,{timeout:30000});
+ const result=await page.evaluate(async()=>{let w=worldManager.getActive(),t=w.orangeTrees[0];return Promise.all([BushHarvest.collect(w.id,t),BushHarvest.collect(w.id,t)])});
+ assert.equal(result.filter(x=>x.ok).length,0,'duplicate prevention');assert.deepEqual(await page.evaluate(()=>BushHarvest.counts()),{flower:1,berry:0});
+ assert.equal(await page.evaluate(()=>BushHarvest.ready(worldManager.getActive(),worldManager.getActive().orangeTrees[0])),false,'returns to plain');
+ assert.equal(await page.evaluate(()=>{let w=worldManager.getActive(),a=w.orangeTrees,b=a.map((t,i)=>i===0?{...t,column:24,row:25}:t);return worldManager.replaceOrangeTrees(w.id,a,b)}),true);
+ assert.equal(await page.evaluate(()=>BushHarvest.ready(worldManager.getActive(),worldManager.getActive().orangeTrees[0])),false,'move does not reset harvest');
+ await page.evaluate(()=>window.__time+=300000);assert.equal(await page.evaluate(()=>BushHarvest.ready(worldManager.getActive(),worldManager.getActive().orangeTrees[0])),true,'next cycle');
+ const races=await page.evaluate(async()=>{let w=worldManager.getActive(),t=w.orangeTrees[0];return Promise.all([BushHarvest.collect(w.id,t),BushHarvest.collect(w.id,t)])});assert.equal(races.filter(x=>x.ok).length,1,'simultaneous harvest commits exactly once');
+ await page.evaluate(()=>{const w=worldManager.getActive(),c=worldManager.getCharacter();return worldManager.updateCharacter(w.id,{...c,column:26,row:24,facing:'E'});});
+ const berry=await page.evaluate(async()=>{const w=worldManager.getActive();return BushHarvest.collect(w.id,w.orangeTrees[1]);});assert.equal(berry.ok,true,'murbei harvest');
+ await page.reload({waitUntil:'domcontentloaded'});assert.deepEqual(await page.evaluate(()=>BushHarvest.counts()),{flower:2,berry:1});
+ await page.evaluate(()=>localStorage.setItem('gtlauncher.bush-harvest.v1','invalid'));
+ assert.equal(await page.evaluate(()=>BushHarvest.ready(worldManager.getActive(),worldManager.getActive().orangeTrees[0])),false);assert.equal(await page.evaluate(()=>BushHarvest.counts()),null);
+ assert.equal(await page.evaluate(()=>localStorage.getItem('gtlauncher.bush-harvest.v1')),'invalid','invalid data not overwritten');
+ console.log('Bush stage, atomic harvest, move identity, reload and failure safety: OK');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

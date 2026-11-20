@@ -1,0 +1,5 @@
+# Alat objek Map Editor
+
+Di atas tablet tersedia Pilih, Pindahkan, Putar kiri/kanan dan Hapus. Undo dan Redo berada di sisi kiri bersama kontrol kamera; panel kiri dapat digulir pada layar pendek. Pilih objek secara langsung atau dengan alat Pilih; untuk memindahkan, tekan Pindahkan lalu ketuk tile tujuan. Rumah menggunakan sudut awal tapak 3×3, pohon jeruk sudut awal tapak 2×2 dan player pusat tile. Escape membatalkan alat aktif. Penempatan divalidasi terhadap batas, air, lubang, ketinggian dan objek sesuai jenisnya. Hapus meminta konfirmasi dan mendukung Undo/Redo per world selama sesi editor. Player dapat dipilih, diputar dan dipindahkan, tetapi tidak dapat dihapus. Base World tetap terkunci.
+
+Pohon jeruk menyimpan empat arah namun tampilan saat ini menggunakan dua gambar cermin, bukan empat sisi yang digambar. Rotasi rumah dan player menggunakan tampilan arah yang ada. Editor hanya tersedia di preview; Android menggunakan data terpisah dan tidak memiliki alat editor ini. Ekspor preview yang mengandung arah pohon menggunakan format versi 6 yang belum didukung Android.

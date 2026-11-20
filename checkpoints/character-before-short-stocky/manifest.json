@@ -1,0 +1,502 @@
+{
+  "app/src/main/res/drawable-nodpi/character_original_uhd_back.png": {
+    "backup": "android/character_original_uhd_back.png",
+    "original": "e7caaf64f03c1947cc6ad41f2ba18a6e08783e82425850d39d4e7acf5c9ee72b",
+    "applied": "3a2ff54ee713e05a5feff6d2f4b1a48a59a3055e05956a41e7428ee3d60b41e1"
+  },
+  "app/src/main/res/drawable-nodpi/character_original_uhd_front.png": {
+    "backup": "android/character_original_uhd_front.png",
+    "original": "c06acd2a8b485b38c36c1aa3cc5c019372250a0f5b1955b9888515a4a96d99c9",
+    "applied": "0f8757abf29cb09724cc3b66260776c7f56b600fa06ff2e582b4338e2cd21095"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_back_00.png": {
+    "backup": "android/character_run_back_00.png",
+    "original": "c788204df5dfb1747e3fc36b9bc8baa1ef1595464f9c8569c31c1d223bbfc191",
+    "applied": "8eb47bffb5142079a7d16ba06484ae700a5dc84ae6429f180b81ed66b73dce97"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_back_01.png": {
+    "backup": "android/character_run_back_01.png",
+    "original": "87f1c48956dbc981ab02ffd55873248f40498e03eaa3152894868701565741fe",
+    "applied": "e1b75daee39c18675a1564f0545baa5bfa2a23f4c4bfad17a9166fdf5c843245"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_back_02.png": {
+    "backup": "android/character_run_back_02.png",
+    "original": "56ec4c271660a08cf64c610c199d4635a48f24b645da505b565e18928e96dbb3",
+    "applied": "e0c2a5a3fea0e3db64b6aba7460696e8c5eab2b677d30585e364a70ad539f639"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_back_03.png": {
+    "backup": "android/character_run_back_03.png",
+    "original": "78c329321bea4f7c571156cf88d701fe9918abc8ee59b341c774be0b9c31986a",
+    "applied": "de08de9a8ee0fa4922e2996989fe9228ee53e49c55b400d3d6c748f55a7be515"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_back_04.png": {
+    "backup": "android/character_run_back_04.png",
+    "original": "104dbdb7acb10e9288b3fcc49bd893c205c196c0748e449f28af25fa91637d25",
+    "applied": "fbcf86e5a6ab7f939e854c7c7d9b4218d170eccb6bc9a3bd67ae2aae055885c4"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_back_05.png": {
+    "backup": "android/character_run_back_05.png",
+    "original": "701076b270af768fb6bf42d80f6dd1542898a3d493e6f401c70de59f4ceb126f",
+    "applied": "b84147bec83524ea0d3d8e83e8e0f079fa08fe2d8285544e652048682f3637be"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_back_06.png": {
+    "backup": "android/character_run_back_06.png",
+    "original": "c788204df5dfb1747e3fc36b9bc8baa1ef1595464f9c8569c31c1d223bbfc191",
+    "applied": "8eb47bffb5142079a7d16ba06484ae700a5dc84ae6429f180b81ed66b73dce97"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_back_07.png": {
+    "backup": "android/character_run_back_07.png",
+    "original": "8206e36cdb587ebb5cd63a39b50f27580ab2b87f4b78922f5fe33f3bd1db21d3",
+    "applied": "1470564ab7b7aeda76c7a6c580f324706ed4317b03fa74272e651d92b2c00e32"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_back_08.png": {
+    "backup": "android/character_run_back_08.png",
+    "original": "16e6f34d4194dd6583b2aedc7abe7bd639f127bb190159a4686070077fe4a674",
+    "applied": "7ae87482d35d3e24020b8367766d31f02e207b4df58c34dfca0aa22d35a822d5"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_back_09.png": {
+    "backup": "android/character_run_back_09.png",
+    "original": "3183b9ba380f6726a925b7f0f7106be06abb20bcc8d0123463c81474d0ecce76",
+    "applied": "4014ac9ae2036861a49d3b50577eee9ba8865245787a3051d63a7c774b51366f"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_back_10.png": {
+    "backup": "android/character_run_back_10.png",
+    "original": "82ce7a7bda6c681ec8e6942805711f9262d042d6067b3331aa335468f409c3c8",
+    "applied": "973af053f179c0e5d503466b81d6e628463d9aeb311807bb2dc65cd99220814c"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_back_11.png": {
+    "backup": "android/character_run_back_11.png",
+    "original": "ba99c8568720da547707d8dfcc69b02dbab7cec1c6bb87ccc8878c3cbaf61666",
+    "applied": "fad8ce8067382f564a285236c37b356a87a387a510ddda2f136afd8d9ae5f46e"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_front_00.png": {
+    "backup": "android/character_run_front_00.png",
+    "original": "3e338cbd5dfc4e02d2ccb883d1e388ef1b423b426162b39c47b0b30edc4ef88c",
+    "applied": "41bc8dfc0c6c811e16f4765004e915ed98e5475f3b78d6323fb061dbad337cc3"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_front_01.png": {
+    "backup": "android/character_run_front_01.png",
+    "original": "7403dad4ae827a33618324dbf05fd080d0c63cd8f760126567aab8c0c04cb150",
+    "applied": "e0f1bb84bd4162bf35102c4774037b260a9637f2b1ee741e98e2ac792df6ccc1"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_front_02.png": {
+    "backup": "android/character_run_front_02.png",
+    "original": "ad8710b7bb8a609f80d60b926b84e1ab55665bc85831de8bc728873d3f8dd4ca",
+    "applied": "dae108537b45396c498fb4f76099aca66fbed24159ced93e0da901941e591964"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_front_03.png": {
+    "backup": "android/character_run_front_03.png",
+    "original": "f7794e0e195541fc700aba83717e6641bb2246713f6d1a74a0b2ab48ed830449",
+    "applied": "7a5bca0f730e9c088254bbcc9e44fe033d0ab7bb07410b4c2251f3b7c3c543ea"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_front_04.png": {
+    "backup": "android/character_run_front_04.png",
+    "original": "7db11a4da04d6b61e43a1d1e9334d71d29eb0a59410493d9c67151242de7e79d",
+    "applied": "b74234862702750657db76174c2b83e1bb4f8e3778ea8338f97a9e361bac1197"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_front_05.png": {
+    "backup": "android/character_run_front_05.png",
+    "original": "20eb267851373d1e5c2828eea5debd1b8ef902424abdc44ce8537a2d8d65c2c1",
+    "applied": "405315decfe6e1aa43770a29d07933779e9fcd173a4b3faceeafde50f751110f"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_front_06.png": {
+    "backup": "android/character_run_front_06.png",
+    "original": "3e338cbd5dfc4e02d2ccb883d1e388ef1b423b426162b39c47b0b30edc4ef88c",
+    "applied": "41bc8dfc0c6c811e16f4765004e915ed98e5475f3b78d6323fb061dbad337cc3"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_front_07.png": {
+    "backup": "android/character_run_front_07.png",
+    "original": "62095a9b70871e4014e49cc0d1c02720875c146c9e10d894890626f6f6b58e21",
+    "applied": "d9cb59b4055fcc37e95980c76ed16f7f810c67900e8f2933fddc73d9178d99fe"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_front_08.png": {
+    "backup": "android/character_run_front_08.png",
+    "original": "f5fa8003e93c41c157926a4af7e1cbe7a4dfdf6ce28d9fa28b5be0873b199a15",
+    "applied": "e3af5f5191de5ec9000ba97cc9fc21c83391a83ee8a31d6ebed6f218ccb59fcf"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_front_09.png": {
+    "backup": "android/character_run_front_09.png",
+    "original": "6480373f0ea2e4b98b4226fa55f1572662c560039ac65f00c1252cde8c8e0142",
+    "applied": "2d1cf8e7ec518f467cda0f7d5b0db4ca0074bf56f95bb27e67c791e84302bad8"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_front_10.png": {
+    "backup": "android/character_run_front_10.png",
+    "original": "897887641c9821deeee0ceb49125b6fe3d4314f0b35c6e8e4db95705d4dca2a0",
+    "applied": "c2827c7e2aaed3daff704be730194ffc9d0ffdbd1c35e80f1e899dd3e0f76453"
+  },
+  "app/src/main/res/drawable-nodpi/character_run_front_11.png": {
+    "backup": "android/character_run_front_11.png",
+    "original": "1829790ad6474065e40d8ce4ab32cf460605034a7e83978ce9c9ed28da13d3e2",
+    "applied": "4786ad48cf114616889c16ab3b1d361bed4a35c5b059df88a49bfd73c7dd0aad"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_back_00.png": {
+    "backup": "android/character_walk_back_00.png",
+    "original": "88c9ea56a1c5a39b49821bee200d294d9ba3aebb866ebe9ebc03eebef143194f",
+    "applied": "8fd5d5ad10276dc0592a4c36adeeb94bebd24a904bb9127672f98e469e5e99b6"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_back_01.png": {
+    "backup": "android/character_walk_back_01.png",
+    "original": "e8a3a1c641db2e4b9050c42543bf7ff1e2823106493c47c720b7557ab57bf7bd",
+    "applied": "7f7bfb713aa2fc196a5eed30d89aa5c080dae7ff84848edc77c41eb54a9d54f8"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_back_02.png": {
+    "backup": "android/character_walk_back_02.png",
+    "original": "a7a749200bb133cfd570df28e324bbfb99958ee54ec5edddca19556d7c18e603",
+    "applied": "a9324d1f93c91d894d6e4d2cf54d19376a70a8cbd28a470517b83fa78b47b11a"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_back_03.png": {
+    "backup": "android/character_walk_back_03.png",
+    "original": "21e55378229113d7fa5c44dba236950e395463d54b472b403188649cce119e12",
+    "applied": "c796bd3e3efaf17fb2c1879586d6250f59159ee3ba337763d53d7e802e3d1ba3"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_back_04.png": {
+    "backup": "android/character_walk_back_04.png",
+    "original": "a7a749200bb133cfd570df28e324bbfb99958ee54ec5edddca19556d7c18e603",
+    "applied": "a9324d1f93c91d894d6e4d2cf54d19376a70a8cbd28a470517b83fa78b47b11a"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_back_05.png": {
+    "backup": "android/character_walk_back_05.png",
+    "original": "e8a3a1c641db2e4b9050c42543bf7ff1e2823106493c47c720b7557ab57bf7bd",
+    "applied": "7f7bfb713aa2fc196a5eed30d89aa5c080dae7ff84848edc77c41eb54a9d54f8"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_back_06.png": {
+    "backup": "android/character_walk_back_06.png",
+    "original": "88c9ea56a1c5a39b49821bee200d294d9ba3aebb866ebe9ebc03eebef143194f",
+    "applied": "bc8ce9116263a6258132d281d639ee3ff47b52a8f02a51dea7779fab20705e89"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_back_07.png": {
+    "backup": "android/character_walk_back_07.png",
+    "original": "bd221c8f2eb92717219bd01c82f685e86a69d68ef0b573243a48cfe79504ad6d",
+    "applied": "6f4c8912a10d037362dae14e740bc933bd8345b6c0fe105531f90f6b1f79d8b4"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_back_08.png": {
+    "backup": "android/character_walk_back_08.png",
+    "original": "4f4bc5e868c537ef29b8a1943f52eef1237d0db3f7fdb6f6750f864bd2e2c1a4",
+    "applied": "c30574017c9064b665c6ddd10bc9f2fdc6faa0d27c2836654f2b034202d9aea7"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_back_09.png": {
+    "backup": "android/character_walk_back_09.png",
+    "original": "aef4b103bb904279153a2e6223008f7b2c377d1f96df41df01bd7a38fcdb24c5",
+    "applied": "554cedc1c80f7da084ed84e7b635050320cb8ee7e442fa4651e4f1069eff3675"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_back_10.png": {
+    "backup": "android/character_walk_back_10.png",
+    "original": "4f4bc5e868c537ef29b8a1943f52eef1237d0db3f7fdb6f6750f864bd2e2c1a4",
+    "applied": "c30574017c9064b665c6ddd10bc9f2fdc6faa0d27c2836654f2b034202d9aea7"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_back_11.png": {
+    "backup": "android/character_walk_back_11.png",
+    "original": "41d02e099839a8c04499963bc36547c2c96c3b7e8880fee4f267377b3e86c382",
+    "applied": "cae87c5341df93b98e023a7515d801d05f3bf71b9392f0c7c78e5b0db949b193"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_front_00.png": {
+    "backup": "android/character_walk_front_00.png",
+    "original": "fd55eb76f3b1a4cbe6c8ad2f5ee0eaebeab5f9f047bf2c22e0f91e088cff30c6",
+    "applied": "8a57fe4f07b95fc94b47414db4a96ff7d4a8aa4aabbae493a253dfbc7400d3b3"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_front_01.png": {
+    "backup": "android/character_walk_front_01.png",
+    "original": "da3fabf3fca46d1a82e8d6c950c5c91a7f14433e765935bd0282724b4073218c",
+    "applied": "d7e6fc172027fc0defb9370422f0d980d9593dde98200cdafdd441d986307114"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_front_02.png": {
+    "backup": "android/character_walk_front_02.png",
+    "original": "74a8ff791cc51f4d83427fbbe11d5bd9e1d5f7d03345668d38b98fc97e840dc1",
+    "applied": "44feec3c1692f0f3381a339bf415c886d5ea6fc62803093e453c62c46a22e67a"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_front_03.png": {
+    "backup": "android/character_walk_front_03.png",
+    "original": "5bf3cf406de424e05e134bbd49fa9a2754b52777dbfacc181ef0afcd749a9c8b",
+    "applied": "2947c5edea6f9c42eef470df9075b3e8174995b6d48f19ffcc586290703413ee"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_front_04.png": {
+    "backup": "android/character_walk_front_04.png",
+    "original": "74a8ff791cc51f4d83427fbbe11d5bd9e1d5f7d03345668d38b98fc97e840dc1",
+    "applied": "44feec3c1692f0f3381a339bf415c886d5ea6fc62803093e453c62c46a22e67a"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_front_05.png": {
+    "backup": "android/character_walk_front_05.png",
+    "original": "da3fabf3fca46d1a82e8d6c950c5c91a7f14433e765935bd0282724b4073218c",
+    "applied": "d7e6fc172027fc0defb9370422f0d980d9593dde98200cdafdd441d986307114"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_front_06.png": {
+    "backup": "android/character_walk_front_06.png",
+    "original": "fd55eb76f3b1a4cbe6c8ad2f5ee0eaebeab5f9f047bf2c22e0f91e088cff30c6",
+    "applied": "69464fd409a207cef5524c867153067af1b13a7672a0cd8c06986cd31373a665"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_front_07.png": {
+    "backup": "android/character_walk_front_07.png",
+    "original": "26bc7fb97891de09ee3bf40d7047ddcde4a7ad39a98d504f2f25e72eff221318",
+    "applied": "f468afbb2092e6c52c108f1218d62fbb3ff30ff0a801bfe6c083d09b2f67393a"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_front_08.png": {
+    "backup": "android/character_walk_front_08.png",
+    "original": "07cbb8265359a5ac116e485b8da80867e5ee5f868e6e408106b74ffb08344af9",
+    "applied": "132f760022feeb5b1bbf1e5f2bcee0c434392ee854c423e2d4e91459f7ab070a"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_front_09.png": {
+    "backup": "android/character_walk_front_09.png",
+    "original": "7ce1bfa5293ceef3af59c53ca65b18cd5864c20c15da6b2f5919b8eceb6021ba",
+    "applied": "eaffe63487715c7e68d70e16aa9fd4c493e2db263af69f3f8eb3ed04209c7537"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_front_10.png": {
+    "backup": "android/character_walk_front_10.png",
+    "original": "07cbb8265359a5ac116e485b8da80867e5ee5f868e6e408106b74ffb08344af9",
+    "applied": "132f760022feeb5b1bbf1e5f2bcee0c434392ee854c423e2d4e91459f7ab070a"
+  },
+  "app/src/main/res/drawable-nodpi/character_walk_front_11.png": {
+    "backup": "android/character_walk_front_11.png",
+    "original": "9a072e198e4f8bc8ca4fad60b2489763289bc6f56ffe75b6f1b1f64d4e761116",
+    "applied": "7f6f1dead6dd17e500a2eec60083508c25f5de3e274fbffd3db6eb18da86d065"
+  },
+  "preview/assets/character-run/back-00.png": {
+    "backup": "preview/assets/character-run/back-00.png",
+    "original": "c788204df5dfb1747e3fc36b9bc8baa1ef1595464f9c8569c31c1d223bbfc191",
+    "applied": "8eb47bffb5142079a7d16ba06484ae700a5dc84ae6429f180b81ed66b73dce97"
+  },
+  "preview/assets/character-run/back-01.png": {
+    "backup": "preview/assets/character-run/back-01.png",
+    "original": "87f1c48956dbc981ab02ffd55873248f40498e03eaa3152894868701565741fe",
+    "applied": "e1b75daee39c18675a1564f0545baa5bfa2a23f4c4bfad17a9166fdf5c843245"
+  },
+  "preview/assets/character-run/back-02.png": {
+    "backup": "preview/assets/character-run/back-02.png",
+    "original": "56ec4c271660a08cf64c610c199d4635a48f24b645da505b565e18928e96dbb3",
+    "applied": "e0c2a5a3fea0e3db64b6aba7460696e8c5eab2b677d30585e364a70ad539f639"
+  },
+  "preview/assets/character-run/back-03.png": {
+    "backup": "preview/assets/character-run/back-03.png",
+    "original": "78c329321bea4f7c571156cf88d701fe9918abc8ee59b341c774be0b9c31986a",
+    "applied": "de08de9a8ee0fa4922e2996989fe9228ee53e49c55b400d3d6c748f55a7be515"
+  },
+  "preview/assets/character-run/back-04.png": {
+    "backup": "preview/assets/character-run/back-04.png",
+    "original": "104dbdb7acb10e9288b3fcc49bd893c205c196c0748e449f28af25fa91637d25",
+    "applied": "fbcf86e5a6ab7f939e854c7c7d9b4218d170eccb6bc9a3bd67ae2aae055885c4"
+  },
+  "preview/assets/character-run/back-05.png": {
+    "backup": "preview/assets/character-run/back-05.png",
+    "original": "701076b270af768fb6bf42d80f6dd1542898a3d493e6f401c70de59f4ceb126f",
+    "applied": "b84147bec83524ea0d3d8e83e8e0f079fa08fe2d8285544e652048682f3637be"
+  },
+  "preview/assets/character-run/back-06.png": {
+    "backup": "preview/assets/character-run/back-06.png",
+    "original": "c788204df5dfb1747e3fc36b9bc8baa1ef1595464f9c8569c31c1d223bbfc191",
+    "applied": "8eb47bffb5142079a7d16ba06484ae700a5dc84ae6429f180b81ed66b73dce97"
+  },
+  "preview/assets/character-run/back-07.png": {
+    "backup": "preview/assets/character-run/back-07.png",
+    "original": "8206e36cdb587ebb5cd63a39b50f27580ab2b87f4b78922f5fe33f3bd1db21d3",
+    "applied": "1470564ab7b7aeda76c7a6c580f324706ed4317b03fa74272e651d92b2c00e32"
+  },
+  "preview/assets/character-run/back-08.png": {
+    "backup": "preview/assets/character-run/back-08.png",
+    "original": "16e6f34d4194dd6583b2aedc7abe7bd639f127bb190159a4686070077fe4a674",
+    "applied": "7ae87482d35d3e24020b8367766d31f02e207b4df58c34dfca0aa22d35a822d5"
+  },
+  "preview/assets/character-run/back-09.png": {
+    "backup": "preview/assets/character-run/back-09.png",
+    "original": "3183b9ba380f6726a925b7f0f7106be06abb20bcc8d0123463c81474d0ecce76",
+    "applied": "4014ac9ae2036861a49d3b50577eee9ba8865245787a3051d63a7c774b51366f"
+  },
+  "preview/assets/character-run/back-10.png": {
+    "backup": "preview/assets/character-run/back-10.png",
+    "original": "82ce7a7bda6c681ec8e6942805711f9262d042d6067b3331aa335468f409c3c8",
+    "applied": "973af053f179c0e5d503466b81d6e628463d9aeb311807bb2dc65cd99220814c"
+  },
+  "preview/assets/character-run/back-11.png": {
+    "backup": "preview/assets/character-run/back-11.png",
+    "original": "ba99c8568720da547707d8dfcc69b02dbab7cec1c6bb87ccc8878c3cbaf61666",
+    "applied": "fad8ce8067382f564a285236c37b356a87a387a510ddda2f136afd8d9ae5f46e"
+  },
+  "preview/assets/character-run/front-00.png": {
+    "backup": "preview/assets/character-run/front-00.png",
+    "original": "3e338cbd5dfc4e02d2ccb883d1e388ef1b423b426162b39c47b0b30edc4ef88c",
+    "applied": "41bc8dfc0c6c811e16f4765004e915ed98e5475f3b78d6323fb061dbad337cc3"
+  },
+  "preview/assets/character-run/front-01.png": {
+    "backup": "preview/assets/character-run/front-01.png",
+    "original": "7403dad4ae827a33618324dbf05fd080d0c63cd8f760126567aab8c0c04cb150",
+    "applied": "e0f1bb84bd4162bf35102c4774037b260a9637f2b1ee741e98e2ac792df6ccc1"
+  },
+  "preview/assets/character-run/front-02.png": {
+    "backup": "preview/assets/character-run/front-02.png",
+    "original": "ad8710b7bb8a609f80d60b926b84e1ab55665bc85831de8bc728873d3f8dd4ca",
+    "applied": "dae108537b45396c498fb4f76099aca66fbed24159ced93e0da901941e591964"
+  },
+  "preview/assets/character-run/front-03.png": {
+    "backup": "preview/assets/character-run/front-03.png",
+    "original": "f7794e0e195541fc700aba83717e6641bb2246713f6d1a74a0b2ab48ed830449",
+    "applied": "7a5bca0f730e9c088254bbcc9e44fe033d0ab7bb07410b4c2251f3b7c3c543ea"
+  },
+  "preview/assets/character-run/front-04.png": {
+    "backup": "preview/assets/character-run/front-04.png",
+    "original": "7db11a4da04d6b61e43a1d1e9334d71d29eb0a59410493d9c67151242de7e79d",
+    "applied": "b74234862702750657db76174c2b83e1bb4f8e3778ea8338f97a9e361bac1197"
+  },
+  "preview/assets/character-run/front-05.png": {
+    "backup": "preview/assets/character-run/front-05.png",
+    "original": "20eb267851373d1e5c2828eea5debd1b8ef902424abdc44ce8537a2d8d65c2c1",
+    "applied": "405315decfe6e1aa43770a29d07933779e9fcd173a4b3faceeafde50f751110f"
+  },
+  "preview/assets/character-run/front-06.png": {
+    "backup": "preview/assets/character-run/front-06.png",
+    "original": "3e338cbd5dfc4e02d2ccb883d1e388ef1b423b426162b39c47b0b30edc4ef88c",
+    "applied": "41bc8dfc0c6c811e16f4765004e915ed98e5475f3b78d6323fb061dbad337cc3"
+  },
+  "preview/assets/character-run/front-07.png": {
+    "backup": "preview/assets/character-run/front-07.png",
+    "original": "62095a9b70871e4014e49cc0d1c02720875c146c9e10d894890626f6f6b58e21",
+    "applied": "d9cb59b4055fcc37e95980c76ed16f7f810c67900e8f2933fddc73d9178d99fe"
+  },
+  "preview/assets/character-run/front-08.png": {
+    "backup": "preview/assets/character-run/front-08.png",
+    "original": "f5fa8003e93c41c157926a4af7e1cbe7a4dfdf6ce28d9fa28b5be0873b199a15",
+    "applied": "e3af5f5191de5ec9000ba97cc9fc21c83391a83ee8a31d6ebed6f218ccb59fcf"
+  },
+  "preview/assets/character-run/front-09.png": {
+    "backup": "preview/assets/character-run/front-09.png",
+    "original": "6480373f0ea2e4b98b4226fa55f1572662c560039ac65f00c1252cde8c8e0142",
+    "applied": "2d1cf8e7ec518f467cda0f7d5b0db4ca0074bf56f95bb27e67c791e84302bad8"
+  },
+  "preview/assets/character-run/front-10.png": {
+    "backup": "preview/assets/character-run/front-10.png",
+    "original": "897887641c9821deeee0ceb49125b6fe3d4314f0b35c6e8e4db95705d4dca2a0",
+    "applied": "c2827c7e2aaed3daff704be730194ffc9d0ffdbd1c35e80f1e899dd3e0f76453"
+  },
+  "preview/assets/character-run/front-11.png": {
+    "backup": "preview/assets/character-run/front-11.png",
+    "original": "1829790ad6474065e40d8ce4ab32cf460605034a7e83978ce9c9ed28da13d3e2",
+    "applied": "4786ad48cf114616889c16ab3b1d361bed4a35c5b059df88a49bfd73c7dd0aad"
+  },
+  "preview/assets/character-walk/back-00.png": {
+    "backup": "preview/assets/character-walk/back-00.png",
+    "original": "88c9ea56a1c5a39b49821bee200d294d9ba3aebb866ebe9ebc03eebef143194f",
+    "applied": "8fd5d5ad10276dc0592a4c36adeeb94bebd24a904bb9127672f98e469e5e99b6"
+  },
+  "preview/assets/character-walk/back-01.png": {
+    "backup": "preview/assets/character-walk/back-01.png",
+    "original": "e8a3a1c641db2e4b9050c42543bf7ff1e2823106493c47c720b7557ab57bf7bd",
+    "applied": "7f7bfb713aa2fc196a5eed30d89aa5c080dae7ff84848edc77c41eb54a9d54f8"
+  },
+  "preview/assets/character-walk/back-02.png": {
+    "backup": "preview/assets/character-walk/back-02.png",
+    "original": "a7a749200bb133cfd570df28e324bbfb99958ee54ec5edddca19556d7c18e603",
+    "applied": "a9324d1f93c91d894d6e4d2cf54d19376a70a8cbd28a470517b83fa78b47b11a"
+  },
+  "preview/assets/character-walk/back-03.png": {
+    "backup": "preview/assets/character-walk/back-03.png",
+    "original": "21e55378229113d7fa5c44dba236950e395463d54b472b403188649cce119e12",
+    "applied": "c796bd3e3efaf17fb2c1879586d6250f59159ee3ba337763d53d7e802e3d1ba3"
+  },
+  "preview/assets/character-walk/back-04.png": {
+    "backup": "preview/assets/character-walk/back-04.png",
+    "original": "a7a749200bb133cfd570df28e324bbfb99958ee54ec5edddca19556d7c18e603",
+    "applied": "a9324d1f93c91d894d6e4d2cf54d19376a70a8cbd28a470517b83fa78b47b11a"
+  },
+  "preview/assets/character-walk/back-05.png": {
+    "backup": "preview/assets/character-walk/back-05.png",
+    "original": "e8a3a1c641db2e4b9050c42543bf7ff1e2823106493c47c720b7557ab57bf7bd",
+    "applied": "7f7bfb713aa2fc196a5eed30d89aa5c080dae7ff84848edc77c41eb54a9d54f8"
+  },
+  "preview/assets/character-walk/back-06.png": {
+    "backup": "preview/assets/character-walk/back-06.png",
+    "original": "88c9ea56a1c5a39b49821bee200d294d9ba3aebb866ebe9ebc03eebef143194f",
+    "applied": "bc8ce9116263a6258132d281d639ee3ff47b52a8f02a51dea7779fab20705e89"
+  },
+  "preview/assets/character-walk/back-07.png": {
+    "backup": "preview/assets/character-walk/back-07.png",
+    "original": "bd221c8f2eb92717219bd01c82f685e86a69d68ef0b573243a48cfe79504ad6d",
+    "applied": "6f4c8912a10d037362dae14e740bc933bd8345b6c0fe105531f90f6b1f79d8b4"
+  },
+  "preview/assets/character-walk/back-08.png": {
+    "backup": "preview/assets/character-walk/back-08.png",
+    "original": "4f4bc5e868c537ef29b8a1943f52eef1237d0db3f7fdb6f6750f864bd2e2c1a4",
+    "applied": "c30574017c9064b665c6ddd10bc9f2fdc6faa0d27c2836654f2b034202d9aea7"
+  },
+  "preview/assets/character-walk/back-09.png": {
+    "backup": "preview/assets/character-walk/back-09.png",
+    "original": "aef4b103bb904279153a2e6223008f7b2c377d1f96df41df01bd7a38fcdb24c5",
+    "applied": "554cedc1c80f7da084ed84e7b635050320cb8ee7e442fa4651e4f1069eff3675"
+  },
+  "preview/assets/character-walk/back-10.png": {
+    "backup": "preview/assets/character-walk/back-10.png",
+    "original": "4f4bc5e868c537ef29b8a1943f52eef1237d0db3f7fdb6f6750f864bd2e2c1a4",
+    "applied": "c30574017c9064b665c6ddd10bc9f2fdc6faa0d27c2836654f2b034202d9aea7"
+  },
+  "preview/assets/character-walk/back-11.png": {
+    "backup": "preview/assets/character-walk/back-11.png",
+    "original": "41d02e099839a8c04499963bc36547c2c96c3b7e8880fee4f267377b3e86c382",
+    "applied": "cae87c5341df93b98e023a7515d801d05f3bf71b9392f0c7c78e5b0db949b193"
+  },
+  "preview/assets/character-walk/front-00.png": {
+    "backup": "preview/assets/character-walk/front-00.png",
+    "original": "fd55eb76f3b1a4cbe6c8ad2f5ee0eaebeab5f9f047bf2c22e0f91e088cff30c6",
+    "applied": "8a57fe4f07b95fc94b47414db4a96ff7d4a8aa4aabbae493a253dfbc7400d3b3"
+  },
+  "preview/assets/character-walk/front-01.png": {
+    "backup": "preview/assets/character-walk/front-01.png",
+    "original": "da3fabf3fca46d1a82e8d6c950c5c91a7f14433e765935bd0282724b4073218c",
+    "applied": "d7e6fc172027fc0defb9370422f0d980d9593dde98200cdafdd441d986307114"
+  },
+  "preview/assets/character-walk/front-02.png": {
+    "backup": "preview/assets/character-walk/front-02.png",
+    "original": "74a8ff791cc51f4d83427fbbe11d5bd9e1d5f7d03345668d38b98fc97e840dc1",
+    "applied": "44feec3c1692f0f3381a339bf415c886d5ea6fc62803093e453c62c46a22e67a"
+  },
+  "preview/assets/character-walk/front-03.png": {
+    "backup": "preview/assets/character-walk/front-03.png",
+    "original": "5bf3cf406de424e05e134bbd49fa9a2754b52777dbfacc181ef0afcd749a9c8b",
+    "applied": "2947c5edea6f9c42eef470df9075b3e8174995b6d48f19ffcc586290703413ee"
+  },
+  "preview/assets/character-walk/front-04.png": {
+    "backup": "preview/assets/character-walk/front-04.png",
+    "original": "74a8ff791cc51f4d83427fbbe11d5bd9e1d5f7d03345668d38b98fc97e840dc1",
+    "applied": "44feec3c1692f0f3381a339bf415c886d5ea6fc62803093e453c62c46a22e67a"
+  },
+  "preview/assets/character-walk/front-05.png": {
+    "backup": "preview/assets/character-walk/front-05.png",
+    "original": "da3fabf3fca46d1a82e8d6c950c5c91a7f14433e765935bd0282724b4073218c",
+    "applied": "d7e6fc172027fc0defb9370422f0d980d9593dde98200cdafdd441d986307114"
+  },
+  "preview/assets/character-walk/front-06.png": {
+    "backup": "preview/assets/character-walk/front-06.png",
+    "original": "fd55eb76f3b1a4cbe6c8ad2f5ee0eaebeab5f9f047bf2c22e0f91e088cff30c6",
+    "applied": "69464fd409a207cef5524c867153067af1b13a7672a0cd8c06986cd31373a665"
+  },
+  "preview/assets/character-walk/front-07.png": {
+    "backup": "preview/assets/character-walk/front-07.png",
+    "original": "26bc7fb97891de09ee3bf40d7047ddcde4a7ad39a98d504f2f25e72eff221318",
+    "applied": "f468afbb2092e6c52c108f1218d62fbb3ff30ff0a801bfe6c083d09b2f67393a"
+  },
+  "preview/assets/character-walk/front-08.png": {
+    "backup": "preview/assets/character-walk/front-08.png",
+    "original": "07cbb8265359a5ac116e485b8da80867e5ee5f868e6e408106b74ffb08344af9",
+    "applied": "132f760022feeb5b1bbf1e5f2bcee0c434392ee854c423e2d4e91459f7ab070a"
+  },
+  "preview/assets/character-walk/front-09.png": {
+    "backup": "preview/assets/character-walk/front-09.png",
+    "original": "7ce1bfa5293ceef3af59c53ca65b18cd5864c20c15da6b2f5919b8eceb6021ba",
+    "applied": "eaffe63487715c7e68d70e16aa9fd4c493e2db263af69f3f8eb3ed04209c7537"
+  },
+  "preview/assets/character-walk/front-10.png": {
+    "backup": "preview/assets/character-walk/front-10.png",
+    "original": "07cbb8265359a5ac116e485b8da80867e5ee5f868e6e408106b74ffb08344af9",
+    "applied": "132f760022feeb5b1bbf1e5f2bcee0c434392ee854c423e2d4e91459f7ab070a"
+  },
+  "preview/assets/character-walk/front-11.png": {
+    "backup": "preview/assets/character-walk/front-11.png",
+    "original": "9a072e198e4f8bc8ca4fad60b2489763289bc6f56ffe75b6f1b1f64d4e761116",
+    "applied": "7f6f1dead6dd17e500a2eec60083508c25f5de3e274fbffd3db6eb18da86d065"
+  },
+  "preview/assets/main-character-back.png": {
+    "backup": "preview/assets/main-character-back.png",
+    "original": "e7caaf64f03c1947cc6ad41f2ba18a6e08783e82425850d39d4e7acf5c9ee72b",
+    "applied": "3a2ff54ee713e05a5feff6d2f4b1a48a59a3055e05956a41e7428ee3d60b41e1"
+  },
+  "preview/assets/main-character.png": {
+    "backup": "preview/assets/main-character.png",
+    "original": "c06acd2a8b485b38c36c1aa3cc5c019372250a0f5b1955b9888515a4a96d99c9",
+    "applied": "0f8757abf29cb09724cc3b66260776c7f56b600fa06ff2e582b4338e2cd21095"
+  }
+}

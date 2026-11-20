@@ -1,0 +1,14 @@
+const assert=require('node:assert/strict');
+const base=require('../preview/base-terrain.js');
+const template=base.stack(10,10);
+for(let i=0;i<5;i++)assert.equal(base.isBaseLayer(template,i),true);
+const added=[...template,1,2];
+for(let i=0;i<5;i++)assert.equal(base.isBaseLayer(added,i),true);
+assert.equal(base.isBaseLayer(added,5),false);assert.equal(base.isBaseLayer(added,6),false);
+assert.equal(base.isBaseLayer([2,2,2,2],3),true);
+assert.equal(base.isBaseLayer([2,2,2,4,1],3),false);
+assert.equal(base.isBaseLayer([1,2,2],0),true);assert.equal(base.isBaseLayer([1,2,2],1),false);
+assert.equal(base.isBaseLayer([2,2,2,2,4],4),false);
+assert.equal(base.isBaseLayer(null,0),false);
+assert.deepEqual(template,[2,2,2,2,1]);
+console.log('Template base layers use uniform style; added and changed blocks retain block style: OK');

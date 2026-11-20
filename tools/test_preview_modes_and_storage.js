@@ -1,0 +1,70 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const {JSDOM} = require('jsdom');
+const root = path.join(__dirname, '../preview');
+const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+const key = 'gtlauncher.worlds.v1';
+function setup(value) {
+  const dom = new JSDOM(html, {url: 'https://preview.example/', runScripts: 'outside-only'});
+  const w = dom.window, d = w.document;
+  if (value !== undefined) w.localStorage.setItem(key, JSON.stringify(value));
+  for (const dialog of d.querySelectorAll('dialog')) { dialog.showModal = () => dialog.open = true; dialog.close = () => dialog.open = false; }
+  w.sceneEditing = {update(){}, hitTest(){return null}};
+  for (const name of ['worlds.js','object-editor.js','preview-modes.js']) w.eval(fs.readFileSync(path.join(root,name),'utf8'));
+  return {w,d};
+}
+const old = {id:'old',name:'Home',description:'',color:'#a8c795',showCharacter:true};
+{ const {w,d}=setup();const tabs=d.querySelector('.mode-tabs'),world=d.getElementById('world-button');assert.equal(tabs.parentElement,world.parentElement);assert.equal(tabs.nextElementSibling,world,'mode tabs immediately precede World');assert.equal(tabs.closest('.device-frame'),null);w.close(); }
+{
+ const original={worlds:[old],activeId:'old'};const {w,d}=setup(original);
+ assert.equal(w.worldManager.getActive().gridSize,25,'legacy Home upgraded');
+ const backup=Object.keys(w.localStorage).find(k=>k.startsWith('gtlauncher.home-before-25.'));
+ assert.deepEqual(JSON.parse(w.localStorage.getItem(backup)),original,'exact old data backed up first');
+ assert.equal(d.getElementById('world-backup-home').hidden,false);
+ d.getElementById('mode-map-editor').click();
+ assert.equal(d.getElementById('mode-map-editor').getAttribute('aria-pressed'),'true');
+ assert.equal(d.getElementById('object-edit-button').getAttribute('aria-pressed'),'true');
+ d.getElementById('mode-gameplay').click();assert.equal(d.getElementById('object-edit-button').getAttribute('aria-pressed'),'false');
+ assert.equal(d.getElementById('mode-gameplay').getAttribute('aria-pressed'),'true');
+ w.close();
+}
+{
+ const tiles=Array(400).fill(1);tiles[3*20+4]=0;tiles[19*20+19]=5;
+ const home={...old,gridSize:20,tiles,characterColumn:9,characterRow:9,house:{column:0,row:0}};
+ const other={id:'other',name:'Kebun',description:'',color:'#a8c795',gridSize:20,tiles:Array(400).fill(1)};
+ const value={worlds:[home,other],activeId:'old'}, {w,d}=setup(value), result=w.worldManager.getActive();
+ assert.equal(result.gridSize,25);assert.equal(result.tiles.length,625);assert.equal(result.tiles[3*25+4],0);assert.equal(result.tiles[19*25+19],5);assert.equal(result.tiles[24*25+24],1);
+ assert.equal(result.characterColumn,9);assert.equal(result.characterRow,9);assert.deepEqual(JSON.parse(w.localStorage.getItem(key)).worlds[1],other);
+ const backup=Object.keys(w.localStorage).find(k=>k.startsWith('gtlauncher.home-before-25.'));assert.deepEqual(JSON.parse(w.localStorage.getItem(backup)),value);
+ w.close();
+}
+{
+ const value={worlds:[{...old, roads:[{column:1,row:2}]}],activeId:'old'};const {w,d}=setup(value);
+ assert.equal(d.getElementById('world-backup').hidden,false,'unsupported fields provide backup');
+ d.getElementById('world-new').click();d.getElementById('world-name').value='Another';
+ d.getElementById('world-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
+ assert.deepEqual(JSON.parse(w.localStorage.getItem(key)),value,'unsupported newer world must never be overwritten');w.close();
+}
+{
+ const value={worlds:[old],activeId:'old',future:'extra'};const {w,d}=setup(value);
+ assert.equal(d.getElementById('world-backup').hidden,false);
+ assert.deepEqual(JSON.parse(w.localStorage.getItem(key)),value);w.close();
+}
+{
+ const value={worlds:[old],activeId:'old'};const {w,d}=setup(value);
+ const newer={worlds:[{...old,roads:[]}],activeId:'old'};w.localStorage.setItem(key,JSON.stringify(newer));
+ d.getElementById('world-new').click();d.getElementById('world-name').value='Another';
+ d.getElementById('world-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));
+ assert.deepEqual(JSON.parse(w.localStorage.getItem(key)),newer,'concurrent data change must not be overwritten');w.close();
+}
+{
+ const {w,d}=setup();d.getElementById('mode-map-editor').click();
+ assert.equal(d.getElementById('edit-status').hidden,true,'Base World does not show an unsolicited warning');
+ assert.equal(d.querySelector('.restore-notice'),null);
+ assert.match(d.getElementById('world-feature-limits').textContent,/hanya tersedia di preview/);
+ assert.match(d.getElementById('world-feature-limits').textContent,/diimpor pada Android versi terbaru/);
+ assert.equal(d.getElementById('object-edit-button').getAttribute('aria-pressed'),'false');
+ d.getElementById('mode-gameplay').click();assert.equal(d.getElementById('edit-status').hidden,true);w.close();
+}
+console.log('Mode tabs and icon controls; storage read-only guard, backed-up Home migration and concurrent write guard: OK');

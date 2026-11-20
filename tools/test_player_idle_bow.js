@@ -1,0 +1,9 @@
+const assert=require('node:assert/strict'),bow=require('../preview/player-idle-bow');
+assert.equal(bow.amount(7999),0);assert.equal(bow.amount(8000),0);assert.equal(bow.amount(8250),.5);assert.equal(bow.amount(8500),1);assert.equal(bow.amount(9750),.5);assert.equal(bow.amount(10000),0);assert.equal(bow.amount(16000),0);assert.equal(bow.amount(16500),1);
+const c=bow.create();assert.equal(c.update(100,'world:2:3',true),0);assert.equal(c.update(8600,'world:2:3',true),1);assert.equal(c.update(8601,null,false),0);assert.equal(c.update(9000,'world:2:3',true),0);assert.equal(c.update(17500,'world:3:3',true),0);assert.equal(c.update(26000,'other:3:3',true),0);
+assert.equal(bow.frame(0),0);assert.equal(bow.frame(.19),0);assert.equal(bow.frame(.2),1);assert.equal(bow.frame(.74),1);assert.equal(bow.frame(.75),2);assert.equal(bow.frame(1),2);
+const sit=bow.create();sit.update(0,'tile',true);assert.equal(sit.update(29999,'tile',true),0);assert.equal(sit.sitting(),0);assert.equal(sit.update(30000,'tile',true),0);sit.update(30900,'tile',true);assert.equal(sit.sitting(),.5);sit.update(31800,'tile',true);assert.equal(sit.sitting(),1);sit.update(100000,'tile',true);assert.equal(sit.sitting(),1);sit.update(100001,null,false);assert.equal(sit.sitting(),0);
+const carry=bow.create();carry.resume(5000);assert.equal(carry.update(10000,'dry',true),0);assert.equal(carry.update(13500,'dry',true),1);carry.update(35000,'dry',true);assert.equal(carry.sitting(),0);carry.update(36800,'dry',true);assert.equal(carry.sitting(),1);
+const water=bow.create();water.update(0,'water',true,false);assert.equal(water.update(32500,'water',true,false),1);
+assert.equal(bow.seatGroundWeight(0),0);assert.equal(bow.seatGroundWeight(1/3),0);assert.equal(bow.seatGroundWeight(.5),.5);assert.equal(bow.seatGroundWeight(2/3),1);assert.equal(bow.seatGroundWeight(1),1);
+console.log('Idle timing, movement resets and three whole-frame poses: OK');

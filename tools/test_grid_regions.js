@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');
+const grid=require('../preview/grid-regions.js');
+const regions=grid.regions(50);assert.equal(regions.length,25);
+assert.deepEqual(regions.map(r=>r.number),Array.from({length:25},(_,i)=>i+1));
+assert.deepEqual([regions[0].column,regions[0].row],[0,0]);
+assert.deepEqual([regions[4].column,regions[4].row],[40,0]);
+assert.deepEqual([regions[5].column,regions[5].row],[0,10]);
+assert.equal(grid.edges(5,5,50).length,0);
+assert.equal(grid.edges(0,0,50).length,2);
+assert.equal(grid.edges(9,9,50).length,2);
+assert.equal(grid.regions(25).length,9);assert.equal(grid.regions(25)[8].width,5);assert.equal(grid.regions(25)[8].height,5);
+console.log('10×10 region coordinates, column-first numbering and partial regions: OK');

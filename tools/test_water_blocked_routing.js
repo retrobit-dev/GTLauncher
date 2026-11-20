@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict'), path=require('../preview/gameplay-path');
+const size=20, tiles=Array(size*size).fill(0),set=(x,y,t)=>tiles[y*size+x]=t;
+set(2,2,1);set(3,2,3);set(4,2,1);
+const world={gridSize:size,tiles},a={column:2,row:2},b={column:4,row:2};
+assert.equal(path.find(world,a,b,null),null);
+world.bridges=[{column:2,row:2,axis:'E',material:'wood'}];
+assert.equal(path.find(world,a,b,null).length,3);
+delete world.bridges;assert.deepEqual(path.findNearestDry(world,{column:3,row:2},null).at(-1),b);
+world.ramps=[{column:2,row:2,direction:'E',material:3}];assert.equal(path.find(world,b,a,null),null);
+console.log('Water and water ramps block normal routing, bridge and legacy recovery allowed: OK');

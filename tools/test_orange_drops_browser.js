@@ -1,0 +1,22 @@
+const assert=require('node:assert/strict'),{chromium}=require('playwright-core');
+(async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader']});try{
+const context=await browser.newContext({viewport:{width:1000,height:700},reducedMotion:'reduce'});
+await context.addInitScript(()=>{window.testNow=Math.floor(1760000000000/300000)*300000+5000;Date.now=()=>window.testNow;if(!localStorage.getItem('gtlauncher.worlds.v1'))localStorage.setItem('gtlauncher.worlds.v1',JSON.stringify({activeId:'orchard',worlds:[{id:'orchard',name:'Orchard',description:'',color:'#a8c795',gridSize:50,tiles:Array(2500).fill(1),showCharacter:true,characterColumn:25,characterRow:27,characterScale:1,characterFacing:'N',house:null,orangeTrees:[{column:26,row:27}]}]}))});
+const page=await context.newPage();await page.goto(process.env.PREVIEW_URL||'http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
+await page.waitForFunction(()=>sceneEditing.orangeDropAt && OrangeDrops.available(worldManager.getActive(),worldManager.getActive().orangeTrees[0]));
+assert(await page.evaluate(()=>!!navigator.locks),'secure browser supports cross-tab lock');
+await page.locator('[data-dock="hand"]').click();
+const target=await page.evaluate(()=>{const t=worldManager.getActive().orangeTrees[0],p=sceneEditing.orangeDropPosition(t),r=document.querySelector('#sky-canvas').getBoundingClientRect(),o=sceneEditing.toLocal(r.left,r.top),z=sceneEditing.camera().renderZoom;return{x:r.left+(p.x-o.x)*z*r.width/320,y:r.top+(p.y-o.y)*z*r.height/200}});
+assert.equal(await page.evaluate(({x,y})=>document.elementFromPoint(x,y)?.id,target),'sky-canvas');await page.mouse.click(target.x,target.y);assert.equal(await page.evaluate(()=>OrangeDrops.count()),0,'first tap faces the tree');assert.equal((await page.evaluate(()=>worldManager.getCharacter())).facing,'E');await page.mouse.click(target.x,target.y);
+await page.waitForFunction(()=>OrangeDrops.count()===1);assert.equal(await page.evaluate(()=>OrangeDrops.available(worldManager.getActive(),worldManager.getActive().orangeTrees[0])),false);
+await page.locator('[data-dock="bag"]').click();assert.match(await page.locator('#dock-message').innerText(),/Jeruk: 1/);await page.locator('#dock-close').click();
+await page.reload({waitUntil:'domcontentloaded'});assert.equal(await page.evaluate(()=>OrangeDrops.count()),1);assert.equal(await page.evaluate(()=>OrangeDrops.available(worldManager.getActive(),worldManager.getActive().orangeTrees[0])),false);
+await page.evaluate(()=>{testNow+=300000;window.dispatchEvent(new Event('orangefruitupdate'))});assert(await page.evaluate(()=>OrangeDrops.available(worldManager.getActive(),worldManager.getActive().orangeTrees[0])));
+assert.equal(await page.evaluate(()=>OrangeDrops.falling(Math.floor(testNow/300000)*300000+800,false)),.5);
+assert.equal(await page.evaluate(()=>OrangeDrops.falling(Math.floor(testNow/300000)*300000+800,true)),1,'reduced motion skips the falling animation');
+const other=await context.newPage();await other.goto(process.env.PREVIEW_URL||'http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});await other.evaluate(()=>{testNow+=300000});
+const collect=p=>p.evaluate(()=>OrangeDrops.collect('orchard',worldManager.getActive().orangeTrees[0]));
+const results=await Promise.all([collect(page),collect(other)]);assert.equal(results.filter(r=>r.ok).length,1,'concurrent tabs cannot duplicate fruit');assert.equal(await page.evaluate(()=>OrangeDrops.count()),2);await other.close();
+await page.evaluate(()=>{testNow+=300000;localStorage.setItem('gtlauncher.orange-drops.v1','invalid')});assert.equal(await page.evaluate(()=>OrangeDrops.count()),null);assert.equal((await page.evaluate(()=>OrangeDrops.collect('orchard',worldManager.getActive().orangeTrees[0]))).ok,false);assert.equal(await page.evaluate(()=>localStorage.getItem('gtlauncher.orange-drops.v1')),'invalid','corrupt storage is not overwritten');
+console.log('Fruit pickup, bag, cooldown, reload, atomic concurrency and failure preservation: OK');await context.close();
+}finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

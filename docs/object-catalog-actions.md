@@ -1,0 +1,5 @@
+# Aksi daftar objek world
+
+Pada preview Map Editor, buka **Objek → Objek di world ini**. Setiap pohon/tanaman, pagar, tembok, dan jembatan memiliki ikon **Ganti** dan **Hapus**. Ganti kemudian memilih objek lain di katalog, mempertahankan tile awal serta arah sisi/sumbu jika kedua objek sejenis; jika tapak atau penyimpanan tidak aman, objek lama tidak dihapus. Semak panen pengganti memiliki identitas dan waktu tanam baru. Hapus/ganti meminta konfirmasi, tidak menghapus inventaris atau riwayat panen, dan dapat dibatalkan lewat Undo/Redo editor. Data world yang berubah di tab lain tidak ditimpa.
+
+Karakter dan rumah player ditampilkan tanpa aksi pada daftar ini; penggantian dengan rumah tidak tersedia lewat aksi ini. Android menyediakan daftar berikon dan penggantian atomik untuk subset world preview **datar** yang didukung (cemara, rumput, semak, pagar dan jembatan), melalui World → Katalog objek. World Android lama dan objek lain tidak diubah lewat daftar ini. Android belum mempunyai Undo/Redo editor dan belum diuji melalui build/perangkat.

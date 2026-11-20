@@ -1,0 +1,50 @@
+# Animasi idle player
+
+Saat gameplay player diam pada block yang sama selama 8 detik, player beralih ke pose membungkuk selama setengah detik, menahan pose satu detik, lalu tegak kembali dalam setengah detik. Jika tetap diam, siklus dimulai lagi setiap 8 detik (dengan jeda enam detik setelah kembali tegak). Berjalan, berpindah block/world, meninggalkan gameplay atau menyembunyikan aplikasi memulai ulang penghitung. Reduced motion/animasi sistem nonaktif tidak menampilkan gerakan ini. Tidak ada perubahan pada data world.
+
+Sprite berdiri dan pose idle sebelumnya disimpan. Konsep depan opsi 1 dan belakang opsi 2 yang dipilih diterapkan; frame peralihan merupakan gambar baru dan belum ditinjau terpisah. Animasi menggunakan pose utuh berdiri → peralihan → membungkuk dengan kedua tangan pada lutut, lalu kembali. Kedua tampak depan dan belakang memiliki aset sendiri, dengan arah lain memakai cermin seperti renderer player sebelumnya. Pada tampak belakang, tangan jauh tertutup badan dan hanya tangan dekat yang terlihat; ini perubahan occlusion, bukan rig manual yang sudah selesai. Kanvas pose idle diperlebar menjadi 512 piksel dan dirender pada skala piksel yang sama dengan sprite berdiri 432 piksel agar tubuh tidak diperkecil untuk masuk ke kanvas; sepatu menggunakan gambar sprite berdiri yang sama dengan sambungan di pergelangan. Bayangan menggunakan siluet pose yang aktif dan tetap dibatasi ukuran player semula. Karena keyframe digambar terpisah, proporsi tubuh dan tampilan kaki belum identik piksel demi piksel. Peralihan antar tiga pose memakai pencampuran gambar bertahap; ini bukan rig atau tween anatomi penuh, sehingga sedikit bayangan ganda dapat terlihat selama transisi. Bagian bawah di air tetap menggunakan renderer terendam. Animasi berjalan tidak diubah. Android memakai aset dan logika yang sama, tetapi belum diuji lewat build atau perangkat.
+
+Setelah 30 detik terus diam pada block kering yang sama, player beralih selama 1,8 detik melalui pose jongkok dan pose duduk sebelum meluruskan kaki dan bertumpu pada tangan. Player tetap duduk sampai bergerak, dunia/tile berubah, gameplay ditinggalkan, aplikasi disembunyikan atau animasi dinonaktifkan. Di air pose duduk tidak digunakan; siklus membungkuk tetap berlangsung. Arah memakai tampak depan/belakang dan cerminnya seperti pose lain. Gambar duduk diperbarui dengan kaki lurus dan tubuh bersandar pada kedua tangan. Transisi menggabungkan tiga keyframe dengan crossfade, bukan animasi anatomi lengkap; tangan, kaki, dan titik kontak dapat memerlukan penyempurnaan visual. Android belum diuji build/perangkat.
+
+Pembaruan kontak duduk: titik pantat pose duduk disejajarkan ke titik permukaan block (bukan lagi ujung kaki sebagai titik tumpu), dengan bayangan kontak di pantat dan tangan yang ikut dicerminkan. Kepala dan topi pada frame duduk dan hampir duduk menggunakan piksel asli player; pose jongkok, pakaian, sepatu, dan lengan masih artwork terpisah sehingga proporsi kaki/sepatu dan posisi tangan belum bisa dijamin sama dengan sprite berdiri. Pose kepala belum dianimasikan mendongak secara anatomis. Perlu gambar ulang bagian tubuh dengan referensi asli untuk menyelesaikan detail tersebut.
+
+## Studi ulang proporsi dan integrasi
+
+`tools/character_rig/extract_sit_reference.py` menyimpan potongan kepala, badan, serta masing-masing kaki dari sprite berdiri asli ke `preview/assets/character-redraw/sitting-reference-parts/`. Kanvas 432×800 dan semua piksel setiap potongan tidak diubah. `landmarks.json` mencatat perkiraan posisi pinggul dan pergelangan dalam koordinat gambar; itu bukan ukuran anatomi 3D, dan bagian paha yang tertutup pakaian tetap perlu digambar ulang. Tes `tools/character_rig/test_sit_reference.py` memeriksa bahwa setiap piksel yang tersisa identik dengan sumber.
+
+Percobaan menyusun dan memutar potongan itu menghasilkan sambungan pinggul yang putus dan lengan yang tertutup. Dua studi redraw `sit-redraw-prototype-{front,back}.png` menunjukkan perbaikan siluet dengan acuan tersebut, tetapi **belum layak dijadikan frame runtime**: tampak depan masih menunjukkan lengan tambahan, dan keduanya belum mempertahankan persis piksel sepatu/badan serta belum memiliki transisi yang cocok. Tidak ada perubahan pada pose atau animasi yang dipakai aplikasi. Prototipe awal disimpan sebagai arsip; jangan gunakan langsung sebagai frame runtime.
+
+Revisi studi tersedia sebagai `sit-redraw-repaired-front-v2.png` dan `sit-redraw-final-back.png`: sambungan pinggul telah digambar ulang, dan lengan tambahan di sisi kiri studi depan dihilangkan; kedua gambar memperlihatkan dua tangan bertumpu. Revisi pose duduk dan dua frame lutut tertekuk kini dipakai di preview dan Android. Gambar ditempatkan tanpa mengubah ukuran gambar per pose, dan kepala/topi diambil dari piksel sprite berdiri; titik pantat dan kontak tangan disesuaikan untuk masing-masing sisi. Badan serta sepatu tetap gambar ulang, bukan bagian sprite asli yang identik, dan panjang kaki serta sambungan belum terverifikasi piksel demi piksel. Frame jongkok masih berasal dari studi lama, transisi masih crossfade, dan Android belum diuji build atau perangkat.
+
+Perbaikan tangan tampak depan: lengan dekat tetap utuh, sedangkan lengan jauh tertutup badan/ransel dan hanya telapak yang tampak. Patch yang sama dipakai di frame lutut tertekuk, dengan titik kontak bayangan diperbarui. Crossfade antara frame utuh tetap dapat menampilkan sedikit bayangan ganda sesaat saat berubah pose; ini bukan rig anatomis. Aset preview dan Android sama, tetapi Android belum diuji lewat build/perangkat.
+
+Tangan dekat tampak depan digeser ke belakang dengan lengan bawah miring, sementara telapak tangan jauh tetap terlihat sebagian di belakang lengan/ransel. Patch yang sama dipakai untuk pose duduk dan lutut tertekuk; titik bayangan kontak mengikuti posisi baru. Kepala/topi dan bagian tubuh lain tidak digeser. Uji aset memeriksa posisi relatif tangan, tidak adanya lengan jauh rangkap, serta kesamaan preview/Android; verifikasi Android pada perangkat masih diperlukan.
+
+## Keluar dari air saat idle (preview)
+
+Pada preview dengan animasi aktif, setelah diam lima detik di air player berjalan otomatis ke block kering terdekat yang dapat dicapai dengan aturan rute normal. Hitungan idle yang sudah berlalu disimpan selama perjalanan otomatis dan dilanjutkan saat tiba; gerakan atau pengalihan tujuan oleh pengguna membatalkan kelanjutan hitungan. Jika tidak ada block kering yang dapat dicapai, player tetap di air dan siklus membungkuk tetap berjalan. Reduced motion menonaktifkan perilaku idle otomatis ini. Android kini mencoba rute otomatis yang sama untuk world portable datar yang didukung (format v1–v3); belum diuji dengan build atau perangkat.
+
+Penyesuaian tangan jauh tampak depan: telapak dipindahkan mendekati sisi pinggul, sementara sedikit lengan dan lengan baju di sisi berlawanan terlihat. Sebagian besar lengan jauh tertutup badan/kaki; frame duduk dan lutut tertekuk memakai patch yang sama serta bayangan kontak yang disesuaikan. Transisi masih crossfade dan sambungan tidak menggunakan rig anatomis. Aset Android identik dengan preview, tetapi belum diuji di perangkat.
+
+Koreksi tangan tampak depan: bentuk tambahan di bawah tas dihapus dari frame duduk dan hampir duduk. Pundak dan sebagian lengan jauh tetap terlihat di sisi berlawanan, sementara telapak jauh tertutup kaki/badan pada sudut ini; telapak kedua belum terlihat jelas. Bayangan kontak untuk bentuk tambahan juga dihapus.
+
+Android: rute ke block kering memakai BFS dan aturan rintangan/pagar gameplay yang ada. Setelah tiba, hitungan idle sebelum perjalanan otomatis dilanjutkan; sentuhan pengguna membatalkan kelanjutannya. Jika tidak ada rute, player tetap di air. Reduced motion menonaktifkan perpindahan otomatis. Ini belum menambahkan dukungan world bertingkat v4–v7.
+
+Pemeriksaan aset duduk runtime: sisi depan memperlihatkan tangan dekat yang
+menopang dan sebagian lengan jauh, tetapi tangan jauh tertutup kaki. Karena
+itu jarak kedua titik tumpu tidak dapat dibandingkan dari gambar depan dan
+belum terbukti sama. Pada tampak belakang kedua tangan terlihat, tetapi gambar
+2D tidak memiliki penanda anatomi atau ukuran kedalaman sehingga jarak nyata
+dari masing-masing sisi badan belum dapat dipastikan sama. Belum ada perubahan
+pose pada pemeriksaan ini; aset Android identik dengan aset preview, namun
+tampilan perangkat Android belum diverifikasi.
+
+Pose duduk tampak belakang menggunakan patch tangan kanan dari konsep yang disetujui, disejajarkan ke sprite semula; kepala, badan, kaki, dan tangan kiri tetap pada posisi semula. Bayangan kontak mengikuti telapak baru. Frame hampir duduk tetap menggunakan pose lama dan perubahan memakai crossfade, sehingga transisi dapat menunjukkan bayangan ganda. Aset preview dan Android sama; Android belum diuji pada perangkat.
+
+Preview kini mengikuti perubahan preferensi pengurangan gerakan perangkat tanpa
+perlu memuat ulang halaman: saat preferensi diaktifkan idle berhenti, dan saat
+dimatikan penghitung dimulai lagi. Pemeriksaan browser mencakup world baru lima
+lapisan, peralihan editor ke gameplay, piksel pose yang terlihat, dan gerakan
+serta perubahan preferensi. Pemeriksaan ini tidak membuktikan penyebab animasi
+tidak muncul pada perangkat pengguna; halaman tersembunyi, mode editor, posisi
+air dan preferensi gerakan tetap mempengaruhi idle.

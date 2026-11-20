@@ -1,0 +1,63 @@
+from pathlib import Path
+import xml.etree.ElementTree as ET
+root=Path(__file__).resolve().parent.parent
+ns='{http://schemas.android.com/apk/res/android}'
+layout=ET.parse(root/'app/src/main/res/layout/activity_home.xml').getroot()
+hud=layout.find(".//*[@"+ns+"id='@+id/home_date_hud']")
+assert hud is not None and hud.get(ns+'layout_gravity') == 'top|right'
+assert hud.get(ns+'clickable') == hud.get(ns+'focusable') == 'false'
+assert hud.get(ns+'alpha') == '0.85'
+assert all(node.get(ns+'alpha') is None for node in hud.iter() if node is not hud)
+clocks=hud.findall('.//TextClock');assert len(clocks)==4
+for c in clocks:
+ assert c.get(ns+'timeZone') is None and c.get(ns+'fontFamily')=='@font/press_start_2p'
+assert [c.get(ns+'format24Hour') for c in clocks]==['HH:mm','MM/yy','d','EEE']
+assert [c.get(ns+'format12Hour') for c in clocks]==['HH:mm','MM/yy','d','EEE']
+calendar=hud.find(".//*[@"+ns+"background='@drawable/bg_date_hud_calendar']")
+assert [c.get(ns+'id') for c in calendar.findall('TextClock')]==['@+id/hud_month','@+id/hud_day','@+id/hud_weekday']
+for f in ['bg_date_hud_panel.xml','bg_date_hud_calendar.xml','bg_date_hud_calendar_weekend.xml']: ET.parse(root/'app/src/main/res/drawable'/f)
+activity=(root/'app/src/main/java/dev/retrobit/gtlauncher/HomeActivity.java').read_text()
+# The drawer is an overlay; opening it must not hide the underlying world HUD.
+drawer=activity.split('private void openDrawer()',1)[1].split('private void closeDrawer()',1)[0]
+assert 'drawerScreen.setVisibility(View.VISIBLE)' in drawer
+assert 'homeDateHud.setVisibility(View.GONE)' not in drawer
+print('Android date HUD XML and drawer integration OK (static only)')
+
+assert calendar.get(ns+'layout_width') == '48dp' and calendar.get(ns+'layout_height') == '64dp'
+time=hud.find(".//*[@"+ns+"id='@+id/hud_time']")
+panel=next(el for el in hud.iter() if time in list(el))
+assert panel.get(ns+'layout_width')=='85dp' and panel.get(ns+'layout_height')=='0dp' and panel.get(ns+'layout_weight')=='1'
+assert hud.find(".//*[@"+ns+"id='@+id/hud_season_icon']") is not None
+
+assert clocks[2].get(ns+'layout_marginTop') == clocks[3].get(ns+'layout_marginTop') == '6dp'
+
+assert 'updateSeason(FALLBACK_LATITUDE, FALLBACK_LONGITUDE, true);' in activity
+assert 'updateSeason(currentLatitude, currentLongitude, false);' in activity
+assert '(!fallback && !hasPreciseLocationPermission())' in activity
+assert 'seasonFallback != fallback' in activity
+
+assert hud.get(ns+'scaleX') == hud.get(ns+'scaleY') == '0.75'
+assert hud.get(ns+'transformPivotY') == '0dp'
+assert 'view.setPivotX(right - left);' in activity and 'view.setPivotY(0f);' in activity
+
+assert calendar.get(ns+'id') == '@+id/hud_calendar'
+assert 'updateCalendarHud();' in activity and 'CalendarHud.isWeekend(day)' in activity
+assert 'calendar.setPadding(left, top, right, bottom)' in activity
+for file, color in [('bg_date_hud_calendar.xml','#94BD2B'),('bg_date_hud_calendar_weekend.xml','#C85439')]:
+    layers=ET.parse(root/'app/src/main/res/drawable'/file).getroot()
+    header=list(layers)[1]
+    assert header.get(ns+'left') == header.get(ns+'right') == header.get(ns+'top') == '2dp'
+    assert header.get(ns+'height') == '8dp'
+    assert header.find('shape/solid').get(ns+'color') == color
+
+# Calendar header ends at 2dp + 8dp; the adjacent readout starts there and ends with the calendar.
+stack=next(el for el in hud.iter() if panel in list(el))
+assert stack.get(ns+'layout_marginTop') == '10dp' and stack.get(ns+'layout_height') == '54dp'
+assert stack.get(ns+'background') == '@drawable/bg_clean_hud_frame'
+assert (root/'app/src/main/res/drawable-xhdpi/date_hud_frame.9.png').exists()
+for filename in ['bg_date_hud_calendar.xml','bg_date_hud_calendar_weekend.xml']:
+ assert list(ET.parse(root/'app/src/main/res/drawable'/filename).getroot())[0].get(ns+'drawable') == '@drawable/bg_clean_hud_frame'
+
+left=layout.find(".//*[@"+ns+"id='@+id/home_character_hud']")
+assert float(calendar.get(ns+'layout_height').removesuffix('dp')) * float(hud.get(ns+'scaleY')) == float(left.find('ImageView').get(ns+'layout_height').removesuffix('dp'))
+assert left.get(ns+'layout_marginTop') == hud.get(ns+'layout_marginTop')

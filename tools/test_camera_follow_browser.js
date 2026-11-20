@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict'),{chromium}=require('playwright-core');
+(async()=>{const b=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader']});
+try {const p=await b.newPage({viewport:{width:1000,height:700},reducedMotion:'no-preference'}),errors=[];p.on('pageerror',e=>errors.push(e.message));
+await p.addInitScript(()=>localStorage.setItem('gtlauncher.worlds.v1',JSON.stringify({activeId:'walk',worlds:[{id:'walk',name:'Walk',description:'',color:'#a8c795',gridSize:50,tiles:Array(2500).fill(1),showCharacter:true,characterColumn:24,characterRow:24,characterScale:1,characterFacing:'S',house:null}]})));
+await p.goto(process.env.PREVIEW_URL||'http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});await p.waitForFunction(()=>window.sceneEditing&&window.worldManager);
+const before=await p.evaluate(()=>sceneEditing.camera());
+const point=await p.evaluate(()=>{const tile=sceneEditing.centre({column:26,row:24}),c=sceneEditing.camera(),r=document.querySelector('#sky-canvas').getBoundingClientRect();return {x:r.left+(160+(tile.x-160)*c.renderZoom+c.panX)*r.width/320,y:r.top+(182+(tile.y-182)*c.renderZoom+c.panY)*r.height/200}});
+assert.equal(await p.evaluate(({x,y})=>document.elementFromPoint(x,y)?.id,point),'sky-canvas');await p.mouse.click(point.x,point.y);
+await p.locator('[data-dock="hoe"]').click();assert.equal(await p.locator('[data-dock="hoe"]').getAttribute('aria-pressed'),'true','tool changes while walking');
+await p.waitForFunction(()=>worldManager.getCharacter().column===26,null,{timeout:15000});
+await p.waitForFunction(start=>sceneEditing.camera().panX<start.panX-1,before,{timeout:5000});
+const camera=await p.evaluate(()=>sceneEditing.camera());assert(camera.panX<before.panX);assert.deepEqual(errors,[]);console.log('Browser animated walk, tool switch and camera follow: OK');
+}finally{await b.close()}})().catch(e=>{console.error(e);process.exitCode=1});

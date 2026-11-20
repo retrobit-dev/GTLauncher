@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#e2e4e1">
+  <title>GTLauncher — Live Weather Preview</title>
+  <link rel="stylesheet" href="./styles.css?v=road-v30-1">
+  <script src="./vendor/qrcode.js" defer></script>
+  <script src="./fence-edges.js?v=1" defer></script>
+  <script src="./sky-blend.js?v=1" defer></script>
+  <script src="./water-flow.js?v=1" defer></script>
+  <script src="./bridge-geometry.js?v=bridge-redesign-34" defer></script>
+  <script src="./ramp-geometry.js?v=4" defer></script>
+  <script src="./base-terrain.js?v=4" defer></script>
+  <script src="./grid-regions.js?v=1" defer></script>
+  <script src="./world-view-rotation.js?v=river-direction-1" defer></script>
+  <script src="./road-surface.js?v=road-corners-wall-1" defer></script>
+  <script src="./worlds.js?v=river-direction-1" defer></script>
+  <script src="./object-editor.js?v=river-direction-1" defer></script>
+  <script src="./pond-life.js?v=1" defer></script>
+  <script src="./house-geometry.js?v=2" defer></script>
+  <script src="./orange-tree-motion.js?v=2" defer></script>
+  <script src="./orange-drops.js?v=3" defer></script>
+  <script src="./bush-harvest.js?v=1" defer></script>
+  <script src="./grass-clusters.js?v=1" defer></script>
+  <script src="./celestial-geometry.js?v=1" defer></script>
+  <script src="./cloud-layout.js?v=5" defer></script>
+  <script src="./tree-shadow.js?v=2" defer></script>
+  <script src="./house-shadow.js?v=3" defer></script>
+  <script src="./fence-shadow.js?v=2" defer></script>
+  <script src="./fence-mesh.js?v=road-corners-wall-1" defer></script>
+  <script src="./fence-joins.js?v=2" defer></script>
+  <script src="./player-idle-bow.js?v=8" defer></script>
+  <script src="./sparrow-pet.js?v=6" defer></script>
+  <script src="./app.js?v=road-corners-wall-1" defer></script>
+  <script src="./preview-modes.js?v=2" defer></script>
+  <script src="./editor-camera.js?v=10" defer></script>
+  <script src="./terrain-tools.js?v=floating-blocks-1" defer></script>
+  <script src="./gameplay-path.js?v=road-v30-1" defer></script>
+  <script src="./jump-motion.js?v=2" defer></script>
+  <script src="./gameplay-movement.js?v=sloped-4" defer></script>
+  <script src="./season-estimate.js?v=1" defer></script>
+  <script src="./hud.js?v=9" defer></script>
+</head>
+<body>
+  <main class="preview-stage" aria-label="Pratinjau GTLauncher">
+    <div class="world-topbar"><nav class="mode-tabs" aria-label="Mode preview"><button id="mode-gameplay" type="button" aria-pressed="true">Gameplay</button><button id="mode-map-editor" type="button" aria-pressed="false">Map Editor</button></nav><button id="world-button" class="weather-cycle-button world-button" type="button" aria-haspopup="dialog" aria-controls="world-dialog" aria-label="World" title="World"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-3 3-3 15 0 18M12 3c3 3 3 15 0 18"/></svg></button><span id="active-world-label" class="active-world-label" aria-live="polite">World: Base World</span></div>
+    <div class="device-wrap"><nav class="history-controls editor-top-tools" aria-label="Alat objek dan riwayat editor"><button id="object-tool-select" type="button" aria-label="Pilih objek" title="Pilih objek" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l13 10-6 1-3 6z"/></svg></button>
+          <button id="object-tool-move" type="button" aria-label="Pindahkan objek" title="Pindahkan objek" aria-pressed="false" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></button><div id="rotate-controls" class="object-rotate-controls" aria-label="Putar arah objek">
+            <button id="rotate-left" type="button" aria-label="Putar objek ke kiri" title="Putar objek ke kiri">↶</button>
+            <span id="rotate-direction" class="visually-hidden" aria-live="polite">Selatan</span>
+            <button id="rotate-right" type="button" aria-label="Putar objek ke kanan" title="Putar objek ke kanan">↷</button>
+          </div><button id="object-tool-delete" type="button" aria-label="Hapus objek" title="Hapus objek" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 4h6M6 7l1 13h10l1-13M10 10v7m4-7v7"/></svg></button><button id="object-placement-cancel" type="button" aria-label="Batal penempatan objek" title="Batal penempatan objek" hidden>×</button></nav><nav class="history-controls editor-top-tools editor-upper-left" aria-label="Sudut pandang dan tampilan objek">
+          <button id="editor-tilt-up" type="button" aria-label="Miringkan pandangan ke atas" title="Miringkan pandangan ke atas"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 15l7-7 7 7M12 8v12"/></svg></button>
+          <button id="editor-tilt-default" type="button" aria-label="Kembalikan kemiringan default" title="Kembalikan kemiringan default"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/></svg></button>
+          <button id="editor-tilt-down" type="button" aria-label="Miringkan pandangan ke bawah" title="Miringkan pandangan ke bawah"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9l7 7 7-7M12 16V4"/></svg></button>
+          <output id="editor-tilt-value" class="visually-hidden" aria-live="polite">25°</output>
+          <button id="editor-objects-toggle" type="button" aria-label="Sembunyikan objek" title="Sembunyikan objek" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path class="objects-hidden-mark" d="M4 4l16 16"/></svg></button>
+        </nav><div class="device-frame" aria-label="Huawei MatePad Mini dalam orientasi lanskap">
+      <div class="device-display" aria-label="Homescreen GTLauncher dengan langit dan pulau terapung pixel art yang mengikuti cuaca">
+        <canvas id="sky-canvas" class="sky-canvas" aria-label="Langit pixel art dan pulau terapung dengan pencahayaan adaptif serta efek cuaca"></canvas>
+        <div id="editor-pan-surface" class="editor-pan-surface" hidden aria-label="Seret untuk menggeser peta"></div>
+        <nav class="island-turn-controls" aria-label="Rotasi pulau"><button id="island-turn-left" type="button" aria-label="Putar pulau 90 derajat ke kanan" title="Putar pulau ke kanan"><img src="assets/ui/island-turn-left-white.png" alt=""></button><button id="island-turn-right" type="button" aria-label="Putar pulau 90 derajat ke kiri" title="Putar pulau ke kiri"><img src="assets/ui/island-turn-left-white.png" alt=""></button><span id="island-turn-status" class="visually-hidden" aria-live="polite"></span></nav>
+        <span class="camera-punch-hole" aria-hidden="true"></span>
+
+        <section class="character-hud" aria-label="Status karakter sementara">
+          <div class="character-hud-portrait"><img src="assets/character-hud-current.png?v=1" alt="Potret karakter"></div>
+          <div class="character-hud-stats character-hud-vitals" role="group" aria-label="Status karakter sementara">
+            <div role="img" aria-label="Health: 100 dari 100, nilai sementara"><img class="stat-icon" src="assets/hud/status-health.png" alt=""><span class="stat-bar health" aria-hidden="true"></span></div>
+            <div role="img" aria-label="Stamina: 100 dari 100, nilai sementara"><img class="stat-icon" src="assets/hud/status-stamina.png" alt=""><span class="stat-bar stamina" aria-hidden="true"></span></div>
+            <div role="img" aria-label="Makanan: 100 dari 100, nilai sementara"><img class="stat-icon" src="assets/hud/status-food.png" alt=""><span class="stat-bar food" aria-hidden="true"></span></div>
+          </div>
+        </section>
+        <section class="clock-hud" aria-label="Waktu, musim dan baterai">
+          <div class="clock-readouts"><span id="hud-season" class="visually-hidden">Musim kemarau (default; data musim belum tersedia)</span><div class="hud-panel time-panel"><img id="hud-phase" src="assets/hud-day.svg" alt="Siang"><time id="hud-clock">--:--</time></div>
+          <div class="hud-panel battery-panel"><svg id="hud-battery-icon" class="hud-battery-icon" viewBox="0 0 16 16" aria-hidden="true"><path fill="#6B4B27" d="M5 1h6v2h2v12H3V3h2z"/><path fill="#F5E1B0" d="M5 4h6v9H5z"/><path id="hud-battery-mark" fill="#8B8979" d="M6 5h4v2H8v2H7V7h2V6H6zm1 5h1v2H7z"/></svg><span id="hud-battery" aria-label="Status baterai tidak tersedia">--.--</span></div></div>
+          <div class="hud-calendar"><span id="hud-month">--/--</span><strong id="hud-day">--</strong><span id="hud-weekday">---</span></div>
+        </section>
+        <div class="home-dock-shell"><div class="dock-tabs"><button type="button" class="dock-tab selected" data-dock="tools" aria-current="page" aria-label="Tools" title="Tools">Tools</button><button type="button" class="dock-tab" data-dock="add" aria-label="Tambah tab dock" title="Tambah tab dock">+</button></div>
+        <nav class="home-dock" aria-label="Dock launcher">
+          <button type="button" data-dock="hand" aria-label="Tangan — bergerak dan berinteraksi" title="Tangan — bergerak dan berinteraksi" aria-pressed="false"><img src="assets/hud/tools/glove-selected.png?v=2" alt=""></button>
+          <button type="button" data-dock="hoe" aria-label="Cangkul — tanah pertanian belum tersedia" title="Cangkul — tanah pertanian belum tersedia" aria-pressed="false"><img src="assets/hud/tools/hoe-selected.png?v=2" alt=""></button>
+          <button type="button" data-dock="shovel" aria-pressed="false" aria-label="Sekop — belum tersedia" title="Sekop — belum tersedia"><img src="assets/hud/tools/shovel-selected.png?v=2" alt=""></button>
+          <button type="button" data-dock="water" aria-pressed="false" aria-label="Penyiram — belum tersedia" title="Penyiram — belum tersedia"><img src="assets/hud/tools/water-selected.png?v=2" alt=""></button>
+          <button type="button" data-dock="sickle" aria-pressed="false" aria-label="Sabit — belum tersedia" title="Sabit — belum tersedia"><img src="assets/hud/tools/sickle-selected.png?v=3" alt=""></button>
+          <button type="button" data-dock="axe" aria-pressed="false" aria-label="Kapak — belum tersedia" title="Kapak — belum tersedia"><img src="assets/hud/tools/axe-selected.png?v=2" alt=""></button>
+          <button type="button" data-dock="pickaxe" aria-pressed="false" aria-label="Beliung — belum tersedia" title="Beliung — belum tersedia"><img src="assets/hud/tools/pickaxe-selected.png?v=2" alt=""></button>
+          <button type="button" data-dock="fishing" aria-pressed="false" aria-label="Pancing — belum tersedia" title="Pancing — belum tersedia"><img src="assets/hud/tools/fishing-selected.png?v=1" alt=""></button>
+          <button type="button" data-dock="phone" aria-label="Aplikasi" title="Aplikasi"><img src="assets/hud/dock_phone.png" alt=""></button>
+          <button type="button" data-dock="bag" aria-label="Tas" title="Tas"><img src="assets/hud/dock_bag.png?v=2" alt=""></button>
+          <button type="button" data-dock="settings" aria-label="Pengaturan" title="Pengaturan"><img src="assets/hud/dock_settings.png?v=2" alt=""></button>
+        </nav></div>
+      </div>
+    </div>
+        <nav class="editor-camera-controls" aria-label="Kamera editor khusus preview">
+          <button id="editor-pan" type="button" aria-label="Geser peta" title="Geser peta: aktifkan lalu seret layar" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg></button>
+          <button id="editor-zoom-in" type="button" aria-label="Perbesar peta" title="Perbesar">+</button><output id="editor-zoom-value" aria-live="polite">5</output><button id="editor-zoom-out" type="button" aria-label="Perkecil peta" title="Perkecil">−</button>
+          <button id="editor-fit" type="button" aria-label="Atur ulang kamera" title="Atur ulang kamera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
+<button id="object-undo" class="world-secondary object-history-button" type="button" disabled aria-label="Urungkan perubahan editor" title="Undo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4M10 6l-6 6 6 6"/></svg></button><button id="object-redo" class="world-secondary object-history-button" type="button" disabled aria-label="Ulangi perubahan editor" title="Redo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M14 6l6 6-6 6"/></svg></button>
+
+        </nav>
+    <div class="editor-right-controls">
+      <button id="object-library-button" class="weather-cycle-button" type="button" aria-haspopup="dialog" aria-controls="object-library-dialog" aria-label="Objek" title="Objek"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 4 8-4M12 11v10"/></svg></button>
+    <nav class="terrain-tools" aria-label="Alat block preview">
+      <button id="terrain-draw" type="button" aria-label="Ganti block" title="Ganti block yang sudah ada" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 17 10-10 3 3-10 10-4 1zM13 8l3-3 3 3-3 3"/></svg></button>
+      <button id="terrain-add" type="button" aria-label="Tambah block" title="Tambah block di atas atau pada sel kosong" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8l7-4 7 4-7 4-7-4zM3 8v8l7 4 7-4v-4M10 12v8M19 3v8M15 7h8"/></svg></button>
+      <button id="terrain-erase" type="button" aria-label="Hapus block" title="Hapus block" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15 14 5l6 6-9 9H7zM7 20h13M7 12l5 5"/></svg></button>
+      <button id="terrain-pick" type="button" aria-label="Ambil jenis block" title="Ambil jenis block" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 17 9-9M13 6l5 5m-1-8 4 4-3 3-4-4zM7 17l-3 4 4-1 2-2"/></svg></button>
+      <button id="terrain-fill" type="button" aria-label="Isi area block" title="Isi area block" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13 12 5l8 8-8 7zM8 9l8 8M14 4 9 2M20 18v3"/></svg></button>
+      <button id="terrain-ramp" type="button" aria-label="Ramp" title="Tempatkan atau hapus ramp" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 14 5l7 4v9l-7 3-11-4zM3 17l11-1 7-7M14 16v5"/></svg></button>
+      <div id="terrain-ramp-rotate" class="object-rotate-controls" hidden><button id="ramp-rotate-left" type="button" aria-label="Putar ramp ke kiri" title="Putar ramp ke kiri">↶</button><button id="ramp-rotate-right" type="button" aria-label="Putar ramp ke kanan" title="Putar ramp ke kanan">↷</button><button id="ramp-remove" type="button" aria-label="Hapus ramp terpilih" title="Hapus ramp terpilih">×</button></div>
+      <select id="terrain-ramp-direction" aria-label="Arah naik ramp" hidden><option value="N">Utara ↑</option><option value="E">Timur →</option><option value="S">Selatan ↓</option><option value="W">Barat ←</option></select>
+      <div class="block-picker" id="block-picker">
+        <span class="block-picker-label visually-hidden" id="block-picker-label">Block</span>
+        <select id="terrain-material" aria-label="Jenis block" hidden><option value="1">Rumput</option><option value="2">Tanah</option><option value="3">Air</option><option value="4">Batu</option><option value="5">Pasir</option><option value="6">Tanah garapan</option><option value="7">Tanah atas rumput</option><option value="8">Batu atas rumput</option><option value="9">Pasir atas rumput</option><option value="10">Tanah garapan atas rumput</option></select>
+        <button id="block-picker-trigger" class="block-picker-trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="block-picker-list" aria-labelledby="block-picker-label block-picker-value">
+          <span class="block-picker-icon"><img class="block-preview" id="grass-block-preview" src="assets/hud/grass-block.png" alt="" width="32" height="32"><img class="block-preview" id="dirt-block-preview" src="assets/hud/dirt-block.png" alt="" width="32" height="32" hidden><img class="block-preview" id="water-block-preview" src="assets/hud/water-block.png" alt="" width="32" height="32" hidden><img class="block-preview" id="stone-block-preview" src="assets/hud/stone-block.png" alt="" width="32" height="32" hidden><img class="block-preview" id="sand-block-preview" src="assets/hud/sand-block.svg" alt="" width="32" height="32" hidden><img class="block-preview" id="block-preview-6" src="assets/hud/tilled-block.svg?v=2" alt="" width="32" height="32" hidden><img class="block-preview" id="block-preview-7" src="assets/hud/grass-top-dirt.svg" alt="" width="32" height="32" hidden><img class="block-preview" id="block-preview-8" src="assets/hud/grass-top-stone.svg" alt="" width="32" height="32" hidden><img class="block-preview" id="block-preview-9" src="assets/hud/grass-top-sand.svg" alt="" width="32" height="32" hidden><img class="block-preview" id="block-preview-10" src="assets/hud/grass-top-tilled.svg?v=2" alt="" width="32" height="32" hidden></span>
+          <span id="block-picker-value" class="visually-hidden">Rumput</span>
+        </button>
+        <div id="block-picker-list" class="block-picker-list" role="listbox" aria-label="Jenis block" hidden>
+          <button type="button" role="option" class="block-picker-option" data-block-value="1" title="Rumput" aria-selected="true"><img src="assets/hud/grass-block.png" alt=""><span class="visually-hidden">Rumput</span></button>
+          <button type="button" role="option" class="block-picker-option" data-block-value="2" title="Tanah" aria-selected="false"><img src="assets/hud/dirt-block.png" alt=""><span class="visually-hidden">Tanah</span></button>
+          <button type="button" role="option" class="block-picker-option" data-block-value="3" title="Air" aria-selected="false"><img src="assets/hud/water-block.png" alt=""><span class="visually-hidden">Air</span></button>
+          <button type="button" role="option" class="block-picker-option" data-block-value="4" title="Batu" aria-selected="false"><img src="assets/hud/stone-block.png" alt=""><span class="visually-hidden">Batu</span></button>
+          <button type="button" role="option" class="block-picker-option" data-block-value="5" title="Pasir" aria-selected="false"><img src="assets/hud/sand-block.svg" alt=""><span class="visually-hidden">Pasir</span></button>
+          <button type="button" role="option" class="block-picker-option" data-block-value="6" title="Tanah garapan" aria-selected="false"><img src="assets/hud/tilled-block.svg?v=2" alt=""><span class="visually-hidden">Tanah garapan</span></button>
+          <button type="button" role="option" class="block-picker-option" data-block-value="7" title="Tanah atas rumput" aria-selected="false"><img src="assets/hud/grass-top-dirt.svg" alt=""><span class="visually-hidden">Tanah atas rumput</span></button>
+          <button type="button" role="option" class="block-picker-option" data-block-value="8" title="Batu atas rumput" aria-selected="false"><img src="assets/hud/grass-top-stone.svg" alt=""><span class="visually-hidden">Batu atas rumput</span></button>
+          <button type="button" role="option" class="block-picker-option" data-block-value="9" title="Pasir atas rumput" aria-selected="false"><img src="assets/hud/grass-top-sand.svg" alt=""><span class="visually-hidden">Pasir atas rumput</span></button>
+          <button type="button" role="option" class="block-picker-option" data-block-value="10" title="Tanah garapan atas rumput" aria-selected="false"><img src="assets/hud/grass-top-tilled.svg?v=2" alt=""><span class="visually-hidden">Tanah garapan atas rumput</span></button>
+        </div>
+      </div>
+      <span id="terrain-status" role="status" aria-live="polite"></span>
+    </nav>
+
+    </div></div>
+    <p id="gameplay-movement-status" class="movement-status" role="status" aria-live="polite" hidden></p>
+    <section class="preview-controls" aria-label="Kontrol suasana preview">
+      <div class="weather-preview-control"><button id="weather-cycle-button" class="weather-cycle-button" type="button" aria-label="Ganti suasana preview">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>
+      </button><button id="weather-refresh-button" class="weather-cycle-button" type="button" disabled aria-label="Perbarui cuaca live" title="Perbarui cuaca live">↻</button></div>
+      <button id="object-edit-button" class="weather-cycle-button object-edit-button internal-edit-toggle" type="button" aria-pressed="false">Edit</button>
+      <label id="house-transparency-control" class="house-transparency-control" hidden><span id="transparency-label">Transparansi objek</span> <input id="house-transparency" type="range" min="0" max="90" step="5" value="0" aria-label="Transparansi objek terpilih"><output id="house-transparency-value">0%</output></label>
+      <span id="edit-status" class="edit-status" role="status" aria-live="polite" hidden></span>
+      <button id="object-select-button" class="world-secondary icon-action" type="button" aria-label="Pilih karakter" title="Pilih karakter" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M5 20c0-4 3-7 7-7s7 3 7 7z"/></svg></button>
+      <button id="object-select-house" class="world-secondary icon-action" type="button" aria-label="Pilih rumah" title="Pilih rumah" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 3l9 8M5 10v10h14V10M10 20v-6h4v6"/></svg></button>
+      <button id="object-details-button" class="world-secondary icon-action" type="button" aria-haspopup="dialog" aria-controls="object-dialog" aria-label="Pengaturan objek" title="Pengaturan objek" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6m8 4v6"/><circle cx="8" cy="7" r="2"/><circle cx="16" cy="17" r="2"/></svg></button>
+    </section>
+    <p id="weather-mode-label" class="weather-mode-label" aria-live="polite">Suasana: Live · Open-Meteo</p>
+  </main>
+  <dialog id="hand-object-dialog" class="world-dialog" aria-labelledby="hand-object-title">
+    <div class="world-header"><h2 id="hand-object-title">Rumah dipilih</h2><button type="button" id="hand-object-close" class="world-close" aria-label="Batal">×</button></div>
+    <div class="world-content"><p>Rumah tidak bisa diambil ke tas. Pilih Pindahkan, lalu ketuk tile untuk sudut kiri atas tapak 3×3.</p>
+      <div class="world-form-actions"><button type="button" id="hand-object-take" class="world-secondary" disabled>Ambil</button><button type="button" id="hand-object-move" class="world-primary">Pindahkan</button><button type="button" id="hand-object-cancel" class="world-secondary">Batal</button></div></div>
+  </dialog>
+  <dialog id="dock-dialog" class="world-dialog" aria-labelledby="dock-dialog-title"><div class="world-header"><h2 id="dock-dialog-title">Dock</h2><button type="button" id="dock-close" class="world-close" aria-label="Tutup">×</button></div><p id="dock-message" class="world-content"></p></dialog>
+  <dialog id="world-dialog" class="world-dialog" aria-labelledby="world-dialog-title">
+    <div class="world-header">
+      <div><p class="world-eyebrow">GTLAUNCHER</p><h2 id="world-dialog-title">World</h2><p class="world-subtitle">Buat world dari Base World dan pilih yang ingin ditampilkan.</p></div>
+      <button id="world-close" class="world-close" type="button" aria-label="Tutup">×</button>
+    </div>
+    <div class="world-content">
+      <section aria-labelledby="world-list-title">
+        <div class="world-list-heading"><h3 id="world-list-title">Pilihan world</h3><button id="world-new" class="world-primary" type="button">+ World baru</button></div>
+        <div class="world-import-controls"><label class="world-secondary world-import-label" for="world-import-file">Impor JSON</label><input id="world-import-file" type="file" accept=".json,application/json,text/plain"></div>
+        <div id="world-import-confirm" class="world-import-confirm" hidden><p id="world-import-prompt"></p><button id="world-import-replace" class="world-primary" type="button">Ganti world</button> <button id="world-import-cancel" class="world-secondary" type="button">Batal</button></div>
+        <button id="world-create-home" class="world-secondary world-create-home" type="button" hidden>Buat Home baru</button>
+        <p class="world-help">Base World adalah contoh terkunci; buat world baru untuk mengubah objek. Gunakan ↑ dan ↓ untuk mengurutkan world buatan.</p>
+        <p id="world-feature-limits" class="world-help">Editor tile dan terrain hanya tersedia di preview. Ekspor JSON world 20×20 atau 25×25 dapat diimpor pada Android versi terbaru. Data browser dan Android tersimpan terpisah.</p>
+        <div id="world-list" class="world-list"></div>
+        <p id="world-storage-info" class="world-help" aria-live="polite"></p>
+      </section>
+      <section id="world-editor" class="world-editor" hidden aria-labelledby="world-editor-title">
+        <h3 id="world-editor-title">World baru</h3>
+        <form id="world-form">
+          <label for="world-name">Nama world</label>
+          <input id="world-name" name="name" type="text" maxlength="48" required autocomplete="off" placeholder="Contoh: Pulau Kebun">
+          <label for="world-description">Fungsi atau catatan <span>(opsional)</span></label>
+          <textarea id="world-description" name="description" maxlength="160" rows="2" placeholder="Untuk apa world ini digunakan?"></textarea>
+          <label for="world-color">Warna pulau</label>
+          <div class="world-color-row"><input id="world-color" name="color" type="color" value="#a8c795"><span>Diwarnai di atas palet Base World.</span></div>
+          <label class="world-character-option"><input id="world-character" type="checkbox"> Tampilkan karakter utama</label>
+          <div class="world-form-actions"><button class="world-primary" type="submit">Simpan</button><button id="world-cancel" class="world-secondary" type="button">Batal</button></div>
+        </form>
+      </section>
+    </div>
+    <section id="world-export-result" class="world-export-result" aria-labelledby="world-export-title" hidden>
+      <h3 id="world-export-title">Hasil ekspor</h3>
+      <img id="world-export-qr" alt="Kode QR berisi data world yang diekspor" hidden>
+      <p id="world-export-help"></p>
+      <a id="world-export-download" class="world-primary world-export-download">Unduh file</a>
+      <button id="world-export-save" class="world-secondary" type="button" hidden>Simpan JSON ke perangkat</button>
+      <button id="world-export-share" class="world-secondary" type="button" hidden>Bagikan file JSON</button>
+      <p id="world-export-file-status" role="status" aria-live="polite"></p>
+      <div id="world-export-text-section" class="world-export-text" hidden>
+        <label for="world-export-json">Isi JSON (dapat dipilih dan disalin)</label>
+        <textarea id="world-export-json" rows="8" readonly spellcheck="false"></textarea>
+        <button id="world-export-copy" class="world-secondary" type="button">Salin JSON</button>
+        <p id="world-export-copy-status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+    <p id="world-message" class="world-message" role="status" aria-live="polite"></p><button id="world-backup" class="world-secondary world-backup" type="button" hidden>Unduh cadangan data asli</button><button id="world-backup-height" class="world-secondary world-backup" type="button" hidden>Unduh cadangan sebelum lima block</button><button id="world-backup-bridge" class="world-secondary world-backup" type="button" hidden>Unduh cadangan sebelum reset jembatan</button><button id="world-backup-home" class="world-secondary world-backup" type="button" hidden>Unduh cadangan Home sebelum 25×25</button>
+  </dialog>
+  <dialog id="object-library-dialog" class="world-dialog" aria-labelledby="object-library-title">
+    <div class="world-header"><div><p class="world-eyebrow">WORLD AKTIF</p><h2 id="object-library-title">Objek</h2><p id="object-library-world" class="world-subtitle"></p></div><button id="object-library-close" class="world-close" type="button" aria-label="Tutup">×</button></div>
+    <div class="world-content"><section class="object-catalog" aria-labelledby="object-catalog-title">
+      <h3 id="object-catalog-title">Katalog objek</h3>
+      <p class="world-help catalog-intro">Pilih objek, lalu ketuk tile pada peta untuk menempatkannya.</p>
+      <p id="catalog-replace-status" class="world-help" role="status" hidden></p><button id="catalog-replace-cancel" class="world-secondary" type="button" hidden>Batal ganti</button>
+      <div class="catalog-tabs" role="tablist" aria-label="Jenis objek">
+        <button id="catalog-tab-buildings" type="button" role="tab" aria-controls="catalog-panel-buildings" aria-selected="true" tabindex="0">Bangunan</button>
+        <button id="catalog-tab-plants" type="button" role="tab" aria-controls="catalog-panel-plants" aria-selected="false" tabindex="-1">Tanaman dan pohon</button>
+        <button id="catalog-tab-roads" type="button" role="tab" aria-controls="catalog-panel-roads" aria-selected="false" tabindex="-1">Jalan</button>
+      </div>
+      <section id="catalog-panel-buildings" class="catalog-group" role="tabpanel" aria-labelledby="catalog-tab-buildings">
+        <h4 id="catalog-buildings-title">Bangunan</h4>
+        <div class="catalog-grid">
+          <button id="catalog-place-bridge-wood" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-redesign-wood.svg" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">3×1 block</span></button>
+          <button id="catalog-place-bridge-wood-4" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-redesign-wood.svg" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">4×1 block</span></button>
+          <button id="catalog-place-bridge-wood-5" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-redesign-wood.svg" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">5×1 block</span></button>
+          <button id="catalog-place-bridge-stone" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-redesign-stone.svg" alt=""></span><strong>Jembatan batu</strong><span class="catalog-footprint">3×1 block</span></button>
+          <button id="catalog-place-bridge-stone-4" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-redesign-stone.svg" alt=""></span><strong>Jembatan batu</strong><span class="catalog-footprint">4×1 block</span></button>
+          <button id="catalog-place-bridge-stone-5" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-redesign-stone.svg" alt=""></span><strong>Jembatan batu</strong><span class="catalog-footprint">5×1 block</span></button>
+          <button id="catalog-place-fence-wood" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/fence-mesh-wood.png?v=1" alt=""></span><strong>Pagar kayu</strong><span class="catalog-footprint">Sisi tile</span></button>
+          <button id="catalog-place-fence-stone" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/fence-mesh-stone.png?v=1" alt=""></span><strong>Pagar batu</strong><span class="catalog-footprint">Sisi tile</span></button>
+          <button id="catalog-place-house" type="button" class="catalog-tile" aria-label="Tempatkan rumah player, tapak 3 kali 3" aria-describedby="catalog-house-status">
+            <span class="catalog-art"><img src="assets/simple-house-aligned.png?v=1" alt=""></span><strong>Rumah player</strong><span class="catalog-footprint">Tapak 3×3</span>
+          </button>
+        </div>
+        <p id="catalog-house-status" class="world-help catalog-status" role="status"></p>
+      </section>
+      <section id="catalog-panel-plants" class="catalog-group" role="tabpanel" aria-labelledby="catalog-tab-plants" hidden>
+        <h4 id="catalog-trees-title">Tanaman dan pohon</h4>
+        <div class="catalog-grid">
+          <button id="catalog-place-orange" type="button" class="catalog-tile" aria-label="Tempatkan pohon jeruk, tapak 2 kali 2">
+            <span class="catalog-art"><img src="assets/orange-tree-pixel.png?v=1" alt=""></span><strong>Pohon jeruk</strong><span class="catalog-footprint">Tapak 2×2</span>
+          </button>
+          <button id="catalog-place-conifer" type="button" class="catalog-tile" aria-label="Tempatkan pohon cemara laut, tapak 2 kali 2">
+            <span class="catalog-art"><img src="assets/cemara-laut-redesign.png?v=1" alt=""></span><strong>Pohon cemara laut</strong><span class="catalog-footprint">Tapak 2×2</span>
+          </button>
+          <button id="catalog-place-conifer-small" type="button" class="catalog-tile" aria-label="Tempatkan pohon cemara laut, tapak 1 kali 1">
+            <span class="catalog-art"><img src="assets/cemara-laut-redesign.png?v=1" alt=""></span><strong>Pohon cemara laut</strong><span class="catalog-footprint">Tapak 1×1</span>
+          </button>
+          <button id="catalog-place-bush" type="button" class="catalog-tile" aria-label="Tempatkan semak, tapak 1 kali 1">
+            <span class="catalog-art"><img src="assets/bush-selected.png?v=1" alt=""></span><strong>Semak</strong><span class="catalog-footprint">Tapak 1×1</span>
+          </button>
+          <button id="catalog-place-bush-large" type="button" class="catalog-tile" aria-label="Tempatkan semak, tapak 2 kali 2">
+            <span class="catalog-art"><img src="assets/bush-selected.png?v=1" alt=""></span><strong>Semak</strong><span class="catalog-footprint">Tapak 2×2</span>
+          </button>
+          <button id="catalog-place-bush-flower" type="button" class="catalog-tile" aria-label="Tempatkan semak melati, tapak 1 kali 1">
+            <span class="catalog-art"><img src="assets/bush-jasmine.png?v=1" alt=""></span><strong>Semak melati</strong><span class="catalog-footprint">Tapak 1×1</span>
+          </button>
+          <button id="catalog-place-bush-flower-large" type="button" class="catalog-tile" aria-label="Tempatkan semak melati, tapak 2 kali 2">
+            <span class="catalog-art"><img src="assets/bush-jasmine.png?v=1" alt=""></span><strong>Semak melati</strong><span class="catalog-footprint">Tapak 2×2</span>
+          </button>
+          <button id="catalog-place-bush-berry" type="button" class="catalog-tile" aria-label="Tempatkan semak murbei, tapak 1 kali 1">
+            <span class="catalog-art"><img src="assets/bush-mulberry.png?v=1" alt=""></span><strong>Semak murbei</strong><span class="catalog-footprint">Tapak 1×1</span>
+          </button>
+          <button id="catalog-place-bush-berry-large" type="button" class="catalog-tile" aria-label="Tempatkan semak murbei, tapak 2 kali 2">
+            <span class="catalog-art"><img src="assets/bush-mulberry.png?v=1" alt=""></span><strong>Semak murbei</strong><span class="catalog-footprint">Tapak 2×2</span>
+          </button>
+          <button id="catalog-place-wild-grass" type="button" class="catalog-tile" aria-label="Tempatkan rumput liar, tapak 1 kali 1">
+            <span class="catalog-art"><img src="assets/wild-grass-selected.png?v=3" alt=""></span><strong>Rumput liar</strong><span class="catalog-footprint">Tapak 1×1</span>
+          </button>
+        </div>
+      </section>
+      <section id="catalog-panel-roads" class="catalog-group" role="tabpanel" aria-labelledby="catalog-tab-roads" hidden>
+        <h4>Jalan</h4>
+        <div class="catalog-grid">
+          <button id="catalog-place-road-dirt" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-dirt" aria-hidden="true"></span><strong>Jalan tanah</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-stone" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-stone" aria-hidden="true"></span><strong>Jalan batu</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-sand" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-sand" aria-hidden="true"></span><strong>Jalan pasir</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-paving" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-paving" aria-hidden="true"></span><strong>Jalan paving</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-asphalt" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-asphalt" aria-hidden="true"></span><strong>Jalan aspal</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-water" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-water" aria-hidden="true"></span><strong>Sungai</strong><span class="catalog-footprint">1×1 tile</span></button>
+        </div>
+      </section>
+      <section class="catalog-placed" aria-labelledby="catalog-placed-title"><h3 id="catalog-placed-title">Objek di world ini</h3><div class="catalog-bulk"><span id="catalog-selection-count">0 dipilih</span><button id="catalog-bulk-replace" class="world-secondary" type="button" disabled>Ganti terpilih</button><button id="catalog-bulk-delete" class="world-secondary" type="button" disabled>Hapus terpilih</button></div><div id="object-library-list" class="world-list"></div></section>
+      <p class="world-help">Katalog objek lain dan salinan belum tersedia.</p>
+    </section></div>
+  </dialog>
+  <dialog id="object-dialog" class="world-dialog" aria-labelledby="object-dialog-title">
+    <div class="world-header"><div><p class="world-eyebrow">WORLD AKTIF</p><h2 id="object-dialog-title">Edit objek</h2><p id="object-world-name" class="world-subtitle"></p></div><button id="object-close" class="world-close" type="button" aria-label="Tutup">×</button></div>
+    <div class="world-content"><section class="world-editor"><h3 id="object-kind-title">Karakter utama</h3>
+      <form id="object-form">
+        <label class="world-character-option"><input id="object-visible" type="checkbox"> <span id="object-visible-label">Tampilkan karakter</span></label>
+        <label id="object-move-label">Move · pusat tile</label>
+        <div class="object-tile-row"><label for="object-column">Kolom</label><select id="object-column"></select><label for="object-row">Baris</label><select id="object-row"></select></div>
+        <label for="object-scale">Scale · <output id="object-scale-value">100%</output></label>
+        <input id="object-scale" type="range" min="50" max="150" step="5" value="100">
+        <p id="object-help" class="world-help">Kaki karakter terkunci pada pusat tile. Pengaturan ini juga dapat digunakan tanpa gestur sentuh.</p>
+        <div class="world-form-actions"><button class="world-primary" type="submit">Simpan</button><button id="object-cancel" class="world-secondary" type="button">Batal</button></div>
+      </form>
+    </section></div><p id="object-message" class="world-message" role="status" aria-live="polite"></p>
+  </dialog>
+</body>
+</html>

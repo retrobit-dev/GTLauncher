@@ -1,0 +1,38 @@
+package dev.retrobit.gtlauncher;
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+public class RampGeometryTest {
+    @Test public void connectionOnlyAtMatchingStraightEndpoints() {
+        String[] directions={"N","E","S","W"};
+        for(int i=0;i<4;i++) {
+            String d=directions[i],opposite=directions[(i+2)%4],side=directions[(i+1)%4];
+            for(double t:new double[]{0,.25,.5,.75,1}) {
+                assertEquals(2+Math.max(0,t-.5),RampGeometry.stepHeight(2,null,2,d,d,t),1e-9);
+                assertEquals(2.5+Math.min(t,.5),RampGeometry.stepHeight(2,d,3,null,d,t),1e-9);
+                assertEquals(RampGeometry.stepHeight(2,d,3,null,d,t),RampGeometry.stepHeight(3,null,2,d,opposite,1-t),1e-9);
+            }
+            assertTrue(RampGeometry.canConnect(2,d,3,null,d));assertTrue(RampGeometry.canConnect(3,null,2,d,opposite));
+            assertTrue(RampGeometry.canConnect(2,d,2,null,opposite));assertTrue(RampGeometry.canConnect(2,null,2,d,d));
+            assertFalse(RampGeometry.canConnect(2,d,4,null,d));assertFalse(RampGeometry.canConnect(2,d,1,null,opposite));assertFalse(RampGeometry.canConnect(2,d,2,null,side));
+            assertTrue(RampGeometry.canConnect(2,d,3,d,d));assertFalse(RampGeometry.canConnect(2,d,2,d,d));
+        }
+        assertTrue(RampGeometry.canConnect(2,null,3,null,"E"));assertFalse(RampGeometry.canConnect(2,null,4,null,"E"));assertFalse(RampGeometry.canConnect(0,null,1,null,"E"));assertFalse(RampGeometry.canConnect(2,"bad",2,null,"E"));
+    }
+    @Test public void fourDirectionsHaveContinuousInclineAndTriangularSides() {
+        for(String direction:new String[]{"N","E","S","W"})for(double width:new double[]{20,28})for(double depth:new double[]{8,14})for(double height:new double[]{4,9}) {
+            RampGeometry.Shape shape=RampGeometry.create(direction,width,depth,height);assertEquals(4,shape.top.length);assertEquals(2,shape.sides.length);
+            for(RampGeometry.Vertex[] face:shape.sides) {
+                boolean u=true,v=true;double x=0,y=0;for(RampGeometry.Vertex point:face){u&=point.u==1;v&=point.v==1;x+=point.x/face.length;y+=point.y/face.length;}
+                if(u||v)assertTrue(RampGeometry.hit(direction,width,depth,height,x,y));
+            }
+            double x=0,y=0;for(RampGeometry.Vertex point:shape.top){x+=point.x/4;y+=point.y/4;}assertTrue(RampGeometry.hit(direction,width,depth,height,x,y));assertFalse(RampGeometry.hit(direction,width,depth,height,10000,10000));
+            for(RampGeometry.Vertex p:shape.top){assertEquals(RampGeometry.fraction(direction,p.u,p.v),p.z,1e-9);assertEquals((p.u-p.v)*width/2,p.x,1e-9);assertEquals((p.u+p.v-1)*depth/2-p.z*height,p.y,1e-9);}
+            for(RampGeometry.Vertex[] side:shape.sides){RampGeometry.Vertex a=side[0],b=side[1],c=side[2];assertEquals(0,a.z,1e-9);assertEquals(0,b.z,1e-9);assertEquals(1,c.z,1e-9);assertEquals(b.u,c.u,1e-9);assertEquals(b.v,c.v,1e-9);assertEquals(1,Math.abs(a.u-b.u)+Math.abs(a.v-b.v),1e-9);assertEquals(0,RampGeometry.fraction(direction,a.u,a.v),1e-9);assertEquals(1,RampGeometry.fraction(direction,c.u,c.v),1e-9);}
+            RampGeometry.Vertex a=shape.highFace[0],b=shape.highFace[1],c=shape.highFace[2],d=shape.highFace[3];
+            assertEquals(0,a.z,1e-9);assertEquals(0,b.z,1e-9);assertEquals(1,c.z,1e-9);assertEquals(1,d.z,1e-9);assertEquals(a.u,d.u,1e-9);assertEquals(a.v,d.v,1e-9);assertEquals(b.u,c.u,1e-9);assertEquals(b.v,c.v,1e-9);assertEquals(1,Math.abs(a.u-b.u)+Math.abs(a.v-b.v),1e-9);assertEquals(1,RampGeometry.fraction(direction,a.u,a.v),1e-9);assertEquals(1,RampGeometry.fraction(direction,b.u,b.v),1e-9);
+            for(int i=0;i<=10;i++){double t=i/10.0,u=direction.equals("E")?t:direction.equals("W")?1-t:.5,v=direction.equals("S")?t:direction.equals("N")?1-t:.5;assertEquals(t,RampGeometry.fraction(direction,u,v),1e-9);}
+        }
+        assertTrue(RampGeometry.create("X",28,14,4)==null);assertTrue(RampGeometry.create("E",28,14,0)==null);assertTrue(Double.isNaN(RampGeometry.fraction("E",1.1,0)));
+    }
+}
