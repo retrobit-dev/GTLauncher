@@ -13,14 +13,14 @@
   if (!dialog || !form || !canvas || !window.worldManager) return;
   const libraryDialog = $('object-library-dialog');
   const libraryList = $('object-library-list');
-  const catalogTabs=[$('catalog-tab-buildings'),$('catalog-tab-plants')];
+  const catalogTabs=[$('catalog-tab-buildings'),$('catalog-tab-plants'),$('catalog-tab-roads')];
   function selectCatalogTab(index,focus=false) {
     catalogTabs.forEach((tab,i)=>{const active=i===index;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;$(tab.getAttribute('aria-controls')).hidden=!active;});
     if(focus)catalogTabs[index].focus();
   }
   catalogTabs.forEach((tab,index)=>{
     tab.addEventListener('click',()=>selectCatalogTab(index));
-    tab.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();selectCatalogTab(event.key==='Home'?0:event.key==='End'?catalogTabs.length-1:(index+1)%catalogTabs.length,true);});
+    tab.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();selectCatalogTab(event.key==='Home'?0:event.key==='End'?catalogTabs.length-1:(index+(event.key==='ArrowLeft'?-1:1)+catalogTabs.length)%catalogTabs.length,true);});
   });
   let catalogReplacement=null, catalogSelection=[],roadReplacement=null;
   const objectSets=world=>({trees:(world.orangeTrees||[]).map(o=>({...o})),fences:(world.fences||[]).map(o=>({...o})),bridges:(world.bridges||[]).map(o=>({...o}))});
@@ -71,7 +71,7 @@
       const actions=document.createElement('div');actions.className='catalog-placed-actions';
       for(const action of ['Ganti','Hapus']){const button=document.createElement('button');button.type='button';button.className='world-small';button.textContent=action;button.disabled=!editing || world.id==='base';button.setAttribute('aria-label',`${action} ${detail.textContent}`);
         button.addEventListener('click',()=>{const before=(window.worldManager.getActive().roads||[]).map(r=>({...r}));if(world.id!==worldId || JSON.stringify(before[i])!==JSON.stringify(road)){tell('EDITING · Jalan berubah; data tidak diubah.');return;}
-          if(action==='Ganti'){roadReplacement={worldId:world.id,before,index:i};catalogReplacement=null;selectCatalogTab(0);$('catalog-replace-status').hidden=false;$('catalog-replace-status').textContent='Pilih jenis jalan pengganti pada katalog.';$('catalog-replace-cancel').hidden=false;libraryDialog.scrollTop=0;}
+          if(action==='Ganti'){roadReplacement={worldId:world.id,before,index:i};catalogReplacement=null;selectCatalogTab(2);$('catalog-replace-status').hidden=false;$('catalog-replace-status').textContent='Pilih jenis jalan pengganti pada katalog.';$('catalog-replace-cancel').hidden=false;libraryDialog.scrollTop=0;}
           else if(window.confirm('Hapus jalan ini?')){if(saveRoads(before,before.filter((_,j)=>j!==i))){renderLibrary();tell('EDITING · Jalan dihapus.');}else tell('EDITING · Jalan tidak dapat dihapus.');}});actions.append(button);}
       node.append(actions);libraryList.append(node);
     });

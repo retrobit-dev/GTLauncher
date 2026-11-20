@@ -1,6 +1,6 @@
 # Jalan dan sungai
 
-Objek jalan 1×1 di katalog **Bangunan**: tanah, batu, pasir, paving, aspal,
+Objek jalan 1×1 di katalog khusus **Jalan**: tanah, batu, pasir, paving, aspal,
 dan air/sungai. Warna dan detail tiap material mengikuti konsep terpilih
 `artwork/road-and-river-concept.png`; jalan air mendapat sorotan aliran. Jalan
 sejenis dan setinggi sama di preview menyambung ke tepi tile.

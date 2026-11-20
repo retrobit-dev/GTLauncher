@@ -17,7 +17,7 @@
   <script src="./world-view-rotation.js?v=road-v30-1" defer></script>
   <script src="./road-surface.js?v=1" defer></script>
   <script src="./worlds.js?v=road-v30-1" defer></script>
-  <script src="./object-editor.js?v=road-v30-1" defer></script>
+  <script src="./object-editor.js?v=road-catalog-1" defer></script>
   <script src="./pond-life.js?v=1" defer></script>
   <script src="./house-geometry.js?v=2" defer></script>
   <script src="./orange-tree-motion.js?v=2" defer></script>
@@ -211,16 +211,11 @@
       <div class="catalog-tabs" role="tablist" aria-label="Jenis objek">
         <button id="catalog-tab-buildings" type="button" role="tab" aria-controls="catalog-panel-buildings" aria-selected="true" tabindex="0">Bangunan</button>
         <button id="catalog-tab-plants" type="button" role="tab" aria-controls="catalog-panel-plants" aria-selected="false" tabindex="-1">Tanaman dan pohon</button>
+        <button id="catalog-tab-roads" type="button" role="tab" aria-controls="catalog-panel-roads" aria-selected="false" tabindex="-1">Jalan</button>
       </div>
       <section id="catalog-panel-buildings" class="catalog-group" role="tabpanel" aria-labelledby="catalog-tab-buildings">
         <h4 id="catalog-buildings-title">Bangunan</h4>
         <div class="catalog-grid">
-          <button id="catalog-place-road-dirt" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-dirt" aria-hidden="true"></span><strong>Jalan tanah</strong><span class="catalog-footprint">1×1 tile</span></button>
-          <button id="catalog-place-road-stone" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-stone" aria-hidden="true"></span><strong>Jalan batu</strong><span class="catalog-footprint">1×1 tile</span></button>
-          <button id="catalog-place-road-sand" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-sand" aria-hidden="true"></span><strong>Jalan pasir</strong><span class="catalog-footprint">1×1 tile</span></button>
-          <button id="catalog-place-road-paving" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-paving" aria-hidden="true"></span><strong>Jalan paving</strong><span class="catalog-footprint">1×1 tile</span></button>
-          <button id="catalog-place-road-asphalt" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-asphalt" aria-hidden="true"></span><strong>Jalan aspal</strong><span class="catalog-footprint">1×1 tile</span></button>
-          <button id="catalog-place-road-water" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-water" aria-hidden="true"></span><strong>Jalan air / sungai</strong><span class="catalog-footprint">1×1 tile</span></button>
           <button id="catalog-place-bridge-wood" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-redesign-wood.svg" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">3×1 block</span></button>
           <button id="catalog-place-bridge-wood-4" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-redesign-wood.svg" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">4×1 block</span></button>
           <button id="catalog-place-bridge-wood-5" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-redesign-wood.svg" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">5×1 block</span></button>
@@ -268,6 +263,17 @@
           <button id="catalog-place-wild-grass" type="button" class="catalog-tile" aria-label="Tempatkan rumput liar, tapak 1 kali 1">
             <span class="catalog-art"><img src="assets/wild-grass-selected.png?v=3" alt=""></span><strong>Rumput liar</strong><span class="catalog-footprint">Tapak 1×1</span>
           </button>
+        </div>
+      </section>
+      <section id="catalog-panel-roads" class="catalog-group" role="tabpanel" aria-labelledby="catalog-tab-roads" hidden>
+        <h4>Jalan</h4>
+        <div class="catalog-grid">
+          <button id="catalog-place-road-dirt" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-dirt" aria-hidden="true"></span><strong>Jalan tanah</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-stone" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-stone" aria-hidden="true"></span><strong>Jalan batu</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-sand" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-sand" aria-hidden="true"></span><strong>Jalan pasir</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-paving" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-paving" aria-hidden="true"></span><strong>Jalan paving</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-asphalt" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-asphalt" aria-hidden="true"></span><strong>Jalan aspal</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-water" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-water" aria-hidden="true"></span><strong>Jalan air / sungai</strong><span class="catalog-footprint">1×1 tile</span></button>
         </div>
       </section>
       <section class="catalog-placed" aria-labelledby="catalog-placed-title"><h3 id="catalog-placed-title">Objek di world ini</h3><div class="catalog-bulk"><span id="catalog-selection-count">0 dipilih</span><button id="catalog-bulk-replace" class="world-secondary" type="button" disabled>Ganti terpilih</button><button id="catalog-bulk-delete" class="world-secondary" type="button" disabled>Hapus terpilih</button></div><div id="object-library-list" class="world-list"></div></section>
