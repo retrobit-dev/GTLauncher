@@ -669,14 +669,14 @@ public final class WeatherSkyView extends View {
         paint.setStyle(Paint.Style.FILL);paint.setColor(color);paint.setAlpha(alpha);canvas.drawPath(path,paint);
         paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.24f);paint.setColor(outline);paint.setAlpha(alpha);canvas.drawPath(path,paint);paint.setStyle(Paint.Style.FILL);
     }
-    private void drawWideBridgePost(Canvas canvas,float x,float y,boolean wood,int alpha) {
+    private void drawWideBridgePost(Canvas canvas,float x,float y,boolean wood,int alpha,float half) {
         int outline=wood?0xff57362c:0xff514942;
-        bridgePostFace(canvas,new float[]{x-2,y-9.5f,x,y-8.5f,x,y,x-2,y-1},wood?0xffa45f3d:0xff988879,outline,alpha);
-        bridgePostFace(canvas,new float[]{x,y-8.5f,x+2,y-9.5f,x+2,y-1,x,y},wood?0xff78472f:0xff756b61,outline,alpha);
-        bridgePostFace(canvas,new float[]{x-2,y-9.5f,x,y-10.5f,x+2,y-9.5f,x,y-8.5f},wood?0xffc9895e:0xffb7a896,outline,alpha);
+        bridgePostFace(canvas,new float[]{x-half,y-9.5f,x,y-8.5f,x,y,x-half,y-1},wood?0xffa45f3d:0xff988879,outline,alpha);
+        bridgePostFace(canvas,new float[]{x,y-8.5f,x+half,y-9.5f,x+half,y-1,x,y},wood?0xff78472f:0xff756b61,outline,alpha);
+        bridgePostFace(canvas,new float[]{x-half,y-9.5f,x,y-10.5f,x+half,y-9.5f,x,y-8.5f},wood?0xffc9895e:0xffb7a896,outline,alpha);
     }
     private void drawWideBridge(Canvas canvas,BridgeGeometry.Bridge bridge,int alpha) {
-        float lx=bridge.length*ISLAND_TILE_WIDTH/2f,ly=-bridge.length*ISLAND_TILE_HEIGHT/2f,wx=bridge.width*ISLAND_TILE_WIDTH/2f,wy=bridge.width*ISLAND_TILE_HEIGHT/2f;
+        float lx=bridge.length*ISLAND_TILE_WIDTH/2f,ly=-bridge.length*ISLAND_TILE_HEIGHT/2f,wx=(bridge.centered?2:bridge.width)*ISLAND_TILE_WIDTH/2f,wy=(bridge.centered?2:bridge.width)*ISLAND_TILE_HEIGHT/2f;
         float ax=-(lx+wx)/2,ay=-(ly+wy)/2,bx=ax+lx,by=ay+ly,dx=ax+wx,dy=ay+wy,cx=bx+wx,cy=by+wy;
         boolean wood=bridge.material.equals("wood");int outline=wood?0xff57362c:0xff514942;
         float[] steps={0f,1f/bridge.length,1f-1f/bridge.length,1f};
@@ -690,11 +690,11 @@ public final class WeatherSkyView extends View {
         paint.setStyle(Paint.Style.STROKE);paint.setColor(wood?0xff855033:0xff897c70);paint.setAlpha(alpha);paint.setStrokeWidth(.35f);
         int rows=bridge.length*(wood?4:2);
         for(int i=1;i<rows;i++){float t=(float)i/rows,z=BridgeGeometry.rise(t,bridge.length,BLOCK_HEIGHT*.5f);canvas.drawLine(ax+(bx-ax)*t,ay+(by-ay)*t-z,dx+(cx-dx)*t,dy+(cy-dy)*t-z,paint);}
-        if(!wood)for(int i=1;i<bridge.width*2;i++){float t=(float)i/(bridge.width*2);for(int j=0;j<3;j++)canvas.drawLine(leftX[j]+(rightX[j]-leftX[j])*t,leftY[j]+(rightY[j]-leftY[j])*t,leftX[j+1]+(rightX[j+1]-leftX[j+1])*t,leftY[j+1]+(rightY[j+1]-leftY[j+1])*t,paint);}
-        for(int pass=0;pass<2;pass++){paint.setColor(pass==0?(wood?0xff71442f:0xff6f645b):(wood?0xffcb936a:0xffc6b9a7));paint.setAlpha(alpha);paint.setStrokeWidth(pass==0?2:.55f);
+        if(!wood)for(int i=1;i<(bridge.centered?2:bridge.width)*2;i++){float t=(float)i/((bridge.centered?2:bridge.width)*2);for(int j=0;j<3;j++)canvas.drawLine(leftX[j]+(rightX[j]-leftX[j])*t,leftY[j]+(rightY[j]-leftY[j])*t,leftX[j+1]+(rightX[j+1]-leftX[j+1])*t,leftY[j+1]+(rightY[j+1]-leftY[j+1])*t,paint);}
+        for(int pass=0;pass<2;pass++){paint.setColor(pass==0?(wood?0xff71442f:0xff6f645b):(wood?0xffcb936a:0xffc6b9a7));paint.setAlpha(alpha);paint.setStrokeWidth(pass==0?(bridge.centered?1.25f:2):.55f);
             for(int j=0;j<3;j++){canvas.drawLine(leftX[j],leftY[j]-BLOCK_HEIGHT,leftX[j+1],leftY[j+1]-BLOCK_HEIGHT,paint);canvas.drawLine(rightX[j],rightY[j]-BLOCK_HEIGHT,rightX[j+1],rightY[j+1]-BLOCK_HEIGHT,paint);}}
         paint.setStyle(Paint.Style.FILL);
-        drawWideBridgePost(canvas,ax,ay+2,wood,alpha);drawWideBridgePost(canvas,bx,by+2,wood,alpha);drawWideBridgePost(canvas,cx,cy+2,wood,alpha);drawWideBridgePost(canvas,dx,dy+2,wood,alpha);
+        drawWideBridgePost(canvas,ax,ay+2,wood,alpha,bridge.centered?1.25f:2);drawWideBridgePost(canvas,bx,by+2,wood,alpha,bridge.centered?1.25f:2);drawWideBridgePost(canvas,cx,cy+2,wood,alpha,bridge.centered?1.25f:2);drawWideBridgePost(canvas,dx,dy+2,wood,alpha,bridge.centered?1.25f:2);
     }
     private void drawBridges(Canvas canvas) {
         if(worldTerrain==null)return;

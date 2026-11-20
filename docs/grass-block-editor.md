@@ -170,3 +170,8 @@ hanya berada di ujung.
 Dek jembatan kayu maupun batu mempunyai ramp lurus sepanjang satu tile pada masing-masing ujung, naik setengah tinggi block ke bagian tengah; rail mengikuti profil dan tiang tetap di empat sudut luar. Tapak dan data world v23–v25 tidak diubah. Gerakan karakter mengikuti profil visual; aturan rute dan ketinggian dek tersimpan tetap sama. Karena jembatan bebas dapat ditempatkan pada tinggi berbeda dari block di ujungnya, bentuk ini tidak menjamin sambungan fisik ke setiap block di bawahnya. Pemilihan jembatan di editor mengikuti profil; pemilihan tile gameplay Android masih memakai geometri tile datar.
 
 Zoom awal Map Editor adalah 5×, terpisah dari gameplay 7,5×. Tombol bawah tablet berada satu baris dan dapat digeser horizontal bila ruang sempit; label suasana berada di baris berikutnya selebar tablet, dan slider tetap tersedia.
+
+### Jembatan baru selebar dua block terpusat
+Katalog sekarang membuat dek 3×2, 4×2, atau 5×2: satu tile tengah dan setengah tile di kedua sisi. Jembatan lama tidak diubah. Format world v26 menyimpan `centered:true` pada jembatan bebas; versi lama menolak data tersebut. Preview dan Android memvalidasi area sisi secara konservatif: seluruh tile yang tersentuh setengah dek harus berada di dalam grid dan bebas rumah, tanaman, pagar, serta jembatan lain. Block dan ramp tetap boleh ada di bawah dek. Ini berarti penempatan dekat tepi grid atau objek dapat ditolak.
+
+Jalur gameplay masih menggunakan pusat tile, bukan jalur terpisah pada kedua setengah tile. Rail dan tiang jembatan baru dibuat lebih tipis; ketebalannya masih dapat sedikit melewati tepi dek. Pada Android, pemilihan tile gameplay masih memakai geometri tile datar; renderer dan interaksi belum diuji di perangkat.

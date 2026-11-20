@@ -14,7 +14,7 @@
     if(!Number.isInteger(size) || !Array.isArray(world.tiles) || world.tiles.length!==size*size || !Array.isArray(bridges))return false;
     const occupied=new Set(),house=world.house;
     for(const bridge of bridges){
-      if(!bridge || Object.keys(bridge).some(k=>!['column','row','axis','material','length','width','opacity','gap','overWater','free','deck'].includes(k)) || (bridge.opacity!==undefined && (!Number.isInteger(bridge.opacity) || bridge.opacity<0 || bridge.opacity>90 || bridge.opacity%5!==0)) || (bridge.free!==undefined && (bridge.free!==true || bridge.gap!==true || bridge.width!==undefined || !Number.isInteger(bridge.deck) || bridge.deck<1 || bridge.deck>32)) || (bridge.free!==true && bridge.deck!==undefined) || (bridge.gap!==undefined && bridge.gap!==true) || (bridge.overWater!==undefined && (bridge.overWater!==true || bridge.gap!==true)) || (Object.hasOwn(bridge,'length') && ![4,5].includes(bridge.length)))return false;
+      if(!bridge || Object.keys(bridge).some(k=>!['column','row','axis','material','length','width','opacity','gap','overWater','free','deck','centered'].includes(k)) || (bridge.opacity!==undefined && (!Number.isInteger(bridge.opacity) || bridge.opacity<0 || bridge.opacity>90 || bridge.opacity%5!==0)) || (bridge.free!==undefined && (bridge.free!==true || bridge.gap!==true || bridge.width!==undefined || !Number.isInteger(bridge.deck) || bridge.deck<1 || bridge.deck>32)) || (bridge.centered!==undefined && (bridge.centered!==true || bridge.free!==true)) || (bridge.free!==true && bridge.deck!==undefined) || (bridge.gap!==undefined && bridge.gap!==true) || (bridge.overWater!==undefined && (bridge.overWater!==true || bridge.gap!==true)) || (Object.hasOwn(bridge,'length') && ![4,5].includes(bridge.length)))return false;
       const footprint=cells(bridge);if(!footprint)return false;let height=null;
       for(let i=0;i<footprint.length;i++){
         const p=footprint[i],{column:c,row:r}=p;if(c<0 || r<0 || c>=size || r>=size)return false;
@@ -29,6 +29,18 @@
         if((world.fences||[]).some(f=>{const d={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[f.edge];return (f.column===c && f.row===r) || (d && f.column+d[0]===c && f.row+d[1]===r);}))return false;
         if(height===null)height=h;occupied.add(idx);
       }
+    }
+    // A centered 2-tile deck occupies half of each adjacent cell. Reserve those
+    // cells conservatively for objects and bridges (terrain itself is allowed).
+    for(const bridge of bridges)if(bridge.centered)for(const p of cells(bridge))for(const side of [-1,1]) {
+      const c=p.column+(bridge.axis==='S'?side:0),r=p.row+(bridge.axis==='E'?side:0);
+      if(c<0||r<0||c>=size||r>=size)return false;
+      const idx=r*size+c;
+      if(occupied.has(idx))return false;
+      if(house && c>=house.column && c<house.column+3 && r>=house.row && r<house.row+3)return false;
+      if((world.orangeTrees||[]).some(t=>c>=t.column && c<t.column+(t.size||2) && r>=t.row && r<t.row+(t.size||2)))return false;
+      if((world.fences||[]).some(f=>{const d={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[f.edge];return (f.column===c && f.row===r) || (d && f.column+d[0]===c && f.row+d[1]===r);}))return false;
+      occupied.add(idx);
     }
     return true;
   }
@@ -91,9 +103,9 @@
     return result;
   }
   function polygonContains(point,poly) {let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++) {const a=poly[i],b=poly[j];if((a.y>point.y)!==(b.y>point.y) && point.x<(b.x-a.x)*(point.y-a.y)/(b.y-a.y)+a.x)inside=!inside;}return inside;}
-  function postContains(p,posts) {return posts.some(a=>{const dx=Math.abs(p.x-a.x),dy=p.y-(a.y+2);return dx<=2 && dy>=-10.5+dx/2 && dy<=-dx/2;});}
-  function wideContains(point,corners,railHeight=4,length=3) {
-    if(postContains(point,corners))return true;
+  function postContains(p,posts,half=2) {return posts.some(a=>{const dx=Math.abs(p.x-a.x),dy=p.y-(a.y+2);return dx<=half && dy>=-10.5+dx/half && dy<=-dx/half;});}
+  function wideContains(point,corners,railHeight=4,length=3,postHalf=2) {
+    if(postContains(point,corners,postHalf))return true;
     const sections=profilePoints(corners,length,railHeight*.5),[a,b,c,d]=corners;
     for(let i=0;i<sections.length-1;i++)if(polygonContains(point,[sections[i][0],sections[i+1][0],sections[i+1][1],sections[i][1]]))return true;
     const rails=[];for(let i=0;i<sections.length-1;i++)for(let side=0;side<2;side++)rails.push([sections[i][side],sections[i+1][side]]);

@@ -81,3 +81,17 @@ for(const length of [3,4,5])for(const axis of ['E','S']){
   assert(b.wideContains({x:(sections[1][0].x+sections[1][1].x)/2,y:(sections[1][0].y+sections[1][1].y)/2},corners,8,length));
 }
 console.log('Sloped bridge ends, continuous player rise, and picking: OK');
+for(const axis of ['E','S']) for(const length of [3,4,5]) {
+ const world={gridSize:20,tiles:Array(400).fill(1)};
+ const bridge={column:5,row:5,axis,material:'wood',gap:true,free:true,deck:1,centered:true,...(length===3?{}:{length})};
+ assert(b.valid(world,[bridge]));
+ const neighbor=axis==='E'?{column:6,row:4}:{column:4,row:6};
+ assert(!b.valid({...world,orangeTrees:[{...neighbor,size:1}]},[bridge]));
+ assert(!b.valid(world,[bridge,{...bridge,...neighbor,centered:true}]));
+ assert(!b.valid(world,[{...bridge,...(axis==='E'?{row:0}:{column:0})}]));
+ assert.equal(b.riseAt([bridge],neighbor.column,neighbor.row,8),0);
+ assert(b.permitsStep([bridge],{column:5,row:5},axis==='E'?{column:6,row:5}:{column:5,row:6}));
+ const legacy={...bridge};delete legacy.centered;assert(b.valid(world,[legacy]));
+ for(let q=0;q<4;q++){const rotated=require('../preview/world-view-rotation').bridge(bridge,20,q);assert(rotated);assert(b.valid(world,[{...bridge,column:rotated.column,row:rotated.row,axis:rotated.axis}]));}
+}
+console.log('Centered two-tile deck reserves side cells, retains center route and rotates: OK');
