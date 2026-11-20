@@ -29,3 +29,12 @@ Penyesuaian tangan jauh tampak depan: telapak dipindahkan mendekati sisi pinggul
 Koreksi tangan tampak depan: bentuk tambahan di bawah tas dihapus dari frame duduk dan hampir duduk. Pundak dan sebagian lengan jauh tetap terlihat di sisi berlawanan, sementara telapak jauh tertutup kaki/badan pada sudut ini; telapak kedua belum terlihat jelas. Bayangan kontak untuk bentuk tambahan juga dihapus.
 
 Android: rute ke block kering memakai BFS dan aturan rintangan/pagar gameplay yang ada. Setelah tiba, hitungan idle sebelum perjalanan otomatis dilanjutkan; sentuhan pengguna membatalkan kelanjutannya. Jika tidak ada rute, player tetap di air. Reduced motion menonaktifkan perpindahan otomatis. Ini belum menambahkan dukungan world bertingkat v4–v7.
+
+Pemeriksaan aset duduk runtime: sisi depan memperlihatkan tangan dekat yang
+menopang dan sebagian lengan jauh, tetapi tangan jauh tertutup kaki. Karena
+itu jarak kedua titik tumpu tidak dapat dibandingkan dari gambar depan dan
+belum terbukti sama. Pada tampak belakang kedua tangan terlihat, tetapi gambar
+2D tidak memiliki penanda anatomi atau ukuran kedalaman sehingga jarak nyata
+dari masing-masing sisi badan belum dapat dipastikan sama. Belum ada perubahan
+pose pada pemeriksaan ini; aset Android identik dengan aset preview, namun
+tampilan perangkat Android belum diverifikasi.

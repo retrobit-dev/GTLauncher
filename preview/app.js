@@ -341,11 +341,15 @@
       weather: { weatherCode: 95, cloudCover: 100, precipitation: 6, rain: 4.5, windSpeed: 25, windDirection: 150 }
     },
     {
-      label: 'Senja · Malam', solarHour: 18.7,
+      label: 'Senja', solarHour: 18.15,
       weather: { weatherCode: 0, cloudCover: 10, precipitation: 0, rain: 0, windSpeed: 2, windDirection: 90 }
     },
     {
       label: 'Subuh', solarHour: 5.5,
+      weather: { weatherCode: 0, cloudCover: 10, precipitation: 0, rain: 0, windSpeed: 2, windDirection: 90 }
+    },
+    {
+      label: 'Malam', solarHour: 20.5,
       weather: { weatherCode: 0, cloudCover: 10, precipitation: 0, rain: 0, windSpeed: 2, windDirection: 90 }
     }
   ];
