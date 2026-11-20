@@ -342,6 +342,10 @@
     {
       label: 'Senja · Malam', solarHour: 18.7,
       weather: { weatherCode: 0, cloudCover: 10, precipitation: 0, rain: 0, windSpeed: 2, windDirection: 90 }
+    },
+    {
+      label: 'Subuh', solarHour: 5.5,
+      weather: { weatherCode: 0, cloudCover: 10, precipitation: 0, rain: 0, windSpeed: 2, windDirection: 90 }
     }
   ];
   let previewModeIndex = 0;
@@ -802,11 +806,12 @@
     ctx.restore();
   }
 
+  function blendedSkyPalette(sun) {
+    const w=window.SkyBlend.weights(sun.altitude),twilight=sun.azimuth>180?SUNSET:DAWN;
+    return NIGHT.map((n,i)=>blendColor(blendColor(n,twilight[i],w.night+w.twilight ? w.twilight/(w.night+w.twilight) : 0),DAY[i],w.day));
+  }
   function drawSky(now, sun, code, cloudCover) {
-    let palette;
-    if (sun.altitude < -12) palette = NIGHT;
-    else if (sun.altitude < 2) palette = sun.azimuth > 180 ? SUNSET : DAWN;
-    else palette = DAY;
+    const palette=blendedSkyPalette(sun);
 
     const band = 2;
     for (let y = 0; y < HEIGHT; y += band) {
@@ -821,7 +826,7 @@
   }
 
   function skyColorAt(y, sun, cloudCover) {
-    const palette = sun.altitude < -12 ? NIGHT : sun.altitude > 2 ? DAY : DAWN;
+    const palette=blendedSkyPalette(sun);
     const base = colorFromPalette(palette, clamp(y / HEIGHT, 0, 1));
     return blendColor(base, '#586576', clamp(cloudCover / 100 * 0.58, 0, 0.58));
   }
@@ -1049,10 +1054,7 @@
   function islandFloorLuminance(cloudCover, code) {
     const now = getSceneTimestamp(Date.now());
     const sun = sunPosition(new Date(now), location.latitude, location.longitude);
-    let palette;
-    if (sun.altitude < -12) palette = NIGHT;
-    else if (sun.altitude < 2) palette = sun.azimuth > 180 ? SUNSET : DAWN;
-    else palette = DAY;
+    const palette=blendedSkyPalette(sun);
     const y = HEIGHT - 6;
     const base = hexRgb(colorFromPalette(palette, clamp(y / HEIGHT, 0, 1)));
     const overcast = [65 + y / HEIGHT * 70, 79 + y / HEIGHT * 70, 98 + y / HEIGHT * 66];
@@ -1092,11 +1094,9 @@
   }
 
   function skyAtmosphere(sunAltitude, cloudCover, code) {
-    if (sunAltitude < -8) return SKY_ATMOSPHERES.night;
-    if (sunAltitude < 5) return SKY_ATMOSPHERES.twilight;
-    const overcastOrWet = cloudCover >= 65 || code === 45 || code === 48
-      || (code >= 51 && code <= 99);
-    return overcastOrWet ? SKY_ATMOSPHERES.overcast : SKY_ATMOSPHERES.day;
+    const overcastOrWet = cloudCover >= 65 || code === 45 || code === 48 || (code >= 51 && code <= 99);
+    const w=window.SkyBlend.weights(sunAltitude),night=SKY_ATMOSPHERES.night,twilight=SKY_ATMOSPHERES.twilight,day=overcastOrWet?SKY_ATMOSPHERES.overcast:SKY_ATMOSPHERES.day;
+    return {tint:blendColor(blendColor(night.tint,twilight.tint,w.night+w.twilight ? w.twilight/(w.night+w.twilight) : 0),day.tint,w.day),islandMix:night.islandMix*w.night+twilight.islandMix*w.twilight+day.islandMix*w.day};
   }
 
   function islandPalette(sunAltitude, cloudCover, code) {

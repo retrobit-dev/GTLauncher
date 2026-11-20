@@ -1667,17 +1667,15 @@ public final class WeatherSkyView extends View {
         }
     }
 
+    private int[] blendedSkyPalette(SkyMath.Position sun) {
+        double[] w=SkyBlend.weights(sun.altitudeDegrees);int[] twilight=sun.azimuthDegrees>180?SUNSET_SKY:DAWN_SKY,result=new int[NIGHT_SKY.length];
+        double mix=w[0]+w[1]>0?w[1]/(w[0]+w[1]):0;
+        for(int i=0;i<result.length;i++)result[i]=blend(blend(NIGHT_SKY[i],twilight[i],mix),DAY_SKY[i],w[2]);return result;
+    }
     private void drawSky(Canvas canvas, SkyMath.Position sun, double cloudCover, int code) {
         double sunAltitude = sun.altitudeDegrees;
         double sunAzimuth = sun.azimuthDegrees;
-        int[] palette;
-        if (sunAltitude < -12.0) {
-            palette = NIGHT_SKY;
-        } else if (sunAltitude < 2.0) {
-            palette = sunAzimuth > 180.0 ? SUNSET_SKY : DAWN_SKY;
-        } else {
-            palette = DAY_SKY;
-        }
+        int[] palette=blendedSkyPalette(sun);
 
         double daylight = clamp((sunAltitude + 14.0) / 28.0, 0.0, 1.0);
         if (sunAltitude < -12.0) daylight = 0.0;
@@ -1726,11 +1724,7 @@ public final class WeatherSkyView extends View {
      */
     private double floorLuminance(double cloudCover, int code) {
         SkyMath.Position sun = SkyMath.sun(System.currentTimeMillis(), latitude, longitude);
-        int[] palette;
-        if (sun.altitudeDegrees < -12.0) palette = NIGHT_SKY;
-        else if (sun.altitudeDegrees < 2.0) {
-            palette = sun.azimuthDegrees > 180.0 ? SUNSET_SKY : DAWN_SKY;
-        } else palette = DAY_SKY;
+        int[] palette=blendedSkyPalette(sun);
         float amount = (SCENE_HEIGHT - 6) / (float) SCENE_HEIGHT;
         int base = paletteColor(palette, amount);
         int overcast = Color.rgb(
@@ -2233,11 +2227,10 @@ public final class WeatherSkyView extends View {
     }
 
     private SkyAtmosphere skyAtmosphere(double sunAltitude, double cloudCover, int code) {
-        if (sunAltitude < -8.0) return NIGHT_ATMOSPHERE;
-        if (sunAltitude < 5.0) return TWILIGHT_ATMOSPHERE;
-        boolean overcastOrWet = cloudCover >= 65.0 || code == 45 || code == 48
-                || (code >= 51 && code <= 99);
-        return overcastOrWet ? OVERCAST_ATMOSPHERE : DAY_ATMOSPHERE;
+        boolean overcastOrWet = cloudCover >= 65.0 || code == 45 || code == 48 || (code >= 51 && code <= 99);
+        SkyAtmosphere day=overcastOrWet?OVERCAST_ATMOSPHERE:DAY_ATMOSPHERE;double[] w=SkyBlend.weights(sunAltitude);
+        double mix=w[0]+w[1]>0?w[1]/(w[0]+w[1]):0;
+        return new SkyAtmosphere(blend(blend(NIGHT_ATMOSPHERE.tint,TWILIGHT_ATMOSPHERE.tint,mix),day.tint,w[2]),NIGHT_ATMOSPHERE.islandMix*w[0]+TWILIGHT_ATMOSPHERE.islandMix*w[1]+day.islandMix*w[2]);
     }
 
     private IslandPalette islandPalette(double sunAltitude, double cloudCover, int code) {
