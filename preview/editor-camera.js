@@ -8,11 +8,15 @@
   if (!stage || !canvas || !pan || !value || !surface || !scene?.camera || !scene?.setCamera) return;
   let panning = false, drag = null, suppressClick = false, lastWorld = window.worldManager?.getActive()?.id;
   function update() {
-    const {zoom} = scene.camera();
+    const {zoom,elevation} = scene.camera();
     value.value = String(Math.round(zoom * 10) / 10);
     value.textContent = value.value;
     $('editor-zoom-in').disabled = zoom >= 20;
     $('editor-zoom-out').disabled = zoom <= 0.5;
+    $('editor-tilt-up').disabled = elevation >= 38;
+    $('editor-tilt-down').disabled = elevation <= 20;
+    $('editor-tilt-default').disabled = elevation === 25;
+    $('editor-tilt-value').textContent = `${Math.round(elevation)}°`;
     pan.setAttribute('aria-pressed', String(panning));
     const active = panning && stage.dataset.mode === 'editor';
     surface.hidden = !active;
@@ -30,6 +34,9 @@
   $('editor-zoom-in').addEventListener('click', () => changeZoom(0.5));
   $('editor-zoom-out').addEventListener('click', () => changeZoom(-0.5));
   $('editor-fit').addEventListener('click', reset);
+  $('editor-tilt-up').addEventListener('click', () => {scene.setEditorElevation(scene.camera().elevation+3);update();});
+  $('editor-tilt-down').addEventListener('click', () => {scene.setEditorElevation(scene.camera().elevation-3);update();});
+  $('editor-tilt-default').addEventListener('click', () => {scene.setEditorElevation(25);update();});
   $('mode-gameplay').addEventListener('click', () => { panning = false; drag = null; scene.setMode?.('gameplay'); update(); });
   $('mode-map-editor').addEventListener('click', () => { scene.setMode?.('editor'); update(); });
   window.addEventListener('worldchange', () => {

@@ -85,6 +85,7 @@
   const MIN_ISLAND_CAMERA_ELEVATION = 20;
   const MAX_ISLAND_CAMERA_ELEVATION = 38;
   let islandCameraElevation = DEFAULT_ISLAND_CAMERA_ELEVATION;
+  let savedEditorElevation = DEFAULT_ISLAND_CAMERA_ELEVATION;
   let islandTileHeight = ISLAND_TILE_WIDTH
     * Math.sin(islandCameraElevation * Math.PI / 180);
   // Fit the larger locked Base in the existing preview viewport; legacy worlds retain their scale.
@@ -2901,12 +2902,15 @@
     if (mode !== 'gameplay' && mode !== 'editor') return;
     if (cameraMode === mode) return;
     if (mode === 'gameplay') {
+      savedEditorElevation=islandCameraElevation;
+      islandCameraElevation=DEFAULT_ISLAND_CAMERA_ELEVATION;rebuildIslandProjection();
       savedEditorCamera = {zoom: editorZoom, panX: cameraPanX, panY: cameraPanY};
       cameraMode = mode;
       gameplayFollowCentre = null; gameplayFollowTime = null; gameplayCameraMoving = false;
       applyGameplayCamera();
     } else {
       cameraMode = mode;
+      islandCameraElevation=savedEditorElevation;rebuildIslandProjection();
       ({zoom: editorZoom, panX: cameraPanX, panY: cameraPanY} = savedEditorCamera);
       islandZoom = baseFitZoom() * editorZoom;
     }
@@ -2935,7 +2939,21 @@
   // Geometry bridge for the preview editor. Coordinates are transformed through the actual
   // canvas bounds and island zoom, so dragging remains correct on different device sizes.
   window.sceneEditing = Object.freeze({
-    camera() { return {zoom: editorZoom, renderZoom: islandZoom, panX: cameraPanX, panY: cameraPanY,quarterTurns:viewQuarterTurns}; },
+    camera() { return {zoom: editorZoom, renderZoom: islandZoom, panX: cameraPanX, panY: cameraPanY,quarterTurns:viewQuarterTurns,elevation:islandCameraElevation}; },
+    setEditorElevation(value) {
+      if(cameraMode!=='editor' || !Number.isFinite(value))return false;
+      const next=clamp(value,MIN_ISLAND_CAMERA_ELEVATION,MAX_ISLAND_CAMERA_ELEVATION);
+      if(next===islandCameraElevation)return true;
+      // Keep the world point at the viewport centre stationary while tilting.
+      const [,anchorY]=islandAnchor();
+      const pivot=anchorY+(HEIGHT*.56-anchorY-cameraPanY)/islandZoom;
+      const sum=(pivot-islandTop-islandTileHeight/2)/(islandTileHeight/2);
+      islandCameraElevation=next;savedEditorElevation=next;rebuildIslandProjection();
+      const newPivot=islandTop+islandTileHeight/2+sum*islandTileHeight/2;
+      cameraPanY+=(pivot-newPivot)*islandZoom;
+      if(REDUCED_MOTION)drawFrame();
+      return true;
+    },
     turnIsland(delta) {
       if(!Number.isInteger(delta) || !window.WorldViewRotation)return false;
       viewQuarterTurns=((viewQuarterTurns+delta)%4+4)%4;rebuildIslandProjection();

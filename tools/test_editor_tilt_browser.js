@@ -1,0 +1,19 @@
+const assert=require('node:assert/strict'),{chromium}=require('playwright-core');
+(async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader']});try{
+ const page=await browser.newPage({viewport:{width:1200,height:800},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>{const stacks=Array.from({length:2500},()=>[2,2,2,2,1]);localStorage.setItem('gtlauncher.worlds.v1',JSON.stringify({activeId:'tilt',worlds:[{id:'tilt',name:'Tilt',description:'',color:'#a8c795',gridSize:50,tiles:Array(2500).fill(1),blockStacks:stacks,showCharacter:true,characterColumn:24,characterRow:24,characterScale:1,characterFacing:'S',house:null}]}));});
+ await page.route('**/api.open-meteo.com/**',r=>r.abort());await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:90000});await page.waitForFunction(()=>window.sceneEditing&&window.worldManager);
+ const before=await page.evaluate(()=>JSON.stringify(worldManager.getActive()));
+ const up=page.locator('#editor-tilt-up'),down=page.locator('#editor-tilt-down'),reset=page.locator('#editor-tilt-default');assert.equal(await up.isVisible(),false);
+ await page.locator('#mode-map-editor').click();assert(await up.isVisible());assert(await down.isVisible());assert(await reset.isDisabled());
+ const initial=await page.evaluate(()=>({cam:sceneEditing.camera(),p:sceneEditing.centre({column:24,row:24}),pick:sceneEditing.tileAt(sceneEditing.centre({column:24,row:24}))}));
+ await up.click();let a=await page.evaluate(()=>({cam:sceneEditing.camera(),p:sceneEditing.centre({column:24,row:24}),pick:sceneEditing.tileAt(sceneEditing.centre({column:24,row:24}))}));
+ assert.equal(a.cam.elevation,28);assert.notEqual(a.p.y,initial.p.y);assert.deepEqual(a.pick,{column:24,row:24});assert.equal(a.cam.zoom,initial.cam.zoom);assert.equal(a.cam.panX,initial.cam.panX);assert.equal(a.cam.quarterTurns,initial.cam.quarterTurns);
+ await reset.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),25);assert.equal(await reset.isDisabled(),true);
+ await down.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),22);await down.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),20);assert(await down.isDisabled());
+ await page.locator('#mode-gameplay').click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),25);assert.equal(await up.isVisible(),false);
+ await page.locator('#mode-map-editor').click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),20);assert(await down.isDisabled());
+ for(let i=0;i<6;i++)await up.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),38);assert(await up.isDisabled());await reset.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),25);
+ assert.equal(await page.evaluate(()=>JSON.stringify(worldManager.getActive())),before);assert.deepEqual(errors,[]);
+ console.log('Editor tilt buttons, projection/picking, limits, reset and gameplay isolation: OK');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

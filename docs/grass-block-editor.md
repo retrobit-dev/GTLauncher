@@ -136,3 +136,10 @@ World lama dengan ukuran bukan kelipatan 10 memiliki wilayah parsial di tepi.
 Garis mengikuti permukaan block dan ramp; wilayah tanpa permukaan tidak memiliki
 nomor. Ini hanya overlay visual editor, bukan data world dan tidak tampil dalam
 gameplay atau aplikasi Android.
+
+Kamera Map Editor preview memiliki tiga tombol kemiringan: atas dan bawah
+mengubah elevasi 3° per tekan dalam rentang 20°–38°, dan tombol tengah
+mengembalikan elevasi ke 25°. Zoom dan arah putar horizontal tidak direset;
+titik pandang tetap terpusat saat kemiringan berubah. Kemiringan editor disimpan
+sementara saat beralih mode, sedangkan gameplay tetap menggunakan 25°. Tidak ada
+perubahan data world dan kontrol ini tidak ditambahkan ke Android.
