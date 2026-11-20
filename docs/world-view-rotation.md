@@ -95,3 +95,6 @@ touch, animation, performance, house/object interactions, water/ramp junctions
 and idle-water behavior still need verification on Android. Native/legacy worlds
 and portals require their own rendering, footprint, facing, depth, shadow and
 hit mapping before their buttons can rotate them safely.
+
+### Posisi tombol rotasi pulau
+Tombol di sisi kiri tablet sekarang memutar pulau ke kanan dan tombol di sisi kanan memutar ke kiri. Ikon dan label aksesibilitas ikut bersama fungsinya; tombol rotasi objek tidak berubah. Ini hanya mengubah posisi kontrol, bukan data atau algoritma rotasi world. Preview gameplay dan editor diuji di browser; pemeriksaan layout Android bersifat statis, belum diuji di perangkat.
