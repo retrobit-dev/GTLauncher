@@ -2811,6 +2811,14 @@
   applyGameplayCamera();
 
   const houseHitCache = new WeakMap();
+  function spriteOpaqueAt(sprite,u,v) {
+    if(!sprite || u<0 || u>=1 || v<0 || v>=1)return false;
+    try {
+      let data=houseHitCache.get(sprite);
+      if(!data){const c=document.createElement('canvas');c.width=128;c.height=128;const h=c.getContext('2d',{willReadFrequently:true});h.drawImage(sprite,0,0,128,128);data=h.getImageData(0,0,128,128).data;houseHitCache.set(sprite,data);}
+      return data[(Math.min(127,Math.floor(v*128))*128+Math.min(127,Math.floor(u*128)))*4+3]>32;
+    }catch(_){return false;}
+  }
   function houseAt(point, house) {
     if (!house?.visible) return false;
     const back=viewFacing(house.facing)==='N'||viewFacing(house.facing)==='W', mirror=viewFacing(house.facing)==='N'||viewFacing(house.facing)==='E';
@@ -2887,7 +2895,18 @@
     },
     centre: characterCentre,
     fenceAt, fenceGeometry,
-    bridgeAt(point) {const tile=this.tileAt(point);if(!tile)return null;const all=window.worldManager?.getActive()?.bridges||[];for(let i=all.length-1;i>=0;i--)if(window.BridgeGeometry.indexAt(all[i],tile)>=0)return i;return null;},
+    bridgeAt(point) {
+      const all=worldForObjects()?.bridges||[];
+      for(let i=all.length-1;i>=0;i--) {
+        const bridge=all[i],image=bridgeSprites[bridge.material];if(!image?.complete || !image.naturalWidth)continue;
+        const p=bridgeBounds(bridge),mirror=(viewQuarterTurns%2===0?bridge.axis:bridge.axis==='E'?'S':'E')==='E';
+        const m=window.BridgeGeometry.spriteTransform(bridge.material,bridge.length||3,ISLAND_TILE_WIDTH,islandTileHeight);
+        const x=(point.x-p.x)*(mirror?-1:1)-m.e,y=point.y-p.y-m.f,det=m.a*m.d-m.b*m.c;
+        const sx=(m.d*x-m.c*y)/det,sy=(m.a*y-m.b*x)/det;
+        if(spriteOpaqueAt(image,sx/image.naturalWidth,sy/image.naturalHeight))return i;
+      }
+      return null;
+    },
     setSelectedBridge(b) {editingBridgeSelection=b;if(REDUCED_MOTION)drawFrame();},
     setObjectDrag(kind,index,value) {
       const world=window.worldManager?.getActive();
@@ -2903,8 +2922,12 @@
       const index=tile.row*ISLAND_GRID_SIZE+tile.column,stack=world.blockStacks?.[index] || (world.tiles[index]?[world.tiles[index]]:[]);if(!stack.length)return null;
       const centre=characterCentre({column:tile.column,row:tile.row,blockHeight:stack.length}),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
       const dx=Math.abs(point.x-centre.x)/hw,edge=centre.y+hh*(1-dx);
-      const levelsDown=dx<=1 && point.y>edge ? Math.floor((point.y-edge)/BLOCK_HEIGHT) : 0;
-      const level=Math.max(0,stack.length-1-levelsDown);return {column:tile.column,row:tile.row,level};
+      if(dx>1)return null;
+      if(dx+Math.abs(point.y-centre.y)/hh<=1)return {column:tile.column,row:tile.row,level:stack.length-1};
+      const sideDepth=(stack.length-1)*BLOCK_HEIGHT;
+      if(point.y<edge || point.y>edge+sideDepth || sideDepth<=0)return null;
+      const levelsDown=Math.min(stack.length-1,Math.floor((point.y-edge)/BLOCK_HEIGHT));
+      return {column:tile.column,row:tile.row,level:stack.length-1-levelsDown};
     },
     setObjectGroup(trees,fences) {editingTreeGroup=trees||[];editingFenceGroup=fences||[];if(REDUCED_MOTION)drawFrame();},
     setSelectedFence(f) {editingFenceSelection=f;if(REDUCED_MOTION)drawFrame();},

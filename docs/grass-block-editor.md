@@ -51,3 +51,9 @@ mengikuti tinggi tile. Tiang dan lengkungan tetap merupakan bagian sprite,
 sehingga bisa terlihat di atas/bawah dek; tapak dan data tersimpan tidak diubah.
 Pipit juga digambar di editor preview, selain gameplay; gambar yang terlambat
 selesai dimuat meminta render ulang ketika animasi dikurangi.
+
+Di editor preview, hit jembatan mengikuti alpha sprite yang diproyeksikan,
+bukan seluruh tile tapaknya. Pemilihan block menolak titik di luar permukaan
+atau sisi stack yang terlihat. Rumah, karakter, tanaman dan pagar memakai
+mask sprite atau geometri masing-masing. Ukuran baru jembatan belum diterapkan;
+pemilihan konsep batu dan konfirmasi detail masih diperlukan.
