@@ -22,7 +22,7 @@
     tab.addEventListener('click',()=>selectCatalogTab(index));
     tab.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();selectCatalogTab(event.key==='Home'?0:event.key==='End'?catalogTabs.length-1:(index+1)%catalogTabs.length,true);});
   });
-  let catalogReplacement=null, catalogSelection=[];
+  let catalogReplacement=null, catalogSelection=[],roadReplacement=null;
   const objectSets=world=>({trees:(world.orangeTrees||[]).map(o=>({...o})),fences:(world.fences||[]).map(o=>({...o})),bridges:(world.bridges||[]).map(o=>({...o}))});
   function renderLibrary() {
     const world = window.worldManager.getActive();
@@ -35,6 +35,7 @@
     $('catalog-place-conifer-small').disabled=world.id==='base' || !Array.isArray(world.tiles);
     for(const suffix of ['', '-large','-flower','-flower-large','-berry','-berry-large']) $('catalog-place-bush'+suffix).disabled=world.id==='base' || !Array.isArray(world.tiles);
     for(const kind of ['wood','stone']) { $('catalog-place-fence-'+kind).disabled=world.id==='base' || !Array.isArray(world.tiles); for(const suffix of ['', '-4','-5']) $('catalog-place-bridge-'+kind+suffix).disabled=world.id==='base' || !Array.isArray(world.tiles); }
+    for(const m of window.RoadSurface.materials) $('catalog-place-road-'+m).disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-place-wild-grass').disabled=world.id==='base' || !Array.isArray(world.tiles);
     $('catalog-house-status').textContent=world.id==='base' ? 'Base World terkunci. Buka world buatan untuk menempatkan rumah.' : exists ? 'World ini sudah memiliki rumah player. Pindahkan rumah yang ada bila diperlukan.' : !Array.isArray(world.tiles) ? 'World lama ini tidak mendukung penempatan rumah.' : 'Pilih tombol, lalu ketuk sudut pertama tapak pada peta.';
     $('catalog-bulk-replace').disabled=!editing || !catalogSelection.length; $('catalog-bulk-delete').disabled=!editing || !catalogSelection.length;
@@ -63,6 +64,17 @@
     if(character.visible){const snapshot=window.sceneEditing?.characterCatalogIcon?.();row(`Karakter · ${columnLabel(character.column)}${character.row+1}`,snapshot || `assets/main-character${['N','W'].includes(character.facing)?'-back':''}.png?v=short-stocky-1`,null,0,null,true);if(!snapshot && ['W','E'].includes(character.facing))libraryList.lastElementChild.querySelector('img').style.transform='scaleX(-1)';}
     if(house)row(`Rumah player · ${columnLabel(house.column)}${house.row+1}${house.visible?'':' (tersembunyi)'}`,'assets/simple-house-aligned.png',null,0,null,true);
     (world.orangeTrees||[]).forEach((t,i)=>{const label=t.kind==='bush'?(t.variant==='flower'?'Semak melati':t.variant==='berry'?'Semak murbei':'Semak'):t.kind==='wild-grass'?'Rumput liar':t.kind==='conifer'?'Pohon cemara laut':'Pohon jeruk';const image=t.kind==='bush'?(t.variant==='flower'?'assets/bush-jasmine.png':t.variant==='berry'?'assets/bush-mulberry.png':'assets/bush-selected.png'):t.kind==='wild-grass'?'assets/wild-grass-selected.png':t.kind==='conifer'?'assets/cemara-laut-redesign.png':'assets/orange-tree-pixel.png';row(`${label} · ${columnLabel(t.column)}${t.row+1}`,image,'trees',i,t);});
+    (world.roads||[]).forEach((road,i)=>{
+      const node=document.createElement('div');node.className='world-card catalog-placed-row';
+      const icon=document.createElement('span');icon.className=`catalog-placed-icon road-swatch road-${road.material}`;node.append(icon);
+      const detail=document.createElement('div');detail.className='world-card-details';detail.textContent=`Jalan ${road.material==='water'?'air / sungai':road.material} · ${columnLabel(road.column)}${road.row+1}`;node.append(detail);
+      const actions=document.createElement('div');actions.className='catalog-placed-actions';
+      for(const action of ['Ganti','Hapus']){const button=document.createElement('button');button.type='button';button.className='world-small';button.textContent=action;button.disabled=!editing || world.id==='base';button.setAttribute('aria-label',`${action} ${detail.textContent}`);
+        button.addEventListener('click',()=>{const before=(window.worldManager.getActive().roads||[]).map(r=>({...r}));if(world.id!==worldId || JSON.stringify(before[i])!==JSON.stringify(road)){tell('EDITING · Jalan berubah; data tidak diubah.');return;}
+          if(action==='Ganti'){roadReplacement={worldId:world.id,before,index:i};catalogReplacement=null;selectCatalogTab(0);$('catalog-replace-status').hidden=false;$('catalog-replace-status').textContent='Pilih jenis jalan pengganti pada katalog.';$('catalog-replace-cancel').hidden=false;libraryDialog.scrollTop=0;}
+          else if(window.confirm('Hapus jalan ini?')){if(saveRoads(before,before.filter((_,j)=>j!==i))){renderLibrary();tell('EDITING · Jalan dihapus.');}else tell('EDITING · Jalan tidak dapat dihapus.');}});actions.append(button);}
+      node.append(actions);libraryList.append(node);
+    });
     (world.bridges||[]).forEach((b,i)=>row(`Jembatan ${b.material==='wood'?'kayu':'batu'} · ${columnLabel(b.column)}${b.row+1} · ${b.length||3}×${b.centered?2:b.width||1}`,`assets/bridge-redesign-${b.material}.svg`,'bridges',i,b));
     (world.fences||[]).forEach((f,i)=>row(`${f.material==='stone-tall'?'Tembok tinggi':f.material==='wood'?'Pagar kayu':'Pagar batu'} · ${columnLabel(f.column)}${f.row+1} · ${f.edge}`,`assets/fence-mesh-${f.material}.png`,'fences',i,f));
     if(!libraryList.childElementCount){const empty=document.createElement('p');empty.textContent='Belum ada objek yang ditampilkan.';libraryList.append(empty);}
@@ -75,8 +87,8 @@
     if(saveCatalogObjects(before,next)){catalogSelection=[];catalogReplacement=null;renderLibrary();tell('EDITING · Objek terpilih dihapus.');}else tell('EDITING · Objek tidak dapat dihapus; data tidak diubah.');
   });
   $('catalog-bulk-replace').addEventListener('click',()=>{if(!catalogSelection.length)return;deactivateTerrain();syncControls();catalogReplacement={worldId:worldId,items:catalogSelection.map(s=>({...s})),expected:objectSets(window.worldManager.getActive()),label:`${catalogSelection.length} objek`};renderLibrary();selectCatalogTab(0);libraryDialog.scrollTop=0;});
-  $('catalog-replace-cancel').addEventListener('click',()=>{catalogReplacement=null;renderLibrary();});
-  libraryDialog.addEventListener('close',()=>{catalogReplacement=null;catalogSelection=[];});
+  $('catalog-replace-cancel').addEventListener('click',()=>{catalogReplacement=null;roadReplacement=null;renderLibrary();});
+  libraryDialog.addEventListener('close',()=>{catalogReplacement=null;roadReplacement=null;catalogSelection=[];});
   function bridgeDeck(tile) {const w=window.worldManager.getActive(),i=tile.row*w.gridSize+tile.column;const height=w.blockStacks?.[i]?.length ?? (w.tiles?.[i]?1:0);return height>0?height:null;}
   function movedBridge(b,tile) {return b.width!==undefined ? {...b,...tile} : {...b,...tile,gap:true,free:true,deck:bridgeDeck(tile)};}
   function replacementForButton(id,source) {
@@ -113,7 +125,7 @@
     const row = document.createElement('option'); row.value = i; row.textContent = String(i + 1); rows.append(row);
   }
   let editing = false, selected = false, selectedType = 'character', worldId = null, draft = null;
-  let selectedBridgeIndex=null,placingBridge=null,bridgeAxis='E';
+  let selectedBridgeIndex=null,placingBridge=null,bridgeAxis='E',placingRoad=null;
   let selectedTreeIndex=null, selectedFenceIndex=null, placingFence=null, placingFenceEdge='S', selectingObject=false, movingObject=false, objectPointer=null;
   let dragOffset = null, pinch = null, suppressDrag = false, objectDrag=null;
   let group=null, areaGesture=null, selectedBlock=null;
@@ -123,7 +135,7 @@
   window.addEventListener('editorobjectsvisibilitychange', event=>{
     if(!editing || !event.detail?.hidden)return;
     clearGroup();selected=false;selectedTreeIndex=null;selectedFenceIndex=null;selectedBridgeIndex=null;selectedBlock=null;
-    selectingObject=false;movingObject=false;placingHouse=false;placingOrange=false;placingFence=null;placingBridge=null;placementWorld=null;placementPointer=null;
+    selectingObject=false;movingObject=false;placingHouse=false;placingOrange=false;placingFence=null;placingBridge=null;placingRoad=null;placementWorld=null;placementPointer=null;
     cancelGesture();tell('EDITING · Objek disembunyikan; data tetap tersimpan.');
   });
   // Starting placement or replacement reveals objects so they cannot be edited invisibly.
@@ -190,10 +202,22 @@
     deactivateTerrain();clearGroup();selected=false;selectingObject=false;movingObject=false;draft=null;placingBridge={material,length};bridgeAxis='E';placementWorld=window.worldManager.getActive().id;libraryDialog.close();refresh();syncControls();
     tell(`EDITING · Ketuk awal jembatan ${length} block. Putar untuk arah; Batal untuk berhenti.`);
   });}
+  for(const material of window.RoadSurface.materials) $('catalog-place-road-'+material).addEventListener('click',()=>{
+    if(!editing)return;
+    if(roadReplacement){const old=roadReplacement;if(old.worldId!==worldId){roadReplacement=null;return;}const next=old.before.map((r,i)=>i===old.index?{...r,material}:r);if(saveRoads(old.before,next)){roadReplacement=null;renderLibrary();tell('EDITING · Jalan diganti.');}else $('catalog-replace-status').textContent='Penggantian tidak aman; jalan lama tidak diubah.';return;}
+    deactivateTerrain();clearGroup();selected=false;selectingObject=false;movingObject=false;draft=null;placingRoad=material;placementWorld=window.worldManager.getActive().id;libraryDialog.close();refresh();syncControls();tell('EDITING · Ketuk tile untuk menaruh atau menghapus jalan. Batal untuk berhenti.');
+  });
   canvas.addEventListener('pointerdown', event => {
-    if((!placingHouse && !placingOrange && !placingFence && !placingBridge) || !editing || event.button!==0) return;
+    if((!placingRoad && !placingHouse && !placingOrange && !placingFence && !placingBridge) || !editing || event.button!==0) return;
     event.preventDefault(); event.stopImmediatePropagation(); placementPointer=event.pointerId;
     const tile=scene()?.tileAt(scene().toLocal(event.clientX,event.clientY));
+    if(placingRoad) {
+      const before=window.worldManager.getActive().roads||[];if(!tile){tell('EDITING · Pilih tile di world.');return;}
+      const found=before.find(r=>r.column===tile.column&&r.row===tile.row);
+      const next=found ? before.filter(r=>r!==found) : [...before,{...tile,material:placingRoad}];
+      if(!saveRoads(before,next)){tell('EDITING · Jalan membutuhkan tile aman; sungai tidak dapat ditempatkan pada player.');return;}
+      tell(found?'EDITING · Jalan dihapus.':'EDITING · Jalan ditempatkan. Ketuk tile lain atau Batal.');return;
+    }
     if(placingBridge) {
       const before=window.worldManager.getActive().bridges||[],next=tile && [...before,{...tile,axis:bridgeAxis,material:placingBridge.material,gap:true,free:true,deck:bridgeDeck(tile),straight:true,...(placingBridge.length===3?{}:{length:placingBridge.length})}];
       if(!next || !saveBridges(before,next)){tell(`EDITING · Tile awal harus memiliki block; tapak dan kedua ujung harus di dalam world dan bebas objek lain.`);return;}
@@ -239,9 +263,9 @@
     return obj ? {...obj} : null;
   }
   function blocks(world) { return world.blockStacks ? world.blockStacks.map(x=>x.slice()) : world.tiles?.map(t=>t?[t]:[]) ?? null; }
-  function snapshot() { return {character: current('character'), house: current('house'), trees:(window.worldManager.getActive().orangeTrees||[]).map(t=>({...t})), fences:(window.worldManager.getActive().fences||[]).map(f=>({...f})), bridges:(window.worldManager.getActive().bridges||[]).map(b=>({...b})), blocks: blocks(window.worldManager.getActive()),blockOpacity:(window.worldManager.getActive().blockOpacity||[]).map(e=>({...e})),ramps:(window.worldManager.getActive().ramps||[]).map(r=>({...r}))}; }
+  function snapshot() { return {character: current('character'), house: current('house'), trees:(window.worldManager.getActive().orangeTrees||[]).map(t=>({...t})), fences:(window.worldManager.getActive().fences||[]).map(f=>({...f})), bridges:(window.worldManager.getActive().bridges||[]).map(b=>({...b})), roads:(window.worldManager.getActive().roads||[]).map(r=>({...r})), blocks: blocks(window.worldManager.getActive()),blockOpacity:(window.worldManager.getActive().blockOpacity||[]).map(e=>({...e})),ramps:(window.worldManager.getActive().ramps||[]).map(r=>({...r}))}; }
   function sameBlocks(a,b) { return a===b || (Array.isArray(a) && Array.isArray(b) && a.length===b.length && a.every((v,i)=>v.length===b[i].length && v.every((t,j)=>t===b[i][j]))); }
-  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house) && JSON.stringify(a.trees)===JSON.stringify(b.trees) && JSON.stringify(a.fences)===JSON.stringify(b.fences) && JSON.stringify(a.bridges)===JSON.stringify(b.bridges) && sameBlocks(a.blocks,b.blocks) && JSON.stringify(a.blockOpacity)===JSON.stringify(b.blockOpacity) && JSON.stringify(a.ramps)===JSON.stringify(b.ramps); }
+  function sameSnapshot(a, b) { return a && b && same(a.character, b.character) && same(a.house, b.house) && JSON.stringify(a.trees)===JSON.stringify(b.trees) && JSON.stringify(a.fences)===JSON.stringify(b.fences) && JSON.stringify(a.bridges)===JSON.stringify(b.bridges) && JSON.stringify(a.roads)===JSON.stringify(b.roads) && sameBlocks(a.blocks,b.blocks) && JSON.stringify(a.blockOpacity)===JSON.stringify(b.blockOpacity) && JSON.stringify(a.ramps)===JSON.stringify(b.ramps); }
   function ensureHistory(id) {
     const state = snapshot();
     let item = histories.get(id);
@@ -270,6 +294,7 @@
     const next = from[from.length - 1];
     if(next.type==='catalogObjects'){const before=objectSets(window.worldManager.getActive());applyingHistory=true;let saved;try{saved=window.worldManager.replaceCatalogObjects(worldId,before,next.value);}finally{applyingHistory=false;}if(!saved){tell('EDITING · Riwayat objek tidak dapat diterapkan.');return;}from.pop();to.push({type:'catalogObjects',value:before});history.last=snapshot();selected=false;refresh();syncControls();tell(`EDITING · ${label}: objek.`);return;}
     if(next.type==='group') {const before=groupSnapshot();applyingHistory=true;let saved;try{saved=window.worldManager.replaceObjectGroup(worldId,before,next.value);}finally{applyingHistory=false;}if(!saved){tell('EDITING · Riwayat grup tidak dapat diterapkan.');return;}from.pop();to.push({type:'group',value:before});history.last=snapshot();clearGroup();selected=false;movingObject=false;refresh();syncControls();tell(`EDITING · ${label}: grup objek.`);return;}
+    if(next.type==='roads'){const before=(window.worldManager.getActive().roads||[]).map(r=>({...r}));applyingHistory=true;let saved;try{saved=window.worldManager.replaceRoads(worldId,before,next.value);}finally{applyingHistory=false;}if(!saved){tell('EDITING · Riwayat jalan tidak dapat diterapkan.');return;}from.pop();to.push({type:'roads',value:before});history.last=snapshot();syncControls();return;}
     if(next.type==='bridges') {const before=(window.worldManager.getActive().bridges||[]).map(b=>({...b}));applyingHistory=true;let saved;try{saved=window.worldManager.replaceBridges(worldId,before,next.value);}finally{applyingHistory=false;}if(!saved){tell('EDITING · Riwayat jembatan tidak dapat diterapkan.');return;}from.pop();to.push({type:'bridges',value:before});history.last=snapshot();selected=false;selectedBridgeIndex=null;refresh();syncControls();return;}
     if(next.type==='fences') {
       const before=(window.worldManager.getActive().fences||[]).map(f=>({...f}));
@@ -378,7 +403,7 @@
     rotateControls.hidden = !editing;
     rotateLeft.disabled = Boolean(group) || selectedType==='block' && selected || (!selected && !placingFence && !placingBridge) || pointers.size > 0;
     rotateRight.disabled = Boolean(group) || selectedType==='block' && selected || (!selected && !placingFence && !placingBridge) || pointers.size > 0;
-    $('object-placement-cancel').hidden=!editing || !(placingHouse || placingOrange || placingFence || placingBridge);
+    $('object-placement-cancel').hidden=!editing || !(placingHouse || placingOrange || placingFence || placingBridge || placingRoad);
     $('object-tool-select').setAttribute('aria-pressed',String(selectingObject));
     $('object-tool-move').disabled=!editing || (selected && selectedType==='block') || (!selected && !group);
     $('object-tool-move').setAttribute('aria-pressed',String(movingObject));
@@ -387,7 +412,7 @@
   }
   function finishEditing() {
     if(pendingTerrain) window.editorBlockHistory.end();
-    clearGroup();selectingObject=false;movingObject=false;selectedTreeIndex=null;selectedFenceIndex=null;selectedBridgeIndex=null;placingBridge=null;placingFence=null;placingHouse=false; placingOrange=false; placementWorld=null; pendingTerrain = null; editing = false; selected = false; worldId = null; draft = null; history = null;
+    clearGroup();selectingObject=false;movingObject=false;selectedTreeIndex=null;selectedFenceIndex=null;selectedBridgeIndex=null;placingBridge=null;placingRoad=null;placingFence=null;placingHouse=false; placingOrange=false; placementWorld=null; pendingTerrain = null; editing = false; selected = false; worldId = null; draft = null; history = null;
     pointers.clear(); dragOffset = null; pinch = null; suppressDrag = false;objectPointer=null;objectDrag=null;scene()?.setObjectDrag?.(null,0,null);
     scene()?.update(null, false); scene()?.setSelectedTree?.(null);scene()?.setSelectedFence?.(null);scene()?.setSelectedBridge?.(null); syncControls();
   }
@@ -503,10 +528,11 @@
   function cancelGesture() { pointers.clear(); pinch = null; dragOffset = null; suppressDrag = false; draft = null;objectPointer=null;objectDrag=null;scene()?.setObjectDrag?.(null,0,null);refresh(); syncControls(); }
   function deactivateTerrain() {
     for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) {const button=$(id);if(button?.getAttribute('aria-pressed')==='true')button.click();}
-    placingHouse=false;placingFence=null;placingBridge=null;placingOrange=false;placementWorld=null;
+    placingHouse=false;placingFence=null;placingBridge=null;placingRoad=null;placingOrange=false;placementWorld=null;
   }
-  $('object-placement-cancel').addEventListener('click',()=>{placingHouse=false;placingOrange=false;placingFence=null;placingBridge=null;placementWorld=null;syncControls();tell('EDITING · Penempatan objek dibatalkan.');});
+  $('object-placement-cancel').addEventListener('click',()=>{placingHouse=false;placingOrange=false;placingFence=null;placingBridge=null;placingRoad=null;placementWorld=null;syncControls();tell('EDITING · Penempatan objek dibatalkan.');});
   function saveCatalogObjects(before,next) {if(!editing || !history)return false;applyingHistory=true;let saved;try{saved=window.worldManager.replaceCatalogObjects(worldId,before,next);}finally{applyingHistory=false;}if(saved){history.undo.push({type:'catalogObjects',value:before});if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();syncControls();}return saved;}
+  function saveRoads(before,next) {applyingHistory=true;let saved;try{saved=window.worldManager.replaceRoads(worldId,before,next);}finally{applyingHistory=false;}if(saved){history.undo.push({type:'roads',value:before.map(r=>({...r}))});if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();syncControls();}return saved;}
   function saveBridges(before,next) {applyingHistory=true;let saved;try{saved=window.worldManager.replaceBridges(worldId,before,next);}finally{applyingHistory=false;}if(saved){history.undo.push({type:'bridges',value:before.map(b=>({...b}))});if(history.undo.length>HISTORY_LIMIT)history.undo.shift();history.redo.length=0;history.last=snapshot();}return saved;}
   function saveFences(before,next) {
     applyingHistory=true;let saved;try{saved=window.worldManager.replaceFences(worldId,before,next);}finally{applyingHistory=false;}
@@ -594,7 +620,7 @@
   // Capture object tools before terrain, pan, and the older drag interaction.
   canvas.addEventListener('pointerdown',event=>{
     if(objectDrag && event.pointerId!==objectDrag.id) { objectPointer=null;objectDrag=null;scene()?.setObjectDrag?.(null,0,null);refresh();syncControls();event.preventDefault();event.stopImmediatePropagation();return; }
-    if(!editing || event.button!==0 || placingHouse || placingOrange || placingFence || placingBridge)return;
+    if(!editing || event.button!==0 || placingHouse || placingOrange || placingFence || placingBridge || placingRoad)return;
     const local=scene()?.toLocal(event.clientX,event.clientY);if(!local)return;
     const terrainActive=!!document.querySelector('.terrain-tools button[aria-pressed="true"]');
     const directBridge=!terrainActive && $('editor-pan').getAttribute('aria-pressed')!=='true' ? (scene()?.bridgeAt?.(local) ?? null) : null;
@@ -667,7 +693,7 @@
     refresh();syncControls();
   },true);
   for(const id of ['terrain-draw','terrain-add','terrain-erase','terrain-pick','terrain-fill','editor-pan']) $(id)?.addEventListener('click',()=>{
-    clearGroup();selectingObject=false;movingObject=false;placingHouse=false;placingOrange=false;placingFence=null;placingBridge=null;placementWorld=null;
+    clearGroup();selectingObject=false;movingObject=false;placingHouse=false;placingOrange=false;placingFence=null;placingBridge=null;placingRoad=null;placementWorld=null;
     if(selectedType==='block'){selected=false;selectedBlock=null;refresh();}syncControls();
   });
   canvas.addEventListener('pointerdown', event => {
@@ -746,7 +772,7 @@
   document.addEventListener('keydown', event => {
     if(event.key==='Escape' && group && !movingObject && !selectingObject){event.preventDefault();clearGroup();refresh();syncControls();tell('EDITING · Pilihan grup dibatalkan.');return;}
     if (event.key==='Escape' && (movingObject || selectingObject)) {event.preventDefault();movingObject=false;selectingObject=false;syncControls();tell('EDITING · Alat objek dibatalkan.');return;}
-    if (event.key === 'Escape' && (placingHouse || placingOrange || placingFence || placingBridge)) { event.preventDefault(); placingHouse=false; placingOrange=false; placingFence=null; placingBridge=null; placementWorld=null; syncControls();tell('EDITING · Penempatan objek dibatalkan.'); return; }
+    if (event.key === 'Escape' && (placingHouse || placingOrange || placingFence || placingBridge || placingRoad)) { event.preventDefault(); placingHouse=false; placingOrange=false; placingFence=null; placingBridge=null; placingRoad=null; placementWorld=null; syncControls();tell('EDITING · Penempatan objek dibatalkan.'); return; }
     if (event.key === 'Escape' && editing && !dialog.open) { finishEditing(); return; }
     const tag = event.target?.tagName?.toLowerCase();
     if (!editing || dialog.open || !(event.ctrlKey || event.metaKey) || event.altKey

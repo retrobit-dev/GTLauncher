@@ -512,3 +512,10 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 
 /* The status has its own full-tablet-width row below the button row. */
 .preview-stage > .weather-mode-label { width:100%; max-width:100%; overflow-wrap:anywhere; }
+
+/* Small material swatches in the object catalog. */
+.road-swatch { display:block; width:70%; height:45%; transform:rotate(-12deg) skew(-25deg); border:1px solid #54534b; border-radius:3px; }
+.road-dirt { background:#a66d47; } .road-stone { background:repeating-linear-gradient(45deg,#a9aaa2 0 7px,#747a73 8px 10px); }
+.road-sand { background:repeating-linear-gradient(0deg,#e0bd81 0 6px,#f3d7a3 7px 8px); }
+.road-paving { background:repeating-linear-gradient(45deg,#c18d7e 0 7px,#625b59 8px 9px); }
+.road-asphalt { background:#3d4143; } .road-water { background:repeating-linear-gradient(0deg,#468fb7 0 7px,#a3d7e4 8px 9px); }

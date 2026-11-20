@@ -1096,7 +1096,7 @@ public class HomeActivity extends Activity {
                     if(house.covers(c,r) && !house.covers(world.characterColumn,world.characterRow)) return false;
                 for(WorldStore.SurfaceObject o:world.surfaces) {
                     if(o.type.equals("tree") && c>=o.column && c<o.column+WorldStore.surfaceFootprint(o) && r>=o.row && r<o.row+WorldStore.surfaceFootprint(o)) return false;
-                    if((o.type.equals("sunflower")||o.type.equals("mailbox")||o.type.equals("storage-box")||o.type.equals("selling-box")||(o.type.equals("road") && "water".equals(o.material))) && o.column==c && o.row==r)return false;
+                    if((o.type.equals("sunflower")||o.type.equals("mailbox")||o.type.equals("storage-box")||o.type.equals("selling-box")||(o.type.equals("road") && "water".equals(o.material) && (world.previewData==null || !world.previewData.onBridge(c,r)))) && o.column==c && o.row==r)return false;
                 }
                 return true;
             }

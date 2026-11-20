@@ -28,7 +28,8 @@
     const inHouse=p=>house?.visible && p.column>=house.column && p.column<house.column+3 && p.row>=house.row && p.row<house.row+3;
     const escaping=inside(start) && inHouse(start);
     const inTree=p=>(world?.orangeTrees||[]).some(t=>t.kind!=='wild-grass' && t.kind!=='bush' && p.column>=t.column && p.column<t.column+(t.size||2) && p.row>=t.row && p.row<t.row+(t.size||2));
-    const water=p=>inside(p) && (ramps.get(keyOf(p))?.material ?? world.tiles?.[keyOf(p)])===3 && !(world.bridges||[]).some(b=>BridgeGeometry?.indexAt(b,p)>=0);
+    const river=new Set((world?.roads||[]).filter(r=>r.material==='water').map(r=>keyOf(r)));
+    const water=p=>inside(p) && ((ramps.get(keyOf(p))?.material ?? world.tiles?.[keyOf(p)])===3 || river.has(keyOf(p))) && !(world.bridges||[]).some(b=>BridgeGeometry?.indexAt(b,p)>=0);
     const pass=p=>inside(p) && (nearestDry || !water(p)) && !inTree(p) && height(p)>0 && (!world.tiles || world.tiles[p.row*size+p.column]!==0 || BridgeGeometry?.deckHeight(world,p)!=null) && (!inHouse(p) || escaping);
     // Older worlds may have a house placed on top of the character. Let the
     // character leave that starting tile, but never enter an occupied destination.
@@ -36,7 +37,7 @@
     if(!startOnTile || (!nearestDry && (!inside(end) || !pass(end) || (inHouse(end) && !(start.column===end.column && start.row===end.row)))))return null;
     const key=p=>p.row*size+p.column, queue=[start], prev=new Map([[key(start),null]]);
     for(let i=0;i<queue.length;i++) {
-      const p=queue[i]; if(nearestDry ? (key(p)!==key(start) && pass(p) && !inHouse(p) && ((ramps.get(key(p))?.material ?? world.tiles?.[key(p)])!==3 || (world.bridges||[]).some(b=>BridgeGeometry?.indexAt(b,p)>=0))) : (p.column===end.column&&p.row===end.row)) {
+      const p=queue[i]; if(nearestDry ? (key(p)!==key(start) && pass(p) && !inHouse(p) && (!water(p) || (world.bridges||[]).some(b=>BridgeGeometry?.indexAt(b,p)>=0))) : (p.column===end.column&&p.row===end.row)) {
         const route=[];let n=key(p);while(n!==null){route.push({column:n%size,row:Math.floor(n/size)});n=prev.get(n);}return route.reverse();
       }
       for(const [dx,dy,edge] of [[0,-1,'N'],[1,0,'E'],[0,1,'S'],[-1,0,'W']]) {

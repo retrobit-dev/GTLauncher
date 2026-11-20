@@ -336,6 +336,7 @@ final class WorldStore {
                 trees.add(new SurfaceObject("fence",f.getInt("column"),f.getInt("row"),f.getString("edge"),"preview-"+f.getString("material"),f.toString(),f.has("opacity")?f.getInt("opacity"):-1));
             }
         }
+        JSONArray roads=w.optJSONArray("roads");if(roads!=null)for(int i=0;i<roads.length();i++){JSONObject road=roads.getJSONObject(i);trees.add(new SurfaceObject("road",road.getInt("column"),road.getInt("row"),null,road.getString("material"),road.toString()));}
         World result=new World(data.id,w.getString("name"),w.getString("description"),w.getString("color"),
                 w.getBoolean("showCharacter"),w.getInt("characterColumn"),w.getInt("characterRow"),w.getDouble("characterScale"),w.getString("characterFacing"),
                 first!=null,first!=null && first.visible,first==null?0:first.column,first==null?0:first.row,first==null?1:first.scale,
@@ -442,6 +443,7 @@ final class WorldStore {
                 if ((old.previewData==null)!=(world.previewData==null))
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
+                    if(world.previewData.version<30 && old.previewData.hasRoads())throw new JSONException("Older preview format cannot replace roads");
                     if(world.previewData.version<29 && old.previewData.hasFloatingBlocks())throw new JSONException("Older preview format cannot replace floating blocks");
                     if(world.previewData.version<28 && old.previewData.bridges.stream().anyMatch(b->b.straight))throw new JSONException("Older preview format cannot replace straight bridges");
                     if(world.previewData.version<27 && old.previewData.bridges.stream().anyMatch(b->b.inset))throw new JSONException("Older preview format cannot replace inset bridges");

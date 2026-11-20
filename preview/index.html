@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#e2e4e1">
   <title>GTLauncher — Live Weather Preview</title>
-  <link rel="stylesheet" href="./styles.css?v=island-turn-swap-79">
+  <link rel="stylesheet" href="./styles.css?v=road-v30-1">
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./fence-edges.js?v=1" defer></script>
   <script src="./sky-blend.js?v=1" defer></script>
@@ -14,9 +14,10 @@
   <script src="./ramp-geometry.js?v=4" defer></script>
   <script src="./base-terrain.js?v=4" defer></script>
   <script src="./grid-regions.js?v=1" defer></script>
-  <script src="./world-view-rotation.js?v=floating-blocks-1" defer></script>
-  <script src="./worlds.js?v=floating-blocks-1" defer></script>
-  <script src="./object-editor.js?v=bridge-redesign-45" defer></script>
+  <script src="./world-view-rotation.js?v=road-v30-1" defer></script>
+  <script src="./road-surface.js?v=1" defer></script>
+  <script src="./worlds.js?v=road-v30-1" defer></script>
+  <script src="./object-editor.js?v=road-v30-1" defer></script>
   <script src="./pond-life.js?v=1" defer></script>
   <script src="./house-geometry.js?v=2" defer></script>
   <script src="./orange-tree-motion.js?v=2" defer></script>
@@ -32,11 +33,11 @@
   <script src="./fence-joins.js?v=2" defer></script>
   <script src="./player-idle-bow.js?v=8" defer></script>
   <script src="./sparrow-pet.js?v=6" defer></script>
-  <script src="./app.js?v=floating-blocks-1" defer></script>
+  <script src="./app.js?v=road-v30-1" defer></script>
   <script src="./preview-modes.js?v=2" defer></script>
   <script src="./editor-camera.js?v=10" defer></script>
   <script src="./terrain-tools.js?v=floating-blocks-1" defer></script>
-  <script src="./gameplay-path.js?v=floating-blocks-1" defer></script>
+  <script src="./gameplay-path.js?v=road-v30-1" defer></script>
   <script src="./jump-motion.js?v=2" defer></script>
   <script src="./gameplay-movement.js?v=sloped-4" defer></script>
   <script src="./season-estimate.js?v=1" defer></script>
@@ -214,6 +215,12 @@
       <section id="catalog-panel-buildings" class="catalog-group" role="tabpanel" aria-labelledby="catalog-tab-buildings">
         <h4 id="catalog-buildings-title">Bangunan</h4>
         <div class="catalog-grid">
+          <button id="catalog-place-road-dirt" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-dirt" aria-hidden="true"></span><strong>Jalan tanah</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-stone" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-stone" aria-hidden="true"></span><strong>Jalan batu</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-sand" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-sand" aria-hidden="true"></span><strong>Jalan pasir</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-paving" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-paving" aria-hidden="true"></span><strong>Jalan paving</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-asphalt" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-asphalt" aria-hidden="true"></span><strong>Jalan aspal</strong><span class="catalog-footprint">1×1 tile</span></button>
+          <button id="catalog-place-road-water" type="button" class="catalog-tile"><span class="catalog-art road-swatch road-water" aria-hidden="true"></span><strong>Jalan air / sungai</strong><span class="catalog-footprint">1×1 tile</span></button>
           <button id="catalog-place-bridge-wood" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-redesign-wood.svg" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">3×1 block</span></button>
           <button id="catalog-place-bridge-wood-4" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-redesign-wood.svg" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">4×1 block</span></button>
           <button id="catalog-place-bridge-wood-5" type="button" class="catalog-tile"><span class="catalog-art"><img src="assets/bridge-redesign-wood.svg" alt=""></span><strong>Jembatan kayu</strong><span class="catalog-footprint">5×1 block</span></button>

@@ -961,15 +961,15 @@ public final class WeatherSkyView extends View {
     private void drawRoads(Canvas canvas) {
         for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("road")) {
             float cx=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f-elevationAt(o.column,o.row);
-            boolean water="water".equals(o.material);float[][] outline=RoadGeometry.outline(o.column,o.row,water,this::hasRoad);
-            int base=Color.parseColor(o.material.equals("dirt")?"#cdbb99":o.material.equals("stone")?"#727b74":o.material.equals("gravel")?"#b4a993":o.material.equals("paving")?"#746d5e":o.material.equals("asphalt")?"#59625e":"#719fa1");
-            int light=Color.parseColor(o.material.equals("dirt")?"#ded0b2":o.material.equals("stone")?"#a6ada3":o.material.equals("gravel")?"#d2c8b3":o.material.equals("paving")?"#aaa18f":o.material.equals("asphalt")?"#747e75":"#a8c7bc");
-            int dark=Color.parseColor(o.material.equals("dirt")?"#a99476":o.material.equals("stone")?"#899187":o.material.equals("gravel")?"#8e8575":o.material.equals("paving")?"#968d7d":o.material.equals("asphalt")?"#454d4a":"#588487");
+            boolean water="water".equals(o.material);float[][] outline=RoadGeometry.outline(o.column,o.row,water,this::hasRoad,ISLAND_GRID_SIZE);
+            int base=Color.parseColor(o.material.equals("dirt")?"#cdbb99":o.material.equals("stone")?"#727b74":o.material.equals("sand")?"#e0bd81":o.material.equals("gravel")?"#b4a993":o.material.equals("paving")?"#746d5e":o.material.equals("asphalt")?"#59625e":"#719fa1");
+            int light=Color.parseColor(o.material.equals("dirt")?"#ded0b2":o.material.equals("stone")?"#a6ada3":o.material.equals("sand")?"#f3d7a3":o.material.equals("gravel")?"#d2c8b3":o.material.equals("paving")?"#aaa18f":o.material.equals("asphalt")?"#747e75":"#a8c7bc");
+            int dark=Color.parseColor(o.material.equals("dirt")?"#a99476":o.material.equals("stone")?"#899187":o.material.equals("sand")?"#bd9464":o.material.equals("gravel")?"#8e8575":o.material.equals("paving")?"#968d7d":o.material.equals("asphalt")?"#454d4a":"#588487");
             paint.setStyle(Paint.Style.FILL);paint.setAlpha(255);
             // At the island front, continue the path down the visible grass rim.
-            for(int side=0;side<2;side++)if((side==0 && o.row==8)||(side==1 && o.column==8)) {
+            for(int side=0;side<2;side++)if((side==0 && o.row==ISLAND_GRID_SIZE-1)||(side==1 && o.column==ISLAND_GRID_SIZE-1)) {
                 float lo=side==0?(hasRoad(o.column-1,o.row,water)||o.column==0?0:RoadGeometry.INSET):(hasRoad(o.column,o.row-1,water)||o.row==0?0:RoadGeometry.INSET);
-                float hi=side==0?(hasRoad(o.column+1,o.row,water)||o.column==8?1:1-RoadGeometry.INSET):(hasRoad(o.column,o.row+1,water)||o.row==8?1:1-RoadGeometry.INSET);
+                float hi=side==0?(hasRoad(o.column+1,o.row,water)||o.column==ISLAND_GRID_SIZE-1?1:1-RoadGeometry.INSET):(hasRoad(o.column,o.row+1,water)||o.row==ISLAND_GRID_SIZE-1?1:1-RoadGeometry.INSET);
                 float[] a=side==0?roadPoint(cx,cy,lo,1):roadPoint(cx,cy,1,lo),b=side==0?roadPoint(cx,cy,hi,1):roadPoint(cx,cy,1,hi);
                 Path band=new Path();band.moveTo(a[0],a[1]-1);band.lineTo(b[0],b[1]-1);band.lineTo(b[0],b[1]+ISLAND_GRASS_BAND_DEPTH);band.lineTo(a[0],a[1]+ISLAND_GRASS_BAND_DEPTH);band.close();paint.setColor(blend(base,Color.BLACK,side==0?.15:.23));canvas.drawPath(band,paint);
             }

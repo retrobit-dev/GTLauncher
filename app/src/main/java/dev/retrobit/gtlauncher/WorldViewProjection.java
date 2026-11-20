@@ -31,7 +31,7 @@ final class WorldViewProjection {
             JSONObject bridge=bridges.getJSONObject(i);WorldViewRotation.Bridge b=WorldViewRotation.bridge(integer(bridge,"column"),integer(bridge,"row"),bridge.getString("axis"),bridge.has("length")?integer(bridge,"length"):3,bridge.has("width")?integer(bridge,"width"):1,size,turns);
             if(b==null)throw new JSONException("Invalid bridge");bridge.put("column",b.column);bridge.put("row",b.row);bridge.put("axis",b.axis);
         }
-        for(String name:new String[]{"blockOpacity","ramps"}) {
+        for(String name:new String[]{"blockOpacity","ramps","roads"}) {
             JSONArray records=optionalArray(out,name);if(records==null)continue;
             for(int i=0;i<records.length();i++){
                 JSONObject item=records.getJSONObject(i);int c=integer(item,"column"),r=integer(item,"row");if(c<0 || r<0 || c>=size || r>=size)throw new JSONException("Invalid tile record");
@@ -43,7 +43,7 @@ final class WorldViewProjection {
     }
     /** Preview plants and fence geometry in camera space; raw identity stays world-space. */
     static WorldStore.SurfaceObject projectPreviewSurface(WorldStore.SurfaceObject object,int size,int turns) {
-        if(object==null || !(object.type.equals("tree") || object.type.equals("bush") || object.type.equals("fence")))return null;
+        if(object==null || !(object.type.equals("tree") || object.type.equals("bush") || object.type.equals("fence") || object.type.equals("road")))return null;
         if(object.type.equals("fence") && !object.material.startsWith("preview-"))return null;
         int footprint=WorldStore.surfaceFootprint(object);
         WorldViewRotation.Rect p=WorldViewRotation.rectangle(object.column,object.row,footprint,footprint,size,turns);
