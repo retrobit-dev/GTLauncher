@@ -84,3 +84,11 @@ ketika perubahan selesai. Tes block, rumah dan jembatan telah dijalankan;
 tes gabungan tanaman/pagar belum berhasil diverifikasi pada putaran ini.
 Fade otomatis block yang menutupi objek masih belum diterapkan; Android tidak
 menyediakan editor slider dan pengujiannya di perangkat masih diperlukan.
+
+Rute normal preview dan Android kini menolak masuk ke permukaan air, termasuk
+ramp air, kecuali pada dek jembatan. Karakter dari world lama yang sudah
+berada di air tetap dapat meninggalkannya; pemulihan otomatis menuju daratan
+terdekat mempertahankan kemampuan menyeberangi air untuk menghindari karakter
+terjebak. Perubahan Android baru diuji typecheck, bukan perangkat. Aturan
+jembatan khusus lubang, air terjun berbentuk ramp dan arah animasi air belum
+diterapkan; aturan penempatan jembatan lama masih berlaku.

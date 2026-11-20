@@ -691,7 +691,7 @@ public class HomeActivity extends Activity {
             WorldStore.World world=worldStore.activeWorld();
             if(world==null || !world.showCharacter || !world.id.equals(worldId) || world.characterColumn!=column
                     || world.characterRow!=row || world.previewData==null || (world.previewData.surfaceMaterial(column,row)!=3 || world.previewData.onBridge(column,row))) return;
-            PortalTravel.Terrain normal=portalTerrain(world);
+            PortalTravel.Terrain normal=portalTerrain(world,true);
             PortalTravel.DryTerrain terrain=new PortalTravel.DryTerrain() {
                 public boolean canStand(int c,int r) { return normal.canStand(c,r); }
                 public boolean canStep(int a,int b,int c,int d) { return normal.canStep(a,b,c,d); }
@@ -1085,10 +1085,12 @@ public class HomeActivity extends Activity {
     }
 
     // Portal worlds are admitted only if every object is currently supported by Android.
-    private PortalTravel.Terrain portalTerrain(WorldStore.World world) {
+    private PortalTravel.Terrain portalTerrain(WorldStore.World world) { return portalTerrain(world,false); }
+    private PortalTravel.Terrain portalTerrain(WorldStore.World world,boolean recovery) {
         return new PortalTravel.Terrain() {
             public boolean canStand(int c,int r) {
                 if(!world.tileExists(c,r)) return false;
+                if(!recovery && world.previewData!=null && world.previewData.surfaceMaterial(c,r)==3 && !world.previewData.onBridge(c,r) && (c!=world.characterColumn || r!=world.characterRow))return false;
                 // Recover safely if an older editor allowed a house over the character.
                 for(WorldStore.House house:world.houses)
                     if(house.covers(c,r) && !house.covers(world.characterColumn,world.characterRow)) return false;
