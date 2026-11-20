@@ -2349,7 +2349,16 @@
       for (const tile of ISLAND_TILES) {
         const index=tile.row * ISLAND_GRID_SIZE + tile.column, stack=stacks?.[index];
         if (!tileData[index]) continue;
-        if (tileVisible(tile, ISLAND_DEPTH)) {
+        // An untouched Base-template column surrounded on all sides by identical,
+        // opaque columns has no visible lower faces. Avoid painting its four
+        // buried courses; preserve the full path near edits, holes and opacity.
+        const baseLayers=window.BaseTerrain?.LAYERS;
+        const matchesBase=s=>s && baseLayers && s.length===baseLayers.length && s.every((v,i)=>v===baseLayers[i]);
+        const buried=stacks && !blockOpacity.size && matchesBase(stack) && [[0,-1],[1,0],[0,1],[-1,0]].every(([dc,dr])=>{
+          const c=tile.column+dc,r=tile.row+dr;
+          return c>=0 && r>=0 && c<ISLAND_GRID_SIZE && r<ISLAND_GRID_SIZE && matchesBase(stacks[r*ISLAND_GRID_SIZE+c]);
+        });
+        if (!buried && tileVisible(tile, ISLAND_DEPTH)) {
           ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:0`)||0))/100;
           const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
           // Full-depth faces expose the silhouette and the soil beneath each remaining tile.
@@ -2361,6 +2370,7 @@
           drawGrassTile(tile, palette, sunlight, stack ? stack[0] : tileData[index]);ctx.restore();
         }
         if (stack) for(let level=1;level<stack.length;level++) {
+          if(buried && level<stack.length-1)continue;
           const raised={...tile,y:tile.y-level*BLOCK_HEIGHT};
           if(tileVisible(raised,BLOCK_HEIGHT)){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawGrassTile(raised,palette,sunlight,stack[level],level);ctx.restore();}
         }

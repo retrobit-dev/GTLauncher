@@ -83,6 +83,21 @@ public class PreviewWorld20Test {
         assertEquals(50,parsed.size); assertEquals(3,parsed.tile(49,49)); assertFalse(parsed.canStand(50,49));
         assertEquals(parsed.toJson(),PreviewWorld20.parse(parsed.toJson()).toJson());
     }
+    @Test public void newBaseDerivedWorldFiveLayersRoundTrip() throws Exception {
+        JSONObject root=sample(),w=root.getJSONObject("world");
+        JSONArray tiles=new JSONArray(),stacks=new JSONArray();
+        for(int i=0;i<2500;i++) {
+            tiles.put(1);stacks.put(new JSONArray().put(2).put(2).put(2).put(2).put(1));
+        }
+        root.put("version",4);w.put("gridSize",50).put("tiles",tiles).put("blockStacks",stacks)
+                .put("characterColumn",24).put("characterRow",24);
+        PreviewWorld20 parsed=PreviewWorld20.parse(root.toString());
+        assertTrue(parsed.hasStacks());assertEquals(5,parsed.height(24,24));
+        for(int level=0;level<4;level++)assertEquals(2,parsed.block(24,24,level));
+        assertEquals(1,parsed.block(24,24,4));assertTrue(parsed.canStep(24,24,25,24));
+        PreviewWorld20 again=PreviewWorld20.parse(parsed.toJson());
+        assertEquals(5,again.height(49,49));assertEquals(root.toString(),again.toJson());
+    }
     @Test public void hundredByHundredRoundTrip() throws Exception {
         JSONObject root=sample(), w=root.getJSONObject("world");
         JSONArray tiles=new JSONArray(); for(int i=0;i<10000;i++) tiles.put(1);

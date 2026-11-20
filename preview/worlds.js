@@ -593,14 +593,28 @@
       announce('Cadangan sebelum Home diperbarui diunduh.');
     } catch (_) { announce('Cadangan Home tidak dapat dibaca.'); }
   });
+  // Fresh, independently editable copies; never apply the template to existing worlds.
+  function newBaseTerrain() {
+    const base=window.BaseTerrain;
+    if(!base || !Number.isInteger(base.SIZE) || typeof base.stack!=='function')return null;
+    const blockStacks=[];
+    for(let row=0;row<base.SIZE;row++)for(let column=0;column<base.SIZE;column++) {
+      const stack=base.stack(column,row);
+      if(!Array.isArray(stack) || !stack.length || stack.some(t=>!validTile(t) || !t))return null;
+      blockStacks.push(stack.slice());
+    }
+    return {gridSize:base.SIZE,tiles:blockStacks.map(stack=>stack[stack.length-1]),blockStacks};
+  }
   $('world-new').addEventListener('click', () => showEditor(null));
   $('world-create-home').addEventListener('click', () => {
     // This explicit action creates a new world; never replace an existing Home or unreadable data.
     if (storageError || state.worlds.some(w => w.name.trim().toLocaleLowerCase() === 'home')) {
       announce('Home sudah ada atau penyimpanan perlu diperiksa. Data tidak diubah.'); return;
     }
+    const terrain=newBaseTerrain();
+    if(!terrain){announce('Base World tidak dapat dibaca; world baru tidak dibuat.');return;}
     const id = globalThis.crypto?.randomUUID?.() || `world-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const home = {id, name: 'Home', description: '', color: '#a8c795', gridSize: 50, tiles: Array(2500).fill(1),
+    const home = {id, name: 'Home', description: '', color: '#a8c795', ...terrain,
       showCharacter: true, characterColumn: 24, characterRow: 24, characterScale: 1,
       characterFacing: 'S', house: {column: 0, row: 0}};
     if (commit({worlds: [...state.worlds, home], activeId: id})) {
@@ -704,7 +718,9 @@
     if (editingId && !state.worlds.some(world => world.id === editingId)) { announce('World tidak ditemukan.'); return; }
     const id = editingId || (globalThis.crypto?.randomUUID?.() || `world-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     const existing = state.worlds.find(item => item.id === id);
-    const world = {...existing, ...(!existing ? {gridSize: 50, tiles: Array(2500).fill(1), characterColumn: 24, characterRow: 24} : {}), id, name, description, color, showCharacter: $('world-character').checked,
+    const terrain=existing ? null : newBaseTerrain();
+    if(!existing && !terrain){announce('Base World tidak dapat dibaca; world baru tidak dibuat.');return;}
+    const world = {...existing, ...(!existing ? {...terrain, characterColumn: 24, characterRow: 24} : {}), id, name, description, color, showCharacter: $('world-character').checked,
       house: existing ? (existing.house ?? null) : (name.toLocaleLowerCase() === 'home' ? {column: 0, row: 0} : null)};
     const worlds = editingId ? state.worlds.map(item => item.id === id ? world : item) : [...state.worlds, world];
     const next = {worlds, activeId: editingId ? state.activeId : id};

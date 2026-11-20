@@ -48,3 +48,16 @@ and drag, ramps with water, moving-camera transitions and non-reduced-motion
 path following in all orientations. The Android code remains a tested geometry
 foundation only, with no rotation controls or gameplay/render integration; it
 has not been tested as an APK on a device or emulator.
+
+
+`tools/test_rotation_group_browser.js` sends pointer events in all four camera
+orientations to select a grass-and-fence group by area, move the group to a
+world tile, and undo. The test uses synthetic pointer events in Chromium; it
+does not certify physical touch, individual object drag, overlapping categories,
+or rotation while a gesture or an animated route is in progress.
+
+New preview worlds now start with independent 50×50 copies of the Base World
+five-block stacks. `tools/test_new_world_from_base_browser.js` also checks
+picking those stacks in all four experimental orientations, erasing one top
+block at a rotated view, undo/redo, version 4 export and reload without changing
+old worlds or inventory. This does not enable the hidden rotation controls.
