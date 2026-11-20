@@ -14,13 +14,13 @@
     if(!Number.isInteger(size) || !Array.isArray(world.tiles) || world.tiles.length!==size*size || !Array.isArray(bridges))return false;
     const occupied=new Set(),house=world.house;
     for(const bridge of bridges){
-      if(!bridge || Object.keys(bridge).some(k=>!['column','row','axis','material','length','width','opacity','gap'].includes(k)) || (bridge.opacity!==undefined && (!Number.isInteger(bridge.opacity) || bridge.opacity<0 || bridge.opacity>90 || bridge.opacity%5!==0)) || (bridge.gap!==undefined && bridge.gap!==true) || (Object.hasOwn(bridge,'length') && ![4,5].includes(bridge.length)))return false;
+      if(!bridge || Object.keys(bridge).some(k=>!['column','row','axis','material','length','width','opacity','gap','overWater'].includes(k)) || (bridge.opacity!==undefined && (!Number.isInteger(bridge.opacity) || bridge.opacity<0 || bridge.opacity>90 || bridge.opacity%5!==0)) || (bridge.gap!==undefined && bridge.gap!==true) || (bridge.overWater!==undefined && (bridge.overWater!==true || bridge.gap!==true)) || (Object.hasOwn(bridge,'length') && ![4,5].includes(bridge.length)))return false;
       const footprint=cells(bridge);if(!footprint)return false;let height=null;
       for(let i=0;i<footprint.length;i++){
         const p=footprint[i],{column:c,row:r}=p;if(c<0 || r<0 || c>=size || r>=size)return false;
         const idx=r*size+c,material=world.tiles[idx],h=world.blockStacks?world.blockStacks[idx]?.length:(material?1:0);
         const section=Math.floor(i/(bridge.width??1)),end=section===0 || section===(bridge.length??3)-1;
-        if(bridge.gap){if(bridge.width!==undefined || (end ? (!material || material===3 || !h || (height!==null && h!==height)) : (height===null || h!==height-1)) || (world.ramps||[]).some(ramp=>ramp.column===c && ramp.row===r))return false;}
+        if(bridge.gap){if(bridge.width!==undefined || (end ? (!material || material===3 || !h || (height!==null && h!==height)) : (height===null || (h!==height-1 && !(bridge.overWater && material===3 && h===height)))) || (world.ramps||[]).some(ramp=>ramp.column===c && ramp.row===r))return false;}
         else if(!material || !h || (end && material===3) || (height!==null && height!==h))return false;
         if(occupied.has(idx))return false;
         if(house && c>=house.column && c<house.column+3 && r>=house.row && r<house.row+3)return false;

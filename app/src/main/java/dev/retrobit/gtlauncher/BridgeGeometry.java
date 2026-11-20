@@ -4,12 +4,13 @@ package dev.retrobit.gtlauncher;
 final class BridgeGeometry {
     static final int LENGTH=3;
     static final class Bridge {
-        final int column,row,length,width,opacity;final String axis,material;final boolean gap;
+        final int column,row,length,width,opacity;final String axis,material;final boolean gap,overWater;
         Bridge(int column,int row,String axis,String material){this(column,row,axis,material,3);}
         Bridge(int column,int row,String axis,String material,int length){this(column,row,axis,material,length,-1);}
         Bridge(int column,int row,String axis,String material,int length,int opacity){this(column,row,axis,material,length,1,opacity);}
         Bridge(int column,int row,String axis,String material,int length,int width,int opacity){this(column,row,axis,material,length,width,opacity,false);}
-        Bridge(int column,int row,String axis,String material,int length,int width,int opacity,boolean gap){this.column=column;this.row=row;this.axis=axis;this.material=material;this.length=length;this.width=width;this.opacity=opacity;this.gap=gap;}
+        Bridge(int column,int row,String axis,String material,int length,int width,int opacity,boolean gap){this(column,row,axis,material,length,width,opacity,gap,false);}
+        Bridge(int column,int row,String axis,String material,int length,int width,int opacity,boolean gap,boolean overWater){this.column=column;this.row=row;this.axis=axis;this.material=material;this.length=length;this.width=width;this.opacity=opacity;this.gap=gap;this.overWater=overWater;}
     }
     static int indexAt(Bridge b,int c,int r) {
         if(b==null || b.length<3 || b.length>5 || !(b.width==1 || b.width==(b.length==5?3:2)) || !("E".equals(b.axis)||"S".equals(b.axis)) || !("wood".equals(b.material)||"stone".equals(b.material)))return -1;
@@ -34,7 +35,7 @@ final class BridgeGeometry {
                 if(c<0 || r<0 || c>=terrain.size() || r>=terrain.size())return false;
                 int tile=terrain.tile(c,r),height=terrain.height(c,r);
                 boolean end=i==0 || i==b.length-1;
-                if(b.gap){if(b.width!=1 || (end?(tile==0 || tile==3 || height<=0 || (level>=0 && level!=height)):(level<0 || height!=level-1)))return false;}
+                if(b.gap){if(b.width!=1 || (end?(tile==0 || tile==3 || height<=0 || (level>=0 && level!=height)):(level<0 || (height!=level-1 && !(b.overWater && tile==3 && height==level)))))return false;}
                 else if(tile==0 || height<=0 || (end && tile==3) || (level>=0 && level!=height))return false;
                 if(terrain.obstructed(c,r) || !seen.add(r*terrain.size()+c))return false;
                 if(level<0)level=height;

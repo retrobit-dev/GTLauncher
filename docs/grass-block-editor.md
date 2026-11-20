@@ -106,12 +106,18 @@ menambah data atau mengubah world; arah cabang dan air diam belum dapat diatur
 manual. Ramp air kini menampilkan aliran menuruni bidang dan batas samping; pertemuan
 beberapa air terjun serta tampilan Android masih perlu diuji di perangkat.
 
-Penempatan jembatan baru menggunakan format preview v23: ukuran 3×1, 4×1
-atau 5×1 dengan kedua ujung darat setinggi sama dan seluruh bagian tengah
-satu tingkat lebih rendah. Sel tengah dapat kosong atau berisi air/block
-pada tingkat tersebut. Jalur karakter selebar satu block; gambar sisi panjang
+Penempatan jembatan baru menggunakan format preview v24: ukuran 3×1, 4×1
+atau 5×1 dengan kedua ujung darat setinggi sama. Bagian tengah harus berupa
+lubang satu tingkat lebih rendah atau air (baik satu tingkat lebih rendah
+maupun setingkat pada data). Jalur karakter selebar satu block; gambar sisi panjang
 menjorok keluar dari tepi. Posisi karakter pada dek kosong tersimpan dan
 penghapusan dek di bawahnya ditolak. Jembatan lama tidak dimigrasi atau
-diubah aturannya, dan berkas lama tidak bisa menimpa data v23 ini. Parser,
+diubah aturannya, dan berkas lama tidak bisa menimpa data v24 ini. Parser,
 rotasi, routing dan renderer Android mendukungnya dalam kode, tetapi belum
 diuji dalam APK/perangkat.
+
+Permukaan block air yang terlihat diturunkan secara visual sebesar seperempat
+tinggi block; stack dan tinggi data tidak diubah. Permukaan air yang tertutup
+air di atasnya tidak digambar sebagai bidang terpisah, dan dinding antar-air
+bertetangga di level yang sama dihilangkan. Air terjun dan ramp air tetap
+visual serta masih perlu pemeriksaan sambungan yang kompleks di perangkat.

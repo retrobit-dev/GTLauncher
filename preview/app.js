@@ -104,6 +104,7 @@
   const ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
   // World levels and the grass block band share the same half-height.
   const BLOCK_HEIGHT = ISLAND_GRASS_BAND_DEPTH;
+  const WATER_SURFACE_DROP = BLOCK_HEIGHT * .25;
   const ISLAND_BASE_BOTTOM_MARGIN = 8;
   const ISLAND_VERTICAL_LIFT = 10;
   const ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
@@ -1213,7 +1214,7 @@
     return result;
   }
   function drawWaterfalls(tile, level, falls, motionTime) {
-    const hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2, x=tile.x,y=tile.y-level*BLOCK_HEIGHT;
+    const hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2, x=tile.x,y=tile.y-level*BLOCK_HEIGHT+WATER_SURFACE_DROP;
     const edges={left:[[x-hw,y],[x,y+hh]],right:[[x,y+hh],[x+hw,y]],
       backLeft:[[x,y-hh],[x-hw,y]],backRight:[[x+hw,y],[x,y-hh]]};
     for(const [side,drop] of Object.entries(falls)) {
@@ -1278,7 +1279,8 @@
     const raised = level > 0;
     const borders = material === 3 ? waterBorders(tile.column,tile.row,level) : null;
     const world=material===3 ? window.worldManager?.getActive() : null;
-    const top=world?.blockStacks?.[tile.row*ISLAND_GRID_SIZE+tile.column]?.length-1;
+    const stack=world?.blockStacks?.[tile.row*ISLAND_GRID_SIZE+tile.column],top=stack?.length-1;
+    const waterAbove=material===3 && stack?.[level+1]===3;
     const falls=world?.blockStacks && material===3 && level===top ? waterFalls(tile.column,tile.row,world) : {};
     if(borders && falls.left) borders.left=false;
     if(borders && falls.right) borders.right=false;
@@ -1326,9 +1328,12 @@
       ctx.restore();
     }
     // Each top stays solid; direct sunlight adds only a uniform, subtle color lift.
-    if(coveredBaseGrass) drawSmoothIslandDiamond(tile.x,tile.y,halfWidth,halfHeight,cornerRadius,sideFill,sideFill);
-    else drawSunlitIslandDiamond(tile.x, tile.y, halfWidth, halfHeight,
-      cornerRadius, grassTop ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage) : fill, sunlight);
+    if(!waterAbove) {
+      const topY=tile.y+(material===3?WATER_SURFACE_DROP:0);
+      if(coveredBaseGrass) drawSmoothIslandDiamond(tile.x,topY,halfWidth,halfHeight,cornerRadius,sideFill,sideFill);
+      else drawSunlitIslandDiamond(tile.x,topY,halfWidth,halfHeight,
+        cornerRadius, grassTop ? (lightTile ? palette.grassTileSoftFern : palette.grassTileFernSage) : fill, sunlight);
+    }
     if (material === 3) {
       ctx.restore();
       // Exposed faces are solid earthen banks, not merely an outline. Adjacent
@@ -1337,14 +1342,14 @@
       if(borders.right) drawGrassTileSide(tile.x,tile.y,halfWidth,halfHeight,0,rightSideDepth,palette.soilLight,false);
       if(!world?.blockStacks || level===top) drawWaterTopBanks(tile,halfWidth,halfHeight,palette,world);
       // Quiet, fixed ripples remain legible without flickering at high zoom.
-      ctx.save();ctx.globalAlpha *= 0.50;ctx.strokeStyle='#d8faf1';ctx.lineWidth=0.55;
+      if(!waterAbove){ctx.save();ctx.globalAlpha *= 0.50;ctx.strokeStyle='#d8faf1';ctx.lineWidth=0.55;
       ctx.lineCap='round';
       for (const [dx,dy] of [[-0.35,-0.2],[0.20,0.13]]) {
-        const x=tile.x+halfWidth*dx,y=tile.y+halfHeight*dy;
+        const x=tile.x+halfWidth*dx,y=tile.y+WATER_SURFACE_DROP+halfHeight*dy;
         ctx.beginPath();ctx.moveTo(x-halfWidth*0.17,y);ctx.lineTo(x-halfWidth*0.05,y-halfHeight*0.07);
         ctx.lineTo(x+halfWidth*0.06,y);ctx.lineTo(x+halfWidth*0.17,y-halfHeight*0.07);ctx.stroke();
       }
-      ctx.restore();
+      ctx.restore();}
     }
     if (material === 4) {
       // Subtle fissures and pale mineral flecks inspired by the selected stone concept.
@@ -2417,11 +2422,11 @@
           if(tileVisible(raised,BLOCK_HEIGHT)){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawGrassTile(raised,palette,sunlight,stack[level],level,!!window.BaseTerrain?.isBaseLayer(stack,level),level<stack.length-1 && stack[level]===1 && !!window.BaseTerrain?.isBaseLayer(stack,level));ctx.restore();}
         }
         if(tileData[index]===3 && !ramps.has(index)) {
-          const level=stack ? stack.length-1 : 0,topTile={...tile,y:tile.y-level*BLOCK_HEIGHT};
+          const level=stack ? stack.length-1 : 0,topTile={...tile,y:tile.y-level*BLOCK_HEIGHT+WATER_SURFACE_DROP};
           if(tileVisible(topTile,BLOCK_HEIGHT)){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawWaterFlow(topTile,motionTime,activeWorld);ctx.restore();}
         }
         if(tileData[index]===3 && pond?.byTile.has(index)) {
-          const level=stack ? stack.length-1 : 0, topTile={...tile,y:tile.y-level*BLOCK_HEIGHT};
+          const level=stack ? stack.length-1 : 0, topTile={...tile,y:tile.y-level*BLOCK_HEIGHT+WATER_SURFACE_DROP};
           if(tileVisible(topTile,BLOCK_HEIGHT)){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawPondLife(topTile,pond.byTile.get(index),motionTime);ctx.restore();}
         }
         if(stack && tileData[index]===3) {
@@ -2432,7 +2437,7 @@
         const ramp=ramps.get(index),rampLevel=stack ? stack.length-1 : 0;
         if(ramp && tileVisible({...tile,y:tile.y-(rampLevel+1)*BLOCK_HEIGHT},BLOCK_HEIGHT)) {
           ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${rampLevel}`)||0))/100;
-          drawRamp({...tile,variant:(tile.column+tile.row+rampLevel+1)%2,y:tile.y-rampLevel*BLOCK_HEIGHT},viewFacing(ramp.direction),ramp.material ?? tileData[index],palette,motionTime);ctx.restore();
+          drawRamp({...tile,variant:(tile.column+tile.row+rampLevel+1)%2,y:tile.y-rampLevel*BLOCK_HEIGHT+((ramp.material ?? tileData[index])===3?WATER_SURFACE_DROP:0)},viewFacing(ramp.direction),ramp.material ?? tileData[index],palette,motionTime);ctx.restore();
         }
       }
     } else {
@@ -2966,6 +2971,7 @@
       const world=window.worldManager?.getActive(),tile=this.tileAt(point);if(!tile || !world?.tiles)return null;
       const index=tile.row*ISLAND_GRID_SIZE+tile.column,stack=world.blockStacks?.[index] || (world.tiles[index]?[world.tiles[index]]:[]);if(!stack.length)return null;
       const centre=characterCentre({column:tile.column,row:tile.row,blockHeight:stack.length}),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
+      if(stack[stack.length-1]===3)centre.y+=WATER_SURFACE_DROP;
       const dx=Math.abs(point.x-centre.x)/hw,edge=centre.y+hh*(1-dx);
       if(dx>1)return null;
       if(dx+Math.abs(point.y-centre.y)/hh<=1)return {column:tile.column,row:tile.row,level:stack.length-1};
@@ -3049,7 +3055,7 @@
         const hit=window.WorldViewRotation.pickWorld(world,viewQuarterTurns,point.x,point.y,WIDTH/2,islandTop+islandTileHeight/2,ISLAND_TILE_WIDTH,islandTileHeight,BLOCK_HEIGHT,ISLAND_DEPTH);
         if(hit)return hit;
       }
-      if(!viewQuarterTurns && (world?.blockStacks || world?.ramps?.length)) {
+      if(!viewQuarterTurns && (world?.blockStacks || world?.ramps?.length || world?.tiles?.includes(3))) {
         const hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
         const ramps=new Map((world.ramps||[]).map(r=>[r.row*ISLAND_GRID_SIZE+r.column,r]));
         // Reverse painter order picks the visible top face nearest the viewer.
@@ -3057,10 +3063,10 @@
           const tile=ISLAND_TILES[i],index=tile.row*ISLAND_GRID_SIZE+tile.column;
           const height=world.blockStacks ? world.blockStacks[index].length : (world.tiles?.[index]?1:0);
           if(!height) continue;
-          const y=tile.y-(height-1)*BLOCK_HEIGHT,ramp=ramps.get(index);
-          if(ramp && window.RampGeometry?.hit(ramp.direction,ISLAND_TILE_WIDTH,islandTileHeight,BLOCK_HEIGHT,point.x-tile.x,point.y-y))return {column:tile.column,row:tile.row};
+          const y=tile.y-(height-1)*BLOCK_HEIGHT,ramp=ramps.get(index),topY=y+((ramp ? ramp.material : world.tiles?.[index])===3?WATER_SURFACE_DROP:0);
+          if(ramp && window.RampGeometry?.hit(ramp.direction,ISLAND_TILE_WIDTH,islandTileHeight,BLOCK_HEIGHT,point.x-tile.x,point.y-topY))return {column:tile.column,row:tile.row};
           const dx=Math.abs(point.x-tile.x)/hw;
-          if(dx<=1 && (dx+Math.abs(point.y-y)/hh<=1 ||
+          if(dx<=1 && (dx+Math.abs(point.y-topY)/hh<=1 ||
              (height>1 && point.y>=y+hh*(1-dx) && point.y<=y+hh*(1-dx)+(height-1)*BLOCK_HEIGHT)))
             return {column:tile.column,row:tile.row};
         }

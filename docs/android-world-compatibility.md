@@ -2,7 +2,7 @@
 
 Penyimpanan browser dan Android terpisah; tidak ada sinkronisasi otomatis. Editor dan katalog penempatan tetap berada di preview; Android menyediakan pemilih world dan impor untuk gameplay. Impor menggunakan pemilih berkas Android dan meminta konfirmasi bila ID sudah ada.
 
-Android menerima `gtlauncher-preview-world` v1–v23 yang valid, termasuk `blockStacks` sampai 32 block per sel pada grid 20, 25, 50 dan 100. Block, permukaan, rumah, pohon jeruk/cemara, rumput, semak, pagar dan jembatan dipertahankan dalam JSON world. Parser memeriksa versi, material, konsistensi permukaan, tapak rata, tabrakan dan jembatan sebelum menyimpan. Versi 18 menambahkan transparansi manual rumah; versi 19 menambahkan transparansi tanaman, pagar dan jembatan (0–90%, kelipatan 5). Android mempertahankan dan merender nilai tersebut. Versi 20 menambahkan transparansi per block dan per tingkat, termasuk world bertingkat; Android mempertahankan dan merender nilainya. Data tidak dikenal atau tidak valid ditolak tanpa menimpa world atau inventaris. Batas berkas 16 MiB mengakomodasi world besar; jangan ubah nomor versi untuk memaksa impor.
+Android menerima `gtlauncher-preview-world` v1–v24 yang valid, termasuk `blockStacks` sampai 32 block per sel pada grid 20, 25, 50 dan 100. Block, permukaan, rumah, pohon jeruk/cemara, rumput, semak, pagar dan jembatan dipertahankan dalam JSON world. Parser memeriksa versi, material, konsistensi permukaan, tapak rata, tabrakan dan jembatan sebelum menyimpan. Versi 18 menambahkan transparansi manual rumah; versi 19 menambahkan transparansi tanaman, pagar dan jembatan (0–90%, kelipatan 5). Android mempertahankan dan merender nilai tersebut. Versi 20 menambahkan transparansi per block dan per tingkat, termasuk world bertingkat; Android mempertahankan dan merender nilainya. Data tidak dikenal atau tidak valid ditolak tanpa menimpa world atau inventaris. Batas berkas 16 MiB mengakomodasi world besar; jangan ubah nomor versi untuk memaksa impor.
 
 Format `gtlauncher-world` lama dan `gtlauncher-preview-world` berbeda dan tidak saling menimpa dengan ID sama. Guard downgrade mencegah format lama menghapus block bertingkat, block baru, transparansi rumah atau objek yang tidak bisa direpresentasikan. Saat terrain digarap, hanya block teratas yang diubah; lapisan bawah tetap utuh.
 
@@ -25,3 +25,11 @@ Base World bawaan yang tidak diedit memiliki empat block tanah di bawah satu blo
 ## Jembatan lubang (versi 23)
 
 Jembatan baru 3×1, 4×1 dan 5×1 memiliki ujung darat rata dan bagian tengah satu tingkat lebih rendah. Jalur karakter tetap selebar satu block; bentuk visual sisi menjorok keluar. World lama dan jembatan v22 tidak dimigrasi. Impor, rute, tinggi pijakan dan guard downgrade v23 diuji dengan model Java dan pemeriksaan tipe; **belum ada pengujian APK atau perangkat Android**.
+
+## Jembatan di atas air (versi 24)
+
+Jembatan baru dapat melintasi air dengan ketinggian data sama seperti kedua
+ujung darat, atau lubang/air satu tingkat di bawahnya. Permukaan air diturunkan
+secara visual saja; isi dan tinggi stack lama tetap. `overWater` mensyaratkan
+format v24; impor format lebih lama tidak dapat menimpa data ini. Tes Java dan
+browser sudah dijalankan; APK dan perangkat Android belum diuji.

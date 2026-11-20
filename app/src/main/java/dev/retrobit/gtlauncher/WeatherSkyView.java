@@ -53,6 +53,7 @@ public final class WeatherSkyView extends View {
     private static final int ISLAND_GRASS_BAND_DEPTH = 4;
     private static final int ISLAND_SOIL_BAND_DEPTH = 16;
     private static final int BLOCK_HEIGHT = ISLAND_GRASS_BAND_DEPTH;
+    private static final float WATER_SURFACE_DROP=BLOCK_HEIGHT*.25f;
     // The green cap overhangs the narrower soil body along the front perimeter.
     private static final float ISLAND_GRASS_OVERHANG = 4.0f;
     private static final int ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
@@ -821,8 +822,8 @@ public final class WeatherSkyView extends View {
     PortalTravel.Tile groundTileAt(float sx,float sy) {
         if(getWidth()<=0 || getHeight()<=0)return null;
         float x=islandX(sx), y=islandY(sy);
-        if(worldTerrain!=null && (worldTerrain.hasStacks() || worldTerrain.hasRamps() || !worldTerrain.bridges.isEmpty())) {
-            PortalTravel.Tile hit=ElevatedTerrainGeometry.tileAt(x,y,worldTerrain.size,worldTerrain::footHeight,worldTerrain::rampDirection,SCENE_WIDTH/2f,ISLAND_TOP+ISLAND_TILE_HEIGHT/2f,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,BLOCK_HEIGHT,ISLAND_DEPTH);
+        if(worldTerrain!=null) {
+            PortalTravel.Tile hit=ElevatedTerrainGeometry.tileAt(x,y,worldTerrain.size,worldTerrain::footHeight,worldTerrain::rampDirection,(c,r)->worldTerrain.surfaceMaterial(c,r)==3 && !worldTerrain.onBridge(c,r)?WATER_SURFACE_DROP:0,SCENE_WIDTH/2f,ISLAND_TOP+ISLAND_TILE_HEIGHT/2f,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,BLOCK_HEIGHT,ISLAND_DEPTH);
             return hit==null?null:originalTile(hit.column,hit.row);
         }
         float dx=(x-SCENE_WIDTH/2f)/(ISLAND_TILE_WIDTH/2f);
@@ -2089,7 +2090,8 @@ public final class WeatherSkyView extends View {
                         canvas.drawRect(px,py,px+.65f,py+.45f,paint);
                     }
                 }
-                drawSunlitIslandDiamond(canvas,x,y,material==3 || baseLayer?hw:hw-0.05f,material==3 || baseLayer?hh:hh-0.025f,material==3 || baseLayer?0:1.4f,grassTop ? ((column+row+level)%2==0?palette.grassTileSoftFern:palette.grassTileFernSage) : fill,sunlight);
+                boolean waterAbove=material==3 && level+1<height && worldTerrain.block(column,row,level+1)==3;
+                if(!waterAbove)drawSunlitIslandDiamond(canvas,x,y+(material==3?WATER_SURFACE_DROP:0),material==3 || baseLayer?hw:hw-0.05f,material==3 || baseLayer?hh:hh-0.025f,material==3 || baseLayer?0:1.4f,grassTop ? ((column+row+level)%2==0?palette.grassTileSoftFern:palette.grassTileFernSage) : fill,sunlight);
                 if(grassTop)drawGrassTopBorder(canvas,x,y,material==3 || baseLayer?hw:hw-.05f,material==3 || baseLayer?hh:hh-.025f,material==3 || baseLayer?0:1.4f,(column+row+level)%2==0?palette.grassTileSoftFern:palette.grassTileFernSage);
                 if (material==3) {
                     canvas.restore();
@@ -2099,8 +2101,8 @@ public final class WeatherSkyView extends View {
                     if(level==height-1)drawWaterTopBanks(canvas,x,y,hw,hh,new boolean[]{!waterAt(column,row-1),!waterAt(column+1,row),
                             !waterAt(column,row+1),!waterAt(column-1,row)},palette);
                     paint.setColor(0x80d8faf1); paint.setStrokeWidth(.55f); paint.setStyle(Paint.Style.STROKE);
-                    for (float[] offset : new float[][]{{-.35f,-.2f},{.20f,.13f}}) {
-                        float rx=x+hw*offset[0], ry=y+hh*offset[1];
+                    if(!waterAbove)for (float[] offset : new float[][]{{-.35f,-.2f},{.20f,.13f}}) {
+                        float rx=x+hw*offset[0], ry=y+WATER_SURFACE_DROP+hh*offset[1];
                         canvas.drawLine(rx-hw*.17f,ry,rx-hw*.05f,ry-hh*.07f,paint);
                         canvas.drawLine(rx-hw*.05f,ry-hh*.07f,rx+hw*.06f,ry,paint);
                         canvas.drawLine(rx+hw*.06f,ry,rx+hw*.17f,ry-hh*.07f,paint);
@@ -2132,15 +2134,15 @@ public final class WeatherSkyView extends View {
                     for(float[] p:new float[][]{{-.52f,-.02f},{.29f,-.30f},{.53f,.04f},{-.22f,.29f}})canvas.drawRect(x+p[0]*(hw-.05f),y+p[1]*(hh-.025f),x+p[0]*(hw-.05f)+.55f,y+p[1]*(hh-.025f)+.45f,paint);
                     paint.setStrokeCap(oldCap);
                 }
-                if(material==3 && level==height-1 && worldTerrain.rampDirection(column,row)==null)drawWaterFlow(canvas,column,row,x,y,hw,hh);
-                if(material==3 && level==height-1) drawPondLife(canvas,x,y,row*ISLAND_GRID_SIZE+column);
+                if(material==3 && level==height-1 && worldTerrain.rampDirection(column,row)==null)drawWaterFlow(canvas,column,row,x,y+WATER_SURFACE_DROP,hw,hh);
+                if(material==3 && level==height-1) drawPondLife(canvas,x,y+WATER_SURFACE_DROP,row*ISLAND_GRID_SIZE+column);
             }
             if(layer!=-1)canvas.restoreToCount(layer);
             }
             if(worldTerrain.tile(column,row)==3) {
                 int opacity=worldTerrain.blockOpacity(column,row,height-1),layer=-1;
                 if(opacity>0)layer=canvas.saveLayerAlpha(x-hw-3,baseY-(height-1)*BLOCK_HEIGHT-hh-3,x+hw+3,baseY+hh+ISLAND_DEPTH+3,Math.round(255*(100-opacity)/100f),Canvas.ALL_SAVE_FLAG);
-                drawWaterfalls(canvas,column,row,x,baseY-(height-1)*BLOCK_HEIGHT,hw,hh);
+                drawWaterfalls(canvas,column,row,x,baseY-(height-1)*BLOCK_HEIGHT+WATER_SURFACE_DROP,hw,hh);
                 if(layer!=-1)canvas.restoreToCount(layer);
             }
             String rampDirection=worldTerrain.rampDirection(column,row);
@@ -2148,7 +2150,7 @@ public final class WeatherSkyView extends View {
                 float y=baseY-(height-1)*BLOCK_HEIGHT;
                 int opacity=worldTerrain.blockOpacity(column,row,height-1),layer=-1;
                 if(opacity>0)layer=canvas.saveLayerAlpha(x-hw-3,y-hh-BLOCK_HEIGHT-3,x+hw+3,y+hh+3,Math.round(255*(100-opacity)/100f),Canvas.ALL_SAVE_FLAG);
-                drawRamp(canvas,x,y,column,row,height,rampDirection,worldTerrain.rampMaterial(column,row),palette);
+                drawRamp(canvas,x,y+(worldTerrain.rampMaterial(column,row)==3?WATER_SURFACE_DROP:0),column,row,height,rampDirection,worldTerrain.rampMaterial(column,row),palette);
                 if(layer!=-1)canvas.restoreToCount(layer);
             }
         }

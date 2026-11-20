@@ -68,16 +68,16 @@
     const ramps=new Map();
     for(const r of world.ramps||[]){
       if(!r || !Number.isInteger(r.column) || !Number.isInteger(r.row) || r.column<0 || r.row<0 || r.column>=size || r.row>=size || !direction(r.direction,q) || ramps.has(`${r.column},${r.row}`))return null;
-      ramps.set(`${r.column},${r.row}`,r.direction);
+      ramps.set(`${r.column},${r.row}`,r);
     }
     function worldPoint(c,r){return point(c,r,size,-q);}
     function height(c,r){if(c<0 || r<0 || c>=size || r>=size)return 0;const p=worldPoint(c,r),i=p.row*size+p.column;return world.blockStacks?world.blockStacks[i].length:(world.tiles[i]?1:0);}
     for(let diagonal=2*size-2;diagonal>=0;diagonal--)for(let r=size-1;r>=0;r--) {
       const c=diagonal-r;if(c<0 || c>=size)continue;const h=height(c,r);if(h<=0)continue;
       const p=worldPoint(c,r),cx=originX+(c-r)*tileWidth/2,cy=originY+(c+r)*tileHeight/2-(h-1)*blockHeight,dx=x-cx,hw=tileWidth/2,hh=tileHeight/2;
-      const ramp=ramps.get(`${p.column},${p.row}`),viewDirection=ramp?direction(ramp,q):null;
-      if(viewDirection && RampGeometry.hit(viewDirection,tileWidth,tileHeight,blockHeight,dx,y-cy))return p;
-      if(Math.abs(dx)/hw+Math.abs(y-cy)/hh<=1)return p;
+      const ramp=ramps.get(`${p.column},${p.row}`),viewDirection=ramp?direction(ramp.direction,q):null,material=ramp?ramp.material:world.tiles[p.row*size+p.column],topY=cy+(material===3?blockHeight*.25:0);
+      if(viewDirection && RampGeometry.hit(viewDirection,tileWidth,tileHeight,blockHeight,dx,y-topY))return p;
+      if(Math.abs(dx)/hw+Math.abs(y-topY)/hh<=1)return p;
       if(Math.abs(dx)<=hw){
         const neighbor=height(c+(dx>=0?1:0),r+(dx<0?1:0)),face=Math.max(0,h-neighbor)*blockHeight+(neighbor===0?Math.max(0,baseDepth-blockHeight):0),edgeY=cy+hh*(1-Math.abs(dx)/hw);
         if(face>0 && y>=edgeY && y<=edgeY+face)return p;
