@@ -1409,6 +1409,24 @@
       minX, minY, maxX, maxY, palette.soilLight, palette.soilDark);
   }
 
+  // Base World retains its existing silhouette and surface elevation. Its four
+  // soil courses are visible only on the exterior, below the single grass cap.
+  function drawBaseSoilBlocks(leftX,centerX,rightX,middleY,frontY,grassDepth,palette) {
+    if(!window.BaseTerrain || window.BaseTerrain.SIZE!==ISLAND_GRID_SIZE)return;
+    const layers=window.BaseTerrain.LAYERS.length-1, n=window.BaseTerrain.SIZE;
+    const vertices=[[leftX,middleY+grassDepth],[centerX,frontY+grassDepth],[rightX,middleY+grassDepth],
+      [rightX,middleY+ISLAND_DEPTH],[centerX,frontY+ISLAND_DEPTH],[leftX,middleY+ISLAND_DEPTH]];
+    ctx.save();ctx.beginPath();traceRoundedIslandPolygon(vertices,2.2);ctx.clip();
+    for(let side=0;side<2;side++)for(let i=0;i<n;i++)for(let level=0;level<layers;level++) {
+      const a=side===0?{x:leftX,y:middleY}:{x:centerX,y:frontY},b=side===0?{x:centerX,y:frontY}:{x:rightX,y:middleY};
+      const t=i/n,u=(i+1)/n,x1=a.x+(b.x-a.x)*t,x2=a.x+(b.x-a.x)*u;
+      const y1=a.y+(b.y-a.y)*t+grassDepth+level*BLOCK_HEIGHT,y2=a.y+(b.y-a.y)*u+grassDepth+level*BLOCK_HEIGHT;
+      const fill=blendColor(side===0?palette.soilLight:palette.soilDark,'#000000',(i+level)%2?.06:0);
+      drawSmoothIslandPolygon([[x1,y1],[x2,y2],[x2,y2+BLOCK_HEIGHT],[x1,y1+BLOCK_HEIGHT]],fill,fill,blendColor(fill,'#000000',.12),.35);
+    }
+    ctx.restore();
+  }
+
   function traceRoundedIslandPolygon(vertices, cornerRadius) {
     const first = vertices[0];
     const previous = vertices[vertices.length - 1];
@@ -2343,6 +2361,7 @@
     // One rounded, uninterrupted soil slab sits inside the wider grass cap.
     drawIslandSoilBody(soilLeftX, centerX, soilRightX,
       middleY, soilFrontY, grassBandDepth, palette);
+    if(activeWorld?.id==='base')drawBaseSoilBlocks(soilLeftX,centerX,soilRightX,middleY,soilFrontY,grassBandDepth,palette);
     // A side-shaded average of the two tile hues fills rounded joints without a third green.
     const grassTileJoin = blendColor(palette.grassTileSoftFern, palette.grassTileFernSage, 0.5);
     const leftBandLight = blendColor(grassTileJoin, '#000000', 0.08);

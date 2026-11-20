@@ -779,7 +779,7 @@
     const stacks=world.blockStacks ? world.blockStacks.map(x=>x.slice()) : world.tiles.map(t=>t?[t]:[]);
     stacks[index][stacks[index].length-1]=6;return updateBlockStacks(id,stacks,world.blockOpacity||[]);
   }
-  window.worldManager = Object.freeze({getActive: activeWorld, replaceRamps, replaceBlockOpacity, replaceBridges, replaceObjectGroup, replaceCatalogObjects, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, replacePlayerHouse, replaceOrangeTrees, replaceFences, updateTiles, updateBlockStacks, tillTile});
+  window.worldManager = Object.freeze({getActive: activeWorld, baseStackAt: (column,row) => window.BaseTerrain?.stack(column,row) ?? null, replaceRamps, replaceBlockOpacity, replaceBridges, replaceObjectGroup, replaceCatalogObjects, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, replacePlayerHouse, replaceOrangeTrees, replaceFences, updateTiles, updateBlockStacks, tillTile});
   render();
   if (homeUpgraded) announce('Home diperbarui menjadi 25×25. Cadangan sebelum perubahan tersedia untuk diunduh.');
   else if (storageError) announce(storageError);

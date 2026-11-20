@@ -1760,6 +1760,8 @@ public final class WeatherSkyView extends View {
         // One rounded, uninterrupted soil slab sits inside the wider grass cap.
         drawIslandSoilBody(canvas, soilLeftX, centerX, soilRightX,
                 middleY, soilFrontY, grassBandDepth, palette);
+        if((surfaceWorldId.isEmpty() || surfaceWorldId.equals("base")) && ISLAND_GRID_SIZE==BaseTerrain.SIZE)
+            drawBaseSoilBlocks(canvas,soilLeftX,centerX,soilRightX,middleY,soilFrontY,grassBandDepth,palette);
         // A side-shaded average of the two tile hues fills rounded joints without a third green.
         int grassTileJoin = blend(palette.grassTileSoftFern, palette.grassTileFernSage, 0.5);
         int leftBandLight = blend(grassTileJoin, Color.BLACK, 0.08);
@@ -2254,6 +2256,19 @@ public final class WeatherSkyView extends View {
         paint.setAlpha(previousAlpha);
         paint.setStyle(previousStyle);
         canvas.restore();
+    }
+
+    /** Four exposed soil block courses in the built-in Base World only. */
+    private void drawBaseSoilBlocks(Canvas canvas,float leftX,float centerX,float rightX,float middleY,float frontY,float grassDepth,IslandPalette palette) {
+        int save=canvas.save();canvas.clipPath(islandBodyPath);
+        for(int side=0;side<2;side++)for(int i=0;i<BaseTerrain.SIZE;i++)for(int level=0;level<BaseTerrain.HEIGHT-1;level++) {
+            float ax=side==0?leftX:centerX,ay=side==0?middleY:frontY,bx=side==0?centerX:rightX,by=side==0?frontY:middleY;
+            float t=(float)i/BaseTerrain.SIZE,u=(float)(i+1)/BaseTerrain.SIZE;
+            float x1=ax+(bx-ax)*t,x2=ax+(bx-ax)*u,y1=ay+(by-ay)*t+grassDepth+level*BLOCK_HEIGHT,y2=ay+(by-ay)*u+grassDepth+level*BLOCK_HEIGHT;
+            int fill=blend(side==0?palette.soilLight:palette.soilDark,Color.BLACK,(i+level)%2==0?0:.06);
+            drawSmoothIslandQuad(canvas,x1,y1,x2,y2,x2,y2+BLOCK_HEIGHT,x1,y1+BLOCK_HEIGHT,fill,fill,blend(fill,Color.BLACK,.12),.35f);
+        }
+        canvas.restoreToCount(save);
     }
 
     private void traceRoundedIslandPolygon(Path path, float[] vertices,
