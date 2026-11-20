@@ -2602,6 +2602,43 @@
       drawFrame();
     });
   }
+  // A visual editing aid only: world-space 10×10 regions, independent of storage.
+  function drawEditorRegions() {
+    if(cameraMode!=='editor' || !window.EditorGridRegions)return;
+    const world=window.worldManager?.getActive(),size=ISLAND_GRID_SIZE,base=world?.id==='base';
+    if(!world || (!base && !world.tiles))return;
+    const heightAt=(c,r)=>base?1:(world.blockStacks?.[r*size+c]?.length ?? (world.tiles[r*size+c]?1:0));
+    const ramps=new Map((world.ramps||[]).map(r=>[r.row*size+r.column,r]));
+    const position=(column,row,height)=>{
+      const p=viewPoint(column,row);
+      return {x:WIDTH/2+(p.column-p.row)*ISLAND_TILE_WIDTH/2,
+        y:islandTop+islandTileHeight/2+(p.column+p.row)*islandTileHeight/2-(height-1)*BLOCK_HEIGHT};
+    };
+    ctx.save();applyIslandTransform();ctx.strokeStyle='#000000';ctx.lineWidth=1;ctx.lineJoin='round';ctx.beginPath();
+    for(let row=0;row<size;row++)for(let column=0;column<size;column++) {
+      if(column%10!==0 && column%10!==9 && row%10!==0 && row%10!==9 && column!==size-1 && row!==size-1)continue;
+      const height=heightAt(column,row);if(!height)continue;
+      const ramp=ramps.get(row*size+column);
+      const vertex=([u,v])=>{const p=position(column+u-.5,row+v-.5,height);if(ramp)p.y-=window.RampGeometry.fraction(ramp.direction,u,v)*BLOCK_HEIGHT;return p;};
+      for(const [from,to] of window.EditorGridRegions.edges(column,row,size)) {const a=vertex(from),b=vertex(to);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}
+    }
+    ctx.stroke();ctx.fillStyle='rgba(0,0,0,0.5)';ctx.font='bold 56px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    for(const region of window.EditorGridRegions.regions(size)) {
+      const cx=region.column+(region.width-1)/2,cy=region.row+(region.height-1)/2;
+      // If the central tile is missing, use the nearest existing surface in the region.
+      let best=null;
+      for(let r=region.row;r<region.row+region.height;r++)for(let c=region.column;c<region.column+region.width;c++){
+        const h=heightAt(c,r);if(!h)continue;const d=(c-cx)**2+(r-cy)**2;
+        if(!best || d<best.d)best={c,r,h,d};
+      }
+      if(!best)continue;
+      const x=best.d<=.5?cx:best.c,y=best.d<=.5?cy:best.r,p=position(x,y,best.h);
+      const ramp=ramps.get(best.r*size+best.c);if(ramp)p.y-=BLOCK_HEIGHT*.5;
+      ctx.fillText(String(region.number),p.x,p.y);
+    }
+    ctx.restore();
+  }
+
   function drawFrame() {
     if (cameraMode === 'gameplay') applyGameplayCamera();
     const now = Date.now();
@@ -2642,6 +2679,7 @@
     drawFloatingIsland(sun.altitude, sun.azimuth, sun.hourAngleDegrees,
       sceneWeather.cloudCover, sceneWeather.weatherCode, moonNow, cloudStates, motionTime, sceneWeather, sun);
     drawSurfaceObjectShadows(shadowLight, sceneWeather.cloudCover, sceneWeather.weatherCode);
+    drawEditorRegions();
     drawCharacterProjectedShadow(shadowLight, sceneWeather.cloudCover);
     drawGameplayRoute();
     drawHoeTarget();

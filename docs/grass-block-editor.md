@@ -125,3 +125,14 @@ visual serta masih perlu pemeriksaan sambungan yang kompleks di perangkat.
 ## Penyesuaian terbaru: air dan jembatan bebas
 
 Permukaan air kembali ke tinggi block semula; tidak ada perubahan data stack. Batas tanah luar tetap ada dan sambungan air sebelumnya dipertahankan. Jembatan baru memakai format v25: tinggi dek dicatat dari tile awal dan jembatan boleh melintasi tanah, air, lubang, perbedaan tinggi, atau ramp. Tapak harus tetap di dalam grid dan tidak menimpa rumah, pohon, pagar, atau jembatan lain. Medan yang lebih tinggi dapat menutupi dek dan ujung tidak selalu dapat dicapai; penempatan bebas bukan jaminan rute aman. Jembatan lama tidak diubah otomatis. Versi lama tidak dapat menimpa world dengan jembatan v25. Android belum diuji dalam APK atau perangkat.
+
+## Penanda wilayah Map Editor
+
+Preview Map Editor menampilkan garis hitam setiap 10×10 tile dan nomor besar
+hitam 50% pada tiap wilayah. Nomor mengikuti koordinat world: bertambah menurut
+kolom terlebih dahulu, lalu baris; pada grid 50×50 ada nomor 1–25. Rotasi kamera
+memutar posisi wilayah bersama pulau, tetapi tidak mengubah identitas nomornya.
+World lama dengan ukuran bukan kelipatan 10 memiliki wilayah parsial di tepi.
+Garis mengikuti permukaan block dan ramp; wilayah tanpa permukaan tidak memiliki
+nomor. Ini hanya overlay visual editor, bukan data world dan tidak tampil dalam
+gameplay atau aplikasi Android.
