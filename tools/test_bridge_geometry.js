@@ -126,3 +126,23 @@ for(const length of [3,4,5])for(const axis of ['E','S']) {
  assert.equal(c.x-a.x,(length-1)*14);assert.equal(c.y-a.y,-(length-1)*6);
 }
 console.log('New bridge ramp ends at both endpoint block centers: OK');
+// Flat deck spans the 3/4/5 tile footprint plus a quarter tile on both ends.
+for(const length of [3,4,5])for(const axis of ['E','S'])for(const material of ['wood','stone']) {
+ const bridge={column:5,row:5,axis,material,gap:true,free:true,deck:1,straight:true,...(length===3?{}:{length})};
+ const world={gridSize:20,tiles:Array(400).fill(1)};
+ assert(b.valid(world,[bridge]));
+ const corners=b.wideDeck(length+.5,1,28,12),[a,u,,d]=corners;
+ assert.equal(u.x-a.x,(length+.5)*14);assert.equal(u.y-a.y,-(length+.5)*6);assert.equal(d.x-a.x,14);assert.equal(d.y-a.y,6);
+ const rails=b.insetRails(corners,length+.5,0);assert.equal(rails.length,4);
+ for(let side=0;side<2;side++)for(let i=0;i<4;i++){
+  const p=rails[i][side],normal=(p.x-a.x)/14+(p.y-a.y)/6;
+  assert(Math.abs(normal/2-(side?.78:.22))<1e-9);
+ }
+ const post=rails[0][0];assert(b.wideContains({x:post.x,y:post.y-2},corners,4,length,.65,false,true));
+ for(const t of [0,.5,1,length-1])assert.equal(b.riseAt([bridge],5+(axis==='E'?t:0),5+(axis==='S'?t:0),4),0);
+ const endpoint=axis==='E'?{column:4,row:5}:{column:5,row:4};
+ assert(!b.valid({...world,orangeTrees:[{...endpoint,size:1}]},[bridge]));
+ assert(!b.valid(world,[{...bridge,...(axis==='E'?{column:0}:{row:0})}]));
+ for(let q=0;q<4;q++) {const rotated=require('../preview/world-view-rotation').bridge(bridge,20,q);assert(b.valid(world,[{...bridge,column:rotated.column,row:rotated.row,axis:rotated.axis}]));}
+}
+console.log('Flat bridge extends exactly quarter tile beyond each end, with inset straight rails: OK');

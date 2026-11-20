@@ -14,7 +14,7 @@
     if(!Number.isInteger(size) || !Array.isArray(world.tiles) || world.tiles.length!==size*size || !Array.isArray(bridges))return false;
     const occupied=new Set(),house=world.house;
     for(const bridge of bridges){
-      if(!bridge || Object.keys(bridge).some(k=>!['column','row','axis','material','length','width','opacity','gap','overWater','free','deck','centered','inset'].includes(k)) || (bridge.opacity!==undefined && (!Number.isInteger(bridge.opacity) || bridge.opacity<0 || bridge.opacity>90 || bridge.opacity%5!==0)) || (bridge.free!==undefined && (bridge.free!==true || bridge.gap!==true || bridge.width!==undefined || !Number.isInteger(bridge.deck) || bridge.deck<1 || bridge.deck>32)) || (bridge.centered!==undefined && (bridge.centered!==true || bridge.free!==true)) || (bridge.inset!==undefined && (bridge.inset!==true || bridge.free!==true || bridge.centered!==undefined)) || (bridge.free!==true && bridge.deck!==undefined) || (bridge.gap!==undefined && bridge.gap!==true) || (bridge.overWater!==undefined && (bridge.overWater!==true || bridge.gap!==true)) || (Object.hasOwn(bridge,'length') && ![4,5].includes(bridge.length)))return false;
+      if(!bridge || Object.keys(bridge).some(k=>!['column','row','axis','material','length','width','opacity','gap','overWater','free','deck','centered','inset','straight'].includes(k)) || (bridge.opacity!==undefined && (!Number.isInteger(bridge.opacity) || bridge.opacity<0 || bridge.opacity>90 || bridge.opacity%5!==0)) || (bridge.free!==undefined && (bridge.free!==true || bridge.gap!==true || bridge.width!==undefined || !Number.isInteger(bridge.deck) || bridge.deck<1 || bridge.deck>32)) || (bridge.centered!==undefined && (bridge.centered!==true || bridge.free!==true)) || (bridge.inset!==undefined && (bridge.inset!==true || bridge.free!==true || bridge.centered!==undefined)) || (bridge.straight!==undefined && (bridge.straight!==true || bridge.free!==true || bridge.centered!==undefined || bridge.inset!==undefined)) || (bridge.free!==true && bridge.deck!==undefined) || (bridge.gap!==undefined && bridge.gap!==true) || (bridge.overWater!==undefined && (bridge.overWater!==true || bridge.gap!==true)) || (Object.hasOwn(bridge,'length') && ![4,5].includes(bridge.length)))return false;
       const footprint=cells(bridge);if(!footprint)return false;let height=null;
       for(let i=0;i<footprint.length;i++){
         const p=footprint[i],{column:c,row:r}=p;if(c<0 || r<0 || c>=size || r>=size)return false;
@@ -37,6 +37,16 @@
       if(c<0||r<0||c>=size||r>=size)return false;
       const idx=r*size+c;
       if(occupied.has(idx))return false;
+      if(house && c>=house.column && c<house.column+3 && r>=house.row && r<house.row+3)return false;
+      if((world.orangeTrees||[]).some(t=>c>=t.column && c<t.column+(t.size||2) && r>=t.row && r<t.row+(t.size||2)))return false;
+      if((world.fences||[]).some(f=>{const d={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[f.edge];return (f.column===c && f.row===r) || (d && f.column+d[0]===c && f.row+d[1]===r);}))return false;
+      occupied.add(idx);
+    }
+    // Reserve the neighboring endpoint cells touched by the quarter-tile extensions.
+    for(const bridge of bridges)if(bridge.straight)for(const t of [-1,bridge.length??3]){
+      const c=bridge.column+(bridge.axis==='E'?t:0),r=bridge.row+(bridge.axis==='S'?t:0);
+      if(c<0||r<0||c>=size||r>=size)return false;
+      const idx=r*size+c;if(occupied.has(idx))return false;
       if(house && c>=house.column && c<house.column+3 && r>=house.row && r<house.row+3)return false;
       if((world.orangeTrees||[]).some(t=>c>=t.column && c<t.column+(t.size||2) && r>=t.row && r<t.row+(t.size||2)))return false;
       if((world.fences||[]).some(f=>{const d={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[f.edge];return (f.column===c && f.row===r) || (d && f.column+d[0]===c && f.row+d[1]===r);}))return false;
@@ -104,6 +114,7 @@
     if(!Number.isFinite(column)||!Number.isFinite(row))return 0;
     let result=0;
     for(const b of bridges||[]) {
+      if(b.straight)continue;
       const along=b.axis==='E'?column-b.column:row-b.row;
       const across=b.axis==='E'?row-b.row:column-b.column;
       if(across<-.5 || across>(b.width??1)-.5)continue;
@@ -114,13 +125,13 @@
   }
   function polygonContains(point,poly) {let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++) {const a=poly[i],b=poly[j];if((a.y>point.y)!==(b.y>point.y) && point.x<(b.x-a.x)*(point.y-a.y)/(b.y-a.y)+a.x)inside=!inside;}return inside;}
   function postContains(p,posts,half=2) {return posts.some(a=>{const dx=Math.abs(p.x-a.x),dy=p.y-(a.y+2);return dx<=half && dy>=-10.5+dx/half && dy<=-dx/half;});}
-  function wideContains(point,corners,railHeight=4,length=3,postHalf=2,inset=false) {
-    const railSections=inset?insetRails(corners,length,railHeight*.5,true):profilePoints(corners,length,railHeight*.5);
-    if(inset){
+  function wideContains(point,corners,railHeight=4,length=3,postHalf=2,inset=false,straight=false) {
+    const railSections=straight?insetRails(corners,length+.5,0):inset?insetRails(corners,length,railHeight*.5,true):profilePoints(corners,length,railHeight*.5);
+    if(inset || straight){
       const posts=[...railSections[0],...railSections[railSections.length-1]];
       if(posts.some(p=>Math.abs(point.x-p.x)<=postHalf && point.y>=p.y-railHeight-.5 && point.y<=p.y+.5))return true;
     } else if(postContains(point,corners,postHalf))return true;
-    const sections=profilePoints(corners,length,railHeight*.5,inset),[a,b,c,d]=corners;
+    const sections=profilePoints(corners,length,straight?0:railHeight*.5,inset),[a,b,c,d]=corners;
     for(let i=0;i<sections.length-1;i++)if(polygonContains(point,[sections[i][0],sections[i+1][0],sections[i+1][1],sections[i][1]]))return true;
     const rails=[];for(let i=0;i<railSections.length-1;i++)for(let side=0;side<2;side++)rails.push([railSections[i][side],railSections[i+1][side]]);
     for(const [p,q] of rails) {const vx=q.x-p.x,vy=q.y-p.y,t=Math.max(0,Math.min(1,((point.x-p.x)*vx+(point.y-(p.y-railHeight))*vy)/(vx*vx+vy*vy))),dx=point.x-(p.x+t*vx),dy=point.y-(p.y-railHeight+t*vy);if(dx*dx+dy*dy<=1)return true;}

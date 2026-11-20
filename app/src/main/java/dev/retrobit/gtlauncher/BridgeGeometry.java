@@ -4,7 +4,7 @@ package dev.retrobit.gtlauncher;
 final class BridgeGeometry {
     static final int LENGTH=3;
     static final class Bridge {
-        final int column,row,length,width,opacity;final String axis,material;final boolean gap,overWater,free,centered,inset;final int deck;
+        final int column,row,length,width,opacity;final String axis,material;final boolean gap,overWater,free,centered,inset,straight;final int deck;
         Bridge(int column,int row,String axis,String material){this(column,row,axis,material,3);}
         Bridge(int column,int row,String axis,String material,int length){this(column,row,axis,material,length,-1);}
         Bridge(int column,int row,String axis,String material,int length,int opacity){this(column,row,axis,material,length,1,opacity);}
@@ -13,7 +13,8 @@ final class BridgeGeometry {
         Bridge(int column,int row,String axis,String material,int length,int width,int opacity,boolean gap,boolean overWater){this(column,row,axis,material,length,width,opacity,gap,overWater,false,0);}
         Bridge(int column,int row,String axis,String material,int length,int width,int opacity,boolean gap,boolean overWater,boolean free,int deck){this(column,row,axis,material,length,width,opacity,gap,overWater,free,deck,false);}
         Bridge(int column,int row,String axis,String material,int length,int width,int opacity,boolean gap,boolean overWater,boolean free,int deck,boolean centered){this(column,row,axis,material,length,width,opacity,gap,overWater,free,deck,centered,false);}
-        Bridge(int column,int row,String axis,String material,int length,int width,int opacity,boolean gap,boolean overWater,boolean free,int deck,boolean centered,boolean inset){this.column=column;this.row=row;this.axis=axis;this.material=material;this.length=length;this.width=width;this.opacity=opacity;this.gap=gap;this.overWater=overWater;this.free=free;this.deck=deck;this.centered=centered;this.inset=inset;}
+        Bridge(int column,int row,String axis,String material,int length,int width,int opacity,boolean gap,boolean overWater,boolean free,int deck,boolean centered,boolean inset){this(column,row,axis,material,length,width,opacity,gap,overWater,free,deck,centered,inset,false);}
+        Bridge(int column,int row,String axis,String material,int length,int width,int opacity,boolean gap,boolean overWater,boolean free,int deck,boolean centered,boolean inset,boolean straight){this.column=column;this.row=row;this.axis=axis;this.material=material;this.length=length;this.width=width;this.opacity=opacity;this.gap=gap;this.overWater=overWater;this.free=free;this.deck=deck;this.centered=centered;this.inset=inset;this.straight=straight;}
     }
     static int indexAt(Bridge b,int c,int r) {
         if(b==null || b.length<3 || b.length>5 || !(b.width==1 || b.width==(b.length==5?3:2)) || !("E".equals(b.axis)||"S".equals(b.axis)) || !("wood".equals(b.material)||"stone".equals(b.material)))return -1;
@@ -31,7 +32,7 @@ final class BridgeGeometry {
         if(bridges==null || terrain==null || terrain.size()<1 || terrain.size()>100)return false;
         java.util.Set<Integer> seen=new java.util.HashSet<>();
         for(Bridge b:bridges){
-            if(b==null || ((b.centered || b.inset) && !b.free) || (b.centered && b.inset) || indexAt(b,b.column,b.row)!=0 || (b.free && (!b.gap || b.width!=1 || b.deck<1 || b.deck>32)))return false;
+            if(b==null || ((b.centered || b.inset || b.straight) && !b.free) || (b.centered && b.inset) || (b.straight && (b.inset || b.centered)) || indexAt(b,b.column,b.row)!=0 || (b.free && (!b.gap || b.width!=1 || b.deck<1 || b.deck>32)))return false;
             int level=-1;
             for(int i=0;i<b.length;i++)for(int j=0;j<b.width;j++){
                 int c=b.column+("E".equals(b.axis)?i:j),r=b.row+("S".equals(b.axis)?i:j);
@@ -49,6 +50,10 @@ final class BridgeGeometry {
             int c=b.column+("E".equals(b.axis)?i:side),r=b.row+("S".equals(b.axis)?i:side);
             if(c<0 || r<0 || c>=terrain.size() || r>=terrain.size() || terrain.obstructed(c,r) || !seen.add(r*terrain.size()+c))return false;
         }
+        for(Bridge b:bridges)if(b.straight)for(int t:new int[]{-1,b.length}) {
+            int c=b.column+("E".equals(b.axis)?t:0),r=b.row+("S".equals(b.axis)?t:0);
+            if(c<0 || r<0 || c>=terrain.size() || r>=terrain.size() || terrain.obstructed(c,r) || !seen.add(r*terrain.size()+c))return false;
+        }
         return true;
     }
     /** Straight endpoint ramps and level middle, without modifying stored heights. */
@@ -62,6 +67,7 @@ final class BridgeGeometry {
     static float riseAt(java.util.List<Bridge> bridges,float column,float row,float blockHeight) {
         float result=0;
         for(Bridge b:bridges){
+            if(b.straight)continue;
             float along="E".equals(b.axis)?column-b.column:row-b.row;
             float across="E".equals(b.axis)?row-b.row:column-b.column;
             if(across<-.5f || across>b.width-.5f)continue;

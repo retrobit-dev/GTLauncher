@@ -41,3 +41,5 @@ Ketinggian air visual kembali seperti semula. Jembatan baru dapat ditempatkan pa
 Preview world v26 menambahkan `centered:true` untuk jembatan bebas dengan dek dua tile yang terpusat. Android versi ini membaca, memvalidasi dan menggambar data tersebut; v25 dan sebelumnya tetap dapat dibaca tanpa mengubah ukuran jembatan lama. Impor format lebih lama tidak boleh menimpa world yang sudah memiliki jembatan terpusat. Pemeriksaan Java bukan pengujian APK atau perangkat.
 
 Preview world v27 menambahkan `inset:true` untuk jembatan bebas satu tile dengan rail dan tiang di dalam tapak. Jembatan format lama termasuk v26 tetap dipertahankan; versi sebelum v27 tidak dapat menimpa world yang memiliki penanda ini. Android belum diuji di perangkat.
+
+Preview world v28 menambahkan `straight:true` untuk jembatan datar yang melebar ¼ tile pada setiap ujung. Android versi ini membaca, memvalidasi, merotasi dan menggambarnya, tanpa mengubah geometri world v27 dan sebelumnya; impor format yang lebih lama tidak dapat menimpa world dengan jembatan tersebut. Pengujian Java/typecheck bukan pengujian APK atau perangkat.

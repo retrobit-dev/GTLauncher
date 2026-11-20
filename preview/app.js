@@ -2011,10 +2011,10 @@
     return {x:centre.x,y:centre.y,w:ISLAND_TILE_WIDTH*2.35,h:ISLAND_TILE_WIDTH*1.56};
   }
   function drawWideBridge(bridge) {
-    const corners=window.BridgeGeometry.wideDeck((bridge.length||3)-(bridge.inset?1:0),bridge.centered?2:bridge.width||1,ISLAND_TILE_WIDTH,islandTileHeight),[a,b,c,d]=corners,wood=bridge.material==='wood';
+    const corners=window.BridgeGeometry.wideDeck((bridge.length||3)+(bridge.straight ? .5 : bridge.inset ? -1 : 0),bridge.centered?2:bridge.width||1,ISLAND_TILE_WIDTH,islandTileHeight),[a,b,c,d]=corners,wood=bridge.material==='wood';
     const path=(points,fill)=>{ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(const p of points.slice(1))ctx.lineTo(p.x,p.y);ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=wood?'#57362c':'#514942';ctx.lineWidth=.35;ctx.stroke();};
     const down=p=>({x:p.x,y:p.y+2.5}), length=bridge.length||3;
-    const sections=window.BridgeGeometry.profilePoints(corners,length,BLOCK_HEIGHT*.5,!!bridge.inset);
+    const sections=window.BridgeGeometry.profilePoints(corners,length,bridge.straight?0:BLOCK_HEIGHT*.5,!!bridge.inset);
     for(let i=0;i<sections.length-1;i++) {
       const [p,q]=sections[i], [r,s]=sections[i+1];
       path([q,s,down(s),down(q)],wood?'#895033':'#827465');
@@ -2023,11 +2023,11 @@
     path([b,c,down(c),down(b)],wood?'#6c3e2d':'#6d6258');
     ctx.strokeStyle=wood?'#855033':'#897c70';ctx.lineWidth=.35;
     const n=length*(wood?4:2);
-    for(let i=1;i<n;i++){const t=i/n,z=window.BridgeGeometry.rise(t,length,BLOCK_HEIGHT*.5,!!bridge.inset);ctx.beginPath();ctx.moveTo(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t-z);ctx.lineTo(d.x+(c.x-d.x)*t,d.y+(c.y-d.y)*t-z);ctx.stroke();}
+    for(let i=1;i<n;i++){const t=i/n,z=window.BridgeGeometry.rise(t,length,bridge.straight?0:BLOCK_HEIGHT*.5,!!bridge.inset);ctx.beginPath();ctx.moveTo(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t-z);ctx.lineTo(d.x+(c.x-d.x)*t,d.y+(c.y-d.y)*t-z);ctx.stroke();}
     if(!wood)for(let i=1;i<(bridge.centered?2:bridge.width||1)*2;i++){const t=i/((bridge.centered?2:bridge.width||1)*2);ctx.beginPath();sections.forEach(([p,q],index)=>{const x=p.x+(q.x-p.x)*t,y=p.y+(q.y-p.y)*t;if(index)ctx.lineTo(x,y);else ctx.moveTo(x,y);});ctx.stroke();}
-    const railSections=bridge.inset?window.BridgeGeometry.insetRails(corners,length,BLOCK_HEIGHT*.5,true):sections;
-    for(const side of [0,1]) {ctx.strokeStyle=wood?'#71442f':'#6f645b';ctx.lineWidth=bridge.inset ? .7 : bridge.centered ? 1.25 : 2;ctx.beginPath();railSections.forEach((pair,index)=>{const p=pair[side];if(index)ctx.lineTo(p.x,p.y-BLOCK_HEIGHT);else ctx.moveTo(p.x,p.y-BLOCK_HEIGHT);});ctx.stroke();ctx.strokeStyle=wood?'#cb936a':'#c6b9a7';ctx.lineWidth=.55;ctx.stroke();}
-    if(bridge.inset){
+    const railSections=bridge.straight?window.BridgeGeometry.insetRails(corners,length+.5,0):bridge.inset?window.BridgeGeometry.insetRails(corners,length,BLOCK_HEIGHT*.5,true):sections;
+    for(const side of [0,1]) {ctx.strokeStyle=wood?'#71442f':'#6f645b';ctx.lineWidth=(bridge.inset||bridge.straight) ? .7 : bridge.centered ? 1.25 : 2;ctx.beginPath();railSections.forEach((pair,index)=>{const p=pair[side];if(index)ctx.lineTo(p.x,p.y-BLOCK_HEIGHT);else ctx.moveTo(p.x,p.y-BLOCK_HEIGHT);});ctx.stroke();ctx.strokeStyle=wood?'#cb936a':'#c6b9a7';ctx.lineWidth=.55;ctx.stroke();}
+    if(bridge.inset || bridge.straight){
       const cap=Math.min(.35,islandTileHeight*.035),h=.65;
       for(const post of [...railSections[0],...railSections[railSections.length-1]]){const x=post.x,y=post.y,top=y-BLOCK_HEIGHT;
         path([{x:x-h,y:top},{x,y:top+cap},{x,y},{x:x-h,y:y-cap}],wood?'#a45f3d':'#988879');
@@ -3046,7 +3046,7 @@
         const bridge=all[i];
         const p=bridgeBounds(bridge),mirror=(viewQuarterTurns%2===0?bridge.axis:bridge.axis==='E'?'S':'E')==='E';
         const local={x:(point.x-p.x)*(mirror?-1:1),y:point.y-p.y};
-        if(window.BridgeGeometry.wideContains(local,window.BridgeGeometry.wideDeck((bridge.length||3)-(bridge.inset?1:0),bridge.centered?2:bridge.width||1,ISLAND_TILE_WIDTH,islandTileHeight),BLOCK_HEIGHT,bridge.length||3,bridge.inset ? .65 : bridge.centered ? 1.25 : 2,!!bridge.inset))return i;
+        if(window.BridgeGeometry.wideContains(local,window.BridgeGeometry.wideDeck((bridge.length||3)+(bridge.straight ? .5 : bridge.inset ? -1 : 0),bridge.centered?2:bridge.width||1,ISLAND_TILE_WIDTH,islandTileHeight),BLOCK_HEIGHT,bridge.length||3,(bridge.inset||bridge.straight) ? .65 : bridge.centered ? 1.25 : 2,!!bridge.inset,!!bridge.straight))return i;
       }
       return null;
     },
