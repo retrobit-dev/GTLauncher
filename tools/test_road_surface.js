@@ -8,5 +8,7 @@ assert.deepEqual(road.neighbors(roads,2,2,'water'),{N:false,E:true,S:false,W:fal
 assert.equal(road.put(roads,20,{column:4,row:2,material:'water'},()=>true).length,3);assert.equal(roads.length,2);
 let calls=[];const context=new Proxy({}, {get(t,k){return t[k]||((...a)=>calls.push([k,...a]));},set(t,k,v){t[k]=v;return true;}});
 for(const m of road.materials){calls=[];assert(road.draw(context,{x:50,y:50,width:40,height:20,material:m,column:4,row:8,time:1}));assert(calls.some(a=>a[0]==='fill'));assert(calls.some(a=>a[0]==='clip'));assert(calls.some(a=>a[0]==='restore'));}
+for(const d of ['N','E','S','W']){const p=road.flowLines(0,d)[0][0],q=road.flowLines(.5,d)[0][0],delta=[q[0]-p[0],q[1]-p[1]];if(d==='N')assert(delta[1]<0);if(d==='S')assert(delta[1]>0);if(d==='E')assert(delta[0]>0);if(d==='W')assert(delta[0]<0);assert.deepEqual(road.flowLines(0,d),road.flowLines(0,d));}
+assert(road.validRecords([{...a,direction:'N'}],20));assert(!road.validRecords([{column:0,row:0,material:'dirt',direction:'N'}],20));
 assert.equal(road.draw(context,{x:0,y:0,width:1,height:1,material:'unknown'}),false);
 console.log('Road materials, river classification, edge connections and isolated surface drawing: OK');

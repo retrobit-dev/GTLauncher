@@ -948,8 +948,10 @@ public final class WeatherSkyView extends View {
             }
         }
     }
-    private boolean hasRoad(int column,int row,boolean water) {
-        for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("road") && o.column==column && o.row==row && water=="water".equals(o.material))return true;
+    private boolean sameRoad(WorldStore.SurfaceObject source,int column,int row) {
+        if(column<0 || row<0 || column>=ISLAND_GRID_SIZE || row>=ISLAND_GRID_SIZE)return false;
+        for(WorldStore.SurfaceObject other:worldSurfaces)if(other.type.equals("road") && other.column==column && other.row==row && other.material.equals(source.material))
+            return worldTerrain==null || terrainHeight(column,row)==terrainHeight(source.column,source.row);
         return false;
     }
     private float[] roadPoint(float cx,float cy,float u,float v) {
@@ -961,15 +963,15 @@ public final class WeatherSkyView extends View {
     private void drawRoads(Canvas canvas) {
         for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("road")) {
             float cx=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f-elevationAt(o.column,o.row);
-            boolean water="water".equals(o.material);float[][] outline=RoadGeometry.outline(o.column,o.row,water,this::hasRoad,ISLAND_GRID_SIZE);
+            boolean water="water".equals(o.material);float[][] outline=RoadGeometry.outline(o.column,o.row,water,(c,r,w)->sameRoad(o,c,r),ISLAND_GRID_SIZE);
             int base=Color.parseColor(o.material.equals("dirt")?"#cdbb99":o.material.equals("stone")?"#727b74":o.material.equals("sand")?"#e0bd81":o.material.equals("gravel")?"#b4a993":o.material.equals("paving")?"#746d5e":o.material.equals("asphalt")?"#59625e":"#719fa1");
             int light=Color.parseColor(o.material.equals("dirt")?"#ded0b2":o.material.equals("stone")?"#a6ada3":o.material.equals("sand")?"#f3d7a3":o.material.equals("gravel")?"#d2c8b3":o.material.equals("paving")?"#aaa18f":o.material.equals("asphalt")?"#747e75":"#a8c7bc");
             int dark=Color.parseColor(o.material.equals("dirt")?"#a99476":o.material.equals("stone")?"#899187":o.material.equals("sand")?"#bd9464":o.material.equals("gravel")?"#8e8575":o.material.equals("paving")?"#968d7d":o.material.equals("asphalt")?"#454d4a":"#588487");
             paint.setStyle(Paint.Style.FILL);paint.setAlpha(255);
             // At the island front, continue the path down the visible grass rim.
             for(int side=0;side<2;side++)if((side==0 && o.row==ISLAND_GRID_SIZE-1)||(side==1 && o.column==ISLAND_GRID_SIZE-1)) {
-                float lo=side==0?(hasRoad(o.column-1,o.row,water)||o.column==0?0:RoadGeometry.INSET):(hasRoad(o.column,o.row-1,water)||o.row==0?0:RoadGeometry.INSET);
-                float hi=side==0?(hasRoad(o.column+1,o.row,water)||o.column==ISLAND_GRID_SIZE-1?1:1-RoadGeometry.INSET):(hasRoad(o.column,o.row+1,water)||o.row==ISLAND_GRID_SIZE-1?1:1-RoadGeometry.INSET);
+                float lo=side==0?(sameRoad(o,o.column-1,o.row)||o.column==0?0:RoadGeometry.INSET):(sameRoad(o,o.column,o.row-1)||o.row==0?0:RoadGeometry.INSET);
+                float hi=side==0?(sameRoad(o,o.column+1,o.row)||o.column==ISLAND_GRID_SIZE-1?1:1-RoadGeometry.INSET):(sameRoad(o,o.column,o.row+1)||o.row==ISLAND_GRID_SIZE-1?1:1-RoadGeometry.INSET);
                 float[] a=side==0?roadPoint(cx,cy,lo,1):roadPoint(cx,cy,1,lo),b=side==0?roadPoint(cx,cy,hi,1):roadPoint(cx,cy,1,hi);
                 Path band=new Path();band.moveTo(a[0],a[1]-1);band.lineTo(b[0],b[1]-1);band.lineTo(b[0],b[1]+ISLAND_GRASS_BAND_DEPTH);band.lineTo(a[0],a[1]+ISLAND_GRASS_BAND_DEPTH);band.close();paint.setColor(blend(base,Color.BLACK,side==0?.15:.23));canvas.drawPath(band,paint);
             }
@@ -984,7 +986,9 @@ public final class WeatherSkyView extends View {
                     float[][] rect={{u0,v0},{u1,v0},{u1,v1},{u0,v1}};paint.setColor((u+v)%2==0?dark:light);canvas.drawPath(roadPath(cx,cy,rect,facing),paint);
                 }
             } else if(water) {
-                paint.setColor(light);for(float[] uv:new float[][]{{.3f,.28f},{.67f,.62f},{.34f,.73f}}){float[] rotated=RoadGeometry.rotate(uv[0],uv[1],facing),xy=roadPoint(cx,cy,rotated[0],rotated[1]);canvas.drawRect(xy[0]-1.5f,xy[1],xy[0]+1.5f,xy[1]+.55f,paint);}
+                paint.setColor(light);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.65f);
+                float phase=animationEnabled && android.animation.ValueAnimator.areAnimatorsEnabled()?(float)((plantMotionSeconds*.16)%1):0f;
+                for(int i=0;i<4;i++){float v=(i*.27f+phase)%1;float[][] wave={{.16f,v},{.38f,v-.025f},{.63f,v},{.84f,v-.025f}};Path path=new Path();for(int j=0;j<wave.length;j++){float[] uv=RoadGeometry.rotate(wave[j][0],wave[j][1],facing),xy=roadPoint(cx,cy,uv[0],uv[1]);if(j==0)path.moveTo(xy[0],xy[1]);else path.lineTo(xy[0],xy[1]);}canvas.drawPath(path,paint);}paint.setStyle(Paint.Style.FILL);
             } else {
                 int count=o.material.equals("gravel")?13:7;
                 for(int i=0;i<count;i++) {float u=.08f+((i*37+o.column*13+o.row*7)%83)/100f,v=.08f+((i*61+o.column*5+o.row*17)%83)/100f;float[] uv=RoadGeometry.rotate(u,v,facing),xy=roadPoint(cx,cy,uv[0],uv[1]);paint.setColor(i%2==0?light:dark);canvas.drawRect(xy[0],xy[1],xy[0]+(count==13?1.5f:1.8f),xy[1]+.65f,paint);}

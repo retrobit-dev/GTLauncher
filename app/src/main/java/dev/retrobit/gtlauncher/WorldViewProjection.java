@@ -36,7 +36,7 @@ final class WorldViewProjection {
             for(int i=0;i<records.length();i++){
                 JSONObject item=records.getJSONObject(i);int c=integer(item,"column"),r=integer(item,"row");if(c<0 || r<0 || c>=size || r>=size)throw new JSONException("Invalid tile record");
                 WorldViewRotation.Point p=WorldViewRotation.point(c,r,size,turns);item.put("column",(int)p.column);item.put("row",(int)p.row);
-                if(name.equals("ramps"))item.put("direction",rotatedDirection(item.getString("direction"),turns));
+                if(name.equals("ramps") || (name.equals("roads") && item.has("direction")))item.put("direction",rotatedDirection(item.getString("direction"),turns));
             }
         }
         return out;

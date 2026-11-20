@@ -52,7 +52,7 @@
       for(const [i,b] of (world.bridges||[]).entries()){const transformed=bridge(b,size,q);if(!transformed)throw new Error('invalid bridge');const target=result.bridges[i];target.column=transformed.column;target.row=transformed.row;target.axis=transformed.axis;}
       for(const name of ['blockOpacity','ramps','roads'])for(const [i,item] of (world[name]||[]).entries()){
         const p=move(item);if(!p || !Number.isInteger(item.column) || !Number.isInteger(item.row) || item.column<0 || item.row<0 || item.column>=size || item.row>=size)throw new Error('invalid tile record');
-        Object.assign(result[name][i],p);if(name==='ramps'){const d=direction(item.direction,q);if(!d)throw new Error('invalid ramp');result[name][i].direction=d;}
+        Object.assign(result[name][i],p);if(name==='ramps' || (name==='roads' && item.direction!==undefined)){const d=direction(item.direction,q);if(!d)throw new Error('invalid ramp');result[name][i].direction=d;}
       }
       return result;
     }catch(_){return null;}

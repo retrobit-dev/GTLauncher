@@ -2471,7 +2471,7 @@
         if(road && window.RoadSurface) {
           const h=stack?.length || 1, p=characterCentre({column:tile.column,row:tile.row,blockHeight:h});
           const same=direction=>{const n=worldNeighbor(tile.column,tile.row,direction);return n.column>=0&&n.row>=0&&n.column<ISLAND_GRID_SIZE&&n.row<ISLAND_GRID_SIZE&&roads.get(n.row*ISLAND_GRID_SIZE+n.column)?.material===road.material && (stacks?.[n.row*ISLAND_GRID_SIZE+n.column]?.length || 1)===h;};
-          if(tileVisible(p,0))window.RoadSurface.draw(ctx,{...p,width:ISLAND_TILE_WIDTH,height:islandTileHeight,material:road.material,column:tile.column,row:tile.row,time:motionTime,connected:{N:same('N'),E:same('E'),S:same('S'),W:same('W')}});
+          if(tileVisible(p,0))window.RoadSurface.draw(ctx,{...p,width:ISLAND_TILE_WIDTH,height:islandTileHeight,material:road.material,column:tile.column,row:tile.row,time:motionTime,direction:viewFacing(road.direction||'S'),connected:{N:same('N'),E:same('E'),S:same('S'),W:same('W')}});
         }
         const ramp=ramps.get(index),rampLevel=stack ? stack.length-1 : 0;
         if(ramp && tileVisible({...tile,y:tile.y-(rampLevel+1)*BLOCK_HEIGHT},BLOCK_HEIGHT)) {

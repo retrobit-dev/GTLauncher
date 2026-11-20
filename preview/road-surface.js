@@ -14,8 +14,8 @@
     if(!Number.isInteger(size)||size<1||!Array.isArray(roads)||roads.length>size*size)return false;
     const seen=new Set();
     for(const road of roads) {
-      if(!road || typeof road!=='object' || Array.isArray(road) || Object.keys(road).some(k=>!['column','row','material'].includes(k)) ||
-        !Number.isInteger(road.column)||!Number.isInteger(road.row)||road.column<0||road.row<0||road.column>=size||road.row>=size||!valid(road.material))return false;
+      if(!road || typeof road!=='object' || Array.isArray(road) || Object.keys(road).some(k=>!['column','row','material','direction'].includes(k)) ||
+        !Number.isInteger(road.column)||!Number.isInteger(road.row)||road.column<0||road.row<0||road.column>=size||road.row>=size||!valid(road.material) || (road.direction!==undefined && (road.material!=='water' || !['N','E','S','W'].includes(road.direction))))return false;
       const key=road.row*size+road.column;if(seen.has(key))return false;seen.add(key);
     }
     return true;
@@ -34,8 +34,16 @@
     const inset=.10, l=connected.W?0:inset,r=connected.E?1:1-inset,t=connected.N?0:inset,b=connected.S?1:1-inset;
     return [[l,t],[r,t],[r,b],[l,b]];
   }
+  // Transform flow coordinates with the current view-facing direction.
+  function flowPoint(u,v,direction='S') {
+    switch(direction){case 'N':return [1-u,1-v];case 'E':return [v,1-u];case 'W':return [1-v,u];default:return [u,v];}
+  }
+  function flowLines(time=0,direction='S') {
+    const phase=((Number.isFinite(time)?time:0)*.16)%1;
+    return [0,1,2,3].map(i=>{const v=((i*.27+phase)%1+1)%1;return [[.16,v],[.38,v-.025],[.63,v],[.84,v-.025]].map(([u,y])=>flowPoint(u,y,direction));});
+  }
   function draw(ctx,options) {
-    const {x,y,width,height,material,column=0,row=0,time=0,connected={}}=options;
+    const {x,y,width,height,material,column=0,row=0,time=0,connected={},direction='S'}=options;
     if(!ctx || !valid(material) || ![x,y,width,height].every(Number.isFinite) || width<=0 || height<=0)return false;
     const hw=width/2,hh=height/2,project=(u,v)=>[x+(u-v)*hw,y+(u+v-1)*hh];
     const polygon=points=>{ctx.beginPath();points.forEach(([u,v],i)=>{const [px,py]=project(u,v);if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);});ctx.closePath();};
@@ -50,9 +58,8 @@
         ctx.fillStyle=(r+c)%3===0?light:(r+c)%3===1?base:dark;ctx.fill();
       }
     } else if(material==='water') {
-      const phase=Number.isFinite(time)?(time*.025)%1:0;
-      for(let i=0;i<3;i++){let v=(.2+i*.25+phase*.13)%1;line([[.16,v],[.42,v-.025],[.65,v],[.82,v-.02]],light,.65);}
-      dot(.19,.68,dark,1.3,.5);
+      for(const points of flowLines(time,direction))line(points,light,.65);
+      const [u,v]=flowPoint(.19,.68,direction);dot(u,v,dark,1.3,.5);
     } else if(material==='sand') {
       for(let i=0;i<3;i++){const v=.22+i*.25;line([[.14,v],[.34,v-.04],[.59,v+.01],[.86,v-.03]],light,.75);}
       for(let i=0;i<5;i++)dot((i*.31+.13)%1,(i*.47+.21)%1,dark,.65,.4);
@@ -64,5 +71,5 @@
     }
     ctx.restore();return true;
   }
-  return Object.freeze({materials,valid,isWater,validRecords,put,neighbors,outline,draw});
+  return Object.freeze({materials,valid,isWater,validRecords,put,neighbors,outline,flowPoint,flowLines,draw});
 });

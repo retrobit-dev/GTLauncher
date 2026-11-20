@@ -67,11 +67,12 @@
     (world.roads||[]).forEach((road,i)=>{
       const node=document.createElement('div');node.className='world-card catalog-placed-row';
       const icon=document.createElement('span');icon.className=`catalog-placed-icon road-swatch road-${road.material}`;node.append(icon);
-      const detail=document.createElement('div');detail.className='world-card-details';detail.textContent=`Jalan ${road.material==='water'?'air / sungai':road.material} · ${columnLabel(road.column)}${road.row+1}`;node.append(detail);
+      const detail=document.createElement('div');detail.className='world-card-details';detail.textContent=`${road.material==='water'?'Sungai':`Jalan ${road.material}`} · ${columnLabel(road.column)}${road.row+1}${road.material==='water'?` · ${directionNames[road.direction||'S']}`:''}`;node.append(detail);
       const actions=document.createElement('div');actions.className='catalog-placed-actions';
-      for(const action of ['Ganti','Hapus']){const button=document.createElement('button');button.type='button';button.className='world-small';button.textContent=action;button.disabled=!editing || world.id==='base';button.setAttribute('aria-label',`${action} ${detail.textContent}`);
+      for(const action of (road.material==='water'?['Putar','Ganti','Hapus']:['Ganti','Hapus'])){const button=document.createElement('button');button.type='button';button.className='world-small';button.textContent=action;button.disabled=!editing || world.id==='base';button.setAttribute('aria-label',`${action} ${detail.textContent}`);
         button.addEventListener('click',()=>{const before=(window.worldManager.getActive().roads||[]).map(r=>({...r}));if(world.id!==worldId || JSON.stringify(before[i])!==JSON.stringify(road)){tell('EDITING · Jalan berubah; data tidak diubah.');return;}
-          if(action==='Ganti'){roadReplacement={worldId:world.id,before,index:i};catalogReplacement=null;selectCatalogTab(2);$('catalog-replace-status').hidden=false;$('catalog-replace-status').textContent='Pilih jenis jalan pengganti pada katalog.';$('catalog-replace-cancel').hidden=false;libraryDialog.scrollTop=0;}
+          if(action==='Putar'){const next=before.map((r,j)=>j===i?{...r,direction:directions[(directions.indexOf(r.direction||'S')+1)%4]}:r);if(saveRoads(before,next)){renderLibrary();tell('EDITING · Arah sungai diubah.');}else tell('EDITING · Arah sungai tidak dapat diubah.');}
+          else if(action==='Ganti'){roadReplacement={worldId:world.id,before,index:i};catalogReplacement=null;selectCatalogTab(2);$('catalog-replace-status').hidden=false;$('catalog-replace-status').textContent='Pilih jenis jalan pengganti pada katalog.';$('catalog-replace-cancel').hidden=false;libraryDialog.scrollTop=0;}
           else if(window.confirm('Hapus jalan ini?')){if(saveRoads(before,before.filter((_,j)=>j!==i))){renderLibrary();tell('EDITING · Jalan dihapus.');}else tell('EDITING · Jalan tidak dapat dihapus.');}});actions.append(button);}
       node.append(actions);libraryList.append(node);
     });
@@ -125,7 +126,7 @@
     const row = document.createElement('option'); row.value = i; row.textContent = String(i + 1); rows.append(row);
   }
   let editing = false, selected = false, selectedType = 'character', worldId = null, draft = null;
-  let selectedBridgeIndex=null,placingBridge=null,bridgeAxis='E',placingRoad=null;
+  let selectedBridgeIndex=null,placingBridge=null,bridgeAxis='E',placingRoad=null,roadDirection='S';
   let selectedTreeIndex=null, selectedFenceIndex=null, placingFence=null, placingFenceEdge='S', selectingObject=false, movingObject=false, objectPointer=null;
   let dragOffset = null, pinch = null, suppressDrag = false, objectDrag=null;
   let group=null, areaGesture=null, selectedBlock=null;
@@ -204,8 +205,8 @@
   });}
   for(const material of window.RoadSurface.materials) $('catalog-place-road-'+material).addEventListener('click',()=>{
     if(!editing)return;
-    if(roadReplacement){const old=roadReplacement;if(old.worldId!==worldId){roadReplacement=null;return;}const next=old.before.map((r,i)=>i===old.index?{...r,material}:r);if(saveRoads(old.before,next)){roadReplacement=null;renderLibrary();tell('EDITING · Jalan diganti.');}else $('catalog-replace-status').textContent='Penggantian tidak aman; jalan lama tidak diubah.';return;}
-    deactivateTerrain();clearGroup();selected=false;selectingObject=false;movingObject=false;draft=null;placingRoad=material;placementWorld=window.worldManager.getActive().id;libraryDialog.close();refresh();syncControls();tell('EDITING · Ketuk tile untuk menaruh atau menghapus jalan. Batal untuk berhenti.');
+    if(roadReplacement){const old=roadReplacement;if(old.worldId!==worldId){roadReplacement=null;return;}const next=old.before.map((r,i)=>{if(i!==old.index)return r;const {direction,...rest}=r;return material==='water'?{...rest,material,direction:direction||'S'}:{...rest,material};});if(saveRoads(old.before,next)){roadReplacement=null;renderLibrary();tell('EDITING · Jalan diganti.');}else $('catalog-replace-status').textContent='Penggantian tidak aman; jalan lama tidak diubah.';return;}
+    deactivateTerrain();clearGroup();selected=false;selectingObject=false;movingObject=false;draft=null;placingRoad=material;roadDirection='S';placementWorld=window.worldManager.getActive().id;libraryDialog.close();refresh();syncControls();tell(material==='water'?'EDITING · Putar arah sungai, lalu ketuk tile untuk menempatkan. Batal untuk berhenti.':'EDITING · Ketuk tile untuk menaruh atau menghapus jalan. Batal untuk berhenti.');
   });
   canvas.addEventListener('pointerdown', event => {
     if((!placingRoad && !placingHouse && !placingOrange && !placingFence && !placingBridge) || !editing || event.button!==0) return;
@@ -214,7 +215,7 @@
     if(placingRoad) {
       const before=window.worldManager.getActive().roads||[];if(!tile){tell('EDITING · Pilih tile di world.');return;}
       const found=before.find(r=>r.column===tile.column&&r.row===tile.row);
-      const next=found ? before.filter(r=>r!==found) : [...before,{...tile,material:placingRoad}];
+      const next=found ? before.filter(r=>r!==found) : [...before,{...tile,material:placingRoad,...(placingRoad==='water'?{direction:roadDirection}:{})}];
       if(!saveRoads(before,next)){tell('EDITING · Jalan membutuhkan tile aman; sungai tidak dapat ditempatkan pada player.');return;}
       tell(found?'EDITING · Jalan dihapus.':'EDITING · Jalan ditempatkan. Ketuk tile lain atau Batal.');return;
     }
@@ -401,14 +402,14 @@
     undoButton.disabled = !editing || !history || !history.undo.length || pointers.size > 0 || Boolean(pendingTerrain) || Boolean(objectDrag?.started);
     redoButton.disabled = !editing || !history || !history.redo.length || pointers.size > 0 || Boolean(pendingTerrain) || Boolean(objectDrag?.started);
     rotateControls.hidden = !editing;
-    rotateLeft.disabled = Boolean(group) || selectedType==='block' && selected || (!selected && !placingFence && !placingBridge) || pointers.size > 0;
-    rotateRight.disabled = Boolean(group) || selectedType==='block' && selected || (!selected && !placingFence && !placingBridge) || pointers.size > 0;
+    rotateLeft.disabled = Boolean(group) || selectedType==='block' && selected || (!selected && !placingFence && !placingBridge && placingRoad!=='water') || pointers.size > 0;
+    rotateRight.disabled = Boolean(group) || selectedType==='block' && selected || (!selected && !placingFence && !placingBridge && placingRoad!=='water') || pointers.size > 0;
     $('object-placement-cancel').hidden=!editing || !(placingHouse || placingOrange || placingFence || placingBridge || placingRoad);
     $('object-tool-select').setAttribute('aria-pressed',String(selectingObject));
     $('object-tool-move').disabled=!editing || (selected && selectedType==='block') || (!selected && !group);
     $('object-tool-move').setAttribute('aria-pressed',String(movingObject));
     $('object-tool-delete').disabled=!editing || (!group && (!selected || selectedType==='character' || selectedType==='block'));
-    $('rotate-direction').textContent = directionNames[placingFence ? placingFenceEdge : (draft || current() || {}).facing] || 'Selatan';
+    $('rotate-direction').textContent = directionNames[placingRoad==='water' ? roadDirection : placingFence ? placingFenceEdge : (draft || current() || {}).facing] || 'Selatan';
   }
   function finishEditing() {
     if(pendingTerrain) window.editorBlockHistory.end();
@@ -430,6 +431,7 @@
   redoButton.addEventListener('click', () => stepHistory(history?.redo, history?.undo, 'Redo'));
   function rotate(step) {
     if (!editing || pointers.size || dialog.open) return;
+    if(placingRoad==='water' && !selected){roadDirection=directions[(directions.indexOf(roadDirection)+step+4)%4];syncControls();tell(`EDITING · Aliran sungai ke ${directionNames[roadDirection]}.`);return;}
     if(placingBridge && (!selected || selectedType!=='bridge')){bridgeAxis=bridgeAxis==='E'?'S':'E';tell('EDITING · Arah jembatan diubah.');return;}
     if(selectedType==='bridge' && selected){const before=window.worldManager.getActive().bridges||[],b=before[selectedBridgeIndex];if(!b)return;const next=before.map((item,i)=>i===selectedBridgeIndex?{...(item.width!==undefined?item:movedBridge(item,item)),axis:item.axis==='E'?'S':'E'}:item);if(saveBridges(before,next)){if(placingBridge)bridgeAxis=next[selectedBridgeIndex].axis;refresh();syncControls();tell('EDITING · Jembatan diputar.');}else tell('EDITING · Arah itu tidak memiliki tapak yang aman.');return;}
     if(placingFence && (!selected || selectedType!=='fence')) {placingFenceEdge=directions[(directions.indexOf(placingFenceEdge)+step+4)%4];syncControls();tell(`EDITING · Sisi pagar ${directionNames[placingFenceEdge]}.`);return;}
