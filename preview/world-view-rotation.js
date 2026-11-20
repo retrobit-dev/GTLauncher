@@ -75,7 +75,7 @@
     for(let diagonal=2*size-2;diagonal>=0;diagonal--)for(let r=size-1;r>=0;r--) {
       const c=diagonal-r;if(c<0 || c>=size)continue;const h=height(c,r);if(h<=0)continue;
       const p=worldPoint(c,r),cx=originX+(c-r)*tileWidth/2,cy=originY+(c+r)*tileHeight/2-(h-1)*blockHeight,dx=x-cx,hw=tileWidth/2,hh=tileHeight/2;
-      const ramp=ramps.get(`${p.column},${p.row}`),viewDirection=ramp?direction(ramp.direction,q):null,material=ramp?ramp.material:world.tiles[p.row*size+p.column],topY=cy+(material===3?blockHeight*.25:0);
+      const ramp=ramps.get(`${p.column},${p.row}`),viewDirection=ramp?direction(ramp.direction,q):null,topY=cy;
       if(viewDirection && RampGeometry.hit(viewDirection,tileWidth,tileHeight,blockHeight,dx,y-topY))return p;
       if(Math.abs(dx)/hw+Math.abs(y-topY)/hh<=1)return p;
       if(Math.abs(dx)<=hw){

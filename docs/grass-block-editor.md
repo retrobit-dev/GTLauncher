@@ -121,3 +121,7 @@ tinggi block; stack dan tinggi data tidak diubah. Permukaan air yang tertutup
 air di atasnya tidak digambar sebagai bidang terpisah, dan dinding antar-air
 bertetangga di level yang sama dihilangkan. Air terjun dan ramp air tetap
 visual serta masih perlu pemeriksaan sambungan yang kompleks di perangkat.
+
+## Penyesuaian terbaru: air dan jembatan bebas
+
+Permukaan air kembali ke tinggi block semula; tidak ada perubahan data stack. Batas tanah luar tetap ada dan sambungan air sebelumnya dipertahankan. Jembatan baru memakai format v25: tinggi dek dicatat dari tile awal dan jembatan boleh melintasi tanah, air, lubang, perbedaan tinggi, atau ramp. Tapak harus tetap di dalam grid dan tidak menimpa rumah, pohon, pagar, atau jembatan lain. Medan yang lebih tinggi dapat menutupi dek dan ujung tidak selalu dapat dicapai; penempatan bebas bukan jaminan rute aman. Jembatan lama tidak diubah otomatis. Versi lama tidak dapat menimpa world dengan jembatan v25. Android belum diuji dalam APK atau perangkat.

@@ -77,6 +77,8 @@
   $('catalog-bulk-replace').addEventListener('click',()=>{if(!catalogSelection.length)return;deactivateTerrain();syncControls();catalogReplacement={worldId:worldId,items:catalogSelection.map(s=>({...s})),expected:objectSets(window.worldManager.getActive()),label:`${catalogSelection.length} objek`};renderLibrary();selectCatalogTab(0);libraryDialog.scrollTop=0;});
   $('catalog-replace-cancel').addEventListener('click',()=>{catalogReplacement=null;renderLibrary();});
   libraryDialog.addEventListener('close',()=>{catalogReplacement=null;catalogSelection=[];});
+  function bridgeDeck(tile) {const w=window.worldManager.getActive(),i=tile.row*w.gridSize+tile.column;return Math.max(1,w.blockStacks?.[i]?.length ?? (w.tiles?.[i]?1:0));}
+  function movedBridge(b,tile) {return b.width!==undefined ? {...b,...tile} : {...b,...tile,gap:true,free:true,deck:bridgeDeck(tile)};}
   function replacementForButton(id,source) {
     const position={column:source.object.column,row:source.object.row};
     if(id==='catalog-place-orange')return {key:'trees',object:position};
@@ -87,7 +89,7 @@
     const fence=id.match(/^catalog-place-fence-(wood|stone)$/);
     if(fence)return {key:'fences',object:{...position,edge:source.key==='fences'?source.object.edge:'S',material:fence[1]}};
     const bridge=id.match(/^catalog-place-bridge-(wood|stone)(?:-(4|5))?$/);
-    if(bridge)return {key:'bridges',object:{...position,axis:source.key==='bridges'?source.object.axis:'E',material:bridge[1],...(source.key==='bridges' ? (source.object.gap?{gap:true,...(source.object.overWater?{overWater:true}:{})}:{}) : {gap:true,overWater:true}),...(bridge[2]?{length:Number(bridge[2])}:{})}};
+    if(bridge)return {key:'bridges',object:{...position,axis:source.key==='bridges'?source.object.axis:'E',material:bridge[1],...(source.key==='bridges' ? (source.object.gap?{gap:true,...(source.object.overWater?{overWater:true}:{}),...(source.object.free?{free:true,deck:source.object.deck}:{})}:{}) : {gap:true,free:true,deck:bridgeDeck(position)}),...(bridge[2]?{length:Number(bridge[2])}:{})}};
     return null;
   }
   libraryDialog.addEventListener('click',event=>{
@@ -183,8 +185,8 @@
     event.preventDefault(); event.stopImmediatePropagation(); placementPointer=event.pointerId;
     const tile=scene()?.tileAt(scene().toLocal(event.clientX,event.clientY));
     if(placingBridge) {
-      const before=window.worldManager.getActive().bridges||[],next=tile && [...before,{...tile,axis:bridgeAxis,material:placingBridge.material,gap:true,overWater:true,...(placingBridge.length===3?{}:{length:placingBridge.length})}];
-      if(!next || !saveBridges(before,next)){tell(`EDITING · Pilih dua ujung darat setinggi sama; bagian tengah harus berupa lubang atau air.`);return;}
+      const before=window.worldManager.getActive().bridges||[],next=tile && [...before,{...tile,axis:bridgeAxis,material:placingBridge.material,gap:true,free:true,deck:bridgeDeck(tile),...(placingBridge.length===3?{}:{length:placingBridge.length})}];
+      if(!next || !saveBridges(before,next)){tell(`EDITING · Tapak jembatan harus di dalam world dan tidak bertumpuk dengan objek lain.`);return;}
       selectedType='bridge';selectedBridgeIndex=before.length;selected=true;refresh();syncControls();tell('EDITING · Jembatan ditempatkan. Ketuk tile lain atau Batal.');return;
     }
     if(placingFence) {
@@ -394,7 +396,7 @@
   function rotate(step) {
     if (!editing || pointers.size || dialog.open) return;
     if(placingBridge && (!selected || selectedType!=='bridge')){bridgeAxis=bridgeAxis==='E'?'S':'E';tell('EDITING · Arah jembatan diubah.');return;}
-    if(selectedType==='bridge' && selected){const before=window.worldManager.getActive().bridges||[],b=before[selectedBridgeIndex];if(!b)return;const next=before.map((item,i)=>i===selectedBridgeIndex?{...item,axis:item.axis==='E'?'S':'E'}:item);if(saveBridges(before,next)){if(placingBridge)bridgeAxis=next[selectedBridgeIndex].axis;refresh();syncControls();tell('EDITING · Jembatan diputar.');}else tell('EDITING · Arah itu tidak memiliki tapak yang aman.');return;}
+    if(selectedType==='bridge' && selected){const before=window.worldManager.getActive().bridges||[],b=before[selectedBridgeIndex];if(!b)return;const next=before.map((item,i)=>i===selectedBridgeIndex?{...(item.width!==undefined?item:movedBridge(item,item)),axis:item.axis==='E'?'S':'E'}:item);if(saveBridges(before,next)){if(placingBridge)bridgeAxis=next[selectedBridgeIndex].axis;refresh();syncControls();tell('EDITING · Jembatan diputar.');}else tell('EDITING · Arah itu tidak memiliki tapak yang aman.');return;}
     if(placingFence && (!selected || selectedType!=='fence')) {placingFenceEdge=directions[(directions.indexOf(placingFenceEdge)+step+4)%4];syncControls();tell(`EDITING · Sisi pagar ${directionNames[placingFenceEdge]}.`);return;}
     if(!selected)return;
     if(selectedType==='fence') {
@@ -593,7 +595,7 @@
     if(movingObject) {
       const tile=scene().tileAt(local);if(!tile){tell('EDITING · Pilih tile di dalam world.');return;}
       let saved=false;
-      if(selectedType==='bridge') {const before=window.worldManager.getActive().bridges||[];saved=saveBridges(before,before.map((b,i)=>i===selectedBridgeIndex?{...b,...tile}:b));}
+      if(selectedType==='bridge') {const before=window.worldManager.getActive().bridges||[];saved=saveBridges(before,before.map((b,i)=>i===selectedBridgeIndex?movedBridge(b,tile):b));}
       else if(selectedType==='fence') {const before=window.worldManager.getActive().fences||[];saved=saveFences(before,before.map((f,i)=>i===selectedFenceIndex?{...f,...tile}:f));}
       else if(selectedType==='tree') {
         const before=window.worldManager.getActive().orangeTrees||[];
@@ -647,7 +649,7 @@
       else {
         const key=drag.kind==='tree'?'orangeTrees':drag.kind==='bridge'?'bridges':'fences',before=window.worldManager.getActive()[key]||[];
         const same=JSON.stringify(before[drag.index])===JSON.stringify(drag.source);
-        const next=before.map((o,i)=>i===drag.index?{...o,...tile}:o);
+        const next=before.map((o,i)=>i===drag.index?(drag.kind==='bridge'?movedBridge(o,tile):{...o,...tile}):o);
         const saved=same && (drag.kind==='tree'?saveTrees(before,next):drag.kind==='bridge'?saveBridges(before,next):saveFences(before,next));
         tell(saved?'EDITING · Objek dipindahkan. Undo untuk membatalkan.':'EDITING · Tujuan terhalang; objek tidak dipindahkan.');
       }

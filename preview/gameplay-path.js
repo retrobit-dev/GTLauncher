@@ -22,7 +22,7 @@
       }
     }
     function terrainStep(a,b,edge){
-      const da=ramps.get(keyOf(a))?.direction,db=ramps.get(keyOf(b))?.direction;
+      const da=BridgeGeometry?.deckHeight(world,a)==null ? ramps.get(keyOf(a))?.direction : null,db=BridgeGeometry?.deckHeight(world,b)==null ? ramps.get(keyOf(b))?.direction : null;
       return da===undefined && db===undefined ? Math.abs(height(a)-height(b))<=1 : RampGeometry.canConnect({height:height(a),direction:da},{height:height(b),direction:db},edge);
     }
     const inHouse=p=>house?.visible && p.column>=house.column && p.column<house.column+3 && p.row>=house.row && p.row<house.row+3;

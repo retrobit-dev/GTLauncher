@@ -33,3 +33,7 @@ ujung darat, atau lubang/air satu tingkat di bawahnya. Permukaan air diturunkan
 secara visual saja; isi dan tinggi stack lama tetap. `overWater` mensyaratkan
 format v24; impor format lebih lama tidak dapat menimpa data ini. Tes Java dan
 browser sudah dijalankan; APK dan perangkat Android belum diuji.
+
+## Penyesuaian v25
+
+Ketinggian air visual kembali seperti semula. Jembatan baru dapat ditempatkan pada berbagai jenis dan ketinggian terrain, termasuk ramp dan lubang, dengan tinggi dek tetap pada tile awal; batas grid dan larangan menimpa objek tetap berlaku. Data lama tidak dimigrasi. World dengan jembatan bebas diekspor sebagai v25 dan tidak dapat ditimpa format sebelumnya. Kode parser dan rute Android diuji pada model Java, bukan APK atau perangkat.

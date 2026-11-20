@@ -104,7 +104,7 @@
   const ISLAND_DEPTH = ISLAND_GRASS_BAND_DEPTH + ISLAND_SOIL_BAND_DEPTH;
   // World levels and the grass block band share the same half-height.
   const BLOCK_HEIGHT = ISLAND_GRASS_BAND_DEPTH;
-  const WATER_SURFACE_DROP = BLOCK_HEIGHT * .25;
+  const WATER_SURFACE_DROP = 0;
   const ISLAND_BASE_BOTTOM_MARGIN = 8;
   const ISLAND_VERTICAL_LIFT = 10;
   const ISLAND_BOTTOM_MARGIN = ISLAND_BASE_BOTTOM_MARGIN + ISLAND_VERTICAL_LIFT;
@@ -1812,7 +1812,7 @@
     return Number.isFinite(character.waterDepth) ? Math.max(0,Math.min(BLOCK_HEIGHT,character.waterDepth)) : waterDepth(character.column,character.row);
   }
   function characterCentre(character) {
-    const ramp=character.visible && window.worldManager?.getActive()?.ramps?.find(r=>r.column===character.column && r.row===character.row);
+    const ramp=character.visible && window.BridgeGeometry?.deckHeight(window.worldManager?.getActive(),character)==null && window.worldManager?.getActive()?.ramps?.find(r=>r.column===character.column && r.row===character.row);
     const elevation=Number.isFinite(character.blockHeight) ? character.blockHeight : surfaceHeight(character.column,character.row)+(ramp?.direction ? .5 : 0);
     const p=viewPoint(character.column,character.row);
     return {x: WIDTH / 2 + (p.column - p.row) * ISLAND_TILE_WIDTH / 2,

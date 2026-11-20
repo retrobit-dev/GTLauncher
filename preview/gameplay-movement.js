@@ -62,7 +62,7 @@
     if(walk.routeIndex!==index){walk.routeIndex=index;scene.setGameplayRoute?.(walk.route,index);}
     const a=walk.route[index-1],b=walk.route[index],t=Math.max(0,Math.min(1,elapsed/walk.durations[index-1]));
     const fromHeight=scene.surfaceHeight(a.column,a.row),toHeight=scene.surfaceHeight(b.column,b.row);
-    const ramps=worlds.getActive().ramps || [],fromRamp=ramps.find(r=>r.column===a.column && r.row===a.row),toRamp=ramps.find(r=>r.column===b.column && r.row===b.row);
+    const ramps=worlds.getActive().ramps || [],fromRamp=window.BridgeGeometry?.deckHeight(worlds.getActive(),a)==null && ramps.find(r=>r.column===a.column && r.row===a.row),toRamp=window.BridgeGeometry?.deckHeight(worlds.getActive(),b)==null && ramps.find(r=>r.column===b.column && r.row===b.row);
     const onRamp=Boolean(fromRamp || toRamp),blockHeight=onRamp ? window.RampGeometry?.stepHeight({height:fromHeight,direction:fromRamp?.direction},{height:toHeight,direction:toRamp?.direction},direction(a,b),t) : fromHeight*(1-t)+toHeight*t;
     scene.setGameplayDraft({...walk.character,column:a.column+(b.column-a.column)*t,row:a.row+(b.row-a.row)*t,blockHeight:blockHeight ?? fromHeight,jumpHeight:onRamp?0:(window.JumpMotion?.height(fromHeight,toHeight,t) || 0),waterDepth:scene.waterDepth(a.column,a.row)*(1-t)+scene.waterDepth(b.column,b.row)*t,facing:direction(a,b),running:walk.running,walkPhase:(index-1+t)*Math.PI*2});
     window.requestAnimationFrame(next=>step(next,token));
