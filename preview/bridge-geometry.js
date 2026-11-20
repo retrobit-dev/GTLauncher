@@ -51,5 +51,17 @@
     const cx=p[0]+(ux+vx)/2,cy=p[1]+(uy+vy)/2;
     return {a,b,c,d,e:-a*cx-c*cy,f:-b*cx-d*cy};
   }
-  return Object.freeze({LENGTH,cells,indexAt,valid,permitsStep,spriteTransform});
+  // Construct deck and posts in world space, so vertical posts are never sheared.
+  function wideDeck(length,width,tileWidth,tileHeight) {
+    const u={x:length*tileWidth/2,y:-length*tileHeight/2},v={x:width*tileWidth/2,y:width*tileHeight/2};
+    const p={x:-(u.x+v.x)/2,y:-(u.y+v.y)/2};
+    return [p,{x:p.x+u.x,y:p.y+u.y},{x:p.x+u.x+v.x,y:p.y+u.y+v.y},{x:p.x+v.x,y:p.y+v.y}];
+  }
+  function polygonContains(point,poly) {let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++) {const a=poly[i],b=poly[j];if((a.y>point.y)!==(b.y>point.y) && point.x<(b.x-a.x)*(point.y-a.y)/(b.y-a.y)+a.x)inside=!inside;}return inside;}
+  function postContains(p,posts) {return posts.some(a=>{const dx=Math.abs(p.x-a.x),dy=p.y-(a.y+2);return dx<=2 && dy>=-10.5+dx/2 && dy<=-dx/2;});}
+  function wideContains(point,corners) {
+    if(postContains(point,corners) || polygonContains(point,corners))return true;
+    const [a,b,c,d]=corners;return polygonContains(point,[d,c,{x:c.x,y:c.y+2.5},{x:d.x,y:d.y+2.5}]) || polygonContains(point,[b,c,{x:c.x,y:c.y+2.5},{x:b.x,y:b.y+2.5}]);
+  }
+  return Object.freeze({LENGTH,cells,indexAt,valid,permitsStep,spriteTransform,wideDeck,wideContains});
 });

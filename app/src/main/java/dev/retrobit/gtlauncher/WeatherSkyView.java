@@ -657,6 +657,32 @@ public final class WeatherSkyView extends View {
         }
         paint.setAlpha(255);
     }
+    private void bridgePostFace(Canvas canvas,float[] points,int color,int outline,int alpha) {
+        Path path=new Path();path.moveTo(points[0],points[1]);for(int i=2;i<points.length;i+=2)path.lineTo(points[i],points[i+1]);path.close();
+        paint.setStyle(Paint.Style.FILL);paint.setColor(color);paint.setAlpha(alpha);canvas.drawPath(path,paint);
+        paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.24f);paint.setColor(outline);paint.setAlpha(alpha);canvas.drawPath(path,paint);paint.setStyle(Paint.Style.FILL);
+    }
+    private void drawWideBridgePost(Canvas canvas,float x,float y,boolean wood,int alpha) {
+        int outline=wood?0xff57362c:0xff514942;
+        bridgePostFace(canvas,new float[]{x-2,y-9.5f,x,y-8.5f,x,y,x-2,y-1},wood?0xffa45f3d:0xff988879,outline,alpha);
+        bridgePostFace(canvas,new float[]{x,y-8.5f,x+2,y-9.5f,x+2,y-1,x,y},wood?0xff78472f:0xff756b61,outline,alpha);
+        bridgePostFace(canvas,new float[]{x-2,y-9.5f,x,y-10.5f,x+2,y-9.5f,x,y-8.5f},wood?0xffc9895e:0xffb7a896,outline,alpha);
+    }
+    private void drawWideBridge(Canvas canvas,BridgeGeometry.Bridge bridge,int alpha) {
+        float lx=bridge.length*ISLAND_TILE_WIDTH/2f,ly=-bridge.length*ISLAND_TILE_HEIGHT/2f,wx=bridge.width*ISLAND_TILE_WIDTH/2f,wy=bridge.width*ISLAND_TILE_HEIGHT/2f;
+        float ax=-(lx+wx)/2,ay=-(ly+wy)/2,bx=ax+lx,by=ay+ly,dx=ax+wx,dy=ay+wy,cx=bx+wx,cy=by+wy;
+        boolean wood=bridge.material.equals("wood");int outline=wood?0xff57362c:0xff514942;
+        bridgePostFace(canvas,new float[]{dx,dy,cx,cy,cx,cy+2.5f,dx,dy+2.5f},wood?0xff895033:0xff827465,outline,alpha);
+        bridgePostFace(canvas,new float[]{bx,by,cx,cy,cx,cy+2.5f,bx,by+2.5f},wood?0xff6c3e2d:0xff6d6258,outline,alpha);
+        bridgePostFace(canvas,new float[]{ax,ay,bx,by,cx,cy,dx,dy},wood?0xffbd8054:0xffb3a391,outline,alpha);
+        paint.setStyle(Paint.Style.STROKE);paint.setColor(wood?0xff855033:0xff897c70);paint.setAlpha(alpha);paint.setStrokeWidth(.35f);
+        int rows=bridge.length*(wood?4:2);
+        for(int i=1;i<rows;i++){float t=(float)i/rows;canvas.drawLine(ax+(bx-ax)*t,ay+(by-ay)*t,dx+(cx-dx)*t,dy+(cy-dy)*t,paint);}
+        if(!wood)for(int i=1;i<bridge.width*2;i++){float t=(float)i/(bridge.width*2);canvas.drawLine(ax+(dx-ax)*t,ay+(dy-ay)*t,bx+(cx-bx)*t,by+(cy-by)*t,paint);}
+        paint.setColor(wood?0xff71442f:0xff6f645b);paint.setAlpha(alpha);paint.setStrokeWidth(2);canvas.drawLine(ax,ay,bx,by,paint);canvas.drawLine(dx,dy,cx,cy,paint);
+        paint.setColor(wood?0xffcb936a:0xffc6b9a7);paint.setAlpha(alpha);paint.setStrokeWidth(.55f);canvas.drawLine(ax,ay,bx,by,paint);canvas.drawLine(dx,dy,cx,cy,paint);paint.setStyle(Paint.Style.FILL);
+        drawWideBridgePost(canvas,ax,ay+2,wood,alpha);drawWideBridgePost(canvas,bx,by+2,wood,alpha);drawWideBridgePost(canvas,cx,cy+2,wood,alpha);drawWideBridgePost(canvas,dx,dy+2,wood,alpha);
+    }
     private void drawBridges(Canvas canvas) {
         if(worldTerrain==null)return;
         for(BridgeGeometry.Bridge b:worldTerrain.bridges){
@@ -664,6 +690,7 @@ public final class WeatherSkyView extends View {
             float half=(b.length-1)/2f,c=b.column+(b.axis.equals("E")?half:(b.width-1)/2f),r=b.row+(b.axis.equals("S")?half:(b.width-1)/2f);
             float x=SCENE_WIDTH/2f+(c-r)*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(c+r)*ISLAND_TILE_HEIGHT/2f-elevationAt(b.column,b.row);
             int save=canvas.save();canvas.translate(x,y);if(b.axis.equals("E"))canvas.scale(-1,1);
+            if(b.width>1) {drawWideBridge(canvas,b,Math.round(255*(100-Math.max(0,b.opacity))/100f));canvas.restoreToCount(save);continue;}
             // Map the three deck landmarks onto exactly length by one tile.
             float px=b.width>1?50:b.material.equals("wood")?0:35,py=b.width>1?250:b.material.equals("wood")?284:253;
             float ux=b.width>1?285:b.material.equals("wood")?430:415,uy=b.width>1?-165:b.material.equals("wood")?-237:-203;
@@ -671,8 +698,10 @@ public final class WeatherSkyView extends View {
             float det=ux*vy-uy*vx,lx=b.length*ISLAND_TILE_WIDTH/2f,ly=-b.length*ISLAND_TILE_HEIGHT/2f,wx=b.width*ISLAND_TILE_WIDTH/2f,wy=b.width*ISLAND_TILE_HEIGHT/2f;
             float a=(lx*vy-wx*uy)/det,cx=(wx*ux-lx*vx)/det,bb=(ly*vy-wy*uy)/det,d=(wy*ux-ly*vx)/det;
             float midX=px+(ux+vx)/2f,midY=py+(uy+vy)/2f;
-            android.graphics.Matrix deck=new android.graphics.Matrix();deck.setValues(new float[]{a,cx,-a*midX-cx*midY,bb,d,-bb*midX-d*midY,0,0,1});canvas.concat(deck);
-            paint.setColor(Color.WHITE);paint.setFilterBitmap(true);paint.setAlpha(Math.round(255*(100-Math.max(0,b.opacity))/100f));canvas.drawBitmap(image,0,0,paint);canvas.restoreToCount(save);
+            float tx=-a*midX-cx*midY,ty=-bb*midX-d*midY;
+            android.graphics.Matrix deck=new android.graphics.Matrix();deck.setValues(new float[]{a,cx,tx,bb,d,ty,0,0,1});int deckSave=canvas.save();canvas.concat(deck);
+            int alpha=Math.round(255*(100-Math.max(0,b.opacity))/100f);paint.setColor(Color.WHITE);paint.setFilterBitmap(true);paint.setAlpha(alpha);canvas.drawBitmap(image,0,0,paint);canvas.restoreToCount(deckSave);
+            canvas.restoreToCount(save);
         }
         paint.setAlpha(255);
     }

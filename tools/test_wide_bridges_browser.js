@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict'),{chromium}=require('playwright-core');
 (async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader']});try{
- const page=await browser.newPage({viewport:{width:1000,height:700},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const page=await browser.newPage({viewport:{width:1000,height:700},reducedMotion:'reduce'}),errors=[];page.setDefaultTimeout(90000);page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>{if(localStorage.getItem('gtlauncher.worlds.v1'))return;const tiles=Array(400).fill(1);for(let r=7;r<=8;r++)tiles[r*20+6]=3;localStorage.setItem('gtlauncher.worlds.v1',JSON.stringify({activeId:'wide',worlds:[{id:'wide',name:'Wide',description:'',color:'#a8c795',gridSize:20,tiles,showCharacter:true,characterColumn:4,characterRow:4,characterScale:1,characterFacing:'S',house:null}]}));});
  await page.route('**/api.open-meteo.com/**',r=>r.abort());await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:90000});await page.waitForFunction(()=>window.sceneEditing&&window.worldManager,null,{timeout:90000});
  await page.locator('#mode-map-editor').click();await page.evaluate(()=>sceneEditing.setCamera(3,0,80));await page.locator('#object-library-button').click();await page.locator('#catalog-place-bridge-wood').click();

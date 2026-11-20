@@ -65,8 +65,8 @@ vertikal hanya di kedua ujung, tanpa tiang tengah. Studi visual disimpan di
 `artwork/bridge-stone-wide-sprite-study.png`; keduanya belum menjadi aset
 runtime (studi batu masih mengandung block sekeliling). Ukuran baru memakai format preview v22, validasi seluruh tapak, rotasi dan
 traversal multi-tile; bridge 1 tile lama tetap dibaca tanpa migrasi. Versi
-lama tidak boleh mengganti world yang memiliki jembatan lebar. Sprite ini
-masih menggunakan transformasi affine sehingga tiang dapat terlihat miring
-pada beberapa variasi: perbaikan visual tiang vertikal masih diperlukan.
+lama tidak boleh mengganti world yang memiliki jembatan lebar. Dek dan tiang jembatan lebar kini digambar sebagai geometri terpisah;
+tiang tetap vertikal pada setiap ukuran dan arah, sementara dek sejajar
+sisi block. Sprite ilustrasi tetap dipakai di katalog.
 Android sudah mendukung impor dan gambar v22 pada level kode, tetapi belum
 diuji di perangkat.

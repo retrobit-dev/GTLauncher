@@ -1971,13 +1971,35 @@
     const centre=characterCentre({column:bridge.column+(bridge.axis==='E'?half:((bridge.width||1)-1)/2),row:bridge.row+(bridge.axis==='S'?half:((bridge.width||1)-1)/2),blockHeight:surfaceHeight(bridge.column,bridge.row)});
     return {x:centre.x,y:centre.y,w:ISLAND_TILE_WIDTH*2.35,h:ISLAND_TILE_WIDTH*1.56};
   }
+  function drawWideBridge(bridge) {
+    const corners=window.BridgeGeometry.wideDeck(bridge.length||3,bridge.width,ISLAND_TILE_WIDTH,islandTileHeight),[a,b,c,d]=corners,wood=bridge.material==='wood';
+    const path=(points,fill)=>{ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(const p of points.slice(1))ctx.lineTo(p.x,p.y);ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=wood?'#57362c':'#514942';ctx.lineWidth=.35;ctx.stroke();};
+    const down=p=>({x:p.x,y:p.y+2.5});
+    path([d,c,down(c),down(d)],wood?'#895033':'#827465');path([b,c,down(c),down(b)],wood?'#6c3e2d':'#6d6258');
+    path(corners,wood?'#bd8054':'#b3a391');
+    ctx.strokeStyle=wood?'#855033':'#897c70';ctx.lineWidth=.35;
+    const n=(bridge.length||3)*(wood?4:2);
+    for(let i=1;i<n;i++){const t=i/n;ctx.beginPath();ctx.moveTo(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t);ctx.lineTo(d.x+(c.x-d.x)*t,d.y+(c.y-d.y)*t);ctx.stroke();}
+    if(!wood)for(let i=1;i<bridge.width*2;i++){const t=i/(bridge.width*2);ctx.beginPath();ctx.moveTo(a.x+(d.x-a.x)*t,a.y+(d.y-a.y)*t);ctx.lineTo(b.x+(c.x-b.x)*t,b.y+(c.y-b.y)*t);ctx.stroke();}
+    for(const [p,q] of [[a,b],[d,c]]) {ctx.strokeStyle=wood?'#71442f':'#6f645b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();ctx.strokeStyle=wood?'#cb936a':'#c6b9a7';ctx.lineWidth=.55;ctx.stroke();}
+    for(const post of corners) {const x=post.x,y=post.y+2;
+      path([{x:x-2,y:y-9.5},{x,y:y-8.5},{x,y},{x:x-2,y:y-1}],wood?'#a45f3d':'#988879');
+      path([{x,y:y-8.5},{x:x+2,y:y-9.5},{x:x+2,y:y-1},{x,y}],wood?'#78472f':'#756b61');
+      path([{x:x-2,y:y-9.5},{x,y:y-10.5},{x:x+2,y:y-9.5},{x,y:y-8.5}],wood?'#c9895e':'#b7a896');
+    }
+    if(editingBridgeSelection && editingBridgeSelection.column===bridge.column && editingBridgeSelection.row===bridge.row && editingBridgeSelection.axis===bridge.axis){
+      ctx.strokeStyle='#fff4a8';ctx.lineWidth=.65;ctx.beginPath();ctx.moveTo(a.x,a.y);for(const p of [b,c,d])ctx.lineTo(p.x,p.y);ctx.closePath();ctx.stroke();
+    }
+  }
   function drawBridge(bridge) {
     const image=(bridge.width ? wideBridgeSprites : bridgeSprites)[bridge.material];if(!image?.complete || !image.naturalWidth)return;
     const p=bridgeBounds(bridge);ctx.save();ctx.globalAlpha*=(100-(bridge.opacity ?? 0))/100;applyIslandTransform();ctx.translate(p.x,p.y);if((viewQuarterTurns%2===0?bridge.axis:bridge.axis==='E'?'S':'E')==='E')ctx.scale(-1,1);
-    const m=window.BridgeGeometry.spriteTransform(bridge.material,bridge.length||3,ISLAND_TILE_WIDTH,islandTileHeight,bridge.width||1);
-    ctx.transform(m.a,m.b,m.c,m.d,m.e,m.f);
+    if(bridge.width){drawWideBridge(bridge);ctx.restore();return;}
+    const m=window.BridgeGeometry.spriteTransform(bridge.material,bridge.length||3,ISLAND_TILE_WIDTH,islandTileHeight);
+    ctx.save();ctx.transform(m.a,m.b,m.c,m.d,m.e,m.f);
     ctx.imageSmoothingEnabled=true;ctx.drawImage(image,0,0);
     if(editingBridgeSelection && editingBridgeSelection.column===bridge.column && editingBridgeSelection.row===bridge.row && editingBridgeSelection.axis===bridge.axis){ctx.strokeStyle='#fff4a8';ctx.lineWidth=4;ctx.strokeRect(0,0,image.naturalWidth,image.naturalHeight);}
+    ctx.restore();
     ctx.restore();
   }
   function drawHouse() {
@@ -2901,8 +2923,10 @@
       for(let i=all.length-1;i>=0;i--) {
         const bridge=all[i],image=(bridge.width ? wideBridgeSprites : bridgeSprites)[bridge.material];if(!image?.complete || !image.naturalWidth)continue;
         const p=bridgeBounds(bridge),mirror=(viewQuarterTurns%2===0?bridge.axis:bridge.axis==='E'?'S':'E')==='E';
-        const m=window.BridgeGeometry.spriteTransform(bridge.material,bridge.length||3,ISLAND_TILE_WIDTH,islandTileHeight,bridge.width||1);
-        const x=(point.x-p.x)*(mirror?-1:1)-m.e,y=point.y-p.y-m.f,det=m.a*m.d-m.b*m.c;
+        const local={x:(point.x-p.x)*(mirror?-1:1),y:point.y-p.y};
+        if(bridge.width){if(window.BridgeGeometry.wideContains(local,window.BridgeGeometry.wideDeck(bridge.length||3,bridge.width,ISLAND_TILE_WIDTH,islandTileHeight)))return i;continue;}
+        const m=window.BridgeGeometry.spriteTransform(bridge.material,bridge.length||3,ISLAND_TILE_WIDTH,islandTileHeight);
+        const x=local.x-m.e,y=local.y-m.f,det=m.a*m.d-m.b*m.c;
         const sx=(m.d*x-m.c*y)/det,sy=(m.a*y-m.b*x)/det;
         if(spriteOpaqueAt(image,sx/image.naturalWidth,sy/image.naturalHeight))return i;
       }

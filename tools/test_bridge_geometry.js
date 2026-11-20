@@ -50,3 +50,9 @@ for(const axis of ['E','S'])for(const length of [3,4,5]){
  for(let q=0;q<4;q++){const r=require('../preview/world-view-rotation').bridge(bridge,20,q);assert(r);const actual=new Set(b.cells({...bridge,...r}).map(p=>`${p.column},${p.row}`));for(const p of cells){const t=require('../preview/world-view-rotation').point(p.column,p.row,20,q);assert(actual.has(`${t.column},${t.row}`));}}
 }
 console.log('Wide bridges validate every tile, allow lateral deck movement, block side entry, and rotate all cells: OK');
+for(const length of [3,4,5]) {
+ const width=length===5?3:2,poly=b.wideDeck(length,width,28,12),[a,u,v,w]=poly;
+ assert.equal(u.x-a.x,length*14);assert.equal(u.y-a.y,-length*6);assert.equal(w.x-a.x,width*14);assert.equal(w.y-a.y,width*6);
+ for(const p of poly){assert(b.wideContains({x:p.x,y:p.y-4},poly),'vertical post hit above corner');}
+}
+console.log('Wide decks align to tile edges and corner posts stay vertical: OK');
