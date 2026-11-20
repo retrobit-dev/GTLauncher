@@ -28,8 +28,8 @@
   function validStacks(stacks, tiles, size) {
     return Array.isArray(stacks) && Array.isArray(tiles) && stacks.length === size * size &&
       stacks.every((stack,i) => Array.isArray(stack) &&
-        stack.every(t => Number.isInteger(t) && t >= 1 && t <= 10) &&
-        (stack.length ? stack[stack.length-1] : 0) === tiles[i]);
+        stack.every(t => Number.isInteger(t) && t >= 0 && t <= 10) &&
+        (stack.length ? stack[stack.length-1] : 0) === tiles[i] && (!stack.length || stack[stack.length-1]!==0));
   }
   function validBlockOpacity(entries,world,stacks=world.blockStacks,tiles=world.tiles) {
     if(entries===undefined)return true;
@@ -38,7 +38,7 @@
     for(const e of entries){
       if(!e || typeof e!=='object' || Array.isArray(e) || Object.keys(e).some(k=>!['column','row','level','opacity'].includes(k)) || !Number.isInteger(e.column) || !Number.isInteger(e.row) || !Number.isInteger(e.level) || e.column<0 || e.column>=size || e.row<0 || e.row>=size || e.level<0 || !Number.isInteger(e.opacity) || e.opacity<5 || e.opacity>90 || e.opacity%5)return false;
       const i=e.row*size+e.column,height=stacks?stacks[i]?.length:(tiles[i]?1:0),key=`${i}:${e.level}`;
-      if(!Number.isInteger(height) || e.level>=height || seen.has(key))return false;seen.add(key);
+      if(!Number.isInteger(height) || e.level>=height || (stacks && !stacks[i][e.level]) || seen.has(key))return false;seen.add(key);
     }
     return true;
   }
@@ -402,7 +402,7 @@
     const keys = (value, allowed) => record(value) && Object.keys(value).every(key => allowed.includes(key));
     let root;
     try { root = JSON.parse(text.replace(/^\uFEFF/, '')); } catch (_) { return fail(); }
-    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28].includes(root.version)) {
+    if (keys(root, ['format','version','world']) && root.format === 'gtlauncher-preview-world' && [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29].includes(root.version)) {
       const w = root.world;
       if (!keys(w, WORLD_KEYS) || ![20,25,50,100].includes(w.gridSize) || !Array.isArray(w.tiles) || w.tiles.length !== w.gridSize * w.gridSize
         || w.tiles.some(t => !validTile(t) || (t > (root.version === 1 ? 1 : root.version === 2 ? 5 : root.version < 14 ? 6 : 10)))
@@ -413,6 +413,7 @@
         || (root.version < 20 && w.blockOpacity !== undefined) || !validBlockOpacity(w.blockOpacity,w)
         || (root.version < 21 && w.ramps !== undefined) || !validRamps(w.ramps,w)
         || (root.version < 19 && [w.orangeTrees,w.fences,w.bridges].some(items=>items?.some(item=>item.opacity !== undefined)))
+        || (root.version < 29 && w.blockStacks?.some(s=>s.includes(0)))
         || (root.version < 4 && w.blockStacks !== undefined)
         || (root.version === 4 && !validStacks(w.blockStacks, w.tiles, w.gridSize)) || (root.version >= 5 && w.blockStacks !== undefined && !validStacks(w.blockStacks,w.tiles,w.gridSize)) || typeof w.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(w.id) || w.id === 'base'
         || typeof w.name !== 'string' || !w.name.trim() || w.name.length > 48 || typeof w.description !== 'string' || w.description.length > 160
@@ -485,6 +486,7 @@
       $('world-import-prompt').textContent = `World “${existing.name}” sudah ada dengan ID yang sama. Ganti isinya dengan data dari berkas?`;
       $('world-import-confirm').hidden = false; return;
     }
+    if(existing?.blockStacks?.some(s=>s.includes(0)) && (pendingImport.previewVersion ?? 0)<29) {cancelImport();render();announce('Berkas lama tidak mendukung block melayang; data tidak diubah.');return;}
     if(existing?.bridges?.some(b=>b.straight) && (pendingImport.previewVersion ?? 0)<28) {cancelImport();render();announce('Berkas lama tidak mendukung jembatan lurus; data tidak diubah.');return;}
     if(existing?.bridges?.some(b=>b.inset) && (pendingImport.previewVersion ?? 0)<27) {cancelImport();render();announce('Berkas lama tidak mendukung jembatan satu tile; data tidak diubah.');return;}
     if(existing?.bridges?.some(b=>b.centered) && (pendingImport.previewVersion ?? 0)<26) {cancelImport();render();announce('Berkas lama tidak mendukung jembatan terpusat; data tidak diubah.');return;}
@@ -714,12 +716,12 @@
         const character = getCharacter(world);
         const snapshot = {...world, showCharacter: character.visible, characterColumn: character.column, characterRow: character.row,
           characterScale: character.scale, characterFacing: character.facing, house: getHouse(world)};
-        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.bridges?.some(b=>b.straight) ? 28 : snapshot.bridges?.some(b=>b.inset) ? 27 : snapshot.bridges?.some(b=>b.centered) ? 26 : snapshot.bridges?.some(b=>b.free) ? 25 : snapshot.bridges?.some(b=>b.overWater) ? 24 : snapshot.bridges?.some(b=>b.gap) ? 23 : snapshot.bridges?.some(b=>b.width!==undefined) ? 22 : snapshot.ramps !== undefined ? 21 : snapshot.blockOpacity !== undefined ? 20 : [snapshot.orangeTrees,snapshot.fences,snapshot.bridges].some(items=>items?.some(item=>item.opacity!==undefined)) ? 19 : snapshot.house?.opacity !== undefined ? 18 : snapshot.fences?.some(f=>f.material==='stone-tall') ? 17 : snapshot.bridges?.some(b=>b.length!==undefined) ? 16 : snapshot.bridges!==undefined ? 15 : (snapshot.tiles.some(t=>t>6) || snapshot.blockStacks?.some(stack=>stack.some(t=>t>6))) ? 14 : snapshot.fences!==undefined ? 13 : snapshot.orangeTrees?.some(t=>t.plantId!==undefined) ? 12 : snapshot.orangeTrees?.some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined)) ? 11 : snapshot.orangeTrees?.some(t=>t.kind==='bush') ? 10 : snapshot.orangeTrees?.some(t=>t.kind==='wild-grass') ? 9 : snapshot.orangeTrees?.some(t=>t.size!==undefined) ? 8 : snapshot.orangeTrees?.some(t=>t.kind!==undefined) ? 7 : snapshot.orangeTrees?.some(t=>t.facing!==undefined) ? 6 : snapshot.orangeTrees !== undefined ? 5 : snapshot.blockStacks ? 4 : snapshot.tiles.some(t => t === 6) ? 3 : snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
+        const json = JSON.stringify({format:'gtlauncher-preview-world',version:snapshot.blockStacks?.some(s=>s.includes(0)) ? 29 : snapshot.bridges?.some(b=>b.straight) ? 28 : snapshot.bridges?.some(b=>b.inset) ? 27 : snapshot.bridges?.some(b=>b.centered) ? 26 : snapshot.bridges?.some(b=>b.free) ? 25 : snapshot.bridges?.some(b=>b.overWater) ? 24 : snapshot.bridges?.some(b=>b.gap) ? 23 : snapshot.bridges?.some(b=>b.width!==undefined) ? 22 : snapshot.ramps !== undefined ? 21 : snapshot.blockOpacity !== undefined ? 20 : [snapshot.orangeTrees,snapshot.fences,snapshot.bridges].some(items=>items?.some(item=>item.opacity!==undefined)) ? 19 : snapshot.house?.opacity !== undefined ? 18 : snapshot.fences?.some(f=>f.material==='stone-tall') ? 17 : snapshot.bridges?.some(b=>b.length!==undefined) ? 16 : snapshot.bridges!==undefined ? 15 : (snapshot.tiles.some(t=>t>6) || snapshot.blockStacks?.some(stack=>stack.some(t=>t>6))) ? 14 : snapshot.fences!==undefined ? 13 : snapshot.orangeTrees?.some(t=>t.plantId!==undefined) ? 12 : snapshot.orangeTrees?.some(t=>t.kind==='bush' && (t.size===2 || t.variant!==undefined)) ? 11 : snapshot.orangeTrees?.some(t=>t.kind==='bush') ? 10 : snapshot.orangeTrees?.some(t=>t.kind==='wild-grass') ? 9 : snapshot.orangeTrees?.some(t=>t.size!==undefined) ? 8 : snapshot.orangeTrees?.some(t=>t.kind!==undefined) ? 7 : snapshot.orangeTrees?.some(t=>t.facing!==undefined) ? 6 : snapshot.orangeTrees !== undefined ? 5 : snapshot.blockStacks ? 4 : snapshot.tiles.some(t => t === 6) ? 3 : snapshot.tiles.some(t => t > 1) ? 2 : 1,world:snapshot}, null, 2);
         const blob = new Blob([json], {type:'application/json'});
         const url = URL.createObjectURL(blob);
         const safeName = world.name.replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'world';
         showExport(url, `gtlauncher-preview-${safeName}.json`, false, json, true);
-        $('world-export-help').textContent=snapshot.bridges?.some(b=>b.straight) ? 'Jembatan lurus membutuhkan Android yang mendukung format world v28. Android belum diuji di perangkat.' : snapshot.bridges?.some(b=>b.inset) ? 'Jembatan satu tile membutuhkan Android yang mendukung format world v27. Android belum diuji di perangkat.' : snapshot.bridges?.some(b=>b.centered) ? 'Jembatan dua tile terpusat membutuhkan Android yang mendukung format world v26. Android belum diuji di perangkat.' : snapshot.bridges?.some(b=>b.free) ? 'Jembatan bebas membutuhkan Android yang mendukung format world v25. Android belum diuji di perangkat.' : snapshot.bridges?.some(b=>b.overWater) ? 'Jembatan di atas air membutuhkan Android yang mendukung format world v24. Android belum diuji di perangkat.' : snapshot.bridges?.some(b=>b.gap) ? 'Jembatan di atas lubang membutuhkan Android yang mendukung format world v23. Android belum diuji di perangkat.' : snapshot.ramps?.length ? 'Ramp membutuhkan Android dengan dukungan format world v21; versi lama akan menolak impor agar data tidak hilang. Tampilan belum diuji pada perangkat.' : 'JSON world dapat dicoba di Android versi terbaru. World Android dan preview tersimpan terpisah; impor tetap memvalidasi seluruh data. Tampilan Android belum diuji di perangkat.';
+        $('world-export-help').textContent=snapshot.blockStacks?.some(s=>s.includes(0)) ? 'Block melayang membutuhkan Android dengan format world v29. Android belum diuji di perangkat.' : snapshot.bridges?.some(b=>b.straight) ? 'Jembatan lurus membutuhkan Android yang mendukung format world v28. Android belum diuji di perangkat.' : snapshot.bridges?.some(b=>b.inset) ? 'Jembatan satu tile membutuhkan Android yang mendukung format world v27. Android belum diuji di perangkat.' : snapshot.bridges?.some(b=>b.centered) ? 'Jembatan dua tile terpusat membutuhkan Android yang mendukung format world v26. Android belum diuji di perangkat.' : snapshot.bridges?.some(b=>b.free) ? 'Jembatan bebas membutuhkan Android yang mendukung format world v25. Android belum diuji di perangkat.' : snapshot.bridges?.some(b=>b.overWater) ? 'Jembatan di atas air membutuhkan Android yang mendukung format world v24. Android belum diuji di perangkat.' : snapshot.bridges?.some(b=>b.gap) ? 'Jembatan di atas lubang membutuhkan Android yang mendukung format world v23. Android belum diuji di perangkat.' : snapshot.ramps?.length ? 'Ramp membutuhkan Android dengan dukungan format world v21; versi lama akan menolak impor agar data tidak hilang. Tampilan belum diuji pada perangkat.' : 'JSON world dapat dicoba di Android versi terbaru. World Android dan preview tersimpan terpisah; impor tetap memvalidasi seluruh data. Tampilan Android belum diuji di perangkat.';
         announce('JSON world siap untuk preview dan dapat dicoba di Android terbaru.');
         return;
       }

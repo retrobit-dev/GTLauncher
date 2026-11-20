@@ -30,8 +30,8 @@ final class BlockTerrain {
                 if(!(value instanceof JSONArray)) throw new JSONException("Invalid block stack");
                 JSONArray stack=(JSONArray)value;
                 byte[] blocks=new byte[stack.length()];
-                for(int n=0;n<blocks.length;n++) blocks[n]=(byte)material(stack.get(n),1,10);
-                if((blocks.length==0?0:blocks[blocks.length-1])!=top) throw new JSONException("Block surface mismatch");
+                for(int n=0;n<blocks.length;n++) blocks[n]=(byte)material(stack.get(n),0,10);
+                if((blocks.length>0 && blocks[blocks.length-1]==0) || (blocks.length==0?0:blocks[blocks.length-1])!=top) throw new JSONException("Block surface mismatch");
                 columns[i]=blocks;
             }
         }

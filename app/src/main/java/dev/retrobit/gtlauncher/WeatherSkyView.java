@@ -2087,13 +2087,13 @@ public final class WeatherSkyView extends View {
             float hw=ISLAND_TILE_WIDTH/2f,hh=ISLAND_TILE_HEIGHT/2f;
             if(canvas.quickReject(x-hw,baseY-(height-1)*BLOCK_HEIGHT-hh-(worldTerrain.rampDirection(column,row)==null?0:BLOCK_HEIGHT),x+hw,baseY+hh+ISLAND_DEPTH,Canvas.EdgeType.AA))continue;
             for(int level=0;level<height;level++) {
-            int material=worldTerrain.block(column,row,level);float y=baseY-level*BLOCK_HEIGHT;
+            int material=worldTerrain.block(column,row,level);if(material==0)continue;float y=baseY-level*BLOCK_HEIGHT;
             int opacity=worldTerrain.blockOpacity(column,row,level),layer=-1;
             if(opacity>0)layer=canvas.saveLayerAlpha(x-hw-3,y-hh-3,x+hw+3,y+hh+(level==0?ISLAND_DEPTH:BLOCK_HEIGHT)+3,Math.round(255*(100-opacity)/100f),Canvas.ALL_SAVE_FLAG);
             float sideDepth=level>0?BLOCK_HEIGHT:ISLAND_TILE_SIDE_DEPTH;
-            if(level==0 && terrainHeight(column,row+1)==0)
+            if(level==0 && (terrainHeight(column,row+1)==0 || worldTerrain.block(column,row+1,0)==0))
                 drawSmoothIslandQuad(canvas,x-hw,y,x,y+hh,x,y+hh+ISLAND_DEPTH,x-hw,y+ISLAND_DEPTH,baseSoilColor(palette),baseSoilColor(palette),0,0f);
-            if(level==0 && terrainHeight(column+1,row)==0)
+            if(level==0 && (terrainHeight(column+1,row)==0 || worldTerrain.block(column+1,row,0)==0))
                 drawSmoothIslandQuad(canvas,x,y+hh,x+hw,y,x+hw,y+ISLAND_DEPTH,x,y+hh+ISLAND_DEPTH,baseSoilColor(palette),baseSoilColor(palette),0,0f);
             boolean baseLayer=isBaseTemplateLayer(worldTerrain,column,row,level);
             if(material==1) drawGrassTile(canvas,x,y,(column+row+level)%2==0,column,row,palette,sunlight,level>0,baseLayer,baseLayer && level<height-1);

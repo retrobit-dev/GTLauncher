@@ -79,8 +79,14 @@
       if(viewDirection && RampGeometry.hit(viewDirection,tileWidth,tileHeight,blockHeight,dx,y-topY))return p;
       if(Math.abs(dx)/hw+Math.abs(y-topY)/hh<=1)return p;
       if(Math.abs(dx)<=hw){
-        const neighbor=height(c+(dx>=0?1:0),r+(dx<0?1:0)),face=Math.max(0,h-neighbor)*blockHeight+(neighbor===0?Math.max(0,baseDepth-blockHeight):0),edgeY=cy+hh*(1-Math.abs(dx)/hw);
-        if(face>0 && y>=edgeY && y<=edgeY+face)return p;
+        const nc=c+(dx>=0?1:0),nr=r+(dx<0?1:0),neighbor=height(nc,nr),edgeY=cy+hh*(1-Math.abs(dx)/hw),face=h*blockHeight+Math.max(0,baseDepth-blockHeight);
+        if(y>=edgeY && y<=edgeY+face){
+          const level=Math.max(0,h-1-Math.floor((y-edgeY)/blockHeight));
+          const present=!world.blockStacks || !!world.blockStacks[p.row*size+p.column][level];
+          const np=(nc>=0 && nr>=0 && nc<size && nr<size)?worldPoint(nc,nr):null;
+          const blocked=np && (world.blockStacks ? !!world.blockStacks[np.row*size+np.column][level] : neighbor>0 && level===0);
+          if(present && !blocked)return p;
+        }
       }
     }
     return null;

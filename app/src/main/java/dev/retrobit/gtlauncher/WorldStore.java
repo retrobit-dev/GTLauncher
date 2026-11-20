@@ -442,6 +442,7 @@ final class WorldStore {
                 if ((old.previewData==null)!=(world.previewData==null))
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
+                    if(world.previewData.version<29 && old.previewData.hasFloatingBlocks())throw new JSONException("Older preview format cannot replace floating blocks");
                     if(world.previewData.version<28 && old.previewData.bridges.stream().anyMatch(b->b.straight))throw new JSONException("Older preview format cannot replace straight bridges");
                     if(world.previewData.version<27 && old.previewData.bridges.stream().anyMatch(b->b.inset))throw new JSONException("Older preview format cannot replace inset bridges");
                     if(world.previewData.version<26 && old.previewData.bridges.stream().anyMatch(b->b.centered))throw new JSONException("Older preview format cannot replace centered bridges");

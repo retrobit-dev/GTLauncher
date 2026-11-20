@@ -196,6 +196,8 @@ Android menyimpan cadangan internal `worlds_before_bridge_redesign_v1` dan mengh
 ### Pulau dasar dan bangunan tinggi
 Base World dan template world baru memiliki lima lapisan dasar. Block tambahan di editor tidak lagi dibatasi pada lima atau 32 lapisan; impor juga menerima stack yang lebih tinggi. Tinggi praktis tetap dibatasi memori, kapasitas penyimpanan, dan kinerja perangkat. World lama tidak lagi dipangkas otomatis. Cadangan yang dibuat oleh migrasi sebelumnya tetap tersedia melalui dialog World; migrasi yang sudah dilakukan tidak dibatalkan otomatis.
 
-Ketuk sisi yang terlihat dengan Tambah untuk menambahkan block pada kolom di sebelah sisi itu dan pada tingkat yang sama. Saat ini hanya didukung apabila kolom tujuan sudah memiliki penyangga tepat di bawahnya; block melayang dan rongga di dalam kolom belum didukung. Tidak ada block tersembunyi yang dibuat otomatis.
+Ketuk sisi yang terlihat dengan Tambah untuk menambahkan block pada kolom di sebelah sisi itu dan pada tingkat yang sama. Block dapat menempel meskipun tidak ada penyangga di bawahnya. Ruang kosong disimpan sebagai nilai 0 dalam stack, bukan diisi block tersembunyi. Jika ruang tujuan sudah ditempati, penempatan ditolak. Ekspor yang berisi rongga memakai format preview v29; versi lama tidak dapat menggantikan world tersebut.
 
 Android menerima stack tinggi dan menggunakan penyimpanan opacity per block yang jarang (tidak lagi dibatasi 32 tingkat); Android tetap hanya gameplay. Belum diuji pada perangkat.
+
+Pada kolom berlubang, jalur karakter masih menggunakan permukaan teratas; berjalan melalui rongga di bawah block melayang belum didukung. Rendering Android dan kamera perlu diuji pada perangkat.

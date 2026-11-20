@@ -2437,7 +2437,7 @@
           const c=tile.column+dc,r=tile.row+dr;
           return c>=0 && r>=0 && c<ISLAND_GRID_SIZE && r<ISLAND_GRID_SIZE && matchesBase(stacks[r*ISLAND_GRID_SIZE+c]);
         });
-        if (!buried && tileVisible(tile, ISLAND_DEPTH)) {
+        if ((!stack || stack[0]) && !buried && tileVisible(tile, ISLAND_DEPTH)) {
           ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:0`)||0))/100;
           const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
           // Full-depth faces expose the silhouette and the soil beneath each remaining tile.
@@ -2449,7 +2449,7 @@
           drawGrassTile(tile, palette, sunlight, stack ? stack[0] : tileData[index],0,stack ? !!window.BaseTerrain?.isBaseLayer(stack,0) : true,!!stack && stack.length>1 && stack[0]===1);ctx.restore();
         }
         if (stack) for(let level=1;level<stack.length;level++) {
-          if(buried && level<stack.length-1)continue;
+          if(!stack[level] || (buried && level<stack.length-1))continue;
           const raised={...tile,y:tile.y-level*BLOCK_HEIGHT};
           if(tileVisible(raised,BLOCK_HEIGHT)){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawGrassTile(raised,palette,sunlight,stack[level],level,!!window.BaseTerrain?.isBaseLayer(stack,level),level<stack.length-1 && stack[level]===1 && !!window.BaseTerrain?.isBaseLayer(stack,level));ctx.restore();}
         }
@@ -3075,10 +3075,10 @@
       const dx=Math.abs(point.x-centre.x)/hw,edge=centre.y+hh*(1-dx);
       if(dx>1)return null;
       if(dx+Math.abs(point.y-centre.y)/hh<=1)return {column:tile.column,row:tile.row,level:stack.length-1};
-      const sideDepth=(stack.length-1)*BLOCK_HEIGHT;
+      const sideDepth=(stack.length-1)*BLOCK_HEIGHT+ISLAND_DEPTH;
       if(point.y<edge || point.y>edge+sideDepth || sideDepth<=0)return null;
       const levelsDown=Math.min(stack.length-1,Math.floor((point.y-edge)/BLOCK_HEIGHT));
-      return {column:tile.column,row:tile.row,level:stack.length-1-levelsDown};
+      const level=stack.length-1-levelsDown;return stack[level] ? {column:tile.column,row:tile.row,level} : null;
     },
     blockSideAt(point) {
       const hit=this.blockAt(point);if(!hit)return null;
@@ -3175,9 +3175,11 @@
           const y=tile.y-(height-1)*BLOCK_HEIGHT,ramp=ramps.get(index),topY=y+((ramp ? ramp.material : world.tiles?.[index])===3?WATER_SURFACE_DROP:0);
           if(ramp && window.RampGeometry?.hit(ramp.direction,ISLAND_TILE_WIDTH,islandTileHeight,BLOCK_HEIGHT,point.x-tile.x,point.y-topY))return {column:tile.column,row:tile.row};
           const dx=Math.abs(point.x-tile.x)/hw;
-          if(dx<=1 && (dx+Math.abs(point.y-topY)/hh<=1 ||
-             (height>1 && point.y>=y+hh*(1-dx) && point.y<=y+hh*(1-dx)+(height-1)*BLOCK_HEIGHT)))
-            return {column:tile.column,row:tile.row};
+          if(dx<=1 && dx+Math.abs(point.y-topY)/hh<=1)return {column:tile.column,row:tile.row};
+          if(dx<=1 && point.y>=y+hh*(1-dx) && point.y<=y+hh*(1-dx)+(height-1)*BLOCK_HEIGHT+ISLAND_DEPTH) {
+            const level=Math.max(0,height-1-Math.floor((point.y-(y+hh*(1-dx)))/BLOCK_HEIGHT));
+            if(!world.blockStacks || world.blockStacks[index][level])return {column:tile.column,row:tile.row};
+          }
         }
       }
       const dx = (point.x - WIDTH / 2) / (ISLAND_TILE_WIDTH / 2);

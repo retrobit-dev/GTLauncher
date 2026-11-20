@@ -72,15 +72,13 @@
       status.textContent='Buat atau buka world 20×20, 25×25, 50×50 atau 100×100; Base dan world lama tidak diubah.';return;
     }
     const local=scene.toLocal(event.clientX,event.clientY);
-    let point=scene.tileAt(local);
+    let point=scene.tileAt(local),sideLevel=null;
     if(tool==='add') {
       const side=scene.blockSideAt(local);
       if(side) {
         const dest=side.target;
         if(dest.column<0||dest.row<0||dest.column>=world.gridSize||dest.row>=world.gridSize){status.textContent='Sisi berada di luar grid world.';return;}
-        const i=dest.row*world.gridSize+dest.column,h=world.blockStacks?world.blockStacks[i].length:(world.tiles[i]?1:0);
-        if(h!==side.level){status.textContent='Sisi ini memerlukan penyangga pada tingkat yang sama; block melayang belum didukung.';return;}
-        point=dest;
+        point=dest;sideLevel=side.level;
       }
     }
     if(!point) {status.textContent='Di luar area world.';return;}
@@ -106,10 +104,14 @@
     const stacks=world.blockStacks ? world.blockStacks.map(stack=>stack.slice()) : world.tiles.map(tile=>tile?[tile]:[]);
     const stack=stacks[index];
     if(tool==='add') {
-      stack.push(value);
+      if(sideLevel!==null) {
+        if(stack[sideLevel]) {status.textContent='Sudah ada block pada sisi tersebut.';return;}
+        while(stack.length<sideLevel)stack.push(0);
+        stack[sideLevel]=value;
+      } else stack.push(value);
     } else if(tool==='erase') {
       if(!stack.length) {status.textContent='Tidak ada block untuk dihapus.';return;}
-      stack.pop();
+      stack.pop();while(stack.length && stack[stack.length-1]===0)stack.pop();
     } else if(tool==='draw') stack[stack.length-1]=value;
     else if(tool==='fill') {
       // Fill only connected top surfaces at the same height and material.

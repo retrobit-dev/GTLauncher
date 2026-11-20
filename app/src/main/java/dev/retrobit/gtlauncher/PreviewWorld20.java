@@ -45,6 +45,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
     public int block(int c,int r,int level) { return terrain.block(c,r,level); }
     public int size() { return size; }
     boolean hasStacks() { return terrain.hasStacks(); }
+    boolean hasFloatingBlocks() {for(int r=0;r<size;r++)for(int c=0;c<size;c++)for(int level=0;level<height(c,r);level++)if(block(c,r,level)==0)return true;return false;}
     private BridgeGeometry.Bridge gapBridgeAt(int c,int r) {for(BridgeGeometry.Bridge b:bridges)if(b.gap && BridgeGeometry.indexAt(b,c,r)>=0)return b;return null;}
     int footHeight(int c,int r) {BridgeGeometry.Bridge b=gapBridgeAt(c,r);return b==null?height(c,r):b.free?b.deck:height(b.column,b.row);}
     boolean onBridge(int c,int r) {for(BridgeGeometry.Bridge bridge:bridges)if(BridgeGeometry.indexAt(bridge,c,r)>=0)return true;return false;}
@@ -87,7 +88,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 28) throw new JSONException("Unsupported world version");
+        if (version > 29) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         if(w.has("blockStacks") && version<4 || version==4 && !w.has("blockStacks"))throw new JSONException("Invalid block stacks version");
         keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","blockStacks","blockOpacity","ramps","orangeTrees","fences","bridges");
@@ -115,6 +116,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
                 for(int n=0;n<column.length();n++){Object value=column.get(n);if(!(value instanceof Number) || ((Number)value).doubleValue()>6)throw new JSONException("Unsupported block material");}
             }
         }
+        if(version<29 && stacks!=null)for(int i=0;i<stacks.length();i++)for(int j=0;j<stacks.getJSONArray(i).length();j++)if(stacks.getJSONArray(i).getInt(j)==0)throw new JSONException("Unsupported floating block");
         final BlockTerrain terrain=BlockTerrain.parse(size,source,stacks);
         java.util.Map<Long,Integer> opacityByBlock=new java.util.HashMap<>();
         if(w.has("blockOpacity")) {
@@ -123,7 +125,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
             for(int i=0;i<values.length();i++) {
                 JSONObject entry=values.getJSONObject(i);keys(entry,"column","row","level","opacity");
                 int col=integer(entry,"column",0,size-1),row=integer(entry,"row",0,size-1),level=integer(entry,"level",0,Integer.MAX_VALUE),value=integer(entry,"opacity",5,90);long index=(((long)row*size+col)<<32)|(level & 0xffffffffL);
-                if(value%5!=0 || level>=terrain.height(col,row) || opacityByBlock.containsKey(index))throw new JSONException("Invalid block opacity");opacityByBlock.put(index,value);
+                if(value%5!=0 || level>=terrain.height(col,row) || terrain.block(col,row,level)==0 || opacityByBlock.containsKey(index))throw new JSONException("Invalid block opacity");opacityByBlock.put(index,value);
             }
         }
         bool(w,"showCharacter"); int c=integer(w,"characterColumn",0,size-1), r=integer(w,"characterRow",0,size-1);
