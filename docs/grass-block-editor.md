@@ -91,9 +91,9 @@ berada di air tetap dapat meninggalkannya; pemulihan otomatis menuju daratan
 terdekat mempertahankan kemampuan menyeberangi air untuk menghindari karakter
 terjebak. Perubahan Android baru diuji typecheck, bukan perangkat.
 
-Sisi panjang dek dan pegangan jembatan kini menjorok 0,1 tile keluar dari
-batas pada tiap sisi; tapak logis dan world tersimpan tidak diubah. Area
-pemilihan preview mengikuti dek yang lebih lebar. Tool ramp preview memakai
+Dek jembatan mengikuti lebar tapak tersimpan tepat, dengan tiang dan pegangan
+di tepinya; ketebalan visual tiang dan rail dapat menjorok sedikit. Area
+pemilihan preview mengikuti bentuknya. Tool ramp preview memakai
 satu bentuk; tombol kiri/kanan memutar arah sebelum penempatan atau setelah
 ramp dipilih, dan tombol hapus menghapus ramp terpilih. Android membaca arah
 ramp yang sama, tetapi tampilan dan interaksi belum diuji di perangkat.
@@ -162,11 +162,11 @@ sisi atau mengubah data. Garis permukaan rumput, tebing luar air, dan outline
 seleksi/pijakan tetap dipertahankan. Renderer Android belum diuji di perangkat.
 
 `artwork/bridge-sloped-ends-concept.png` adalah konsep yang dipilih untuk dek
-jembatan dengan ujung menurun; belum diterapkan ke world atau gameplay. Gambar
-konsep bukan acuan ukuran: bentuk ramp, lebar satu tile, dan tiang ujung tanpa
-tiang tengah perlu dijaga saat implementasi.
+jembatan dengan ujung menurun yang kini diterapkan di preview dan renderer Android.
+Gambar konsep bukan acuan ukuran; lebar mengikuti tapak tersimpan dan tiang
+hanya berada di ujung.
 
 ### Jembatan dan kamera editor
 Dek jembatan kayu maupun batu mempunyai ramp lurus sepanjang satu tile pada masing-masing ujung, naik setengah tinggi block ke bagian tengah; rail mengikuti profil dan tiang tetap di empat sudut luar. Tapak dan data world v23–v25 tidak diubah. Gerakan karakter mengikuti profil visual; aturan rute dan ketinggian dek tersimpan tetap sama. Karena jembatan bebas dapat ditempatkan pada tinggi berbeda dari block di ujungnya, bentuk ini tidak menjamin sambungan fisik ke setiap block di bawahnya. Pemilihan jembatan di editor mengikuti profil; pemilihan tile gameplay Android masih memakai geometri tile datar.
 
-Zoom awal Map Editor adalah 5×, terpisah dari gameplay 7,5×. Kontrol bawah tablet berada satu baris dan dapat digeser horizontal bila ruang sempit; status dan slider tetap tersedia.
+Zoom awal Map Editor adalah 5×, terpisah dari gameplay 7,5×. Tombol bawah tablet berada satu baris dan dapat digeser horizontal bila ruang sempit; label suasana berada di baris berikutnya selebar tablet, dan slider tetap tersedia.

@@ -56,12 +56,13 @@ for(const length of [3,4,5]) {
  for(const p of poly){assert(b.wideContains({x:p.x,y:p.y-4},poly),'vertical post hit above corner');}
 }
 console.log('Wide decks align to tile edges and corner posts stay vertical: OK');
-{
-  const normal=b.wideDeck(3,1,16,8),extra=b.wideDeck(3,1,16,8,.1);
-  assert(extra[0].x<normal[0].x && extra[0].y<normal[0].y);
-  assert(extra[3].x>normal[3].x && extra[3].y>normal[3].y);
-  console.log('Bridge long sides extend beyond tile edges: OK');
+// Production deck matches the stored footprint exactly, regardless of length.
+for (const length of [3,4,5]) for (const width of [1,2,3]) {
+  const [a,u,v,w]=b.wideDeck(length,width,28,12);
+  assert.equal(w.x-a.x,width*14);assert.equal(w.y-a.y,width*6);
+  assert.equal(u.x-a.x,length*14);assert.equal(u.y-a.y,-length*6);
 }
+console.log('Bridge deck widths match their tile footprints: OK');
 
 // Ramps begin at the outer end, rise over one tile, and remain level in the middle.
 for(const length of [3,4,5])for(const axis of ['E','S']){

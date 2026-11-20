@@ -509,3 +509,6 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 .preview-controls > button, .house-transparency-control, .edit-status { flex:0 0 auto; }
 .preview-controls .edit-status { flex-basis:auto; max-width:180px; }
 .house-transparency-control input { width:clamp(65px,12vw,130px); }
+
+/* The status has its own full-tablet-width row below the button row. */
+.preview-stage > .weather-mode-label { width:100%; max-width:100%; overflow-wrap:anywhere; }
