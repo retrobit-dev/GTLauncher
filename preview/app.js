@@ -246,6 +246,15 @@
       '000000031111110001111110000000',
       '000000001111100000000000000000'],
   ];
+  let viewQuarterTurns=0;
+  const viewPoint=(column,row)=>window.WorldViewRotation?.point(column,row,ISLAND_GRID_SIZE,viewQuarterTurns) || {column,row};
+  const worldPoint=(column,row)=>window.WorldViewRotation?.point(column,row,ISLAND_GRID_SIZE,-viewQuarterTurns) || {column,row};
+  const viewFacing=facing=>window.WorldViewRotation?.direction(facing,viewQuarterTurns) || facing;
+  function worldNeighbor(column,row,direction) {
+    const d=window.WorldViewRotation?.direction(direction,-viewQuarterTurns) || direction;
+    const [x,y]={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[d];return {column:column+x,row:row+y};
+  }
+  const viewDepth=(column,row)=>{const p=viewPoint(column,row);return p.column+p.row;};
   const ISLAND_TILES = [];
   function rebuildIslandProjection() {
     islandTileHeight = ISLAND_TILE_WIDTH * Math.sin(islandCameraElevation * Math.PI / 180);
@@ -257,11 +266,13 @@
       for (let row = 0; row < ISLAND_GRID_SIZE; row += 1) {
         const column = diagonal - row;
         if (column < 0 || column >= ISLAND_GRID_SIZE) continue;
-        const columnLabel = columnLabelFor(column);
-        const rowLabel = row + 1;
+        const p=worldPoint(column,row),worldColumn=p.column,worldRow=p.row;
+        const columnLabel = columnLabelFor(worldColumn);
+        const rowLabel = worldRow + 1;
         ISLAND_TILES.push({
-          column,
-          row,
+          column:worldColumn,
+          row:worldRow,
+          viewColumn:column, viewRow:row,
           columnLabel,
           rowLabel,
           coordinate: `${columnLabel}${rowLabel}`,
@@ -998,7 +1009,7 @@
   let surfaceClipCache={tiles:null,stacks:null,path:null};
   function clipIslandSurface() {
     const world=window.worldManager?.getActive(),tiles=world?.tiles,stacks=world?.blockStacks;
-    if(surfaceClipCache.tiles!==tiles || surfaceClipCache.stacks!==stacks || surfaceClipCache.tileHeight!==islandTileHeight || surfaceClipCache.gridSize!==ISLAND_GRID_SIZE || !surfaceClipCache.path) {
+    if(surfaceClipCache.tiles!==tiles || surfaceClipCache.stacks!==stacks || surfaceClipCache.tileHeight!==islandTileHeight || surfaceClipCache.gridSize!==ISLAND_GRID_SIZE || surfaceClipCache.turns!==viewQuarterTurns || !surfaceClipCache.path) {
       const path=new Path2D();
       if(!tiles) {
         const points=islandSurfacePoints();path.moveTo(points[0][0],points[0][1]);
@@ -1010,7 +1021,7 @@
         const hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
         path.moveTo(tile.x,y-hh);path.lineTo(tile.x+hw,y);path.lineTo(tile.x,y+hh);path.lineTo(tile.x-hw,y);path.closePath();
       }
-      surfaceClipCache={tiles,stacks,path,tileHeight:islandTileHeight,gridSize:ISLAND_GRID_SIZE};
+      surfaceClipCache={tiles,stacks,path,tileHeight:islandTileHeight,gridSize:ISLAND_GRID_SIZE,turns:viewQuarterTurns};
     }
     ctx.clip(surfaceClipCache.path);
   }
@@ -1148,15 +1159,16 @@
       return world.blockStacks ? world.blockStacks[index]?.[level] === 3
         : level===0 && world.tiles?.[index] === 3;
     }
-    return {left:!isWater(column,row+1),right:!isWater(column+1,row)};
+    const left=worldNeighbor(column,row,'S'),right=worldNeighbor(column,row,'E');
+    return {left:!isWater(left.column,left.row),right:!isWater(right.column,right.row)};
   }
   // The upper rim follows exposed water surfaces, including rear edges. A
   // neighbouring water surface at any height leaves a passage for a waterfall.
   function waterTopBorders(column,row,world=window.worldManager?.getActive()) {
     const size=world?.gridSize,tiles=world?.tiles;
     const isWater=(c,r)=>Number.isInteger(size) && c>=0 && r>=0 && c<size && r<size && tiles?.[r*size+c]===3;
-    return {left:!isWater(column,row+1),right:!isWater(column+1,row),
-      backLeft:!isWater(column-1,row),backRight:!isWater(column,row-1)};
+    const isViewWater=d=>{const p=worldNeighbor(column,row,d);return isWater(p.column,p.row);};
+    return {left:!isViewWater('S'),right:!isViewWater('E'),backLeft:!isViewWater('W'),backRight:!isViewWater('N')};
   }
   function drawWaterTopBanks(tile,halfWidth,halfHeight,palette,world) {
     const x=tile.x,y=tile.y,hw=halfWidth,hh=halfHeight;
@@ -1189,8 +1201,8 @@
     if(!tiles || column<0 || row<0 || column>=size || row>=size || tiles[row*size+column]!==3) return {};
     const height=(c,r)=>world.blockStacks ? world.blockStacks[r*size+c].length : 1;
     const source=height(column,row), result={};
-    for(const [name,dx,dy] of [['left',0,1],['right',1,0],['backLeft',-1,0],['backRight',0,-1]]) {
-      const c=column+dx,r=row+dy;
+    for(const [name,edge] of [['left','S'],['right','E'],['backLeft','W'],['backRight','N']]) {
+      const p=worldNeighbor(column,row,edge),c=p.column,r=p.row;
       if(c<0||r<0||c>=size||r>=size || tiles[r*size+c]!==3) continue;
       const drop=source-height(c,r);
       if(drop>0) result[name]=drop;
@@ -1258,8 +1270,9 @@
     const halfWidth = ISLAND_TILE_WIDTH / 2 - (material===3 ? 0 : 0.05);
     const halfHeight = islandTileHeight / 2 - (material===3 ? 0 : 0.025);
     const cornerRadius = material===3 ? 0 : 1.4;
-    const leftPerimeterFace = tile.row === ISLAND_GRID_SIZE - 1;
-    const rightPerimeterFace = tile.column === ISLAND_GRID_SIZE - 1;
+    const viewTile=viewPoint(tile.column,tile.row);
+    const leftPerimeterFace = viewTile.row === ISLAND_GRID_SIZE - 1;
+    const rightPerimeterFace = viewTile.column === ISLAND_GRID_SIZE - 1;
     // A flat water tile sits over a riverbed; raised water blends over the block
     // beneath (and the surrounding scene) instead of painting an opaque cap.
     if (material === 3) {
@@ -1782,8 +1795,9 @@
   function characterCentre(character) {
     const ramp=character.visible && window.worldManager?.getActive()?.ramps?.find(r=>r.column===character.column && r.row===character.row);
     const elevation=Number.isFinite(character.blockHeight) ? character.blockHeight : surfaceHeight(character.column,character.row)+(ramp?.direction ? .5 : 0);
-    return {x: WIDTH / 2 + (character.column - character.row) * ISLAND_TILE_WIDTH / 2,
-      y: islandTop + islandTileHeight / 2 + (character.column + character.row) * islandTileHeight / 2 - Math.max(0,elevation-1)*BLOCK_HEIGHT};
+    const p=viewPoint(character.column,character.row);
+    return {x: WIDTH / 2 + (p.column - p.row) * ISLAND_TILE_WIDTH / 2,
+      y: islandTop + islandTileHeight / 2 + (p.column + p.row) * islandTileHeight / 2 - Math.max(0,elevation-1)*BLOCK_HEIGHT};
   }
 
   // Shared ground-shadow primitive for surface objects. Each renderer supplies a ground
@@ -1842,7 +1856,7 @@
     const sit=character && characterWaterDepth(character)===0 ? idleBowController.sitting() : 0;
     idleSitAmount=sit;
     if((idleBowAmount>0 || sit>0) && character) {
-      const back=character.facing==='N'||character.facing==='W', side=back?'back':'front';
+      const back=viewFacing(character.facing)==='N'||viewFacing(character.facing)==='W', side=back?'back':'front';
       const standing=back?playerBackImage:playerImage, frames=idleBowFrames[side];
       const progress=Math.max(0,Math.min(2,idleBowAmount*2)), index=Math.min(1,Math.floor(progress)), mix=progress-index;
       const poses=[standing,frames[0],frames[1]], sitPoses=[standing,frames[2],frames[3],frames[4]];
@@ -1865,7 +1879,7 @@
   }
   document.addEventListener('visibilitychange',()=>idleBowController.reset());
   function activeCharacterSprite(character) {
-    const back=character.facing==='N'||character.facing==='W';
+    const back=viewFacing(character.facing)==='N'||viewFacing(character.facing)==='W';
     let sprite=back?playerBackImage:playerImage;
     if(gameplayDraft && Number.isFinite(gameplayDraft.walkPhase) && !REDUCED_MOTION) {
       const index=((Math.floor(gameplayDraft.walkPhase/(Math.PI*2)*12)%12)+12)%12;
@@ -1896,7 +1910,7 @@
     const shadowScale=Math.min(1,baseWidth/(width+2*Math.abs(ray.x)),height/(2*Math.abs(ray.y)));
     ctx.translate(anchor.x,anchor.y);ctx.scale(shadowScale,shadowScale);
     ctx.transform(1,0,-ray.x/height,-ray.y/height,-width/2+ray.x,ray.y);
-    if(character.facing==='W'||character.facing==='E'){ctx.translate(width,0);ctx.scale(-1,1);}
+    if(viewFacing(character.facing)==='W'||viewFacing(character.facing)==='E'){ctx.translate(width,0);ctx.scale(-1,1);}
     ctx.drawImage(mask,0,0,width,height);ctx.restore();
   }
   function drawSurfaceObjectShadows(light, cloudCover, code) {
@@ -1904,7 +1918,7 @@
     if (!world || world.id === 'base') return;
     const shadows = [];
     const house = editingHouseDraft || window.worldManager.getHouse?.();
-    const houseSprite = house && (house.facing === 'N' || house.facing === 'W') ? houseBackImage : houseImage;
+    const houseSprite = house && (viewFacing(house.facing) === 'N' || viewFacing(house.facing) === 'W') ? houseBackImage : houseImage;
     for(const bridge of world.bridges||[]){const p=bridgeBounds(bridge);shadows.push({anchor:{x:p.x,y:p.y},width:p.w*.8*(bridge.length||3)/3,depth:islandTileHeight*(bridge.length||3)/2,height:4});}
     const trees=world.orangeTrees||[], fences=world.fences||[];
     if (!shadows.length && !trees.length && !fences.length && !house?.visible) return;
@@ -1949,7 +1963,7 @@
         const scale=treeVisualScale(tree),width=treeWidth(tree),height=treeHeight(tree);
         const anchor=orangeTreeAnchor(tree), projection=window.TreeShadow.projection(anchor,lightPoint,width,height,LANGIT_MATAHARI_LIFT,orangeTreeSway(tree)*scale);
         ctx.save();ctx.translate(anchor.x,anchor.y);ctx.scale(projection.scale,projection.scale);ctx.transform(1,0,projection.shear,projection.vertical,0,0);
-        if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
+        if(viewFacing(tree.facing)==='W'||viewFacing(tree.facing)==='E')ctx.scale(-1,1);
         ctx.drawImage(mask,-width/2,-height,width,height);ctx.restore();
       }
     }
@@ -1959,7 +1973,7 @@
   function houseProjection(house) {
     const centre=characterCentre({column:house.column+1,row:house.row+1});
     const geometry=window.HouseGeometry.create(ISLAND_TILE_WIDTH,islandTileHeight,house.scale);
-    return {centre,geometry,bottom:centre.y+geometry.halfDepth,mirror:house.facing==='N'||house.facing==='E'};
+    return {centre,geometry,bottom:centre.y+geometry.halfDepth,mirror:viewFacing(house.facing)==='N'||viewFacing(house.facing)==='E'};
   }
   let editingBridgeSelection=null;
   function bridgeBounds(bridge) {
@@ -1969,7 +1983,7 @@
   }
   function drawBridge(bridge) {
     const image=bridgeSprites[bridge.material];if(!image?.complete || !image.naturalWidth)return;
-    const p=bridgeBounds(bridge);ctx.save();ctx.globalAlpha*=(100-(bridge.opacity ?? 0))/100;applyIslandTransform();ctx.translate(p.x,p.y);if(bridge.axis==='E')ctx.scale(-1,1);
+    const p=bridgeBounds(bridge);ctx.save();ctx.globalAlpha*=(100-(bridge.opacity ?? 0))/100;applyIslandTransform();ctx.translate(p.x,p.y);if((viewQuarterTurns%2===0?bridge.axis:bridge.axis==='E'?'S':'E')==='E')ctx.scale(-1,1);
     const k=(bridge.length||3)/3;ctx.transform((k+1)/2,(1-k)/4,1-k,(k+1)/2,0,0);
     ctx.imageSmoothingEnabled=true;ctx.drawImage(image,-p.w/2,-p.h*.62,p.w,p.h);
     if(editingBridgeSelection && editingBridgeSelection.column===bridge.column && editingBridgeSelection.row===bridge.row && editingBridgeSelection.axis===bridge.axis){ctx.strokeStyle='#fff4a8';ctx.lineWidth=.6;ctx.strokeRect(-p.w/2,-p.h*.62,p.w,p.h);}
@@ -1978,7 +1992,7 @@
   function drawHouse() {
     const house = editingHouseDraft || window.worldManager?.getHouse?.();
     if (!house?.visible) return;
-    const back=house.facing==='N'||house.facing==='W';
+    const back=viewFacing(house.facing)==='N'||viewFacing(house.facing)==='W';
     const sprite=back?houseBackImage:houseImage;
     if (!sprite.complete || !sprite.naturalWidth || !window.HouseGeometry) return;
     const {centre,geometry:g,bottom,mirror}=houseProjection(house);
@@ -2053,13 +2067,13 @@
     ctx.ellipse(centre.x,bottom,tree.kind==='bush'?5*treeSize(tree):tree.kind==='wild-grass'?5:Math.min(width*.16,8*treeSize(tree)),0.65*treeSize(tree),0,0,Math.PI*2);ctx.fill();ctx.restore();
     ctx.translate(centre.x,bottom);ctx.transform(1,0,-sway/height,1,0,0);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-    if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
+    if(viewFacing(tree.facing)==='W'||viewFacing(tree.facing)==='E')ctx.scale(-1,1);
     ctx.drawImage(sprite,-width/2,-height,width,height);ctx.restore();
     if((editingTreeSelection && tree.column===editingTreeSelection.column && tree.row===editingTreeSelection.row) || editingTreeGroup.some(t=>tree.column===t.column && tree.row===t.row)) {
       const b=treeAlphaBounds(sprite);
       if(b) {
         ctx.save();applyIslandTransform();ctx.translate(centre.x,bottom);ctx.transform(1,0,-sway/height,1,0,0);
-        if(tree.facing==='W'||tree.facing==='E')ctx.scale(-1,1);
+        if(viewFacing(tree.facing)==='W'||viewFacing(tree.facing)==='E')ctx.scale(-1,1);
         ctx.strokeStyle='#fff4a8';ctx.lineWidth=.6;
         ctx.strokeRect(-width/2+b.left*width,-height+b.top*height,(b.right-b.left)*width,(b.bottom-b.top)*height);ctx.restore();
       }
@@ -2099,7 +2113,7 @@
     const x=point.x-centre.x+(point.y-bottom)*objectSway(tree)/height;
     let u=(x+width/2)/width,v=(point.y-bottom+height)/height;
     if(u<0||u>=1||v<0||v>=1)return false;
-    if(tree.facing==='W'||tree.facing==='E')u=1-u;
+    if(viewFacing(tree.facing)==='W'||viewFacing(tree.facing)==='E')u=1-u;
     try {
       let data=houseHitCache.get(sprite);
       if(!data){const c=document.createElement('canvas');c.width=128;c.height=128;const h=c.getContext('2d',{willReadFrequently:true});h.drawImage(sprite,0,0,128,128);data=h.getImageData(0,0,128,128).data;houseHitCache.set(sprite,data);}
@@ -2111,17 +2125,20 @@
   }
   let objectDragWorld=null;
   function worldForObjects() {const world=window.worldManager?.getActive();return objectDragWorld?.id===world?.id?objectDragWorld:world;}
-  let joinCache={fences:null,stacks:null,plan:[]};
+  let joinCache={fences:null,stacks:null,turns:null,plan:[]};
   function fenceJoins(world) {
     const fences=world?.fences,stacks=world?.blockStacks;
-    if(joinCache.fences!==fences || joinCache.stacks!==stacks)joinCache={fences,stacks,plan:window.FenceJoins.plan(fences||[],surfaceHeight)};
+    if(joinCache.fences!==fences || joinCache.stacks!==stacks || joinCache.turns!==viewQuarterTurns){
+      const projected=(fences||[]).map(f=>({...f,...window.WorldViewRotation.fence(f,ISLAND_GRID_SIZE,viewQuarterTurns)}));
+      joinCache={fences,stacks,turns:viewQuarterTurns,plan:window.FenceJoins.plan(projected,(c,r)=>{const p=worldPoint(c,r);return surfaceHeight(p.column,p.row);})};
+    }
     return joinCache.plan;
   }
   let editingFenceSelection=null;
   function fenceGeometry(f) {
     const c=characterCentre(f),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
     let a,b;
-    switch(f.edge) {
+    switch(viewFacing(f.edge)) {
       case 'N':a={x:c.x,y:c.y-hh};b={x:c.x+hw,y:c.y};break;
       case 'E':a={x:c.x,y:c.y+hh};b={x:c.x+hw,y:c.y};break;
       case 'S':a={x:c.x-hw,y:c.y};b={x:c.x,y:c.y+hh};break;
@@ -2133,7 +2150,7 @@
     const g=fenceGeometry(f);ctx.save();ctx.globalAlpha*=(100-(f.opacity ?? 0))/100;applyIslandTransform();
     ctx.save();clipIslandSurface();ctx.strokeStyle='rgba(12,23,40,.16)';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(g.a.x,g.a.y);ctx.lineTo(g.b.x,g.b.y);ctx.stroke();ctx.restore();
     const player=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
-    if(player?.visible && f.column===Math.round(player.column) && f.row===Math.round(player.row) && (f.edge==='S'||f.edge==='E'))ctx.globalAlpha*=.5;
+    if(player?.visible && f.column===Math.round(player.column) && f.row===Math.round(player.row) && (viewFacing(f.edge)==='S'||viewFacing(f.edge)==='E'))ctx.globalAlpha*=.5;
     const selected=(editingFenceSelection && editingFenceSelection.column===f.column && editingFenceSelection.row===f.row && editingFenceSelection.edge===f.edge) || editingFenceGroup.some(t=>t.column===f.column && t.row===f.row && t.edge===f.edge);
     ctx.lineWidth=.30;ctx.lineJoin='round';
     for(const face of window.FenceMesh.faces(g.a,g.b,f.material,join)) {
@@ -2191,8 +2208,8 @@
     if (!world || world.id === 'base') return;
     const character = editingDraft || gameplayDraft || window.worldManager.getCharacter();
     if (!character.visible) return;
-    const back = character.facing === 'N' || character.facing === 'W';
-    const mirror = character.facing === 'W' || character.facing === 'E';
+    const back = viewFacing(character.facing) === 'N' || viewFacing(character.facing) === 'W';
+    const mirror = viewFacing(character.facing) === 'W' || viewFacing(character.facing) === 'E';
     const sprite = back ? playerBackImage : playerImage;
     if (!sprite.complete || !sprite.naturalWidth) return;
     const anchor = characterCentre(character), depth=characterWaterDepth(character), x=anchor.x;
@@ -2332,8 +2349,9 @@
           ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:0`)||0))/100;
           const hw = ISLAND_TILE_WIDTH / 2, hh = islandTileHeight / 2;
           // Full-depth faces expose the silhouette and the soil beneath each remaining tile.
-          const leftOpen = tile.row === ISLAND_GRID_SIZE - 1 || !tileData[(tile.row + 1) * ISLAND_GRID_SIZE + tile.column];
-          const rightOpen = tile.column === ISLAND_GRID_SIZE - 1 || !tileData[tile.row * ISLAND_GRID_SIZE + tile.column + 1];
+          const left=worldNeighbor(tile.column,tile.row,'S'),right=worldNeighbor(tile.column,tile.row,'E');
+          const empty=p=>p.column<0 || p.row<0 || p.column>=ISLAND_GRID_SIZE || p.row>=ISLAND_GRID_SIZE || !tileData[p.row*ISLAND_GRID_SIZE+p.column];
+          const leftOpen=empty(left),rightOpen=empty(right);
           if (leftOpen) drawSmoothIslandPolygon([[tile.x-hw,tile.y],[tile.x,tile.y+hh],[tile.x,tile.y+hh+ISLAND_DEPTH],[tile.x-hw,tile.y+ISLAND_DEPTH]], palette.soilLight, palette.soilDark);
           if (rightOpen) drawSmoothIslandPolygon([[tile.x,tile.y+hh],[tile.x+hw,tile.y],[tile.x+hw,tile.y+ISLAND_DEPTH],[tile.x,tile.y+hh+ISLAND_DEPTH]], palette.soilDark, palette.soilDark);
           drawGrassTile(tile, palette, sunlight, stack ? stack[0] : tileData[index]);ctx.restore();
@@ -2354,7 +2372,7 @@
         const ramp=ramps.get(index),rampLevel=stack ? stack.length-1 : 0;
         if(ramp && tileVisible({...tile,y:tile.y-(rampLevel+1)*BLOCK_HEIGHT},BLOCK_HEIGHT)) {
           ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${rampLevel}`)||0))/100;
-          drawRamp({...tile,variant:(tile.column+tile.row+rampLevel+1)%2,y:tile.y-rampLevel*BLOCK_HEIGHT},ramp.direction,ramp.material ?? tileData[index],palette);ctx.restore();
+          drawRamp({...tile,variant:(tile.column+tile.row+rampLevel+1)%2,y:tile.y-rampLevel*BLOCK_HEIGHT},viewFacing(ramp.direction),ramp.material ?? tileData[index],palette);ctx.restore();
         }
       }
     } else {
@@ -2565,16 +2583,16 @@
     const visiblePlayer=editingDraft || gameplayDraft || window.worldManager?.getCharacter?.();
     const objectWorld=worldForObjects(),joins=fenceJoins(objectWorld);
     for(const bridge of objectWorld?.bridges||[])drawBridge(bridge);
-    const sceneObjects=(objectWorld?.orangeTrees||[]).map(tree=>({depth:tree.column+tree.row+treeSize(tree)-1,draw:()=>{
-      const foreground=visiblePlayer?.visible && tree.column+tree.row+treeSize(tree)-1>=visiblePlayer.column+visiblePlayer.row;
+    const sceneObjects=(objectWorld?.orangeTrees||[]).map(tree=>({depth:viewDepth(tree.column+(treeSize(tree)-1)/2,tree.row+(treeSize(tree)-1)/2)+treeSize(tree)-1,draw:()=>{
+      const foreground=visiblePlayer?.visible && viewDepth(tree.column+(treeSize(tree)-1)/2,tree.row+(treeSize(tree)-1)/2)+treeSize(tree)-1>=viewDepth(visiblePlayer.column,visiblePlayer.row);
       ctx.save();ctx.globalAlpha*=(100-(tree.opacity ?? 0))/100;const t=foreground?orangeTreeAnchor(tree):null,w=foreground?treeWidth(tree):0,h=foreground?treeHeight(tree):0;
       if(foreground && coversCharacter(visiblePlayer,p=>treeContains(tree,p),{left:t.x-w/2-3,right:t.x+w/2+3,top:t.y-h,bottom:t.y}))ctx.globalAlpha*=.5;
       drawOrangeTree(tree,motionTime,sceneWeather);drawOrangeDrop(tree);ctx.restore();
     }}));
-    for(const [a,b] of grassPairs(objectWorld))sceneObjects.push({depth:(a.column+a.row+b.column+b.row)/2,draw:()=>drawGrassBridge(a,b)});
-    (objectWorld?.fences||[]).forEach((f,i)=>sceneObjects.push({depth:f.column+f.row+((f.edge==='S'||f.edge==='E')?.5:-.5),draw:()=>drawFence(f,joins[i])}));
-    if(visibleHouse?.visible)sceneObjects.push({depth:visibleHouse.column+visibleHouse.row+2,draw:()=>{
-      const foreground=visiblePlayer?.visible && visibleHouse.column+visibleHouse.row+2>=visiblePlayer.column+visiblePlayer.row;
+    for(const [a,b] of grassPairs(objectWorld))sceneObjects.push({depth:(viewDepth(a.column,a.row)+viewDepth(b.column,b.row))/2,draw:()=>drawGrassBridge(a,b)});
+    (objectWorld?.fences||[]).forEach((f,i)=>sceneObjects.push({depth:viewDepth(f.column,f.row)+((viewFacing(f.edge)==='S'||viewFacing(f.edge)==='E')?.5:-.5),draw:()=>drawFence(f,joins[i])}));
+    if(visibleHouse?.visible)sceneObjects.push({depth:viewDepth(visibleHouse.column+1,visibleHouse.row+1)+2,draw:()=>{
+      const foreground=visiblePlayer?.visible && viewDepth(visibleHouse.column+1,visibleHouse.row+1)+2>=viewDepth(visiblePlayer.column,visiblePlayer.row);
       const projection=foreground && window.HouseGeometry?houseProjection(visibleHouse):null;
       const points=projection?[[0,0],[256,0],[512,0],[0,490],[256,490],[512,490]].map(([x,y])=>window.HouseGeometry.project(projection.geometry,x,y)):[];
       const xs=points.map(p=>projection.centre.x+p.x*(projection.mirror?-1:1)),ys=points.map(p=>projection.bottom+p.y);
@@ -2582,7 +2600,7 @@
       ctx.save();ctx.globalAlpha*=(100-(visibleHouse.opacity ?? 0))/100;
       if(projection && coversCharacter(visiblePlayer,p=>houseAt(p,visibleHouse),bounds))ctx.globalAlpha*=.5;drawHouse();ctx.restore();
     }});
-    if(visiblePlayer?.visible)sceneObjects.push({depth:visiblePlayer.column+visiblePlayer.row,draw:()=>drawMainCharacter(motionTime)});
+    if(visiblePlayer?.visible)sceneObjects.push({depth:viewDepth(visiblePlayer.column,visiblePlayer.row),draw:()=>drawMainCharacter(motionTime)});
     sceneObjects.sort((a,b)=>a.depth-b.depth);for(const object of sceneObjects)object.draw();
     // Clouds sit in front of the island. They are not clipped to the sky band: a foreground
     // cloud can hang below the horizon line, and clipping it there hid the cloud while its
@@ -2790,7 +2808,7 @@
   const houseHitCache = new WeakMap();
   function houseAt(point, house) {
     if (!house?.visible) return false;
-    const back=house.facing==='N'||house.facing==='W', mirror=house.facing==='N'||house.facing==='E';
+    const back=viewFacing(house.facing)==='N'||viewFacing(house.facing)==='W', mirror=viewFacing(house.facing)==='N'||viewFacing(house.facing)==='E';
     const image=back?houseBackImage:houseImage;
     if(!image.complete || !image.naturalWidth || !image.naturalHeight) return false;
     if(!window.HouseGeometry)return false;
@@ -2808,7 +2826,15 @@
   // Geometry bridge for the preview editor. Coordinates are transformed through the actual
   // canvas bounds and island zoom, so dragging remains correct on different device sizes.
   window.sceneEditing = Object.freeze({
-    camera() { return {zoom: editorZoom, renderZoom: islandZoom, panX: cameraPanX, panY: cameraPanY}; },
+    camera() { return {zoom: editorZoom, renderZoom: islandZoom, panX: cameraPanX, panY: cameraPanY,quarterTurns:viewQuarterTurns}; },
+    turnIsland(delta) {
+      if(!Number.isInteger(delta) || !window.WorldViewRotation)return false;
+      viewQuarterTurns=((viewQuarterTurns+delta)%4+4)%4;rebuildIslandProjection();
+      gameplayFollowCentre=null;gameplayFollowTime=null;gameplayCameraMoving=false;
+      if(cameraMode==='gameplay')applyGameplayCamera();drawFrame();
+      const status=document.getElementById('island-turn-status');if(status)status.textContent=`Rotasi pulau ${viewQuarterTurns*90} derajat.`;
+      return true;
+    },
     // Capture the same pose and facing that drawMainCharacter currently uses.
     characterCatalogIcon() {
       const character=editingDraft || gameplayDraft || window.worldManager?.getCharacter();
@@ -2817,7 +2843,7 @@
       const w=sprite?.naturalWidth || sprite?.width, h=sprite?.naturalHeight || sprite?.height;
       if(!w || !h || (sprite instanceof HTMLImageElement && !sprite.complete))return null;
       const icon=document.createElement('canvas');icon.width=w;icon.height=h;const c=icon.getContext('2d');
-      c.imageSmoothingEnabled=false;if(character.facing==='W'||character.facing==='E'){c.translate(w,0);c.scale(-1,1);}c.drawImage(sprite,0,0,w,h);
+      c.imageSmoothingEnabled=false;if(viewFacing(character.facing)==='W'||viewFacing(character.facing)==='E'){c.translate(w,0);c.scale(-1,1);}c.drawImage(sprite,0,0,w,h);
       return icon.toDataURL();
     },
     setMode: setPreviewCameraMode,
@@ -2912,7 +2938,7 @@
           const x=point.x-centre.x+(point.y-bottom)*objectSway(tree)/height;
           let u=(x+width/2)/width,v=(point.y-(bottom-height))/height;
           if(u<0||u>=1||v<0||v>=1)continue;
-          if(tree.facing==='W'||tree.facing==='E')u=1-u;
+          if(viewFacing(tree.facing)==='W'||viewFacing(tree.facing)==='E')u=1-u;
           if(data[(Math.min(127,Math.floor(v*128))*128+Math.min(127,Math.floor(u*128)))*4+3]>32)return i;
         }
       } catch (_) { return null; }
@@ -2926,12 +2952,12 @@
     hit(point, character) {
       if (!character.visible) return false;
       const {x, y: surfaceY} = characterCentre(character);
-      const y=surfaceY+.5*character.scale+characterWaterDepth(character)-(character.jumpHeight||0)+(idleBowSprite?(800-(character.facing==='N'||character.facing==='W'?778:725))/800*PLAYER_HEIGHT*character.scale*window.PlayerIdleBow.seatGroundWeight(idleSitAmount):0);
+      const y=surfaceY+.5*character.scale+characterWaterDepth(character)-(character.jumpHeight||0)+(idleBowSprite?(800-(viewFacing(character.facing)==='N'||viewFacing(character.facing)==='W'?778:725))/800*PLAYER_HEIGHT*character.scale*window.PlayerIdleBow.seatGroundWeight(idleSitAmount):0);
       const sprite=idleBowSprite || activeCharacterSprite(character);
       const width=PLAYER_WIDTH*character.scale*(idleBowSprite?(idleBowSprite.naturalWidth||idleBowSprite.width)/432:1),height=PLAYER_HEIGHT*character.scale;
       let u=(point.x-x)/width+.5,v=(point.y-y+height)/height;
       if(u<0||u>=1||v<0||v>=1)return false;
-      if(character.facing==='W'||character.facing==='E')u=1-u;
+      if(viewFacing(character.facing)==='W'||viewFacing(character.facing)==='E')u=1-u;
       try {
         let data=houseHitCache.get(sprite);
         if(!data || !(sprite instanceof HTMLImageElement)) {
@@ -2944,7 +2970,11 @@
     },
     tileAt(point) {
       const world=window.worldManager?.getActive();
-      if(world?.blockStacks || world?.ramps?.length) {
+      if(viewQuarterTurns && world?.tiles && window.WorldViewRotation) {
+        const hit=window.WorldViewRotation.pickWorld(world,viewQuarterTurns,point.x,point.y,WIDTH/2,islandTop+islandTileHeight/2,ISLAND_TILE_WIDTH,islandTileHeight,BLOCK_HEIGHT,ISLAND_DEPTH);
+        if(hit)return hit;
+      }
+      if(!viewQuarterTurns && (world?.blockStacks || world?.ramps?.length)) {
         const hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
         const ramps=new Map((world.ramps||[]).map(r=>[r.row*ISLAND_GRID_SIZE+r.column,r]));
         // Reverse painter order picks the visible top face nearest the viewer.
@@ -2963,15 +2993,14 @@
       const dx = (point.x - WIDTH / 2) / (ISLAND_TILE_WIDTH / 2);
       const dy = (point.y - islandTop - islandTileHeight / 2) / (islandTileHeight / 2);
       const column = Math.round((dx + dy) / 2), row = Math.round((dy - dx) / 2);
-      return column >= 0 && column < ISLAND_GRID_SIZE && row >= 0 && row < ISLAND_GRID_SIZE ? {column, row} : null;
+      return column >= 0 && column < ISLAND_GRID_SIZE && row >= 0 && row < ISLAND_GRID_SIZE ? worldPoint(column,row) : null;
     },
     tile(point) {
       const visible = this.tileAt(point);
       if (visible) return visible;
       const dx = (point.x - WIDTH / 2) / (ISLAND_TILE_WIDTH / 2);
       const dy = (point.y - islandTop - islandTileHeight / 2) / (islandTileHeight / 2);
-      return {column: clamp(Math.round((dx + dy) / 2), 0, ISLAND_GRID_SIZE - 1),
-        row: clamp(Math.round((dy - dx) / 2), 0, ISLAND_GRID_SIZE - 1)};
+      return worldPoint(clamp(Math.round((dx + dy) / 2), 0, ISLAND_GRID_SIZE - 1),clamp(Math.round((dy - dx) / 2), 0, ISLAND_GRID_SIZE - 1));
     },
     update(draft, selected, type = 'character') {
       editingDraft = type === 'character' ? draft : null;
@@ -2981,6 +3010,8 @@
       if (REDUCED_MOTION) drawFrame();
     }
   });
+  document.getElementById('island-turn-left')?.addEventListener('click',()=>window.sceneEditing.turnIsland(-1));
+  document.getElementById('island-turn-right')?.addEventListener('click',()=>window.sceneEditing.turnIsland(1));
   drawFrame();
   initializeWeather();
 })();

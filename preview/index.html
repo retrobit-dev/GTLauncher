@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#e2e4e1">
   <title>GTLauncher — Live Weather Preview</title>
-  <link rel="stylesheet" href="./styles.css?v=live-sky-68">
+  <link rel="stylesheet" href="./styles.css?v=rotation-69">
   <script src="./vendor/qrcode.js" defer></script>
   <script src="./fence-edges.js?v=1" defer></script>
   <script src="./bridge-geometry.js?v=opacity-19" defer></script>
   <script src="./ramp-geometry.js?v=4" defer></script>
   <script src="./base-terrain.js?v=1" defer></script>
+  <script src="./world-view-rotation.js?v=2" defer></script>
   <script src="./worlds.js?v=base-22" defer></script>
   <script src="./object-editor.js?v=ramp-35" defer></script>
   <script src="./pond-life.js?v=1" defer></script>
@@ -28,7 +29,7 @@
   <script src="./fence-joins.js?v=2" defer></script>
   <script src="./player-idle-bow.js?v=8" defer></script>
   <script src="./sparrow-pet.js?v=5" defer></script>
-  <script src="./app.js?v=sky-291" defer></script>
+  <script src="./app.js?v=sky-292" defer></script>
   <script src="./preview-modes.js?v=2" defer></script>
   <script src="./editor-camera.js?v=7" defer></script>
   <script src="./terrain-tools.js?v=ramp-109" defer></script>
@@ -50,6 +51,7 @@
       <div class="device-display" aria-label="Homescreen GTLauncher dengan langit dan pulau terapung pixel art yang mengikuti cuaca">
         <canvas id="sky-canvas" class="sky-canvas" aria-label="Langit pixel art dan pulau terapung dengan pencahayaan adaptif serta efek cuaca"></canvas>
         <div id="editor-pan-surface" class="editor-pan-surface" hidden aria-label="Seret untuk menggeser peta"></div>
+        <nav hidden class="island-turn-controls" aria-label="Rotasi pulau"><button id="island-turn-left" type="button" aria-label="Putar pulau 90 derajat ke kiri" title="Putar pulau ke kiri">↶</button><button id="island-turn-right" type="button" aria-label="Putar pulau 90 derajat ke kanan" title="Putar pulau ke kanan">↷</button><span id="island-turn-status" class="visually-hidden" aria-live="polite"></span></nav>
         <span class="camera-punch-hole" aria-hidden="true"></span>
 
         <section class="character-hud" aria-label="Status karakter sementara">
