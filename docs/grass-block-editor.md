@@ -152,3 +152,16 @@ kanvas; pilihan objek aktif dibatalkan saat disembunyikan. Memulai penempatan
 melalui katalog menampilkan objek kembali. Ini hanya pengaturan tampilan
 sementara di editor, bukan penghapusan atau perubahan data world; gameplay dan
 Android tetap menampilkan objek seperti biasa.
+
+Pembaruan: rentang kemiringan Map Editor preview diperluas lima langkah di
+masing-masing ujung, menjadi 5°–53° (tombol 3° per tekan, dengan batas akhir
+dibulatkan ke 5°/53°). Default tetap 25° dan gameplay tetap pada default.
+Outline gelap yang digambar pada sisi vertikal block dan sisi ramp dihilangkan
+untuk semua material di preview dan renderer Android, tanpa menghapus bidang
+sisi atau mengubah data. Garis permukaan rumput, tebing luar air, dan outline
+seleksi/pijakan tetap dipertahankan. Renderer Android belum diuji di perangkat.
+
+`artwork/bridge-sloped-ends-concept.png` adalah konsep yang dipilih untuk dek
+jembatan dengan ujung menurun; belum diterapkan ke world atau gameplay. Gambar
+konsep bukan acuan ukuran: bentuk ramp, lebar satu tile, dan tiang ujung tanpa
+tiang tengah perlu dijaga saat implementasi.

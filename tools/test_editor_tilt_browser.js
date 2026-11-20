@@ -10,10 +10,12 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
  await up.click();let a=await page.evaluate(()=>({cam:sceneEditing.camera(),p:sceneEditing.centre({column:24,row:24}),pick:sceneEditing.tileAt(sceneEditing.centre({column:24,row:24}))}));
  assert.equal(a.cam.elevation,28);assert.notEqual(a.p.y,initial.p.y);assert.deepEqual(a.pick,{column:24,row:24});assert.equal(a.cam.zoom,initial.cam.zoom);assert.equal(a.cam.panX,initial.cam.panX);assert.equal(a.cam.quarterTurns,initial.cam.quarterTurns);
  await reset.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),25);assert.equal(await reset.isDisabled(),true);
- await down.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),22);await down.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),20);assert(await down.isDisabled());
+ await down.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),22);for(let i=0;i<6;i++)await down.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),5);assert(await down.isDisabled());
  await page.locator('#mode-gameplay').click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),25);assert.equal(await up.isVisible(),false);
- await page.locator('#mode-map-editor').click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),20);assert(await down.isDisabled());
- for(let i=0;i<6;i++)await up.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),38);assert(await up.isDisabled());await reset.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),25);
+ await page.locator('#mode-map-editor').click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),5);assert(await down.isDisabled());
+ for(let i=0;i<16;i++)await up.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),53);assert(await up.isDisabled());
+ const highPick=await page.evaluate(()=>sceneEditing.tileAt(sceneEditing.centre({column:24,row:24})));assert.deepEqual(highPick,{column:24,row:24});
+ await reset.click();assert.equal(await page.evaluate(()=>sceneEditing.camera().elevation),25);
  assert.equal(await page.evaluate(()=>JSON.stringify(worldManager.getActive())),before);assert.deepEqual(errors,[]);
  console.log('Editor tilt buttons, projection/picking, limits, reset and gameplay isolation: OK');
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

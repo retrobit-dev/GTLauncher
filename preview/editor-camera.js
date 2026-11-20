@@ -13,8 +13,8 @@
     value.textContent = value.value;
     $('editor-zoom-in').disabled = zoom >= 20;
     $('editor-zoom-out').disabled = zoom <= 0.5;
-    $('editor-tilt-up').disabled = elevation >= 38;
-    $('editor-tilt-down').disabled = elevation <= 20;
+    $('editor-tilt-up').disabled = elevation >= 53;
+    $('editor-tilt-down').disabled = elevation <= 5;
     $('editor-tilt-default').disabled = elevation === 25;
     $('editor-tilt-value').textContent = `${Math.round(elevation)}°`;
     const hidden=scene.editorObjectsHidden();

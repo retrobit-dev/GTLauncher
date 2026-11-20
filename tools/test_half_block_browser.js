@@ -10,8 +10,10 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
    let samples=[];for(const c of [10,11]){w.tiles.fill(0);for(let i=0;i<w.blockStacks.length;i++)w.blockStacks[i]=[];w.tiles[10*20+c]=material;w.blockStacks[10*20+c]=[material,material];fills=[];seams=[];sceneEditing.setGameplayDraft(null);samples.push({fills:[...new Set(fills)],seams:[...new Set(seams)]});}
    out.push({material,samples});
   }
-  CanvasRenderingContext2D.prototype.fill=fill;CanvasRenderingContext2D.prototype.stroke=stroke;return{delta:p.y-q.y,saved,savedAfter:localStorage.getItem('gtlauncher.worlds.v1'),out};});
+  w.tiles.fill(0);for(let i=0;i<w.blockStacks.length;i++)w.blockStacks[i]=[];w.tiles[210]=4;w.blockStacks[210]=[4,4];w.ramps=[{column:10,row:10,direction:'E',material:4}];seams=[];sceneEditing.setGameplayDraft(null);const rampStrokes=seams.length;
+  CanvasRenderingContext2D.prototype.fill=fill;CanvasRenderingContext2D.prototype.stroke=stroke;return{delta:p.y-q.y,saved,savedAfter:localStorage.getItem('gtlauncher.worlds.v1'),out,rampStrokes};});
  assert.equal(report.delta,8,'two levels rise 8 units instead of 16');assert.equal(report.saved,report.savedAfter,'rendering does not rewrite old worlds');
- for(const {material,samples} of report.out){assert(samples.every(s=>s.seams.length>0),`missing side outlines for ${material}`);assert(samples[0].fills.some(x=>!samples[1].fills.includes(x)),`missing alternating color for ${material}`);}
- assert.deepEqual(errors,[]);console.log('Existing stacks: half height, side outlines, alternating colors and unchanged storage OK');await page.close();
+ for(const {material,samples} of report.out){assert(samples.every(s=>s.seams.length===0),`unexpected side outline for ${material}`);assert(samples[0].fills.some(x=>!samples[1].fills.includes(x)),`missing alternating color for ${material}`);}
+ assert.equal(report.rampStrokes,1,'only the ramp top keeps its outline, not its sides');
+ assert.deepEqual(errors,[]);console.log('Existing stacks: half height, no side outlines, alternating colors and unchanged storage OK');await page.close();
 }finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

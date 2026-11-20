@@ -2155,10 +2155,10 @@ public final class WeatherSkyView extends View {
             }
         }
     }
-    private void drawRampFace(Canvas canvas,RampGeometry.Vertex[] vertices,float x,float y,int color) {
+    private void drawRampFace(Canvas canvas,RampGeometry.Vertex[] vertices,float x,float y,int color,boolean outline) {
         Path face=new Path();for(int i=0;i<vertices.length;i++){float px=x+(float)vertices[i].x,py=y+(float)vertices[i].y;if(i==0)face.moveTo(px,py);else face.lineTo(px,py);}face.close();
         islandPolyPaint.setShader(null);islandPolyPaint.setStyle(Paint.Style.FILL);islandPolyPaint.setColor(color);canvas.drawPath(face,islandPolyPaint);
-        islandPolyPaint.setStyle(Paint.Style.STROKE);islandPolyPaint.setStrokeWidth(.35f);islandPolyPaint.setColor(blend(color,Color.BLACK,.12));canvas.drawPath(face,islandPolyPaint);islandPolyPaint.setStyle(Paint.Style.FILL);
+        if(outline){islandPolyPaint.setStyle(Paint.Style.STROKE);islandPolyPaint.setStrokeWidth(.35f);islandPolyPaint.setColor(blend(color,Color.BLACK,.12));canvas.drawPath(face,islandPolyPaint);islandPolyPaint.setStyle(Paint.Style.FILL);}
     }
     private void drawRamp(Canvas canvas,float x,float y,int column,int row,int height,String direction,int material,IslandPalette palette) {
         RampGeometry.Shape shape=RampGeometry.create(direction,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,BLOCK_HEIGHT);if(shape==null)return;
@@ -2171,10 +2171,10 @@ public final class WeatherSkyView extends View {
         int save=material==3?canvas.saveLayerAlpha(x-ISLAND_TILE_WIDTH/2-2,y-ISLAND_TILE_HEIGHT/2-BLOCK_HEIGHT-2,x+ISLAND_TILE_WIDTH/2+2,y+ISLAND_TILE_HEIGHT/2+2,163,Canvas.ALL_SAVE_FLAG):-1;
         for(RampGeometry.Vertex[] face:shape.sides) {
             boolean u=true,v=true;for(RampGeometry.Vertex vertex:face){u&=vertex.u==1;v&=vertex.v==1;}
-            if(u||v)drawRampFace(canvas,face,x,y,blend(side,Color.BLACK,v?.15:.23));
+            if(u||v)drawRampFace(canvas,face,x,y,blend(side,Color.BLACK,v?.15:.23),false);
         }
-        if(direction.equals("E")||direction.equals("S"))drawRampFace(canvas,shape.highFace,x,y,blend(side,Color.BLACK,direction.equals("S")?.15:.23));
-        drawRampFace(canvas,shape.top,x,y,top);
+        if(direction.equals("E")||direction.equals("S"))drawRampFace(canvas,shape.highFace,x,y,blend(side,Color.BLACK,direction.equals("S")?.15:.23),false);
+        drawRampFace(canvas,shape.top,x,y,top,true);
         if(material==3) {
             paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(1.15f);paint.setColor(0xeb705b42);
             waterRampLine(canvas,x,y,direction,0,1,0);waterRampLine(canvas,x,y,direction,0,1,1);
@@ -2370,7 +2370,7 @@ public final class WeatherSkyView extends View {
                     centerX - halfWidth, centerY + cutY,
                     centerX, centerY + halfHeight + depth,
                     blend(fill, Color.BLACK, sideShade),
-                    blend(fill, Color.BLACK, sideShade), blend(fill, Color.BLACK, sideShade+.12f), outline ? .35f : 0f);
+                    blend(fill, Color.BLACK, sideShade), 0, 0f);
         } else {
             islandPolyPath.moveTo(centerX, splitY);
             islandPolyPath.quadTo(centerX + cutX * 0.5f,
@@ -2387,7 +2387,7 @@ public final class WeatherSkyView extends View {
                     centerX, centerY + cutY,
                     centerX + halfWidth, centerY + halfHeight + depth,
                     blend(fill, Color.BLACK, sideShade),
-                    blend(fill, Color.BLACK, sideShade), blend(fill, Color.BLACK, sideShade+.12f), outline ? .35f : 0f);
+                    blend(fill, Color.BLACK, sideShade), 0, 0f);
         }
     }
 

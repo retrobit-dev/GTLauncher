@@ -82,8 +82,8 @@
   const COMPASS_FRAME_OFFSET_DEGREES = 45;
   // Fixed 45° azimuth and 25° elevation keep a consistent dimetric projection.
   const DEFAULT_ISLAND_CAMERA_ELEVATION = 25;
-  const MIN_ISLAND_CAMERA_ELEVATION = 20;
-  const MAX_ISLAND_CAMERA_ELEVATION = 38;
+  const MIN_ISLAND_CAMERA_ELEVATION = 5;
+  const MAX_ISLAND_CAMERA_ELEVATION = 53;
   let islandCameraElevation = DEFAULT_ISLAND_CAMERA_ELEVATION;
   let savedEditorElevation = DEFAULT_ISLAND_CAMERA_ELEVATION;
   let islandTileHeight = ISLAND_TILE_WIDTH
@@ -1260,14 +1260,14 @@
     let side=base===1?(tile.variant===0?palette.grassTileSoftFern:palette.grassTileFernSage):base===2?blendColor(palette.soilLight,'#d49d65',.4):base===4?blendColor(terrain[4],palette.soilDark,.08):blendColor(terrain[base]||'#ae8b68',palette.grassDark,.12);
     if(base!==1 && tile.variant!==0)side=blendColor(side,'#000000',.06);
     const top=grassTop?(tile.variant===0?palette.grassTileSoftFern:palette.grassTileFernSage):side;
-    const polygon=(face,color)=>drawSmoothIslandPolygon(face.map(p=>[tile.x+p.x,tile.y+p.y]),color,color,blendColor(color,'#000000',.12),.35);
+    const polygon=(face,color,outline=false)=>drawSmoothIslandPolygon(face.map(p=>[tile.x+p.x,tile.y+p.y]),color,color,outline?blendColor(color,'#000000',.12):null,outline ? .35 : 0);
     ctx.save();if(material===3)ctx.globalAlpha*=.64;
     for(const face of shape.sideFaces) {
       const u=face.every(p=>p.u===1),v=face.every(p=>p.v===1);
       if(u || v)polygon(face,blendColor(side,'#000000',v?.15:.23));
     }
     if(direction==='S' || direction==='E')polygon(shape.highFace,blendColor(side,'#000000',direction==='S'?.15:.23));
-    polygon(shape.topFace,top);
+    polygon(shape.topFace,top,true);
     if(material===3){
       const point=(u,v)=>({x:tile.x+(u-v)*ISLAND_TILE_WIDTH/2,y:tile.y+(u+v-1)*islandTileHeight/2-window.RampGeometry.fraction(direction,u,v)*BLOCK_HEIGHT});
       const uv=(t,q)=>direction==='E'?[1-t,q]:direction==='W'?[t,q]:direction==='S'?[q,1-t]:[q,t];
@@ -1422,7 +1422,7 @@
         ctx.closePath();
       }, centerX - halfWidth, centerY + cutY,
       centerX, centerY + halfHeight + depth,
-      blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade+.12), outline ? .35 : 0);
+      blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade), null, 0);
     } else {
       drawSmoothIslandPath(() => {
         ctx.moveTo(centerX, splitY);
@@ -1438,7 +1438,7 @@
         ctx.closePath();
       }, centerX, centerY + cutY,
       centerX + halfWidth, centerY + halfHeight + depth,
-      blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade+.12), outline ? .35 : 0);
+      blendColor(fill, '#000000', sideShade), blendColor(fill, '#000000', sideShade), null, 0);
     }
   }
 
