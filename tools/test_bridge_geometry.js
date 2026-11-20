@@ -32,3 +32,12 @@ for (const length of [4,5]) for (const axis of ['E','S']) {
   tiles[last.row*10+last.column]=3;assert.equal(b.valid(w,[bridge]),false);
 }
 console.log('4×1 and 5×1 bridge footprints, water and end-only traversal: OK');
+// The deck's calibrated edges must coincide with an N-by-1 tile parallelogram.
+for(const [material,points] of Object.entries({wood:[[0,284],[430,47],[131,359]],stone:[[35,253],[450,50],[158,321]]}))for(const length of [3,4,5])for(const [w,h] of [[28,14],[28,10]]) {
+ const m=b.spriteTransform(material,length,w,h), project=([x,y])=>({x:m.a*x+m.c*y+m.e,y:m.b*x+m.d*y+m.f}),[p,u,v]=points.map(project);
+ const near=(a,z)=>assert.ok(Math.abs(a-z)<1e-8,`${material} ${length}: ${a} != ${z}`);
+ near(u.x-p.x,length*w/2);near(u.y-p.y,-length*h/2);near(v.x-p.x,w/2);near(v.y-p.y,h/2);
+ // Mirroring for the E axis reverses x but preserves the same tile edge slopes.
+ near(-(u.x-p.x),-length*w/2);near(-(v.x-p.x),-w/2);
+}
+console.log('Calibrated bridge deck edges match 3/4/5 by 1 tile footprint: OK');

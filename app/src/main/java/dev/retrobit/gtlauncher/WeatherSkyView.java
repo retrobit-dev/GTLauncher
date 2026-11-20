@@ -663,9 +663,16 @@ public final class WeatherSkyView extends View {
             Bitmap image=b.material.equals("wood")?bridgeWood:bridgeStone;if(image==null)continue;
             float half=(b.length-1)/2f,c=b.column+(b.axis.equals("E")?half:0),r=b.row+(b.axis.equals("S")?half:0);
             float x=SCENE_WIDTH/2f+(c-r)*ISLAND_TILE_WIDTH/2f,y=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(c+r)*ISLAND_TILE_HEIGHT/2f-elevationAt(b.column,b.row);
-            float width=ISLAND_TILE_WIDTH*2.35f,height=ISLAND_TILE_WIDTH*1.56f;int save=canvas.save();canvas.translate(x,y);if(b.axis.equals("E"))canvas.scale(-1,1);
-            float k=b.length/3f;android.graphics.Matrix stretch=new android.graphics.Matrix();stretch.setValues(new float[]{(k+1)/2,1-k,0,(1-k)/4,(k+1)/2,0,0,0,1});canvas.concat(stretch);
-            paint.setColor(Color.WHITE);paint.setAlpha(Math.round(255*(100-Math.max(0,b.opacity))/100f));canvas.drawBitmap(image,null,new RectF(-width/2,-height*.62f,width/2,height*.38f),paint);canvas.restoreToCount(save);
+            int save=canvas.save();canvas.translate(x,y);if(b.axis.equals("E"))canvas.scale(-1,1);
+            // Map the three deck landmarks onto exactly length by one tile.
+            float px=b.material.equals("wood")?0:35,py=b.material.equals("wood")?284:253;
+            float ux=b.material.equals("wood")?430:415,uy=b.material.equals("wood")?-237:-203;
+            float vx=b.material.equals("wood")?131:123,vy=b.material.equals("wood")?75:68;
+            float det=ux*vy-uy*vx,lx=b.length*ISLAND_TILE_WIDTH/2f,ly=-b.length*ISLAND_TILE_HEIGHT/2f,wx=ISLAND_TILE_WIDTH/2f,wy=ISLAND_TILE_HEIGHT/2f;
+            float a=(lx*vy-wx*uy)/det,cx=(wx*ux-lx*vx)/det,bb=(ly*vy-wy*uy)/det,d=(wy*ux-ly*vx)/det;
+            float midX=px+(ux+vx)/2f,midY=py+(uy+vy)/2f;
+            android.graphics.Matrix deck=new android.graphics.Matrix();deck.setValues(new float[]{a,cx,-a*midX-cx*midY,bb,d,-bb*midX-d*midY,0,0,1});canvas.concat(deck);
+            paint.setColor(Color.WHITE);paint.setFilterBitmap(true);paint.setAlpha(Math.round(255*(100-Math.max(0,b.opacity))/100f));canvas.drawBitmap(image,0,0,paint);canvas.restoreToCount(save);
         }
         paint.setAlpha(255);
     }

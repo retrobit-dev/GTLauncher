@@ -44,3 +44,10 @@ Sprite lama tetap disimpan; panjang 3, 4, dan 5 tile serta aturan penempatan,
 orientasi, dan data world tidak berubah. Pipit terbang lebih tinggi dan digambar
 di atas objek foreground agar membantu menandai karakter yang tertutup; saat
 duduk pipit tetap bertengger pada karakter. Perilaku Android belum diuji di perangkat.
+
+Dek jembatan dikalibrasi dari titik sudut masing-masing sprite ke proyeksi
+tepat panjang 3/4/5 dan lebar 1 tile; orientasi E dicerminkan dan proyeksi
+mengikuti tinggi tile. Tiang dan lengkungan tetap merupakan bagian sprite,
+sehingga bisa terlihat di atas/bawah dek; tapak dan data tersimpan tidak diubah.
+Pipit juga digambar di editor preview, selain gameplay; gambar yang terlambat
+selesai dimuat meminta render ulang ketika animasi dikurangi.

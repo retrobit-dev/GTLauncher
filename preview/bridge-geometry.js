@@ -39,5 +39,17 @@
     }
     return true;
   }
-  return Object.freeze({LENGTH,cells,indexAt,valid,permitsStep});
+  // Deck corner landmarks in the transparent source sprites (lower left, far left,
+  // lower right). Map the deck, not the bitmap bounds or its raised rails, to the
+  // exact isometric footprint; the same affine map preserves posts and arch.
+  function spriteTransform(material,length,tileWidth,tileHeight){
+    const [p,u,v]=material==='wood'?[[0,284],[430,47],[131,359]]:[[35,253],[450,50],[158,321]];
+    const ux=u[0]-p[0],uy=u[1]-p[1],vx=v[0]-p[0],vy=v[1]-p[1],det=ux*vy-uy*vx;
+    const lx=length*tileWidth/2,ly=-length*tileHeight/2,wx=tileWidth/2,wy=tileHeight/2;
+    const a=(lx*vy-wx*uy)/det,c=(wx*ux-lx*vx)/det;
+    const b=(ly*vy-wy*uy)/det,d=(wy*ux-ly*vx)/det;
+    const cx=p[0]+(ux+vx)/2,cy=p[1]+(uy+vy)/2;
+    return {a,b,c,d,e:-a*cx-c*cy,f:-b*cx-d*cy};
+  }
+  return Object.freeze({LENGTH,cells,indexAt,valid,permitsStep,spriteTransform});
 });

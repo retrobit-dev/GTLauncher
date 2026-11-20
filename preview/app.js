@@ -1973,9 +1973,10 @@
   function drawBridge(bridge) {
     const image=bridgeSprites[bridge.material];if(!image?.complete || !image.naturalWidth)return;
     const p=bridgeBounds(bridge);ctx.save();ctx.globalAlpha*=(100-(bridge.opacity ?? 0))/100;applyIslandTransform();ctx.translate(p.x,p.y);if((viewQuarterTurns%2===0?bridge.axis:bridge.axis==='E'?'S':'E')==='E')ctx.scale(-1,1);
-    const k=(bridge.length||3)/3;ctx.transform((k+1)/2,(1-k)/4,1-k,(k+1)/2,0,0);
-    ctx.imageSmoothingEnabled=true;ctx.drawImage(image,-p.w/2,-p.h*.62,p.w,p.h);
-    if(editingBridgeSelection && editingBridgeSelection.column===bridge.column && editingBridgeSelection.row===bridge.row && editingBridgeSelection.axis===bridge.axis){ctx.strokeStyle='#fff4a8';ctx.lineWidth=.6;ctx.strokeRect(-p.w/2,-p.h*.62,p.w,p.h);}
+    const m=window.BridgeGeometry.spriteTransform(bridge.material,bridge.length||3,ISLAND_TILE_WIDTH,islandTileHeight);
+    ctx.transform(m.a,m.b,m.c,m.d,m.e,m.f);
+    ctx.imageSmoothingEnabled=true;ctx.drawImage(image,0,0);
+    if(editingBridgeSelection && editingBridgeSelection.column===bridge.column && editingBridgeSelection.row===bridge.row && editingBridgeSelection.axis===bridge.axis){ctx.strokeStyle='#fff4a8';ctx.lineWidth=4;ctx.strokeRect(0,0,image.naturalWidth,image.naturalHeight);}
     ctx.restore();
   }
   function drawHouse() {
@@ -2193,6 +2194,7 @@
   const sparrowFlap=new Image();sparrowFlap.src='./assets/pet-sparrow-flap.png?v=3';
   const sparrowBack=new Image();sparrowBack.src='./assets/pet-sparrow-back.png?v=2';
   const sparrowBackFlap=new Image();sparrowBackFlap.src='./assets/pet-sparrow-back-flap.png?v=4';
+  for(const image of [sparrowImage,sparrowFlap,sparrowBack,sparrowBackFlap]) image.onload=()=>{if(REDUCED_MOTION)drawFrame();};
   const sparrow=window.SparrowPet.create();
   let foregroundSparrow = null;
   function drawMainCharacter(motionTime) {
@@ -2244,7 +2246,7 @@
       ctx.beginPath();ctx.rect(x-width/2-2,waterline,width+4,Math.max(0,y-waterline+2));ctx.clip();ctx.globalAlpha*=0.35;drawSprite();ctx.restore();
       ctx.save();ctx.strokeStyle='rgba(218,250,244,.6)';ctx.lineWidth=.45;ctx.beginPath();ctx.ellipse(x,waterline,Math.min(width*.48,5),1.1,0,0,Math.PI*2);ctx.stroke();ctx.restore();
     } else drawSprite();
-    if(cameraMode==='gameplay' && sparrowImage.complete && sparrowImage.naturalWidth) {
+    if(sparrowImage.complete && sparrowImage.naturalWidth) {
       const headY=y-height+seatWeight*(back?2.9:2.1)*character.scale;
       const p=sparrow.update(performance.now(),world.id,anchor,character.scale,seatWeight,mirror,back,!!gameplayDraft,REDUCED_MOTION,headY);
       const size=6*character.scale;
@@ -2257,7 +2259,7 @@
         if(p.seat < 1) foregroundSparrow=drawBird;
         else {ctx.save();ctx.imageSmoothingEnabled=false;ctx.translate(p.x,p.y);if(mirror)ctx.scale(-1,1);ctx.drawImage(bird,-size/2,-size,size,size);ctx.restore();}
       }
-    } else if(cameraMode!=='gameplay')sparrow.reset();
+    }
     if (editingSelected) {
       ctx.strokeStyle = '#fff4a8';
       ctx.lineWidth = 1;

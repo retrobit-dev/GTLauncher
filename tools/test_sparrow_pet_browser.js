@@ -16,5 +16,9 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
   await page.evaluate(facing=>{const w=worldManager.getActive(),c=worldManager.getCharacter();worldManager.updateCharacter(w.id,{...c,facing});window.allBirdDraws=[]},facing);
   await page.waitForFunction(({back,mirror})=>window.allBirdDraws.some(v=>v.src.includes(back?'pet-sparrow-back':'pet-sparrow') && !(!back && v.src.includes('pet-sparrow-back')) && (v.a<0)===mirror),{back,mirror},{timeout:60000});
  }
- assert.deepEqual(errors,[]);console.log('Preview sparrow rendered and perches when player sits: OK');
+ // The player marker must also be drawn in Map Editor, not only gameplay.
+ await page.locator('#mode-map-editor').click();
+ await page.evaluate(()=>{window.allBirdDraws=[];sceneEditing.setCamera(7.5,0,0)});
+ await page.waitForFunction(()=>window.allBirdDraws.length>0,null,{timeout:60000});
+ assert.deepEqual(errors,[]);console.log('Preview sparrow rendered in gameplay and editor, and perches when player sits: OK');
  }finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});
