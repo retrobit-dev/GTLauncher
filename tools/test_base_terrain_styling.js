@@ -7,6 +7,7 @@ for(let i=0;i<5;i++)assert.equal(base.isBaseLayer(added,i),true);
 assert.equal(base.isBaseLayer(added,5),false);assert.equal(base.isBaseLayer(added,6),false);
 assert.equal(base.isBaseLayer([2,2,2,2],3),true);
 assert.equal(base.isBaseLayer([2,2,2,4,1],3),false);
+assert.equal(base.isBaseLayer([1,2,2],0),true);assert.equal(base.isBaseLayer([1,2,2],1),false);
 assert.equal(base.isBaseLayer([2,2,2,2,4],4),false);
 assert.equal(base.isBaseLayer(null,0),false);
 assert.deepEqual(template,[2,2,2,2,1]);

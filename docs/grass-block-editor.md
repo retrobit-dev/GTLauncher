@@ -10,17 +10,17 @@ Map Editor hanya tersedia di preview. World baru memakai salinan terrain Base Wo
 
 Gameplay preview menggunakan permukaan teratas: karakter dapat naik atau turun satu tingkat per langkah; sel kosong dan perbedaan dua tingkat atau lebih menghalangi rute. Jalur dapat memutar melalui permukaan bertangga. World datar lama tidak perlu migrasi. Riwayat Undo/Redo berlaku selama sesi tab.
 
-World bertingkat memakai format JSON preview versi 4 saat diekspor; versi Android saat ini **belum mendukung** format ini. Data browser dan Android terpisah dan tidak otomatis tersinkron. Efek pencahayaan, bayangan serta urutan gambar objek pada tebing tinggi masih menggunakan renderer pulau 2D yang ada, bukan mesin voxel 3D. Thumbnail dan rumpun rumput menggunakan artwork konsep pilihan.
+World bertingkat memakai format JSON preview versi 4 saat diekspor; versi Android saat ini dapat mencoba mengimpor format ini; dukungan v21 tersedia tetapi belum diuji pada perangkat. Data browser dan Android terpisah dan tidak otomatis tersinkron. Efek pencahayaan, bayangan serta urutan gambar objek pada tebing tinggi masih menggunakan renderer pulau 2D yang ada, bukan mesin voxel 3D. Thumbnail dan rumpun rumput menggunakan artwork konsep pilihan.
 
 ### Tampilan tanah dasar
 
-Base World memakai warna permukaan rumput yang seragam dan sisi tanah tanpa pola
-selang-seling atau garis pembatas antar-block. Pada world bertumpuk, empat tanah
-pertama dan rumput di atasnya dikenali sebagai dasar bila empat lapisan pertama
-masih `[2,2,2,2]`; block di atasnya tetap memakai variasi warna dan outline sisi.
-Format world lama belum menyimpan asal-usul tiap lapisan, jadi pengenalan ini
-berdasarkan isi stack, bukan riwayat penempatan. Bila dasar diedit hingga pola
-itu berubah, tampilannya kembali mengikuti aturan block biasa. Garis hijau tipis
-pada tepi tutup rumput dan lis hijau bawah pulau dihapus; warna sisi tetap
-mengikuti pencahayaan. Perubahan ini hanya rendering, tidak menulis ulang world.
-Preview dan Android berbagi aturan ini; Android belum diuji pada perangkat.
+Rumput permukaan kembali menggunakan warna berselang-seling dengan batas tipis
+antar-tile. Sisi tanah bawah memakai satu warna yang sama di kiri dan kanan;
+garis hijau dari sisi rumput dasar yang tertutup block lain diganti warna tanah.
+Block tambahan tetap memiliki variasi warna dan outline sisi. Aturan rendering
+berlaku pada Base World dan world lama maupun baru, tanpa mengubah data world.
+
+Format lama belum mencatat asal-usul lapisan. Tingkat nol dianggap dasar; empat
+lapisan awal `[2,2,2,2]` serta rumput di atasnya dikenali sebagai template dasar.
+Karena ini berdasarkan isi stack, lapisan hasil edit yang menyerupai template
+juga mengikuti tampilan dasar. Perubahan belum diuji di perangkat Android.
