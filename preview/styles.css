@@ -487,5 +487,7 @@ body { height: auto; min-height: 100%; overflow: visible; padding: 12px 0; }
 
 /* Camera rotation is separate from the object-rotation tools. */
 .island-turn-controls:not([hidden]) {position:absolute;z-index:8;left:2%;right:2%;top:50%;transform:translateY(-50%);display:flex;justify-content:space-between;pointer-events:none}
-.island-turn-controls button {width:30px;height:30px;border:1px solid rgba(49,76,59,.65);border-radius:7px;background:rgba(240,246,235,.85);color:#284632;font:22px/1 system-ui;cursor:pointer;pointer-events:auto}
+.island-turn-controls button {width:calc((64cqw - 2*.35cqw - 2*.24cqw - 10*.15cqw)/11);height:calc(4.398125cqw + .6px);padding:.2cqw;border:.16cqw solid #a88863;border-radius:0;background:#e3cfaa;cursor:pointer;pointer-events:auto}
+.island-turn-controls button img {display:block;width:100%;height:100%;object-fit:contain;image-rendering:pixelated}
+#island-turn-right img {transform:scaleX(-1)}
 .island-turn-controls button:focus-visible {outline:2px solid #111;outline-offset:2px}

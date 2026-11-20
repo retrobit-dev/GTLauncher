@@ -14,6 +14,9 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
   assert(geometry.left.left<geometry.display.left+geometry.display.width*.1);assert(geometry.right.right>geometry.display.right-geometry.display.width*.1);
   assert.notEqual(geometry.middle,'island-turn-left');assert.notEqual(geometry.middle,'island-turn-right');
   assert.notEqual(geometry.middle,'','rotation container must not intercept the middle of the screen');
+  const iconSizes=await page.evaluate(()=>{const l=document.querySelector('#island-turn-left').getBoundingClientRect(),r=document.querySelector('#island-turn-right').getBoundingClientRect(),d=document.querySelector('.home-dock button').getBoundingClientRect(),imgs=[...document.querySelectorAll('.island-turn-controls img')];return {l:{width:l.width,height:l.height},r:{width:r.width,height:r.height},dock:{width:d.width,height:d.height},loaded:imgs.every(i=>i.complete && i.naturalWidth>0),rightMirrored:getComputedStyle(imgs[1]).transform};});
+  for(const side of [iconSizes.l,iconSizes.r]){assert(Math.abs(side.width-iconSizes.dock.width)<1);assert(Math.abs(side.height-iconSizes.dock.height)<1);}
+  assert(iconSizes.loaded);assert.equal(iconSizes.rightMirrored,'matrix(-1, 0, 0, 1, 0, 0)');
   const initial=await page.evaluate(()=>sceneEditing.camera().quarterTurns);
   await right.click({timeout:90000});assert.equal(await page.evaluate(()=>sceneEditing.camera().quarterTurns),(initial+1)%4);
   await left.click({timeout:90000});assert.equal(await page.evaluate(()=>sceneEditing.camera().quarterTurns),initial);
