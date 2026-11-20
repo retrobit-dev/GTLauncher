@@ -35,3 +35,9 @@ arah memakai Selatan secara default. Animasi mengikuti pengaturan reduced motion
 Sambungan hanya antara tile sejenis dengan ketinggian sama. Format preview v31
 diperlukan untuk menyimpan arah; impor versi lebih lama tidak menggantikan world
 yang memiliki arah sungai. Android belum diuji pada perangkat.
+
+Persimpangan jalan sejenis memakai sambungan siku-siku pada grid untuk belokan,
+persimpangan T, dan simpang empat, termasuk sudut diagonal yang belum terisi.
+Preview dan Android memperhatikan tetangga diagonal sejenis pada ketinggian
+yang sama. Ini hanya mengubah rendering; tidak menurunkan terrain atau
+mengubah data. Proyeksi isometrik membuat sudut 90° grid terlihat miring di layar.

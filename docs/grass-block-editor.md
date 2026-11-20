@@ -201,3 +201,9 @@ Ketuk sisi yang terlihat dengan Tambah untuk menambahkan block pada kolom di seb
 Android menerima stack tinggi dan menggunakan penyimpanan opacity per block yang jarang (tidak lagi dibatasi 32 tingkat); Android tetap hanya gameplay. Belum diuji pada perangkat.
 
 Pada kolom berlubang, jalur karakter masih menggunakan permukaan teratas; berjalan melalui rongga di bawah block melayang belum didukung. Rendering Android dan kamera perlu diuji pada perangkat.
+
+Pagar batu pada kedua arah kini hanya menggambar muka ujung pada ujung segmen
+yang terlihat dan tidak tersambung. Muka ujung setiap batu internal tidak lagi
+ditumpuk di atas bidang dinding, mengurangi pola menonjol di sisi kiri. Geometri
+pagar kayu dan data world tetap sama; kode Android diperiksa tetapi belum diuji
+pada perangkat.

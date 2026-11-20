@@ -32,7 +32,14 @@
   // Each point is in tile-local coordinates; adjoining identical surfaces meet at edges.
   function outline(connected={}) {
     const inset=.10, l=connected.W?0:inset,r=connected.E?1:1-inset,t=connected.N?0:inset,b=connected.S?1:1-inset;
-    return [[l,t],[r,t],[r,b],[l,b]];
+    // Cut missing diagonal corners as orthogonal steps. Never fill the corner
+    // of a diagonal-only tile or create a diagonal bevel at an L/T junction.
+    const p=[];
+    if(connected.W && connected.N && !connected.NW)p.push([l,t+inset],[l+inset,t+inset],[l+inset,t]);else p.push([l,t]);
+    if(connected.E && connected.N && !connected.NE)p.push([r-inset,t],[r-inset,t+inset],[r,t+inset]);else p.push([r,t]);
+    if(connected.E && connected.S && !connected.SE)p.push([r,b-inset],[r-inset,b-inset],[r-inset,b]);else p.push([r,b]);
+    if(connected.W && connected.S && !connected.SW)p.push([l+inset,b],[l+inset,b-inset],[l,b-inset]);else p.push([l,b]);
+    return p;
   }
   // Transform flow coordinates with the current view-facing direction.
   function flowPoint(u,v,direction='S') {

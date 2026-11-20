@@ -30,8 +30,11 @@ final class FenceMesh {
     private float x(float u,float v){return ax+(bx-ax)*u+nx*v;}
     private float y(float u,float v,float z){return ay+(by-ay)*u+ny*v-z;}
     private void box(float u0,float u1,float v0,float v1,float z0,float z1,int top,int front,int side) {
+        box(u0,u1,v0,v1,z0,z1,top,front,side,true);
+    }
+    private void box(float u0,float u1,float v0,float v1,float z0,float z1,int top,int front,int side,boolean showEnd) {
         float near=by>=ay?u1:u0;
-        faces.add(new Face(side,x(near,v0),y(near,v0,z0),x(near,v1),y(near,v1,z0),x(near,v1),y(near,v1,z1),x(near,v0),y(near,v0,z1)));
+        if(showEnd)faces.add(new Face(side,x(near,v0),y(near,v0,z0),x(near,v1),y(near,v1,z0),x(near,v1),y(near,v1,z1),x(near,v0),y(near,v0,z1)));
         faces.add(new Face(front,x(u0,v1),y(u0,v1,z0),x(u1,v1),y(u1,v1,z0),x(u1,v1),y(u1,v1,z1),x(u0,v1),y(u0,v1,z1)));
         faces.add(new Face(top,x(u0,v0),y(u0,v0,z1),x(u1,v0),y(u1,v0,z1),x(u1,v1),y(u1,v1,z1),x(u0,v1),y(u0,v1,z1)));
     }
@@ -52,7 +55,8 @@ final class FenceMesh {
             int courses=tall?26:2;float courseHeight=tall?127.5f/26f:4.5f;
             for(int course=0;course<courses;course++)for(int i=0;i<boundaries[course%2].length-1;i++) {
                 float gap=.006f,u0=boundaries[course%2][i]+(i==0 && joins!=null && joins.linkA?0:gap),u1=boundaries[course%2][i+1]-(i==boundaries[course%2].length-2 && joins!=null && joins.linkB?0:gap),z0=course*courseHeight+.10f,z1=(course+1)*courseHeight-.10f-(course!=0 && i%2!=0?.12f:0);int k=(i+course)%3;
-                m.box(u0,u1,-.5f,.5f,z0,z1,tops[k],fronts[k],sides[k]);
+                boolean showEnd=by>=ay ? (i==boundaries[course%2].length-2 && (joins==null || !joins.linkB)) : (i==0 && (joins==null || !joins.linkA));
+                m.box(u0,u1,-.5f,.5f,z0,z1,tops[k],fronts[k],sides[k],showEnd);
                 float chip=u0+(u1-u0)*(.26f+(i%2)*.18f);m.mark(chip,chip+(u1-u0)*.13f,.505f,z0+1.1f,z0+1.45f,0xffaab3a0);
             }
             float wallHeight=tall?127.4f:8.9f;

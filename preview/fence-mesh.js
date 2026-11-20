@@ -8,11 +8,11 @@
     const nx=slope>=0?-depth:depth,ny=Math.abs(slope)*depth;
     const point=(u,v,z)=>({x:a.x+(b.x-a.x)*u+nx*v,y:a.y+(b.y-a.y)*u+ny*v-z});
     const output=[];
-    function box(u0,u1,v0,v1,z0,z1,palette) {
+    function box(u0,u1,v0,v1,z0,z1,palette,showEnd=true) {
       const p=(u,v,z)=>point(u,v,z);
       // The near end switches when the edge rises toward the right.
       const near=slope>=0?u1:u0;
-      output.push({color:palette.side,points:[p(near,v0,z0),p(near,v1,z0),p(near,v1,z1),p(near,v0,z1)]});
+      if(showEnd)output.push({color:palette.side,points:[p(near,v0,z0),p(near,v1,z0),p(near,v1,z1),p(near,v0,z1)]});
       output.push({color:palette.front,points:[p(u0,v1,z0),p(u1,v1,z0),p(u1,v1,z1),p(u0,v1,z1)]});
       output.push({color:palette.top,points:[p(u0,v0,z1),p(u1,v0,z1),p(u1,v1,z1),p(u0,v1,z1)]});
     }
@@ -26,7 +26,10 @@
       const courses=material==='stone-tall'?26:2,courseHeight=material==='stone-tall'?127.5/26:4.5;
       for(let course=0;course<courses;course++)for(let i=0;i<boundaries[course%2].length-1;i++) {
         const gap=.006,u0=boundaries[course%2][i]+(i===0 && joins.linkA?0:gap),u1=boundaries[course%2][i+1]-(i===boundaries[course%2].length-2 && joins.linkB?0:gap),z0=course*courseHeight+.10,z1=(course+1)*courseHeight-.10-(course && i%2?.12:0);
-        box(u0,u1,-.5,.5,z0,z1,palettes[(i+course)%3]);
+        // Interior stones are a continuous wall, not separate protruding cubes.
+        // End faces exist only at the visible, unconnected end of the segment.
+        const showEnd=slope>=0 ? (i===boundaries[course%2].length-2 && !joins.linkB) : (i===0 && !joins.linkA);
+        box(u0,u1,-.5,.5,z0,z1,palettes[(i+course)%3],showEnd);
         const chip=u0+(u1-u0)*(.26+(i%2)*.18);mark(chip,chip+(u1-u0)*.13,.505,z0+1.1,z0+1.45,'#aab3a0');
       }
       const joint={top:'#b8c1b1',front:'#929c8c',side:'#73806e'};

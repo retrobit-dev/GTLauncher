@@ -10,5 +10,5 @@ const multi=plan([a,b,corner],(c,r)=>c===3?1:r===4?3:2);assert.equal(multi[0].po
 const steppedFaces=faces({x:0,y:0},{x:14,y:7},'wood',step[0]);assert(steppedFaces.some(f=>f.points.some(pt=>pt.y < -15)),'shared post extends above its lower endpoint');
 assert.equal(plan([f(3,4,'S','stone'),f(4,4,'S','stone')],c=>c===3?1:2).filter(x=>x.postB===false || x.postA===false).length,0);
 const s=[f(3,4,'S','stone'),f(4,5,'W','stone')];p=plan(s,()=>1);assert.equal(p.filter(x=>x.joinA||x.joinB).length,1);
-assert.equal(faces({x:0,y:0},{x:14,y:7},'stone',p[0]).length+faces({x:14,y:7},{x:28,y:0},'stone',p[1]).length,59);
+assert.equal(faces({x:0,y:0},{x:14,y:7},'stone',p[0]).length+faces({x:14,y:7},{x:28,y:0},'stone',p[1]).length,47);
 console.log('Fence shared posts and stepped wood junctions without merging segment data: OK');
