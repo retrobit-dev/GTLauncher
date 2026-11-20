@@ -146,3 +146,12 @@ for(const length of [3,4,5])for(const axis of ['E','S'])for(const material of ['
  for(let q=0;q<4;q++) {const rotated=require('../preview/world-view-rotation').bridge(bridge,20,q);assert(b.valid(world,[{...bridge,column:rotated.column,row:rotated.row,axis:rotated.axis}]));}
 }
 console.log('Flat bridge extends exactly quarter tile beyond each end, with inset straight rails: OK');
+// Redesigned thicker corner posts remain within the one-tile deck at every editor tilt.
+for(const elevation of [5,25,53])for(const length of [3,4,5]) {
+ const width=28,height=width*Math.sin(elevation*Math.PI/180),corners=b.wideDeck(length+.5,1,width,height),rail=b.insetRails(corners,length+.5,0,false,.27),a=corners[0];
+ for(const pair of [rail[0],rail[3]])for(const p of pair)for(const dx of [-1.425,1.425])for(const dy of [-Math.min(.35,height*.035)-.175,Math.min(.35,height*.035)+.175]) {
+  const x=p.x+dx-a.x,y=p.y+dy-a.y,across=(x/(width/2)+y/(height/2))/2;assert(across>=0 && across<=1);
+ }
+ assert(b.wideContains({x:rail[0][0].x,y:rail[0][0].y-7},corners,8,length,1.25,false,true));
+}
+console.log('Redesigned thicker posts stay inside one-tile width, with matching picking: OK');

@@ -70,7 +70,23 @@ final class WorldStore {
     }
 
     WorldStore(SharedPreferences prefs) { this(prefs,null); }
-    WorldStore(SharedPreferences prefs,InventoryStore inventory) {this.prefs=prefs;this.inventory=inventory;}
+    WorldStore(SharedPreferences prefs,InventoryStore inventory) {
+        this.prefs=prefs;this.inventory=inventory;resetPlacedBridgesOnce();
+    }
+    private void resetPlacedBridgesOnce() {
+        final String marker="bridge_redesign_reset_v1",backup="worlds_before_bridge_redesign_v1";
+        if(prefs.getBoolean(marker,false))return;
+        try {
+            list(); // Reject any unreadable world before touching the saved array.
+            String original=prefs.getString(WORLDS_KEY,"[]"),cleaned=BridgeReset.clean(original);
+            SharedPreferences.Editor edit=prefs.edit();
+            if(!cleaned.equals(original)) {
+                if(prefs.contains(backup) && !original.equals(prefs.getString(backup,null)))return;
+                edit.putString(backup,original).putString(WORLDS_KEY,cleaned);
+            }
+            edit.putBoolean(marker,true).commit(); // backup, world and marker atomically
+        } catch (Exception ignored) { /* Leave the original world untouched on failure. */ }
+    }
 
     private static String requiredString(JSONObject object, String key) throws JSONException {
         Object value = object.get(key);
@@ -736,9 +752,10 @@ final class WorldStore {
         if(target!=null && (target.optInt("column",-1)!=old.getInt("column") || target.optInt("row",-1)!=old.getInt("row")))return false;
         source.remove(index);data.put(sourceKey,source);
         if(target!=null){
+            if(targetKey.equals("bridges")) {int c=target.getInt("column"),r=target.getInt("row"),height=world.previewData.height(c,r);if(height<1)return false;target.put("gap",true).put("free",true).put("deck",height).put("straight",true);}
             if(targetKey.equals("orangeTrees") && world.showCharacter){int size=target.optInt("size",2),c=target.getInt("column"),r=target.getInt("row");if(world.characterColumn>=c && world.characterColumn<c+size && world.characterRow>=r && world.characterRow<r+size)return false;}
             JSONArray dest=data.optJSONArray(targetKey);if(dest==null)dest=new JSONArray();dest.put(new JSONObject(target.toString()));data.put(targetKey,dest);
-            int needed=targetKey.equals("bridges")?(target.has("length")?16:15):targetKey.equals("fences")?("stone-tall".equals(target.optString("material"))?17:13):target.has("plantId")?12:"bush".equals(target.optString("kind"))?(target.optInt("size",1)==2?11:10):"wild-grass".equals(target.optString("kind"))?9:target.has("size")?8:7;
+            int needed=targetKey.equals("bridges")?28:targetKey.equals("fences")?("stone-tall".equals(target.optString("material"))?17:13):target.has("plantId")?12:"bush".equals(target.optString("kind"))?(target.optInt("size",1)==2?11:10):"wild-grass".equals(target.optString("kind"))?9:target.has("size")?8:7;
             root.put("version",Math.max(world.previewData.version,needed));
         }
         PreviewWorld20 parsed;try{parsed=PreviewWorld20.parse(root.toString());}catch(JSONException invalid){return false;}
@@ -757,6 +774,7 @@ final class WorldStore {
             JSONArray a=data.optJSONArray(key);if(a==null||index<0||index>=a.length()||!a.getJSONObject(index).toString().equals(e.getString("expected")))return false;
             if(e.has("target")){JSONObject old=a.getJSONObject(index),target=e.getJSONObject("target");String to=e.getString("targetKey");
                 if(!java.util.Arrays.asList("orangeTrees","fences","bridges").contains(to)||target.optInt("column",-1)!=old.getInt("column")||target.optInt("row",-1)!=old.getInt("row"))return false;
+                if(to.equals("bridges")){int c=target.getInt("column"),r=target.getInt("row"),height=world.previewData.height(c,r);if(height<1)return false;target.put("gap",true).put("free",true).put("deck",height).put("straight",true);}
                 if(to.equals("orangeTrees") && world.showCharacter){int size=target.optInt("size",2),c=target.getInt("column"),r=target.getInt("row");if(world.characterColumn>=c&&world.characterColumn<c+size&&world.characterRow>=r&&world.characterRow<r+size)return false;}
             }entries.add(e);
         }
@@ -764,7 +782,7 @@ final class WorldStore {
         for(JSONObject e:entries){String key=e.getString("key");JSONArray a=data.getJSONArray(key);a.remove(e.getInt("index"));}
         int version=world.previewData.version;
         for(JSONObject e:entries)if(e.has("target")){String key=e.getString("targetKey");JSONObject target=e.getJSONObject("target");JSONArray a=data.optJSONArray(key);if(a==null)a=new JSONArray();a.put(target);data.put(key,a);
-            int needed=key.equals("bridges")?(target.has("length")?16:15):key.equals("fences")?("stone-tall".equals(target.optString("material"))?17:13):target.has("plantId")?12:"bush".equals(target.optString("kind"))?(target.optInt("size",1)==2?11:10):"wild-grass".equals(target.optString("kind"))?9:target.has("size")?8:7;version=Math.max(version,needed);
+            int needed=key.equals("bridges")?28:key.equals("fences")?("stone-tall".equals(target.optString("material"))?17:13):target.has("plantId")?12:"bush".equals(target.optString("kind"))?(target.optInt("size",1)==2?11:10):"wild-grass".equals(target.optString("kind"))?9:target.has("size")?8:7;version=Math.max(version,needed);
         }
         root.put("version",version);
         PreviewWorld20 parsed;try{parsed=PreviewWorld20.parse(root.toString());}catch(JSONException invalid){return false;}
@@ -777,7 +795,9 @@ final class WorldStore {
         JSONArray next=new JSONArray();boolean found=false;
         for(int i=0;i<before.length();i++) {JSONObject item=before.getJSONObject(i);
             if(item.getInt("column")==expected.column && item.getInt("row")==expected.row && item.getString("axis").equals(expected.axis) && item.getString("material").equals(expected.material) && item.optInt("length",3)==expected.length && item.optInt("opacity",-1)==expected.opacity){
-                if(found)return false;found=true;if(delete)continue;item.put("column",column);item.put("row",row);
+                if(found)return false;found=true;if(delete)continue;
+                if(expected.straight){if(column<0 || row<0 || column>=world.gridSize() || row>=world.gridSize() || world.previewData.height(column,row)<1)return false;item.put("deck",world.previewData.height(column,row));}
+                item.put("column",column);item.put("row",row);
             }
             next.put(item);
         }
@@ -790,7 +810,8 @@ final class WorldStore {
         if(length<3 || length>5 || !worldId.equals(activeId()) || !java.util.Arrays.asList("E","S").contains(axis) || !java.util.Arrays.asList("wood","stone").contains(material))return false;
         World world=activeWorld();if(world==null || world.previewData==null)return false;
         JSONObject root=new JSONObject(world.previewData.toJson()),data=root.getJSONObject("world");JSONArray bridges=data.optJSONArray("bridges");if(bridges==null)bridges=new JSONArray();
-        JSONObject bridge=new JSONObject().put("column",column).put("row",row).put("axis",axis).put("material",material);if(length!=3)bridge.put("length",length);bridges.put(bridge);data.put("bridges",bridges);root.put("version",Math.max(world.previewData.version,length==3?15:16));
+        if(column<0 || row<0 || column>=world.gridSize() || row>=world.gridSize() || world.previewData.height(column,row)<1)return false;
+        JSONObject bridge=new JSONObject().put("column",column).put("row",row).put("axis",axis).put("material",material).put("gap",true).put("free",true).put("deck",world.previewData.height(column,row)).put("straight",true);if(length!=3)bridge.put("length",length);bridges.put(bridge);data.put("bridges",bridges);root.put("version",Math.max(world.previewData.version,28));
         PreviewWorld20 parsed;try{parsed=PreviewWorld20.parse(root.toString());}catch(JSONException invalid){return false;}
         java.util.List<World> worlds=list();for(int i=0;i<worlds.size();i++)if(worldId.equals(worlds.get(i).id)){worlds.set(i,fromPreview(parsed));return saveWorlds(worlds,worldId);}return false;
     }

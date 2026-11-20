@@ -1,0 +1,21 @@
+const assert=require('node:assert/strict'),{chromium}=require('playwright-core');
+(async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage']});try{
+ const page=await browser.newPage({viewport:{width:1000,height:700},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.addInitScript(()=>{if(localStorage.getItem('gtlauncher.worlds.v1'))return;const tiles=Array(400).fill(1),stacks=tiles.map(()=>[1]);tiles[5*20+5]=0;stacks[5*20+5]=[];
+ const world={id:'old',name:'Old',description:'unchanged',color:'#a8c795',gridSize:20,tiles,blockStacks:stacks,showCharacter:true,characterColumn:5,characterRow:5,characterScale:1,characterFacing:'S',house:null,bridges:[{column:5,row:5,axis:'E',material:'wood',gap:true,free:true,deck:1,straight:true}],orangeTrees:[{column:10,row:10,kind:'wild-grass',size:1}]};
+ localStorage.setItem('gtlauncher.worlds.v1',JSON.stringify({activeId:'old',worlds:[world]}));});
+ await page.route('**/api.open-meteo.com/**',r=>r.abort());await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.worldManager);
+ const result=await page.evaluate(()=>({world:worldManager.getActive(),backup:JSON.parse(localStorage.getItem('gtlauncher.worlds-before-bridge-redesign.v1')),marker:localStorage.getItem('gtlauncher.bridge-redesign-reset.v1')}));
+ assert.equal(result.marker,'done');assert.equal(result.world.bridges,undefined);assert.equal(result.backup.worlds[0].bridges.length,1);assert.equal(result.world.description,'unchanged');assert.equal(result.world.orangeTrees.length,1);assert.equal(result.world.tiles[105],0);assert(result.world.tiles[result.world.characterRow*20+result.world.characterColumn]);
+ await page.locator('#world-button').click();assert(await page.locator('#world-backup-bridge').isVisible());await page.locator('#world-close').click();
+ const placed=await page.evaluate(()=>worldManager.replaceBridges('old',[],[{column:10,row:5,axis:'E',material:'wood',gap:true,free:true,deck:1,straight:true}]));assert(placed);
+ await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.worldManager);assert.equal(await page.evaluate(()=>worldManager.getActive().bridges.length),1);assert.deepEqual(errors,[]);
+ await page.close();
+ const failure=await browser.newPage({viewport:{width:1000,height:700},reducedMotion:'reduce'});
+ await failure.addInitScript(()=>{const tiles=Array(400).fill(1),world={id:'old',name:'Old',description:'',color:'#a8c795',gridSize:20,tiles,showCharacter:true,characterColumn:4,characterRow:4,house:null,bridges:[{column:5,row:5,axis:'E',material:'wood',gap:true,free:true,deck:1,straight:true}]};
+  localStorage.setItem('gtlauncher.worlds.v1',JSON.stringify({activeId:'old',worlds:[world]}));const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='gtlauncher.worlds-before-bridge-redesign.v1')throw new Error('quota');return original.call(this,key,value);};});
+ await failure.route('**/api.open-meteo.com/**',r=>r.abort());await failure.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});await failure.waitForFunction(()=>window.worldManager);
+ assert.equal(await failure.evaluate(()=>JSON.parse(localStorage.getItem('gtlauncher.worlds.v1')).worlds[0].bridges.length),1);
+ assert.equal(await failure.evaluate(()=>localStorage.getItem('gtlauncher.bridge-redesign-reset.v1')),null);await failure.close();
+ console.log('Bridge reset backs up all worlds, relocates player off holes, runs once, and refuses on backup failure: OK');
+}finally{await browser.close();}})().catch(e=>{console.error(e);process.exitCode=1});

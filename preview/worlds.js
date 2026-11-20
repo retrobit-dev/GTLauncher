@@ -2,6 +2,8 @@
   'use strict';
   const KEY = 'gtlauncher.worlds.v1';
   const HOME_BACKUP_PREFIX = 'gtlauncher.home-before-25.';
+  const BRIDGE_RESET_MARKER = 'gtlauncher.bridge-redesign-reset.v1';
+  const BRIDGE_BACKUP = 'gtlauncher.worlds-before-bridge-redesign.v1';
   const BASE = Object.freeze({id: 'base', name: 'Base World', description: 'Dasar bersama untuk semua world.', color: null});
   const BUILT_INS = [BASE];
   const dialog = document.getElementById('world-dialog');
@@ -256,6 +258,42 @@
     }
   }
   state = readState();
+  // One-time, explicit bridge reset. Preserve all other data and never write if
+  // any world is unreadable, the backup fails, or the player cannot be placed.
+  function resetPlacedBridges() {
+    if(storageError)return false;
+    try {
+      if(localStorage.getItem(BRIDGE_RESET_MARKER)==='done')return false;
+      if(localStorage.getItem(KEY)!==loadedRaw)throw new Error('World changed in another tab');
+      const affected=state.worlds.some(w=>w.bridges?.length);
+      if(affected) {
+        const next={...state,worlds:state.worlds.map(w=>{
+          if(!w.bridges?.length)return w;
+          const copy={...w};delete copy.bridges;
+          const c=copy.characterColumn??4,r=copy.characterRow??4,size=copy.gridSize;
+          if(copy.tiles && !copy.tiles[r*size+c]){
+            let best=null;
+            for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+              const material=copy.tiles[y*size+x],house=copy.house;
+              if(!material || solidTreeAt(copy,x,y) || (house && x>=house.column && x<house.column+3 && y>=house.row && y<house.row+3))continue;
+              const rank=[material===3?1:0,Math.abs(x-c)+Math.abs(y-r),y,x];
+              if(!best || rank[0]<best.rank[0] || (rank[0]===best.rank[0] && rank[1]<best.rank[1]))best={x,y,rank};
+            }
+            if(!best)throw new Error('No safe character tile');
+            copy.characterColumn=best.x;copy.characterRow=best.y;
+          }
+          return copy;
+        })};
+        if(localStorage.getItem(BRIDGE_BACKUP)===null)localStorage.setItem(BRIDGE_BACKUP,loadedRaw);
+        if(localStorage.getItem(BRIDGE_BACKUP)!==loadedRaw)throw new Error('Existing backup differs');
+        if(localStorage.getItem(KEY)!==loadedRaw)throw new Error('World changed in another tab');
+        const raw=JSON.stringify(next);localStorage.setItem(KEY,raw);loadedRaw=raw;state=next;
+      }
+      localStorage.setItem(BRIDGE_RESET_MARKER,'done');
+      return affected;
+    } catch (_) {storageError='Jembatan belum dihapus dengan aman. Periksa penyimpanan atau posisi karakter; data cadangan tetap tersedia.';return false;}
+  }
+  const bridgesReset = resetPlacedBridges();
   // Home is upgraded only when the complete saved state is readable; a copy of
   // the original storage is kept before any write, including terrain holes.
   function upgradeHome25() {
@@ -512,6 +550,7 @@
     const active = activeWorld();
     activeLabel.textContent = storageError ? `World: ${displayName(active)} · Data bermasalah` : `World: ${displayName(active)}`;
     $('world-backup').hidden = !storageError && !state.worlds.some(w => [20,25,50,100].includes(w.gridSize));
+    try { $('world-backup-bridge').hidden = !localStorage.getItem(BRIDGE_BACKUP); } catch (_) { $('world-backup-bridge').hidden = true; }
     try { $('world-backup-home').hidden = !Object.keys(localStorage).some(key => key.startsWith(HOME_BACKUP_PREFIX)); }
     catch (_) { $('world-backup-home').hidden = true; }
     $('world-create-home').hidden = Boolean(storageError) || state.worlds.some(w => w.name.trim().toLocaleLowerCase() === 'home');
@@ -592,6 +631,13 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       announce('Cadangan data asli diunduh. Data di browser tidak diubah.');
     } catch (_) { announce('Cadangan tidak dapat dibaca dari penyimpanan browser.'); }
+  });
+  $('world-backup-bridge').addEventListener('click', () => {
+    try {const raw=localStorage.getItem(BRIDGE_BACKUP);if(!raw){announce('Cadangan jembatan tidak ditemukan.');return;}
+      const url=URL.createObjectURL(new Blob([raw],{type:'application/json'})),link=document.createElement('a');
+      link.href=url;link.download='gtlauncher-sebelum-reset-jembatan.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      announce('Cadangan world sebelum penghapusan jembatan diunduh.');
+    } catch (_) {announce('Cadangan jembatan tidak dapat dibaca.');}
   });
   $('world-backup-home').addEventListener('click', () => {
     try {
@@ -806,6 +852,7 @@
   }
   window.worldManager = Object.freeze({getActive: activeWorld, baseStackAt: (column,row) => window.BaseTerrain?.stack(column,row) ?? null, replaceRamps, replaceBlockOpacity, replaceBridges, replaceObjectGroup, replaceCatalogObjects, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, replacePlayerHouse, replaceOrangeTrees, replaceFences, updateTiles, updateBlockStacks, tillTile});
   render();
-  if (homeUpgraded) announce('Home diperbarui menjadi 25×25. Cadangan sebelum perubahan tersedia untuk diunduh.');
+  if (bridgesReset) announce('Jembatan lama dihapus. Cadangan world sebelum perubahan tersedia untuk diunduh.');
+  else if (homeUpgraded) announce('Home diperbarui menjadi 25×25. Cadangan sebelum perubahan tersedia untuk diunduh.');
   else if (storageError) announce(storageError);
 })();

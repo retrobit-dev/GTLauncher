@@ -675,8 +675,8 @@ public final class WeatherSkyView extends View {
         bridgePostFace(canvas,new float[]{x,y-8.5f,x+half,y-9.5f,x+half,y-1,x,y},wood?0xff78472f:0xff756b61,outline,alpha);
         bridgePostFace(canvas,new float[]{x-half,y-9.5f,x,y-10.5f,x+half,y-9.5f,x,y-8.5f},wood?0xffc9895e:0xffb7a896,outline,alpha);
     }
-    private void drawInsetBridgePost(Canvas canvas,float x,float y,boolean wood,int alpha) {
-        float h=.65f,cap=Math.min(.35f,ISLAND_TILE_HEIGHT*.035f),top=y-BLOCK_HEIGHT;
+    private void drawInsetBridgePost(Canvas canvas,float x,float y,boolean wood,int alpha,boolean straight) {
+        float h=straight?1.25f:.65f,cap=Math.min(.35f,ISLAND_TILE_HEIGHT*.035f),top=y-(straight?BLOCK_HEIGHT*2:BLOCK_HEIGHT);
         int outline=wood?0xff57362c:0xff514942;
         bridgePostFace(canvas,new float[]{x-h,top,x,top+cap,x,y,x-h,y-cap},wood?0xffa45f3d:0xff988879,outline,alpha);
         bridgePostFace(canvas,new float[]{x,top+cap,x+h,top,x+h,y-cap,x,y},wood?0xff78472f:0xff756b61,outline,alpha);
@@ -704,15 +704,17 @@ public final class WeatherSkyView extends View {
         if(bridge.inset || bridge.straight){
             railLX=new float[4];railLY=new float[4];railRX=new float[4];railRY=new float[4];
             float railShoulder=bridge.straight?1f/(bridge.length+.5f):shoulder;
-            float[] ts={.22f/span,railShoulder,1f-railShoulder,1f-.22f/span};
+            float margin=bridge.straight ? .27f : .22f;
+            float[] ts={margin/span,railShoulder,1f-railShoulder,1f-margin/span};
             for(int i=0;i<4;i++){float t=ts[i],z=(bridge.straight?0:BridgeGeometry.rise(t,bridge.length,BLOCK_HEIGHT*.5f,bridge.inset));
-                railLX[i]=ax+(bx-ax)*t+(dx-ax)*.22f;railLY[i]=ay+(by-ay)*t+(dy-ay)*.22f-z;
-                railRX[i]=ax+(bx-ax)*t+(dx-ax)*.78f;railRY[i]=ay+(by-ay)*t+(dy-ay)*.78f-z;}
+                railLX[i]=ax+(bx-ax)*t+(dx-ax)*margin;railLY[i]=ay+(by-ay)*t+(dy-ay)*margin-z;
+                railRX[i]=ax+(bx-ax)*t+(dx-ax)*(1-margin);railRY[i]=ay+(by-ay)*t+(dy-ay)*(1-margin)-z;}
         }
-        for(int pass=0;pass<2;pass++){paint.setColor(pass==0?(wood?0xff71442f:0xff6f645b):(wood?0xffcb936a:0xffc6b9a7));paint.setAlpha(alpha);paint.setStrokeWidth(pass==0?((bridge.inset || bridge.straight) ? .7f : bridge.centered ? 1.25f : 2):.55f);
-            for(int j=0;j<3;j++){canvas.drawLine(railLX[j],railLY[j]-BLOCK_HEIGHT,railLX[j+1],railLY[j+1]-BLOCK_HEIGHT,paint);canvas.drawLine(railRX[j],railRY[j]-BLOCK_HEIGHT,railRX[j+1],railRY[j+1]-BLOCK_HEIGHT,paint);}}
+        float railHeight=bridge.straight?BLOCK_HEIGHT*2:BLOCK_HEIGHT;
+        for(int pass=0;pass<2;pass++){paint.setColor(pass==0?(wood?0xff71442f:0xff6f645b):(wood?0xffcb936a:0xffc6b9a7));paint.setAlpha(alpha);paint.setStrokeWidth(pass==0?(bridge.straight ? .85f : bridge.inset ? .7f : bridge.centered ? 1.25f : 2):.55f);
+            for(int j=0;j<3;j++){canvas.drawLine(railLX[j],railLY[j]-railHeight,railLX[j+1],railLY[j+1]-railHeight,paint);canvas.drawLine(railRX[j],railRY[j]-railHeight,railRX[j+1],railRY[j+1]-railHeight,paint);}}
         paint.setStyle(Paint.Style.FILL);
-        if(bridge.inset || bridge.straight){for(int i:new int[]{0,3}){drawInsetBridgePost(canvas,railLX[i],railLY[i],wood,alpha);drawInsetBridgePost(canvas,railRX[i],railRY[i],wood,alpha);}}
+        if(bridge.inset || bridge.straight){for(int i:new int[]{0,3}){drawInsetBridgePost(canvas,railLX[i],railLY[i],wood,alpha,bridge.straight);drawInsetBridgePost(canvas,railRX[i],railRY[i],wood,alpha,bridge.straight);}}
         else {drawWideBridgePost(canvas,ax,ay+2,wood,alpha,bridge.centered?1.25f:2);drawWideBridgePost(canvas,bx,by+2,wood,alpha,bridge.centered?1.25f:2);drawWideBridgePost(canvas,cx,cy+2,wood,alpha,bridge.centered?1.25f:2);drawWideBridgePost(canvas,dx,dy+2,wood,alpha,bridge.centered?1.25f:2);}
     }
     private void drawBridges(Canvas canvas) {

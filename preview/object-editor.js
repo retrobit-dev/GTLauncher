@@ -63,7 +63,7 @@
     if(character.visible){const snapshot=window.sceneEditing?.characterCatalogIcon?.();row(`Karakter · ${columnLabel(character.column)}${character.row+1}`,snapshot || `assets/main-character${['N','W'].includes(character.facing)?'-back':''}.png?v=short-stocky-1`,null,0,null,true);if(!snapshot && ['W','E'].includes(character.facing))libraryList.lastElementChild.querySelector('img').style.transform='scaleX(-1)';}
     if(house)row(`Rumah player · ${columnLabel(house.column)}${house.row+1}${house.visible?'':' (tersembunyi)'}`,'assets/simple-house-aligned.png',null,0,null,true);
     (world.orangeTrees||[]).forEach((t,i)=>{const label=t.kind==='bush'?(t.variant==='flower'?'Semak melati':t.variant==='berry'?'Semak murbei':'Semak'):t.kind==='wild-grass'?'Rumput liar':t.kind==='conifer'?'Pohon cemara laut':'Pohon jeruk';const image=t.kind==='bush'?(t.variant==='flower'?'assets/bush-jasmine.png':t.variant==='berry'?'assets/bush-mulberry.png':'assets/bush-selected.png'):t.kind==='wild-grass'?'assets/wild-grass-selected.png':t.kind==='conifer'?'assets/cemara-laut-redesign.png':'assets/orange-tree-pixel.png';row(`${label} · ${columnLabel(t.column)}${t.row+1}`,image,'trees',i,t);});
-    (world.bridges||[]).forEach((b,i)=>row(`Jembatan ${b.material==='wood'?'kayu':'batu'} · ${columnLabel(b.column)}${b.row+1} · ${b.length||3}×${b.centered?2:b.width||1}`,`assets/bridge-${b.material}${b.width?'-wide':'-reference'}.png`,'bridges',i,b));
+    (world.bridges||[]).forEach((b,i)=>row(`Jembatan ${b.material==='wood'?'kayu':'batu'} · ${columnLabel(b.column)}${b.row+1} · ${b.length||3}×${b.centered?2:b.width||1}`,`assets/bridge-redesign-${b.material}.svg`,'bridges',i,b));
     (world.fences||[]).forEach((f,i)=>row(`${f.material==='stone-tall'?'Tembok tinggi':f.material==='wood'?'Pagar kayu':'Pagar batu'} · ${columnLabel(f.column)}${f.row+1} · ${f.edge}`,`assets/fence-mesh-${f.material}.png`,'fences',i,f));
     if(!libraryList.childElementCount){const empty=document.createElement('p');empty.textContent='Belum ada objek yang ditampilkan.';libraryList.append(empty);}
   }
@@ -77,7 +77,7 @@
   $('catalog-bulk-replace').addEventListener('click',()=>{if(!catalogSelection.length)return;deactivateTerrain();syncControls();catalogReplacement={worldId:worldId,items:catalogSelection.map(s=>({...s})),expected:objectSets(window.worldManager.getActive()),label:`${catalogSelection.length} objek`};renderLibrary();selectCatalogTab(0);libraryDialog.scrollTop=0;});
   $('catalog-replace-cancel').addEventListener('click',()=>{catalogReplacement=null;renderLibrary();});
   libraryDialog.addEventListener('close',()=>{catalogReplacement=null;catalogSelection=[];});
-  function bridgeDeck(tile) {const w=window.worldManager.getActive(),i=tile.row*w.gridSize+tile.column;return Math.max(1,w.blockStacks?.[i]?.length ?? (w.tiles?.[i]?1:0));}
+  function bridgeDeck(tile) {const w=window.worldManager.getActive(),i=tile.row*w.gridSize+tile.column;const height=w.blockStacks?.[i]?.length ?? (w.tiles?.[i]?1:0);return height>0?height:null;}
   function movedBridge(b,tile) {return b.width!==undefined ? {...b,...tile} : {...b,...tile,gap:true,free:true,deck:bridgeDeck(tile)};}
   function replacementForButton(id,source) {
     const position={column:source.object.column,row:source.object.row};
@@ -89,7 +89,7 @@
     const fence=id.match(/^catalog-place-fence-(wood|stone)$/);
     if(fence)return {key:'fences',object:{...position,edge:source.key==='fences'?source.object.edge:'S',material:fence[1]}};
     const bridge=id.match(/^catalog-place-bridge-(wood|stone)(?:-(4|5))?$/);
-    if(bridge)return {key:'bridges',object:{...position,axis:source.key==='bridges'?source.object.axis:'E',material:bridge[1],gap:true,free:true,deck:source.key==='bridges' && source.object.free ? source.object.deck : bridgeDeck(position),straight:true,...(bridge[2]?{length:Number(bridge[2])}:{})}};
+    if(bridge)return {key:'bridges',object:{...position,axis:source.key==='bridges'?source.object.axis:'E',material:bridge[1],gap:true,free:true,deck:bridgeDeck(position),straight:true,...(bridge[2]?{length:Number(bridge[2])}:{})}};
     return null;
   }
   libraryDialog.addEventListener('click',event=>{
@@ -196,7 +196,7 @@
     const tile=scene()?.tileAt(scene().toLocal(event.clientX,event.clientY));
     if(placingBridge) {
       const before=window.worldManager.getActive().bridges||[],next=tile && [...before,{...tile,axis:bridgeAxis,material:placingBridge.material,gap:true,free:true,deck:bridgeDeck(tile),straight:true,...(placingBridge.length===3?{}:{length:placingBridge.length})}];
-      if(!next || !saveBridges(before,next)){tell(`EDITING · Tapak jembatan harus di dalam world dan tidak bertumpuk dengan objek lain.`);return;}
+      if(!next || !saveBridges(before,next)){tell(`EDITING · Tile awal harus memiliki block; tapak dan kedua ujung harus di dalam world dan bebas objek lain.`);return;}
       selectedType='bridge';selectedBridgeIndex=before.length;selected=true;refresh();syncControls();tell('EDITING · Jembatan ditempatkan. Ketuk tile lain atau Batal.');return;
     }
     if(placingFence) {

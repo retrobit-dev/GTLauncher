@@ -102,8 +102,8 @@
     return [0,shoulder,1-shoulder,1].map(t=>[at(a,b,t),at(d,c,t)]);
   }
   // Rails/posts sit inside the deck: .22 tile from both long sides and ends.
-  function insetRails(corners,length,height,centerEnds=false) {
-    const [a,b,,d]=corners, across=.22, span=centerEnds?length-1:length, end=.22/span, shoulder=centerEnds ? .5/span : 1/span;
+  function insetRails(corners,length,height,centerEnds=false,margin=.22) {
+    const [a,b,,d]=corners, across=margin, span=centerEnds?length-1:length, end=margin/span, shoulder=centerEnds ? .5/span : 1/span;
     return [end,shoulder,1-shoulder,1-end].map(t=>[across,1-across].map(v=>({
       x:a.x+(b.x-a.x)*t+(d.x-a.x)*v,
       y:a.y+(b.y-a.y)*t+(d.y-a.y)*v-rise(t,length,height,centerEnds)
@@ -126,7 +126,7 @@
   function polygonContains(point,poly) {let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++) {const a=poly[i],b=poly[j];if((a.y>point.y)!==(b.y>point.y) && point.x<(b.x-a.x)*(point.y-a.y)/(b.y-a.y)+a.x)inside=!inside;}return inside;}
   function postContains(p,posts,half=2) {return posts.some(a=>{const dx=Math.abs(p.x-a.x),dy=p.y-(a.y+2);return dx<=half && dy>=-10.5+dx/half && dy<=-dx/half;});}
   function wideContains(point,corners,railHeight=4,length=3,postHalf=2,inset=false,straight=false) {
-    const railSections=straight?insetRails(corners,length+.5,0):inset?insetRails(corners,length,railHeight*.5,true):profilePoints(corners,length,railHeight*.5);
+    const railSections=straight?insetRails(corners,length+.5,0,false,.27):inset?insetRails(corners,length,railHeight*.5,true):profilePoints(corners,length,railHeight*.5);
     if(inset || straight){
       const posts=[...railSections[0],...railSections[railSections.length-1]];
       if(posts.some(p=>Math.abs(point.x-p.x)<=postHalf && point.y>=p.y-railHeight-.5 && point.y<=p.y+.5))return true;
