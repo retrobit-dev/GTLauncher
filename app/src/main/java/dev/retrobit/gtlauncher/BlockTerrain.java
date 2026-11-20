@@ -29,7 +29,6 @@ final class BlockTerrain {
                 Object value=stacks.get(i);
                 if(!(value instanceof JSONArray)) throw new JSONException("Invalid block stack");
                 JSONArray stack=(JSONArray)value;
-                if(stack.length()>32) throw new JSONException("Block stack too tall");
                 byte[] blocks=new byte[stack.length()];
                 for(int n=0;n<blocks.length;n++) blocks[n]=(byte)material(stack.get(n),1,10);
                 if((blocks.length==0?0:blocks[blocks.length-1])!=top) throw new JSONException("Block surface mismatch");

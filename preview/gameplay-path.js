@@ -9,7 +9,7 @@
     // Legacy worlds without this field keep their existing flat routing behavior.
     const stacks=world?.blockStacks;
     if (stacks !== undefined && (!Array.isArray(stacks) || stacks.length!==size*size ||
-      stacks.some(s=>!Array.isArray(s) || s.length>32 || s.some(v=>!Number.isInteger(v)||v<1||v>10)))) return null;
+      stacks.some(s=>!Array.isArray(s) || s.some(v=>!Number.isInteger(v)||v<1||v>10)))) return null;
     const height=p=>BridgeGeometry?.deckHeight(world,p) ?? (stacks ? stacks[keyOf(p)].length : (!world.tiles || world.tiles[keyOf(p)]!==0 ? 1 : 0));
     // In-memory ramp data only; portable world support is intentionally not enabled yet.
     // Reject malformed records instead of silently routing over unsupported terrain.

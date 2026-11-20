@@ -19,8 +19,6 @@ final class WorldStore {
     static final String BASE_ID = "base";
     private final SharedPreferences prefs;
     private final InventoryStore inventory;
-    private boolean heightResetFailed;
-    boolean heightResetFailed() { return heightResetFailed; }
 
     static final class SurfaceObject {
         final String type, edge, material, raw;
@@ -73,7 +71,7 @@ final class WorldStore {
 
     WorldStore(SharedPreferences prefs) { this(prefs,null); }
     WorldStore(SharedPreferences prefs,InventoryStore inventory) {
-        this.prefs=prefs;this.inventory=inventory;resetPlacedBridgesOnce();reduceIslandHeightsOnce();
+        this.prefs=prefs;this.inventory=inventory;resetPlacedBridgesOnce();
     }
     private void resetPlacedBridgesOnce() {
         final String marker="bridge_redesign_reset_v1",backup="worlds_before_bridge_redesign_v1";
@@ -88,20 +86,6 @@ final class WorldStore {
             }
             edit.putBoolean(marker,true).commit(); // backup, world and marker atomically
         } catch (Exception ignored) { /* Leave the original world untouched on failure. */ }
-    }
-
-    private void reduceIslandHeightsOnce() {
-        final String marker="island_five_blocks_v1",backup="worlds_before_five_blocks_v1";
-        if(prefs.getBoolean(marker,false))return;
-        try {
-            list();String original=prefs.getString(WORLDS_KEY,"[]"),cleaned=IslandHeightReset.clean(original);
-            SharedPreferences.Editor edit=prefs.edit();
-            if(!cleaned.equals(original)) {
-                if(prefs.contains(backup) && !original.equals(prefs.getString(backup,null))){heightResetFailed=true;return;}
-                edit.putString(backup,original).putString(WORLDS_KEY,cleaned);
-            }
-            heightResetFailed=!edit.putBoolean(marker,true).commit();
-        } catch(Exception ignored) { heightResetFailed=true; /* Never replace unreadable or incompatible worlds. */ }
     }
 
     private static String requiredString(JSONObject object, String key) throws JSONException {
@@ -363,7 +347,6 @@ final class WorldStore {
         JSONObject root = new JSONObject(json);
         if ("gtlauncher-preview-world".equals(root.optString("format"))) {
             PreviewWorld20 parsed=PreviewWorld20.parse(json);
-            for(int r=0;r<parsed.size;r++)for(int c=0;c<parsed.size;c++)if(parsed.height(c,r)+(parsed.rampDirection(c,r)==null?0:1)>5)throw new JSONException("World melebihi lima block termasuk ramp; impor dibatalkan");
             return fromPreview(parsed);
         }
         if (!"gtlauncher-world".equals(requiredString(root, "format"))

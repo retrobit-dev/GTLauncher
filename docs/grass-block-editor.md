@@ -1,8 +1,8 @@
 # Block Rumput di Map Editor
 
-Map Editor hanya tersedia di preview. World baru memakai salinan terrain Base World 50×50: empat block tanah dan satu block rumput per tile, yang dapat diedit secara independen. World lama tetap mempertahankan ukuran grid; kolom yang lebih tinggi dari lima block dipangkas setelah cadangan dibuat. Base World terkunci. Pilih world buatan, buka Map Editor, lalu pilih **Block → Rumput**. Pemilih block menampilkan nama lengkap dan thumbnail; pada layar kecil panel alat dapat digulir.
+Map Editor hanya tersedia di preview. World baru memakai salinan terrain Base World 50×50: empat block tanah dan satu block rumput per tile, yang dapat diedit secara independen. World lama tetap mempertahankan ukuran grid dan tinggi bangunannya. Base World terkunci. Pilih world buatan, buka Map Editor, lalu pilih **Block → Rumput**. Pemilih block menampilkan nama lengkap dan thumbnail; pada layar kecil panel alat dapat digulir.
 
-- **Tambah block** menempatkan satu block di atas block paling atas, atau pada sel kosong di dalam grid. Tidak memperluas batas grid; tinggi maksimum lima block per sel, termasuk ramp. Tinggi satu block sama dengan tinggi pita rumput di sisi pulau.
+- **Tambah block** menempatkan satu block di atas block paling atas, atau pada sel kosong di dalam grid. Tidak memperluas batas grid; tidak ada batas tinggi block yang ditentukan aplikasi; perangkat dan kapasitas penyimpanan tetap membatasi ukuran praktis. Tinggi satu block sama dengan tinggi pita rumput di sisi pulau.
 - **Ganti block** (pensil) mengganti block paling atas, bukan menambah tingkat. Pada sel kosong gunakan Tambah.
 - **Hapus block** menghapus block paling atas; sel menjadi kosong jika block terakhir dihapus. **Ambil jenis block** memilih jenis paling atas. **Isi area block** mengganti permukaan yang terhubung dengan jenis dan ketinggian yang sama, atau mengisi area kosong yang terhubung.
 - Ketuk permukaan atau sisi block yang terlihat untuk memilih kolomnya. Gerakan seret yang melewati sel yang sama beberapa kali mengubahnya sekali; satu seret merupakan satu langkah Undo/Redo.
@@ -193,9 +193,9 @@ Katalog sekarang menggunakan ikon baru dan desain lurus yang mendekati konsep pi
 
 Android menyimpan cadangan internal `worlds_before_bridge_redesign_v1` dan menghapus jembatan preview impor satu kali dalam transaksi preferensi yang sama, hanya bila world dapat dibaca dan hasil dapat divalidasi; inventory tetap terpisah. Belum ada antarmuka Android untuk mengekspor/memulihkan cadangan internal. Android belum diuji di APK atau perangkat, dan data browser/Android tidak disinkronkan otomatis.
 
-### Batas lima block untuk pulau
-Base World tetap setinggi lima block. World bertumpuk menampilkan tinggi berdasarkan stack sebenarnya tanpa menambahkan badan lima block lagi di bawah stack; world datar lama memakai badan lima block (empat bila memiliki ramp). World baru tetap memakai empat tanah dan satu rumput. Editor tidak menambah block melampaui lima; ramp dihitung sebagai satu block. World impor yang lebih tinggi ditolak tanpa mengubah data.
+### Pulau dasar dan bangunan tinggi
+Base World dan template world baru memiliki lima lapisan dasar. Block tambahan di editor tidak lagi dibatasi pada lima atau 32 lapisan; impor juga menerima stack yang lebih tinggi. Tinggi praktis tetap dibatasi memori, kapasitas penyimpanan, dan kinerja perangkat. World lama tidak lagi dipangkas otomatis. Cadangan yang dibuat oleh migrasi sebelumnya tetap tersedia melalui dialog World; migrasi yang sudah dilakukan tidak dibatalkan otomatis.
 
-Saat dibuka pertama kali, world tersimpan yang terlalu tinggi dipangkas dari bawah, mempertahankan lima lapisan teratas (empat bila ada ramp di atasnya). Material permukaan, posisi horizontal karakter/objek dan transparansi lapisan yang tersisa dipertahankan; koordinat level opacity dan tinggi dek bebas disesuaikan. Rumah, tanaman, ramp dan jembatan diperiksa ulang; jika hasil tidak valid, data lama tidak ditimpa. Cadangan lengkap browser tersedia pada dialog World melalui **Unduh cadangan sebelum lima block**. Block bawah yang dipangkas dan opacity-nya hilang dari world aktif; bentuk dan tinggi vertikal objek/rute dapat berubah.
+Ketuk sisi yang terlihat dengan Tambah untuk menambahkan block pada kolom di sebelah sisi itu dan pada tingkat yang sama. Saat ini hanya didukung apabila kolom tujuan sudah memiliki penyangga tepat di bawahnya; block melayang dan rongga di dalam kolom belum didukung. Tidak ada block tersembunyi yang dibuat otomatis.
 
-Android menjalankan migrasi terpisah saat aplikasi dibuka dan menyimpan cadangan di preferensi privat `worlds_before_five_blocks_v1`, tanpa tombol pemulihan saat ini. Impor terlalu tinggi ditolak. Pemeriksaan Java bukan uji APK/perangkat.
+Android menerima stack tinggi dan menggunakan penyimpanan opacity per block yang jarang (tidak lagi dibatasi 32 tingkat); Android tetap hanya gameplay. Belum diuji pada perangkat.

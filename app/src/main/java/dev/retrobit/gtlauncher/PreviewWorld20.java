@@ -15,11 +15,11 @@ final class PreviewWorld20 implements StackWater.Terrain {
     private final String json;
     final String id;
     private final BlockTerrain terrain;
-    private final int[] blockOpacity;
+    private final java.util.Map<Long,Integer> blockOpacity;
     private final byte[] rampDirections,rampMaterials;
     final java.util.List<BridgeGeometry.Bridge> bridges;
 
-    private PreviewWorld20(String json, String id, int size, int version, BlockTerrain terrain,java.util.List<BridgeGeometry.Bridge> bridges,int[] blockOpacity,byte[] rampDirections,byte[] rampMaterials) {
+    private PreviewWorld20(String json, String id, int size, int version, BlockTerrain terrain,java.util.List<BridgeGeometry.Bridge> bridges,java.util.Map<Long,Integer> blockOpacity,byte[] rampDirections,byte[] rampMaterials) {
         this.json = json; this.id = id; this.size = size; this.version = version; this.terrain = terrain;this.blockOpacity=blockOpacity;this.rampDirections=rampDirections;this.rampMaterials=rampMaterials;this.bridges=java.util.Collections.unmodifiableList(new java.util.ArrayList<>(bridges));
     }
     int tile(int column, int row) {
@@ -39,8 +39,8 @@ final class PreviewWorld20 implements StackWater.Terrain {
     int rampMaterial(int c,int r) {return rampMaterials[r*size+c];}
     int surfaceMaterial(int c,int r) {int material=rampMaterial(c,r);return material==0?tile(c,r):material;}
     boolean hasRamps() {for(byte value:rampDirections)if(value!=0)return true;return false;}
-    int blockOpacity(int c,int r,int level) {return blockOpacity[(r*size+c)*32+level];}
-    boolean hasBlockOpacity() {for(int value:blockOpacity)if(value>0)return true;return false;}
+    int blockOpacity(int c,int r,int level) {return blockOpacity.getOrDefault((((long)r*size+c)<<32)|(level & 0xffffffffL),0);}
+    boolean hasBlockOpacity() {return !blockOpacity.isEmpty();}
     public int height(int c,int r) { return terrain.height(c,r); }
     public int block(int c,int r,int level) { return terrain.block(c,r,level); }
     public int size() { return size; }
@@ -116,14 +116,14 @@ final class PreviewWorld20 implements StackWater.Terrain {
             }
         }
         final BlockTerrain terrain=BlockTerrain.parse(size,source,stacks);
-        int[] opacityByBlock=new int[size*size*32];
+        java.util.Map<Long,Integer> opacityByBlock=new java.util.HashMap<>();
         if(w.has("blockOpacity")) {
             if(version<20 || !(w.get("blockOpacity") instanceof JSONArray))throw new JSONException("Unsupported block opacity");
-            JSONArray values=w.getJSONArray("blockOpacity");if(values.length()>size*size*32)throw new JSONException("Too many block opacity entries");
+            JSONArray values=w.getJSONArray("blockOpacity");
             for(int i=0;i<values.length();i++) {
                 JSONObject entry=values.getJSONObject(i);keys(entry,"column","row","level","opacity");
-                int col=integer(entry,"column",0,size-1),row=integer(entry,"row",0,size-1),level=integer(entry,"level",0,31),value=integer(entry,"opacity",5,90),index=(row*size+col)*32+level;
-                if(value%5!=0 || level>=terrain.height(col,row) || opacityByBlock[index]!=0)throw new JSONException("Invalid block opacity");opacityByBlock[index]=value;
+                int col=integer(entry,"column",0,size-1),row=integer(entry,"row",0,size-1),level=integer(entry,"level",0,Integer.MAX_VALUE),value=integer(entry,"opacity",5,90);long index=(((long)row*size+col)<<32)|(level & 0xffffffffL);
+                if(value%5!=0 || level>=terrain.height(col,row) || opacityByBlock.containsKey(index))throw new JSONException("Invalid block opacity");opacityByBlock.put(index,value);
             }
         }
         bool(w,"showCharacter"); int c=integer(w,"characterColumn",0,size-1), r=integer(w,"characterRow",0,size-1);
@@ -215,7 +215,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
                 JSONObject ramp=ramps.getJSONObject(i);keys(ramp,"column","row","direction","material");
                 int x=integer(ramp,"column",0,size-1),y=integer(ramp,"row",0,size-1),index=y*size+x,material=integer(ramp,"material",1,10);
                 int dir=Arrays.asList("N","E","S","W").indexOf(string(ramp,"direction"));
-                if(dir<0 || directions[index]!=0 || terrain.height(x,y)<1 || terrain.height(x,y)>=32)throw new JSONException("Invalid ramp");
+                if(dir<0 || directions[index]!=0 || terrain.height(x,y)<1)throw new JSONException("Invalid ramp");
                 if(blocked[index])throw new JSONException("Ramp overlaps object");
                 directions[index]=(byte)(dir+1);materials[index]=(byte)material;
             }

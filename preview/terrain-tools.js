@@ -71,7 +71,18 @@
     if(world.id==='base'||![20,25,50,100].includes(world.gridSize)||!Array.isArray(world.tiles)) {
       status.textContent='Buat atau buka world 20×20, 25×25, 50×50 atau 100×100; Base dan world lama tidak diubah.';return;
     }
-    const point=scene.tileAt(scene.toLocal(event.clientX,event.clientY));
+    const local=scene.toLocal(event.clientX,event.clientY);
+    let point=scene.tileAt(local);
+    if(tool==='add') {
+      const side=scene.blockSideAt(local);
+      if(side) {
+        const dest=side.target;
+        if(dest.column<0||dest.row<0||dest.column>=world.gridSize||dest.row>=world.gridSize){status.textContent='Sisi berada di luar grid world.';return;}
+        const i=dest.row*world.gridSize+dest.column,h=world.blockStacks?world.blockStacks[i].length:(world.tiles[i]?1:0);
+        if(h!==side.level){status.textContent='Sisi ini memerlukan penyangga pada tingkat yang sama; block melayang belum didukung.';return;}
+        point=dest;
+      }
+    }
     if(!point) {status.textContent='Di luar area world.';return;}
     const index=point.row*world.gridSize+point.column;
     if(gesture && gesture.visited.has(index)) return;
@@ -95,7 +106,6 @@
     const stacks=world.blockStacks ? world.blockStacks.map(stack=>stack.slice()) : world.tiles.map(tile=>tile?[tile]:[]);
     const stack=stacks[index];
     if(tool==='add') {
-      if(stack.length>=5) {status.textContent='Tinggi maksimum 5 block.';return;}
       stack.push(value);
     } else if(tool==='erase') {
       if(!stack.length) {status.textContent='Tidak ada block untuk dihapus.';return;}

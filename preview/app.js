@@ -3080,6 +3080,14 @@
       const levelsDown=Math.min(stack.length-1,Math.floor((point.y-edge)/BLOCK_HEIGHT));
       return {column:tile.column,row:tile.row,level:stack.length-1-levelsDown};
     },
+    blockSideAt(point) {
+      const hit=this.blockAt(point);if(!hit)return null;
+      const world=window.worldManager?.getActive(),stack=world.blockStacks?.[hit.row*ISLAND_GRID_SIZE+hit.column] || [world.tiles[hit.row*ISLAND_GRID_SIZE+hit.column]];
+      const centre=characterCentre({column:hit.column,row:hit.row,blockHeight:stack.length}),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
+      const dx=point.x-centre.x,edge=centre.y+hh*(1-Math.abs(dx)/hw);
+      if(Math.abs(dx)>hw || point.y<edge)return null;
+      return {...hit,target:worldNeighbor(hit.column,hit.row,dx<0?'S':'E')};
+    },
     setObjectGroup(trees,fences) {editingTreeGroup=trees||[];editingFenceGroup=fences||[];if(REDUCED_MOTION)drawFrame();},
     setSelectedFence(f) {editingFenceSelection=f;if(REDUCED_MOTION)drawFrame();},
     surfaceHeight,
