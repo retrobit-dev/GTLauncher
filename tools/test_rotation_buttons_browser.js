@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
 (async()=>{const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH,args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader']});try{
  const page=await browser.newPage({viewport:{width:1000,height:700},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/api.open-meteo.com/**',r=>r.abort());await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:90000});
- await page.waitForFunction(()=>window.sceneEditing && window.worldManager,{timeout:90000});
+ await page.waitForFunction(()=>window.sceneEditing && window.worldManager,null,{timeout:90000});
  const before=await page.evaluate(()=>JSON.stringify(worldManager.getActive()));
  for(const mode of ['mode-gameplay','mode-map-editor']){
   await page.locator('#'+mode).click({timeout:90000});

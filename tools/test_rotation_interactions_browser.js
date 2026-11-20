@@ -68,7 +68,8 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
     await page.evaluate(()=>sceneEditing.turnIsland(1));
   }
   const savedCharacter=await page.evaluate(()=>worldManager.getCharacter());
-  await page.reload({waitUntil:'load'});
+  await page.reload({waitUntil:'domcontentloaded',timeout:90000});
+  await page.waitForFunction(()=>window.worldManager && window.sceneEditing,null,{timeout:90000});
   const reloaded=await page.evaluate(()=>({w:worldManager.getActive(),character:worldManager.getCharacter(),turns:sceneEditing.camera().quarterTurns}));
   for(let c=22;c<26;c++)assert.equal(reloaded.w.tiles[21*50+c],5,`edited tile ${c} persisted`);
   assert.deepEqual(reloaded.character,savedCharacter);assert.equal(reloaded.turns,0,'camera rotation is transient');

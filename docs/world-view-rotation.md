@@ -25,6 +25,13 @@ does not certify the interactions listed above.
 
 ### Verification of the experimental preview
 
+Re-run after exposing the controls: button visibility/turns, integration, group
+selection/move/undo, overlapping fences and water neighbours, and the four-way
+interaction/reload browser suites passed. The interaction test uses a longer
+DOM-ready reload wait to avoid timing out on slow rendering. These tests do not
+cover physical touch, every object combination, active gestures/routes, or
+visual correctness on all devices.
+
 `tools/test_rotation_interactions_browser.js` exercises all four orientations in
 an asymmetric 50×50 stacked world. It checks a raised top and level selection,
 ramp and fence/bridge picking, the tree footprint centre, overlapping tree
