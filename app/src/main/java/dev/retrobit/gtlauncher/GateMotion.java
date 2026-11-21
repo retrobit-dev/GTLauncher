@@ -3,6 +3,19 @@ package dev.retrobit.gtlauncher;
 /** Stateless gate opening based on distance from the player's tile-space position. */
 final class GateMotion {
     private GateMotion() {}
+    static final class State {
+        final double amount; final int side;
+        State(double amount,int side){this.amount=amount;this.side=side;}
+    }
+    static State update(int column,int row,String edge,double playerColumn,double playerRow,int previousSide) {
+        double amount=openness(column,row,edge,playerColumn,playerRow);
+        if(amount==0)return new State(0,0);
+        boolean vertical="E".equals(edge)||"W".equals(edge);
+        double boundary=vertical?column+("E".equals(edge)?.5:-.5):row+("S".equals(edge)?.5:-.5);
+        double position=vertical?playerColumn:playerRow;
+        int side=previousSide==1 || previousSide==-1?previousSide:position<boundary?-1:1;
+        return new State(amount,side);
+    }
     static double openness(int column,int row,String edge,double playerColumn,double playerRow) {
         if(!Double.isFinite(playerColumn) || !Double.isFinite(playerRow) || edge==null)return 0;
         double x1,y1,x2,y2;

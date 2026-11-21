@@ -15,5 +15,16 @@
     const distance=Math.hypot(player.column-(x1+t*dx),player.row-(y1+t*dy));
     const p=Math.max(0,Math.min(1,(1-distance)*2));return p*p*(3-2*p);
   }
-  return Object.freeze({openness});
+  // Remember the approach side until the player has moved out of range, so
+  // the leaf never reverses through the player halfway across the threshold.
+  function update(gate,player,previousSide=0) {
+    const amount=openness(gate,player);
+    if(!amount)return {amount:0,side:0};
+    const vertical=gate.edge==='E'||gate.edge==='W';
+    const boundary=vertical ? gate.column+(gate.edge==='E'?.5:-.5) : gate.row+(gate.edge==='S'?.5:-.5);
+    const position=vertical ? player.column : player.row;
+    const side=previousSide===1 || previousSide===-1 ? previousSide : position<boundary?-1:1;
+    return {amount,side};
+  }
+  return Object.freeze({openness,update});
 });
