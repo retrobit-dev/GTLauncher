@@ -443,6 +443,7 @@ final class WorldStore {
                 if ((old.previewData==null)!=(world.previewData==null))
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
+                    if(world.previewData.version<32 && old.surfaces.stream().anyMatch(o->o.type.equals("fence") && o.material.startsWith("preview-gate-")))throw new JSONException("Older preview format cannot replace gates");
                     if(world.previewData.version<31 && old.previewData.hasRiverDirection())throw new JSONException("Older preview format cannot replace river direction");
                     if(world.previewData.version<30 && old.previewData.hasRoads())throw new JSONException("Older preview format cannot replace roads");
                     if(world.previewData.version<29 && old.previewData.hasFloatingBlocks())throw new JSONException("Older preview format cannot replace floating blocks");

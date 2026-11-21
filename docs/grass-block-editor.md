@@ -207,3 +207,5 @@ yang terlihat dan tidak tersambung. Muka ujung setiap batu internal tidak lagi
 ditumpuk di atas bidang dinding, mengurangi pola menonjol di sisi kiri. Geometri
 pagar kayu dan data world tetap sama; kode Android diperiksa tetapi belum diuji
 pada perangkat.
+
+Editor region numbers are rendered in black at 25% opacity; the region boundary strokes are unchanged. The overlay is editor-only and does not alter world data.

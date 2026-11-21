@@ -2215,6 +2215,15 @@
     }
     return {a,b};
   }
+  const gateStates=new Map();let gateTurn=-1;
+  function gateFaces(f,g,player) {
+    if(gateTurn!==viewQuarterTurns){gateStates.clear();gateTurn=viewQuarterTurns;}
+    const projected={...viewPoint(f.column,f.row),edge:viewFacing(f.edge)};
+    const key=window.FenceEdges.key(f),p=player?.visible && cameraMode==='gameplay'?viewPoint(player.column,player.row):null;
+    const state=p?window.GateMotion.update(projected,p,gateStates.get(key)||0):{amount:0,side:0};
+    if(state.side)gateStates.set(key,state.side);else gateStates.delete(key);
+    return window.GateMesh.faces(g.a,g.b,projected.edge,f.material,state.amount,state.side);
+  }
   function drawFence(f,join) {
     const g=fenceGeometry(f);ctx.save();ctx.globalAlpha*=(100-(f.opacity ?? 0))/100;applyIslandTransform();
     ctx.save();clipIslandSurface();ctx.strokeStyle='rgba(12,23,40,.16)';ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(g.a.x,g.a.y);ctx.lineTo(g.b.x,g.b.y);ctx.stroke();ctx.restore();
@@ -2222,9 +2231,9 @@
     if(player?.visible && f.column===Math.round(player.column) && f.row===Math.round(player.row) && (viewFacing(f.edge)==='S'||viewFacing(f.edge)==='E'))ctx.globalAlpha*=.5;
     const selected=(editingFenceSelection && editingFenceSelection.column===f.column && editingFenceSelection.row===f.row && editingFenceSelection.edge===f.edge) || editingFenceGroup.some(t=>t.column===f.column && t.row===f.row && t.edge===f.edge);
     ctx.lineWidth=.30;ctx.lineJoin='round';
-    for(const face of window.FenceMesh.faces(g.a,g.b,f.material,join)) {
+    for(const face of (f.material.startsWith('gate-') ? gateFaces(f,g,player) : window.FenceMesh.faces(g.a,g.b,f.material,join))) {
       ctx.beginPath();ctx.moveTo(face.points[0].x,face.points[0].y);for(const p of face.points.slice(1))ctx.lineTo(p.x,p.y);ctx.closePath();
-      ctx.fillStyle=face.color;ctx.fill();if(!face.detail){ctx.strokeStyle=selected?'#fff4a8':(f.material.startsWith('stone')?'#687666':'#664936');ctx.stroke();}
+      ctx.fillStyle=face.color;ctx.fill();if(!face.detail){ctx.strokeStyle=selected?'#fff4a8':(f.material.includes('stone')?'#687666':'#664936');ctx.stroke();}
     }
     ctx.restore();
   }
@@ -2235,7 +2244,7 @@
     const order=fences.map((f,i)=>({i,depth:fenceViewDepth(f)})).sort((a,b)=>b.depth-a.depth || b.i-a.i);
     for(const {i} of order) {
       const f=fences[i],g=fenceGeometry(f);
-      if(window.FenceMesh.faces(g.a,g.b,f.material,joins[i]).some(face=>window.FenceMesh.contains(face.points,point.x,point.y)))return i;
+      if((f.material.startsWith('gate-') ? window.GateMesh.faces(g.a,g.b,viewFacing(f.edge),f.material) : window.FenceMesh.faces(g.a,g.b,f.material,joins[i])).some(face=>window.FenceMesh.contains(face.points,point.x,point.y)))return i;
     }
     return null;
   }
@@ -2663,7 +2672,7 @@
       const vertex=([u,v])=>{const p=position(column+u-.5,row+v-.5,height);if(ramp)p.y-=window.RampGeometry.fraction(ramp.direction,u,v)*BLOCK_HEIGHT;return p;};
       for(const [from,to] of window.EditorGridRegions.edges(column,row,size)) {const a=vertex(from),b=vertex(to);ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);}
     }
-    ctx.stroke();ctx.fillStyle='rgba(0,0,0,0.5)';ctx.font='bold 56px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.stroke();ctx.fillStyle='rgba(0,0,0,0.25)';ctx.font='bold 56px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
     for(const region of window.EditorGridRegions.regions(size)) {
       const cx=region.column+(region.width-1)/2,cy=region.row+(region.height-1)/2;
       // If the central tile is missing, use the nearest existing surface in the region.

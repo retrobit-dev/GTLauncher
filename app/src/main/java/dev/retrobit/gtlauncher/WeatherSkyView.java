@@ -521,7 +521,7 @@ public final class WeatherSkyView extends View {
         ISLAND_GRID_SIZE = worldId == null || "base".equals(worldId) ? 50 : 9;
         ISLAND_TOP = SCENE_HEIGHT - ISLAND_BOTTOM_MARGIN - ISLAND_DEPTH - ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT;
         ISLAND_CENTER_Y = ISLAND_TOP + ISLAND_GRID_SIZE * ISLAND_TILE_HEIGHT / 2f;
-        String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;worldViewTurns=0;gameplayCamera.reset();cameraFrameTime=0;}
+        String id=worldId==null?"":worldId;if(!surfaceWorldId.equals(id)){gateSides.clear();openStorage.clear();sellingOpenedAt.clear();surfaceWorldId=id;worldViewTurns=0;gameplayCamera.reset();cameraFrameTime=0;}
         sourceWorldSurfaces=objects==null?java.util.Collections.emptyList():new java.util.ArrayList<>(objects);
         // The active terrain sets the actual grid size before projecting these records.
         if(worldViewTurns==0)projectWorldSurfaces();
@@ -566,7 +566,7 @@ public final class WeatherSkyView extends View {
         characterFacing=WorldViewRotation.direction(characterFacing,delta);
         java.util.List<PortalTravel.Tile> rotated=new java.util.ArrayList<>();
         for(PortalTravel.Tile tile:gameplayRoute){WorldViewRotation.Point v=WorldViewRotation.point(tile.column,tile.row,ISLAND_GRID_SIZE,delta);rotated.add(new PortalTravel.Tile((int)v.column,(int)v.row));}
-        gameplayRoute=rotated;worldViewTurns=next;worldTerrain=projected;
+        gameplayRoute=rotated;gateSides.clear();worldViewTurns=next;worldTerrain=projected;
         projectWorldHouses();projectWorldSurfaces();
         pondLife=PondLife.build(worldTerrain.size,worldTerrain::tile);updateSurfaceJoins();
         gameplayCamera.reset();cameraFrameTime=0;cancelIdleWaterAttempt();invalidate();return true;
@@ -894,7 +894,7 @@ public final class WeatherSkyView extends View {
         if(o.type.equals("fence") && o.material.startsWith("preview-")) {
             float cx=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f-elevationAt(o.column,o.row);
             float[] e=FenceMesh.endpoints(cx,cy,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,o.edge);
-            return FenceMesh.contains(FenceMesh.faces(e[0],e[1],e[2],e[3],o.material.startsWith("preview-stone"),o.material.equals("preview-stone-tall"),fenceJoins.get(o)),islandX(sx),islandY(sy));
+            return FenceMesh.contains(o.material.startsWith("preview-gate-")?gateFaces(o,e):FenceMesh.faces(e[0],e[1],e[2],e[3],o.material.startsWith("preview-stone"),o.material.equals("preview-stone-tall"),fenceJoins.get(o)),islandX(sx),islandY(sy));
         }
         Bitmap image=surfaceImage(o);if(image==null)return false;
         RectF g=surfaceSpriteBounds(o);float x=islandX(sx),y=islandY(sy);
@@ -1113,6 +1113,13 @@ public final class WeatherSkyView extends View {
         }
         return false;
     }
+    private final java.util.Map<String,Integer> gateSides=new java.util.HashMap<>();
+    private java.util.List<FenceMesh.Face> gateFaces(WorldStore.SurfaceObject o,float[] ends) {
+        String key=o.column+","+o.row+","+o.edge;
+        GateMotion.State state=showCharacter?GateMotion.update(o.column,o.row,o.edge,visualColumn(),visualRow(),gateSides.getOrDefault(key,0)):new GateMotion.State(0,0);
+        if(state.side==0)gateSides.remove(key);else gateSides.put(key,state.side);
+        return GateMesh.faces(ends[0],ends[1],ends[2],ends[3],o.edge,o.material.endsWith("stone"),state.amount,state.side);
+    }
     private void drawFences(Canvas canvas,boolean front) {
         java.util.List<FenceGeometry.Edge> edges=new java.util.ArrayList<>();
         for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("fence"))edges.add(new FenceGeometry.Edge(o.column,o.row,o.edge));
@@ -1126,10 +1133,10 @@ public final class WeatherSkyView extends View {
             FenceGeometry.Bounds g=FenceGeometry.bounds(new FenceGeometry.Edge(o.column,o.row,o.edge),edges,x,y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT);
             if(o.material.startsWith("preview-")) {
                 float[] ends=FenceMesh.endpoints(x,y,ISLAND_TILE_WIDTH,ISLAND_TILE_HEIGHT,o.edge);
-                boolean stone=o.material.startsWith("preview-stone"),tall=o.material.equals("preview-stone-tall");
+                boolean stone=o.material.startsWith("preview-stone") || o.material.equals("preview-gate-stone"),tall=o.material.equals("preview-stone-tall");
                 boolean fades=showCharacter && o.column==Math.round(visualColumn()) && o.row==Math.round(visualRow()) && (o.edge.equals("S")||o.edge.equals("E"));
                 int ground=canvas.save();setClipIslandSurface(canvas);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(1.2f);paint.setColor(Color.argb(40,12,23,40));canvas.drawLine(ends[0],ends[1],ends[2],ends[3],paint);canvas.restoreToCount(ground);
-                for(FenceMesh.Face face:FenceMesh.faces(ends[0],ends[1],ends[2],ends[3],stone,tall,fenceJoins.get(o))) {
+                for(FenceMesh.Face face:o.material.startsWith("preview-gate-")?gateFaces(o,ends):FenceMesh.faces(ends[0],ends[1],ends[2],ends[3],stone,tall,fenceJoins.get(o))) {
                     Path path=new Path();path.moveTo(face.points[0],face.points[1]);for(int i=2;i<face.points.length;i+=2)path.lineTo(face.points[i],face.points[i+1]);path.close();
                     paint.setStyle(Paint.Style.FILL);paint.setColor(face.color);paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f*(fades?.5f:1f)));canvas.drawPath(path,paint);
                     if(!face.detail){paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.3f);paint.setColor(stone?0xff687666:0xff664936);paint.setAlpha(Math.round(255*(100-Math.max(0,o.opacity))/100f*(fades?.5f:1f)));canvas.drawPath(path,paint);}

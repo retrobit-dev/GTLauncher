@@ -41,7 +41,7 @@
         const route=[];let n=key(p);while(n!==null){route.push({column:n%size,row:Math.floor(n/size)});n=prev.get(n);}return route.reverse();
       }
       for(const [dx,dy,edge] of [[0,-1,'N'],[1,0,'E'],[0,1,'S'],[-1,0,'W']]) {
-        const next={column:p.column+dx,row:p.row+dy};if(!pass(next)||((world.bridges||[]).length && (!BridgeGeometry || !BridgeGeometry.permitsStep(world.bridges,p,next)))||(world.fences||[]).some(f=>{const d={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[f.edge];return d && ((p.column===f.column && p.row===f.row && next.column===f.column+d[0] && next.row===f.row+d[1]) || (next.column===f.column && next.row===f.row && p.column===f.column+d[0] && p.row===f.row+d[1]));})||!terrainStep(p,next,edge)||prev.has(key(next)) || (escaping && !inHouse(p) && inHouse(next)))continue;
+        const next={column:p.column+dx,row:p.row+dy};if(!pass(next)||((world.bridges||[]).length && (!BridgeGeometry || !BridgeGeometry.permitsStep(world.bridges,p,next)))||(world.fences||[]).some(f=>{if(f.material?.startsWith('gate-'))return false;const d={N:[0,-1],E:[1,0],S:[0,1],W:[-1,0]}[f.edge];return d && ((p.column===f.column && p.row===f.row && next.column===f.column+d[0] && next.row===f.row+d[1]) || (next.column===f.column && next.row===f.row && p.column===f.column+d[0] && p.row===f.row+d[1]));})||!terrainStep(p,next,edge)||prev.has(key(next)) || (escaping && !inHouse(p) && inHouse(next)))continue;
         prev.set(key(next),key(p));queue.push(next);
       }
     }
