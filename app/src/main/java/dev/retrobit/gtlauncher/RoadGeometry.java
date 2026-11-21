@@ -8,11 +8,20 @@ final class RoadGeometry {
     static final float INSET=.12f;
     interface Occupied { boolean has(int column,int row,boolean water); }
     static float depth(String material,float blockHeight) {
-        return blockHeight*("water".equals(material)?.25f:.125f);
+        return blockHeight*("water".equals(material)?.5f:.25f);
     }
-    static float bedDepth(String material,float blockHeight) {return "water".equals(material)?blockHeight*.375f:depth(material,blockHeight);}
+    static float bedDepth(String material,float blockHeight) {return "water".equals(material)?blockHeight*.625f:depth(material,blockHeight);}
     static boolean sharedEdge(float[] a,float[] b,boolean n,boolean e,boolean s,boolean w) {
         return (a[0]==0 && b[0]==0 && w) || (a[0]==1 && b[0]==1 && e) || (a[1]==0 && b[1]==0 && n) || (a[1]==1 && b[1]==1 && s);
+    }
+    static float[] sharedSpan(float[][] a,float[][] b,boolean east) {
+        int axis=east?0:1,other=east?1:0;float low=Float.POSITIVE_INFINITY,high=Float.NEGATIVE_INFINITY;
+        for(int i=0;i<a.length;i++){float[] p=a[i],q=a[(i+1)%a.length];if(p[axis]!=1||q[axis]!=1)continue;
+            for(int j=0;j<b.length;j++){float[] r=b[j],s=b[(j+1)%b.length];if(r[axis]!=0||s[axis]!=0)continue;
+                float lo=Math.max(Math.min(p[other],q[other]),Math.min(r[other],s[other]));float hi=Math.min(Math.max(p[other],q[other]),Math.max(r[other],s[other]));if(hi>lo){low=Math.min(low,lo);high=Math.max(high,hi);}
+            }
+        }
+        return high>low?new float[]{low,high}:null;
     }
     static float[] rotate(float u,float v,String facing) {
         switch(facing){case "W":return new float[]{1-v,u};case "N":return new float[]{1-u,1-v};case "E":return new float[]{v,1-u};default:return new float[]{u,v};}

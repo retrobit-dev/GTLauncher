@@ -953,11 +953,12 @@ public final class WeatherSkyView extends View {
             }
         }
     }
+    private final java.util.Map<Long,WorldStore.SurfaceObject> roadLookup=new java.util.HashMap<>();
+    private static long roadKey(int column,int row){return ((long)row<<32)|(column&0xffffffffL);}
     private boolean sameRoad(WorldStore.SurfaceObject source,int column,int row) {
         if(column<0 || row<0 || column>=ISLAND_GRID_SIZE || row>=ISLAND_GRID_SIZE)return false;
-        for(WorldStore.SurfaceObject other:worldSurfaces)if(other.type.equals("road") && other.column==column && other.row==row && other.material.equals(source.material))
-            return worldTerrain==null || terrainHeight(column,row)==terrainHeight(source.column,source.row);
-        return false;
+        WorldStore.SurfaceObject other=roadLookup.get(roadKey(column,row));
+        return other!=null && other.material.equals(source.material) && (worldTerrain==null || terrainHeight(column,row)==terrainHeight(source.column,source.row));
     }
     private float[] roadPoint(float cx,float cy,float u,float v) {
         return new float[]{cx+(u-v)*ISLAND_TILE_WIDTH/2f,cy+(u+v-1)*ISLAND_TILE_HEIGHT/2f};
@@ -965,11 +966,15 @@ public final class WeatherSkyView extends View {
     private Path roadPath(float cx,float cy,float[][] coords,String facing) {
         Path path=new Path();for(int i=0;i<coords.length;i++) {float[] uv=facing==null?coords[i]:RoadGeometry.rotate(coords[i][0],coords[i][1],facing);float[] xy=roadPoint(cx,cy,uv[0],uv[1]);if(i==0)path.moveTo(xy[0],xy[1]);else path.lineTo(xy[0],xy[1]);}path.close();return path;
     }
+    private static int roadBaseColor(String material) {
+        return Color.parseColor(material.equals("dirt")?"#cdbb99":material.equals("stone")?"#727b74":material.equals("sand")?"#e0bd81":material.equals("gravel")?"#b4a993":material.equals("paving")?"#746d5e":material.equals("asphalt")?"#59625e":"#719fa1");
+    }
     private void drawRoads(Canvas canvas) {
+        roadLookup.clear();for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("road"))roadLookup.put(roadKey(o.column,o.row),o);
         for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("road")) {
             float cx=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f-elevationAt(o.column,o.row);
             boolean water="water".equals(o.material);float[][] outline=RoadGeometry.outline(o.column,o.row,water,(c,r,w)->sameRoad(o,c,r),ISLAND_GRID_SIZE);
-            int base=Color.parseColor(o.material.equals("dirt")?"#cdbb99":o.material.equals("stone")?"#727b74":o.material.equals("sand")?"#e0bd81":o.material.equals("gravel")?"#b4a993":o.material.equals("paving")?"#746d5e":o.material.equals("asphalt")?"#59625e":"#719fa1");
+            int base=roadBaseColor(o.material);
             int light=Color.parseColor(o.material.equals("dirt")?"#ded0b2":o.material.equals("stone")?"#a6ada3":o.material.equals("sand")?"#f3d7a3":o.material.equals("gravel")?"#d2c8b3":o.material.equals("paving")?"#aaa18f":o.material.equals("asphalt")?"#747e75":"#a8c7bc");
             int dark=Color.parseColor(o.material.equals("dirt")?"#a99476":o.material.equals("stone")?"#899187":o.material.equals("sand")?"#bd9464":o.material.equals("gravel")?"#8e8575":o.material.equals("paving")?"#968d7d":o.material.equals("asphalt")?"#454d4a":"#588487");
             paint.setStyle(Paint.Style.FILL);paint.setAlpha(255);
@@ -1012,6 +1017,18 @@ public final class WeatherSkyView extends View {
             for(int i=0;i<outline.length;i++) {float[] a=outline[i],b=outline[(i+1)%outline.length];if(RoadGeometry.sharedEdge(a,b,north,east,south,west))continue;float[] p=roadPoint(cx,cy-drop,a[0],a[1]),q=roadPoint(cx,cy-drop,b[0],b[1]);canvas.drawLine(p[0],p[1],q[0],q[1],paint);}
             paint.setStyle(Paint.Style.FILL);
         }
+        // Cover only the common openings after both clipped surfaces are drawn.
+        paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.8f);paint.setStrokeCap(Paint.Cap.BUTT);paint.setAlpha(255);
+        for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("road")) {
+            boolean water="water".equals(o.material);float cx=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f-elevationAt(o.column,o.row)+RoadGeometry.depth(o.material,BLOCK_HEIGHT);
+            float[][] a=RoadGeometry.outline(o.column,o.row,water,(c,r,w)->sameRoad(o,c,r),ISLAND_GRID_SIZE);
+            paint.setColor(water?0xff6e9899:roadBaseColor(o.material));
+            for(int side=0;side<2;side++){int c=o.column+(side==0?1:0),r=o.row+(side==1?1:0);if(!sameRoad(o,c,r))continue;WorldStore.SurfaceObject other=roadLookup.get(roadKey(c,r));if(other==null)continue;
+                final WorldStore.SurfaceObject neighbor=other;float[][] b=RoadGeometry.outline(c,r,water,(x,y,w)->sameRoad(neighbor,x,y),ISLAND_GRID_SIZE);float[] span=RoadGeometry.sharedSpan(a,b,side==0);if(span==null)continue;
+                float[] p=side==0?roadPoint(cx,cy,1,span[0]):roadPoint(cx,cy,span[0],1),q=side==0?roadPoint(cx,cy,1,span[1]):roadPoint(cx,cy,span[1],1);canvas.drawLine(p[0],p[1],q[0],q[1],paint);
+            }
+        }
+        paint.setStyle(Paint.Style.FILL);
     }
     private static FenceOcclusion.Bounds occlusionBounds(RectF r) {return new FenceOcclusion.Bounds(r.left,r.top,r.right,r.bottom);}
     private final java.util.IdentityHashMap<Bitmap,int[]> occlusionPixels=new java.util.IdentityHashMap<>();

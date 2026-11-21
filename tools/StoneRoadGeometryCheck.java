@@ -10,9 +10,11 @@ public final class StoneRoadGeometryCheck {
    if(FenceMesh.faces(0,0,14,slope,true,j).stream().anyMatch(f->side(f.color)))throw new AssertionError("linked end face");
    if(FenceMesh.faces(0,0,14,slope,false).size()!=14)throw new AssertionError("wood geometry changed");
   }
-  if(RoadGeometry.depth("dirt",4)!=.5f || RoadGeometry.depth("water",4)!=1f || RoadGeometry.bedDepth("water",4)!=1.5f)throw new AssertionError("road depth");
+  if(RoadGeometry.depth("dirt",4)!=1f || RoadGeometry.depth("water",4)!=2f || RoadGeometry.bedDepth("water",4)!=2.5f)throw new AssertionError("road depth");
   if(!RoadGeometry.sharedEdge(new float[]{0,.1f},new float[]{0,.9f},false,false,false,true))throw new AssertionError("connected seam");
   if(RoadGeometry.sharedEdge(new float[]{0,.1f},new float[]{0,.9f},false,false,false,false))throw new AssertionError("open bank");
+  float[][] east=RoadGeometry.outline(10,10,false,(x,y,w)->x==11&&y==10,20),west=RoadGeometry.outline(11,10,false,(x,y,w)->x==10&&y==10,20);
+  float[] span=RoadGeometry.sharedSpan(east,west,true);if(span==null || Math.abs(span[0]-.12f)>1e-5 || Math.abs(span[1]-.88f)>1e-5)throw new AssertionError("seam span");
   int[][] directions={{0,-1},{1,0},{0,1},{-1,0},{1,-1},{1,1},{-1,1},{-1,-1}};
   for(int mask=0;mask<256;mask++){
    final int flags=mask;float[][] polygon=RoadGeometry.outline(10,10,false,(x,y,w)->{for(int i=0;i<directions.length;i++)if(x==10+directions[i][0]&&y==10+directions[i][1])return (flags&(1<<i))!=0;return false;},20);

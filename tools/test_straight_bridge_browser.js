@@ -10,6 +10,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
  await page.mouse.click(pos.x,pos.y);
  const result=await page.evaluate(()=>{const world=worldManager.getActive();const placed=Boolean(world.bridges?.length);return {placed,bridge:world.bridges?.[0],center:BridgeGeometry.deckHeight(world,{column:21,row:20}),side:BridgeGeometry.deckHeight(world,{column:21,row:19})};});
  assert(result.placed);assert(result.bridge.straight);assert.equal(result.center,1);assert.equal(result.side,null);
+ const bridgeDepth=await page.evaluate(()=>{const w=worldManager.getActive(),road={column:21,row:20,material:'water',direction:'S'};if(!worldManager.replaceRoads(w.id,w.roads||[],[road]))throw new Error('road under bridge rejected');const depth=sceneEditing.roadDepth(21,20);if(!worldManager.replaceRoads(w.id,worldManager.getActive().roads,[]))throw new Error('cleanup failed');return depth;});assert.equal(bridgeDepth,0,'character remains at bridge height');
  await page.reload({waitUntil:'domcontentloaded',timeout:90000});await page.waitForFunction(()=>window.worldManager);assert((await page.evaluate(()=>worldManager.getActive().bridges[0])).straight);await page.locator('#world-button').click();await page.locator('button[data-action="export"][data-id="test"]').click();
  const exported=JSON.parse(await page.locator('#world-export-json').inputValue());assert.equal(exported.version,28);assert(exported.world.bridges[0].straight);assert.deepEqual(errors,[]);
  console.log('Straight bridge persists and keeps the central walkable route: OK');

@@ -2388,6 +2388,25 @@
     const angle=(direction+180)*Math.PI/180;
     pondWind.x+=Math.sin(angle)*speed*dt;pondWind.y-=Math.cos(angle)*speed*dt;
   }
+  function drawRoadSurfaces(motionTime,alreadyTransformed=false) {
+    const world=window.worldManager?.getActive(),size=ISLAND_GRID_SIZE;
+    if(objectsHidden() || !world?.roads?.length || !window.RoadSurface)return;
+    const roads=new Map(world.roads.map(r=>[r.row*size+r.column,r])),stacks=world.blockStacks;
+    const height=r=>stacks?.[r.row*size+r.column]?.length || 1;
+    const matches=(r,p)=>p.column>=0&&p.row>=0&&p.column<size&&p.row<size&&roads.get(p.row*size+p.column)?.material===r.material && height(roads.get(p.row*size+p.column))===height(r);
+    const connected=r=>{const same=(...ds)=>matches(r,ds.reduce((p,d)=>worldNeighbor(p.column,p.row,d),{column:r.column,row:r.row}));return {N:same('N'),E:same('E'),S:same('S'),W:same('W'),NE:same('N','E'),SE:same('S','E'),SW:same('S','W'),NW:same('N','W')};};
+    ctx.save();if(!alreadyTransformed)applyIslandTransform();
+    for(const tile of ISLAND_TILES){const road=roads.get(tile.row*size+tile.column);if(!road)continue;const p=characterCentre({column:tile.column,row:tile.row,blockHeight:height(road)});if(tileVisible(p,0))window.RoadSurface.draw(ctx,{...p,width:ISLAND_TILE_WIDTH,height:islandTileHeight,blockHeight:BLOCK_HEIGHT,material:road.material,column:road.column,row:road.row,time:motionTime,direction:viewFacing(road.direction||'S'),connected:connected(road)});}
+    // Paint only the common opening on shared edges, after both surfaces, so
+    // neither terrain overdrawing nor antialiased tile clips leave a hairline.
+    ctx.lineWidth=.8;ctx.lineCap='butt';
+    for(const road of world.roads){const p=characterCentre({column:road.column,row:road.row,blockHeight:height(road)});if(!tileVisible(p,BLOCK_HEIGHT))continue;const links=connected(road),y=p.y+window.RoadSurface.depth(road.material,BLOCK_HEIGHT),hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
+      ctx.strokeStyle=window.RoadSurface.seamColor(road.material);
+      for(const side of ['E','S']){if(!links[side])continue;const n=worldNeighbor(road.column,road.row,side),other=roads.get(n.row*size+n.column);for(const [lo,hi] of window.RoadSurface.sharedSpan(links,connected(other),side)){const a=side==='E'?[1,lo]:[lo,1],b=side==='E'?[1,hi]:[hi,1];ctx.beginPath();ctx.moveTo(p.x+(a[0]-a[1])*hw,y+(a[0]+a[1]-1)*hh);ctx.lineTo(p.x+(b[0]-b[1])*hw,y+(b[0]+b[1]-1)*hh);ctx.stroke();}}
+    }
+    ctx.restore();
+  }
+
   function drawPondLife(tile,items,motionTime) {
     if(!items?.length || !window.PondLife) return;
     const hw=ISLAND_TILE_WIDTH/2,hh=islandTileHeight/2;
@@ -2483,12 +2502,6 @@
           const falls=waterFalls(tile.column,tile.row,activeWorld);
           if(Object.keys(falls).length){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawWaterfalls(tile,level,falls,motionTime);ctx.restore();}
         }
-        const road=roads.get(index);
-        if(road && window.RoadSurface) {
-          const h=stack?.length || 1, p=characterCentre({column:tile.column,row:tile.row,blockHeight:h});
-          const same=(...directions)=>{const n=directions.reduce((p,d)=>worldNeighbor(p.column,p.row,d),{column:tile.column,row:tile.row});return n.column>=0&&n.row>=0&&n.column<ISLAND_GRID_SIZE&&n.row<ISLAND_GRID_SIZE&&roads.get(n.row*ISLAND_GRID_SIZE+n.column)?.material===road.material && (stacks?.[n.row*ISLAND_GRID_SIZE+n.column]?.length || 1)===h;};
-          if(tileVisible(p,0))window.RoadSurface.draw(ctx,{...p,width:ISLAND_TILE_WIDTH,height:islandTileHeight,blockHeight:BLOCK_HEIGHT,material:road.material,column:tile.column,row:tile.row,time:motionTime,direction:viewFacing(road.direction||'S'),connected:{N:same('N'),E:same('E'),S:same('S'),W:same('W'),NE:same('N','E'),SE:same('S','E'),SW:same('S','W'),NW:same('N','W')}});
-        }
         const ramp=ramps.get(index),rampLevel=stack ? stack.length-1 : 0;
         if(ramp && tileVisible({...tile,y:tile.y-(rampLevel+1)*BLOCK_HEIGHT},BLOCK_HEIGHT)) {
           ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${rampLevel}`)||0))/100;
@@ -2533,6 +2546,7 @@
     ], tileSeam, tileSeam);
     ISLAND_TILES.forEach(tile => { if (tileVisible(tile, ISLAND_DEPTH)) drawGrassTile(tile, palette, sunlight); });
     }
+    drawRoadSurfaces(motionTime,true);
     const shadowLight = sunAltitude <= MOON_VISIBLE_BELOW_SUN && moon
       ? moon : {altitude: sunAltitude, hourAngleDegrees: sunHourAngle};
     drawCloudShadowsOnIsland(cloudStates, shadowLight.altitude, shadowLight.hourAngleDegrees,

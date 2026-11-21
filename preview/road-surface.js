@@ -42,9 +42,9 @@
     return p;
   }
   function depth(material,blockHeight) {
-    return valid(material) && Number.isFinite(blockHeight) && blockHeight>0 ? blockHeight*(material==='water'?.25:.125) : 0;
+    return valid(material) && Number.isFinite(blockHeight) && blockHeight>0 ? blockHeight*(material==='water'?.5:.25) : 0;
   }
-  function bedDepth(material,blockHeight) {return material==='water' && Number.isFinite(blockHeight) && blockHeight>0 ? blockHeight*.375 : depth(material,blockHeight);}
+  function bedDepth(material,blockHeight) {return material==='water' && Number.isFinite(blockHeight) && blockHeight>0 ? blockHeight*.625 : depth(material,blockHeight);}
   function banks(connected={}) {
     const polygon=outline(connected),result=[];
     for(let i=0;i<polygon.length;i++) {
@@ -54,6 +54,17 @@
     }
     return result;
   }
+  // Intersection of the exposed boundary spans on two matching neighbors.
+  // The small base-colored bridge avoids antialias cracks at individual tile clips.
+  function sharedSpan(a,b,side) {
+    const vertical=side==='E',axis=vertical?0:1,other=vertical?1:0;
+    function interval(poly,value) {
+      const spans=[];for(let i=0;i<poly.length;i++){const x=poly[i],y=poly[(i+1)%poly.length];if(x[axis]===value && y[axis]===value)spans.push([Math.min(x[other],y[other]),Math.max(x[other],y[other])]);}return spans;
+    }
+    const spans=[];for(const x of interval(outline(a),1))for(const y of interval(outline(b),0)){const lo=Math.max(x[0],y[0]),hi=Math.min(x[1],y[1]);if(hi>lo)spans.push([lo,hi]);}
+    return spans;
+  }
+  function seamColor(material) {return material==='water'?'#498bac':palettes[material]?.[0];}
   // Transform flow coordinates with the current view-facing direction.
   function flowPoint(u,v,direction='S') {
     switch(direction){case 'N':return [1-u,1-v];case 'E':return [v,1-u];case 'W':return [1-v,u];default:return [u,v];}
@@ -106,5 +117,5 @@
     for(const [a,b] of banks(connected)){const [ax,ay]=project(...a),[bx,by]=project(...b);ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();}
     ctx.restore();return true;
   }
-  return Object.freeze({materials,valid,isWater,validRecords,put,neighbors,outline,depth,bedDepth,banks,flowPoint,flowLines,draw});
+  return Object.freeze({materials,valid,isWater,validRecords,put,neighbors,outline,depth,bedDepth,banks,sharedSpan,seamColor,flowPoint,flowLines,draw});
 });
