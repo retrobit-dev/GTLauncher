@@ -336,7 +336,7 @@ final class WorldStore {
                 trees.add(new SurfaceObject("fence",f.getInt("column"),f.getInt("row"),f.getString("edge"),"preview-"+f.getString("material"),f.toString(),f.has("opacity")?f.getInt("opacity"):-1));
             }
         }
-        JSONArray roads=w.optJSONArray("roads");if(roads!=null)for(int i=0;i<roads.length();i++){JSONObject road=roads.getJSONObject(i);trees.add(new SurfaceObject("road",road.getInt("column"),road.getInt("row"),road.has("direction")?road.getString("direction"):("water".equals(road.getString("material"))?"S":null),road.getString("material"),road.toString()));}
+        JSONArray roads=w.optJSONArray("roads");if(roads!=null)for(int i=0;i<roads.length();i++){JSONObject road=roads.getJSONObject(i);trees.add(new SurfaceObject("road",road.getInt("column"),road.getInt("row"),road.has("direction")?road.getString("direction"):"S",road.getString("material"),road.toString()));}
         World result=new World(data.id,w.getString("name"),w.getString("description"),w.getString("color"),
                 w.getBoolean("showCharacter"),w.getInt("characterColumn"),w.getInt("characterRow"),w.getDouble("characterScale"),w.getString("characterFacing"),
                 first!=null,first!=null && first.visible,first==null?0:first.column,first==null?0:first.row,first==null?1:first.scale,
@@ -443,6 +443,7 @@ final class WorldStore {
                 if ((old.previewData==null)!=(world.previewData==null))
                     throw new JSONException("World format cannot replace different format");
                 if(old.previewData!=null && world.previewData.version<old.previewData.version) {
+                    if(world.previewData.version<33 && old.previewData.hasRoadPatternDirection())throw new JSONException("Older preview format cannot replace road direction");
                     if(world.previewData.version<32 && old.surfaces.stream().anyMatch(o->o.type.equals("fence") && o.material.startsWith("preview-gate-")))throw new JSONException("Older preview format cannot replace gates");
                     if(world.previewData.version<31 && old.previewData.hasRiverDirection())throw new JSONException("Older preview format cannot replace river direction");
                     if(world.previewData.version<30 && old.previewData.hasRoads())throw new JSONException("Older preview format cannot replace roads");

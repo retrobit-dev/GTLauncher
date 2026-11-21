@@ -15,7 +15,7 @@
     const seen=new Set();
     for(const road of roads) {
       if(!road || typeof road!=='object' || Array.isArray(road) || Object.keys(road).some(k=>!['column','row','material','direction'].includes(k)) ||
-        !Number.isInteger(road.column)||!Number.isInteger(road.row)||road.column<0||road.row<0||road.column>=size||road.row>=size||!valid(road.material) || (road.direction!==undefined && (road.material!=='water' || !['N','E','S','W'].includes(road.direction))))return false;
+        !Number.isInteger(road.column)||!Number.isInteger(road.row)||road.column<0||road.row<0||road.column>=size||road.row>=size||!valid(road.material) || (road.direction!==undefined && (!['N','E','S','W'].includes(road.direction))))return false;
       const key=road.row*size+road.column;if(seen.has(key))return false;seen.add(key);
     }
     return true;
@@ -66,9 +66,10 @@
     const {x,y,width,height,material,column=0,row=0,time=0,connected={},direction='S',blockHeight=4}=options;
     if(!ctx || !valid(material) || ![x,y,width,height].every(Number.isFinite) || width<=0 || height<=0)return false;
     const hw=width/2,hh=height/2,project=(u,v)=>[x+(u-v)*hw,y+(u+v-1)*hh];
-    const polygon=points=>{ctx.beginPath();points.forEach(([u,v],i)=>{const [px,py]=project(u,v);if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);});ctx.closePath();};
-    const line=(coords,color,w=.55)=>{ctx.beginPath();coords.forEach(([u,v],i)=>{const [px,py]=project(u,v);if(!i)ctx.moveTo(px,py);else ctx.lineTo(px,py);});ctx.strokeStyle=color;ctx.lineWidth=w;ctx.stroke();};
-    const dot=(u,v,color,w=1,h=.55)=>{const [px,py]=project(u,v);ctx.fillStyle=color;ctx.fillRect(px,py,w,h);};
+    let patternMode=false;const mapped=(u,v)=>patternMode?flowPoint(u,v,direction):[u,v];
+    const polygon=points=>{ctx.beginPath();points.forEach(([u,v],i)=>{const [px,py]=project(...mapped(u,v));if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);});ctx.closePath();};
+    const line=(coords,color,w=.55)=>{ctx.beginPath();coords.forEach(([u,v],i)=>{const [px,py]=project(...mapped(u,v));if(!i)ctx.moveTo(px,py);else ctx.lineTo(px,py);});ctx.strokeStyle=color;ctx.lineWidth=w;ctx.stroke();};
+    const dot=(u,v,color,w=1,h=.55)=>{const [px,py]=project(...mapped(u,v));ctx.fillStyle=color;ctx.fillRect(px,py,w,h);};
     const [base,light,dark]=palettes[material],drop=depth(material,blockHeight),surfaceY=y+drop;
     // Exposed cut banks; shared edges are open to the neighboring surface.
     ctx.save();ctx.fillStyle=material==='water'?'#746c51':'#8a775e';
@@ -78,6 +79,7 @@
       ctx.save();ctx.translate(0,bedDepth(material,blockHeight)-drop);polygon(outline(connected));ctx.fillStyle='#596f65';ctx.fill();ctx.restore();
       ctx.save();ctx.globalAlpha*=.86;polygon(outline(connected));ctx.fillStyle=base;ctx.fill();ctx.restore();
     } else {polygon(outline(connected));ctx.fillStyle=base;ctx.fill();}
+    patternMode=material!=='water';
     if(material==='stone'||material==='paving') {
       const rows=material==='stone'?3:4,cols=material==='stone'?3:4;
       for(let r=0;r<rows;r++)for(let c=-1;c<cols;c++){
@@ -97,6 +99,11 @@
       if(material==='dirt'){line([[.25,.23],[.29,.30]],dark,.8);line([[.48,.51],[.52,.58]],dark,.8);}
       else line([[.35,.28],[.43,.38],[.39,.46]],dark,.4);
     }
+    ctx.restore();
+    // A subtle upper rim reinforces the real, shallow cut without increasing
+    // its geometric depth. Only exposed edges are outlined.
+    ctx.save();ctx.strokeStyle=material==='water'?'#615743':'#655642';ctx.lineWidth=.55;
+    for(const [a,b] of banks(connected)){const [ax,ay]=project(...a),[bx,by]=project(...b);ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();}
     ctx.restore();return true;
   }
   return Object.freeze({materials,valid,isWater,validRecords,put,neighbors,outline,depth,bedDepth,banks,flowPoint,flowLines,draw});

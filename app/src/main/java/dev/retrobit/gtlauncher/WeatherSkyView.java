@@ -1008,7 +1008,9 @@ public final class WeatherSkyView extends View {
                 int count=o.material.equals("gravel")?13:7;
                 for(int i=0;i<count;i++) {float u=.08f+((i*37+o.column*13+o.row*7)%83)/100f,v=.08f+((i*61+o.column*5+o.row*17)%83)/100f;float[] uv=RoadGeometry.rotate(u,v,facing),xy=roadPoint(cx,cy,uv[0],uv[1]);paint.setColor(i%2==0?light:dark);canvas.drawRect(xy[0],xy[1],xy[0]+(count==13?1.5f:1.8f),xy[1]+.65f,paint);}
             }
-            canvas.restoreToCount(save);paint.setStyle(Paint.Style.FILL);paint.setAlpha(255);
+            canvas.restoreToCount(save);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.55f);paint.setColor(water?0xff615743:0xff655642);paint.setAlpha(255);
+            for(int i=0;i<outline.length;i++) {float[] a=outline[i],b=outline[(i+1)%outline.length];if(RoadGeometry.sharedEdge(a,b,north,east,south,west))continue;float[] p=roadPoint(cx,cy-drop,a[0],a[1]),q=roadPoint(cx,cy-drop,b[0],b[1]);canvas.drawLine(p[0],p[1],q[0],q[1],paint);}
+            paint.setStyle(Paint.Style.FILL);
         }
     }
     private static FenceOcclusion.Bounds occlusionBounds(RectF r) {return new FenceOcclusion.Bounds(r.left,r.top,r.right,r.bottom);}

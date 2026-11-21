@@ -41,6 +41,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
     int surfaceMaterial(int c,int r) {if("water".equals(roads[r*size+c]))return 3;int material=rampMaterial(c,r);return material==0?tile(c,r):material;}
     boolean hasRoads(){for(String road:roads)if(road!=null)return true;return false;}
     boolean hasRiverDirection(){try{JSONArray a=new JSONObject(json).getJSONObject("world").optJSONArray("roads");if(a!=null)for(int i=0;i<a.length();i++)if(a.getJSONObject(i).has("direction"))return true;}catch(JSONException ignored){}return false;}
+    boolean hasRoadPatternDirection(){try{JSONArray a=new JSONObject(json).getJSONObject("world").optJSONArray("roads");if(a!=null)for(int i=0;i<a.length();i++){JSONObject road=a.getJSONObject(i);if(road.has("direction") && !"water".equals(road.getString("material")))return true;}}catch(JSONException ignored){}return false;}
     boolean hasRamps() {for(byte value:rampDirections)if(value!=0)return true;return false;}
     int blockOpacity(int c,int r,int level) {return blockOpacity.getOrDefault((((long)r*size+c)<<32)|(level & 0xffffffffL),0);}
     boolean hasBlockOpacity() {return !blockOpacity.isEmpty();}
@@ -91,7 +92,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
         keys(root, "format", "version", "world");
         if (!"gtlauncher-preview-world".equals(string(root,"format"))) throw new JSONException("Unsupported format");
         int version = integer(root,"version",1,Integer.MAX_VALUE);
-        if (version > 32) throw new JSONException("Unsupported world version");
+        if (version > 33) throw new JSONException("Unsupported world version");
         JSONObject w = root.getJSONObject("world");
         if(w.has("blockStacks") && version<4 || version==4 && !w.has("blockStacks"))throw new JSONException("Invalid block stacks version");
         keys(w,"id","name","description","color","showCharacter","characterColumn","characterRow","characterScale","characterFacing","house","gridSize","tiles","blockStacks","blockOpacity","ramps","orangeTrees","fences","bridges","roads");
@@ -231,7 +232,7 @@ final class PreviewWorld20 implements StackWater.Terrain {
             JSONArray entries=w.getJSONArray("roads");if(entries.length()>size*size)throw new JSONException("Too many roads");
             for(int i=0;i<entries.length();i++) {
                 JSONObject o=entries.getJSONObject(i);keys(o,"column","row","material","direction");int x=integer(o,"column",0,size-1),y=integer(o,"row",0,size-1),idx=y*size+x;String type=string(o,"material");
-                if(o.has("direction") && (version<31 || !type.equals("water") || !Arrays.asList("N","E","S","W").contains(string(o,"direction"))))throw new JSONException("Invalid river direction");
+                if(o.has("direction") && (version<31 || (version<33 && !type.equals("water")) || !Arrays.asList("N","E","S","W").contains(string(o,"direction"))))throw new JSONException("Invalid river direction");
                 if(!Arrays.asList("dirt","stone","sand","paving","asphalt","water").contains(type) || roads[idx]!=null || tiles[idx]==0 || tiles[idx]==3 || directions[idx]!=0)throw new JSONException("Invalid road");
                 if(house instanceof JSONObject){JSONObject h=(JSONObject)house;int hc=h.getInt("column"),hr=h.getInt("row");if(x>=hc&&x<hc+3&&y>=hr&&y<hr+3)throw new JSONException("Road overlaps house");}
                 JSONArray trees=w.optJSONArray("orangeTrees");if(trees!=null)for(int j=0;j<trees.length();j++){JSONObject t=trees.getJSONObject(j);int n=t.optInt("size",2),tx=t.getInt("column"),ty=t.getInt("row");if(x>=tx&&x<tx+n&&y>=ty&&y<ty+n)throw new JSONException("Road overlaps plant");}

@@ -14,6 +14,10 @@ public final class RoadSurfaceCheck {
   JSONObject rotatedWorld=WorldViewProjection.project(w,1);if(!"S".equals(rotatedWorld.getJSONArray("roads").getJSONObject(5).getString("direction")))throw new AssertionError("direction rotation");
   WorldStore.World withDirection=WorldStore.parseExport(root.toString());WorldStore.SurfaceObject river=withDirection.surfaces.stream().filter(o->o.type.equals("road") && o.material.equals("water")).findFirst().get();if(!"E".equals(river.edge))throw new AssertionError("renderer direction");
   root.put("version",30);boolean oldRejected=false;try{PreviewWorld20.parse(root.toString());}catch(JSONException e){oldRejected=true;}if(!oldRejected)throw new AssertionError("old version cannot accept direction");roads.getJSONObject(5).remove("direction");
+  roads.getJSONObject(0).put("direction","E");root.put("version",33);PreviewWorld20 patterned=PreviewWorld20.parse(root.toString());if(!patterned.hasRoadPatternDirection())throw new AssertionError("road pattern direction missing");
+  WorldStore.World patternedWorld=WorldStore.parseExport(root.toString());if(!"E".equals(patternedWorld.surfaces.stream().filter(o->o.type.equals("road") && o.material.equals("dirt")).findFirst().get().edge))throw new AssertionError("road direction not rendered");
+  PreviewWorld20 turned=WorldViewProjection.projectTerrain(patterned,1);WorldStore.World rotatedPattern=WorldStore.parseExport(turned.toJson());if(!"S".equals(rotatedPattern.surfaces.stream().filter(o->o.type.equals("road") && o.material.equals("dirt")).findFirst().get().edge))throw new AssertionError("rotated road direction");
+  root.put("version",32);boolean rejectedPattern=false;try{PreviewWorld20.parse(root.toString());}catch(JSONException e){rejectedPattern=true;}if(!rejectedPattern)throw new AssertionError("old version accepted road direction");roads.getJSONObject(0).remove("direction");
   root.put("version",29);boolean rejected=false;try{PreviewWorld20.parse(root.toString());}catch(JSONException e){rejected=true;}if(!rejected)throw new AssertionError("version gate");
   System.out.println("Android road import, six materials, rotated river and version gate: OK");
  }

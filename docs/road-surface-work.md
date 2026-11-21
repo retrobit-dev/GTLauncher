@@ -45,3 +45,7 @@ mengubah data. Proyeksi isometrik membuat sudut 90° grid terlihat miring di lay
 ## Recessed surface rendering
 
 Road surfaces are rendered 1/8 of a block height below their supporting tile; river water is 1/4 below it, with a tinted riverbed drawn a further 1/8 block below the water. Banks are omitted at edges shared with the same material at the same height. This is a visual recess, not excavation of the stored block stack or a change to pathfinding. The player follows the road surface, interpolating between tiles, except on bridge tiles. The riverbed is a visual layer beneath translucent water, not a traversable extra terrain level. World serialization remains unchanged.
+
+## Road direction and visibility
+
+All six road materials can be rotated before placement and from the placed-object list. Rotation changes the tile-local texture (and river flow); it does not rotate the grid, disconnect neighboring same-material roads, or affect routing. Non-river road directions require portable preview format v33; older imports cannot replace a world containing them. Android v33 reads and projects the direction, including when the camera rotates. Unrotated older roads keep their default south orientation. The exposed upper rim is outlined for contrast: the actual road and water offsets remain 1/8 and 1/4 block height, respectively, and no terrain stack is excavated. Android rendering has not been checked on a device.
