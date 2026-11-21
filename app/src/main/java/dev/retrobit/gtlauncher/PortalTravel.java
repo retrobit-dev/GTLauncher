@@ -31,6 +31,15 @@ final class PortalTravel {
     interface Terrain {
         boolean canStand(int column, int row);
         boolean canStep(int fromColumn, int fromRow, int toColumn, int toRow);
+        default int stepCost(int column,int row) { return 4; }
+    }
+    private static int cost(Terrain terrain,int c,int r) {return Math.max(1,terrain.stepCost(c,r));}
+    static int routeCost(List<Tile> route,Terrain terrain) {
+        int total=0;for(int i=1;i<route.size();i++)total+=cost(terrain,route.get(i).column,route.get(i).row);return total;
+    }
+    private static final class RouteNode {
+        final Tile tile;final int cost,steps;final long order;
+        RouteNode(Tile tile,int cost,int steps,long order){this.tile=tile;this.cost=cost;this.steps=steps;this.order=order;}
     }
     private static boolean validTile(Tile tile) { return validTile(tile, SIZE); }
     private static boolean validTile(Tile tile, int size) {
@@ -68,21 +77,25 @@ final class PortalTravel {
     /** Route within an explicit square grid; existing 9x9 callers retain their bounds. */
     static List<Tile> path(Tile start, Tile destination, Terrain terrain, int size) {
         if(!validTile(start, size) || !validTile(destination, size) || terrain==null || !terrain.canStand(start.column,start.row) || !terrain.canStand(destination.column,destination.row))return null;
-        Tile[][] previous = new Tile[size][size]; boolean[][] visited = new boolean[size][size];
-        ArrayDeque<Tile> queue = new ArrayDeque<>(); queue.add(start); visited[start.row][start.column] = true;
-        final int[][] steps = {{0,-1},{1,0},{0,1},{-1,0}};
-        while (!queue.isEmpty()) {
-            Tile current = queue.remove();
-            if (current.equals(destination)) {
-                ArrayList<Tile> route = new ArrayList<>();
-                for (Tile p=current; p!=null; p=previous[p.row][p.column]) route.add(p);
-                Collections.reverse(route); return route;
+        Tile[][] previous=new Tile[size][size];int[][] best=new int[size][size],stepsBest=new int[size][size];
+        for(int r=0;r<size;r++){java.util.Arrays.fill(best[r],Integer.MAX_VALUE);java.util.Arrays.fill(stepsBest[r],Integer.MAX_VALUE);}
+        java.util.PriorityQueue<RouteNode> queue=new java.util.PriorityQueue<>((a,b)->{
+            int result=Integer.compare(a.cost,b.cost);if(result==0)result=Integer.compare(a.steps,b.steps);return result==0?Long.compare(a.order,b.order):result;
+        });
+        long order=0;best[start.row][start.column]=0;stepsBest[start.row][start.column]=0;queue.add(new RouteNode(start,0,0,order++));
+        final int[][] steps={{0,-1},{1,0},{0,1},{-1,0}};
+        while(!queue.isEmpty()) {
+            RouteNode node=queue.remove();Tile current=node.tile;if(node.cost!=best[current.row][current.column] || node.steps!=stepsBest[current.row][current.column])continue;
+            if(current.equals(destination)) {
+                ArrayList<Tile> route=new ArrayList<>();for(Tile p=current;p!=null;p=previous[p.row][p.column])route.add(p);
+                Collections.reverse(route);return route;
             }
-            for (int[] step : steps) {
-                int c=current.column+step[0], r=current.row+step[1];
-                if (c<0 || c>=size || r<0 || r>=size || visited[r][c] || !terrain.canStand(c,r)
-                        || !terrain.canStep(current.column,current.row,c,r)) continue;
-                Tile next=new Tile(c,r); previous[r][c]=current; visited[r][c]=true; queue.add(next);
+            for(int[] step:steps) {
+                int c=current.column+step[0],r=current.row+step[1];
+                if(c<0 || c>=size || r<0 || r>=size || !terrain.canStand(c,r) || !terrain.canStep(current.column,current.row,c,r))continue;
+                int nextCost=node.cost+cost(terrain,c,r),nextSteps=node.steps+1;
+                if(nextCost>best[r][c] || (nextCost==best[r][c] && nextSteps>=stepsBest[r][c]))continue;
+                Tile next=new Tile(c,r);best[r][c]=nextCost;stepsBest[r][c]=nextSteps;previous[r][c]=current;queue.add(new RouteNode(next,nextCost,nextSteps,order++));
             }
         }
         return null;
@@ -121,7 +134,7 @@ final class PortalTravel {
             int dx=Math.max(Math.max(column-c,0),c-(column+width-1)),dy=Math.max(Math.max(row-r,0),r-(row+height-1));
             if(dx+dy!=1)continue;
             List<Tile> candidate=path(start,new Tile(c,r),terrain,size);
-            if(candidate!=null && (best==null || candidate.size()<best.size()))best=candidate;
+            if(candidate!=null && (best==null || routeCost(candidate,terrain)<routeCost(best,terrain) || (routeCost(candidate,terrain)==routeCost(best,terrain) && candidate.size()<best.size())))best=candidate;
         }
         return best;
     }

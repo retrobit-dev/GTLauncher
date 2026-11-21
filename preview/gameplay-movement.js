@@ -35,7 +35,7 @@
         const find=from=>occupied?path.findBeside(world,from,house):path.find(world,from,target,house);
         const fromA=find(a),fromB=find(b);
         if(fromA || fromB) {
-          const reverse=fromA && (!fromB || progress+fromA.length-1 < (1-progress)+fromB.length-1);
+          const reverse=fromA && (!fromB || progress*(path.score(world,[b,a]))+path.score(world,fromA) < (1-progress)*(path.score(world,[a,b]))+path.score(world,fromB));
           walk.route=reverse?[b,...fromA]:[a,...fromB];
           nextProgress=reverse?1-progress:progress;
           walk.routeIndex=1;
@@ -154,7 +154,7 @@
           const dx=Math.max(fruit.column-column,0,column-(fruit.column+1)),dy=Math.max(fruit.row-row,0,row-(fruit.row+1));
           if(dx+dy!==1)continue;
           const route=path.find(world,character,{column,row},house);
-          if(route && (!best || route.length<best.length))best=route;
+          if(route && (!best || path.score(world,route)<path.score(world,best) || (path.score(world,route)===path.score(world,best) && route.length<best.length)))best=route;
         }
         if(!best){tell('Jeruk tidak dapat dijangkau.');return;}
         move(best[best.length-1]);return;

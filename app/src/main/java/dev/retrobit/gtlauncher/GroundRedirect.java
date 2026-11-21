@@ -12,7 +12,7 @@ final class GroundRedirect {
         List<PortalTravel.Tile> fromB=PortalTravel.path(b,target,terrain,size);
         if(fromA==null && fromB==null)return null;
         float t=Math.max(0,Math.min(1,progress));
-        boolean reverse=fromA!=null && (fromB==null || t+fromA.size()-1 < (1-t)+fromB.size()-1);
+        boolean reverse=fromA!=null && (fromB==null || t*terrain.stepCost(a.column,a.row)+PortalTravel.routeCost(fromA,terrain) < (1-t)*terrain.stepCost(b.column,b.row)+PortalTravel.routeCost(fromB,terrain));
         List<PortalTravel.Tile> result=new ArrayList<>();result.add(reverse?b:a);result.addAll(reverse?fromA:fromB);
         return new Result(result,reverse);
     }

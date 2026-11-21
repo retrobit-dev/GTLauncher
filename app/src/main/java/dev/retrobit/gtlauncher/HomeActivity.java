@@ -1087,7 +1087,10 @@ public class HomeActivity extends Activity {
     // Portal worlds are admitted only if every object is currently supported by Android.
     private PortalTravel.Terrain portalTerrain(WorldStore.World world) { return portalTerrain(world,false); }
     private PortalTravel.Terrain portalTerrain(WorldStore.World world,boolean recovery) {
+        final java.util.Set<Long> roadTiles=new java.util.HashSet<>();
+        for(WorldStore.SurfaceObject o:world.surfaces)if(o.type.equals("road") && !"water".equals(o.material))roadTiles.add(((long)o.row<<32)|(o.column&0xffffffffL));
         return new PortalTravel.Terrain() {
+            public int stepCost(int c,int r) {return roadTiles.contains(((long)r<<32)|(c&0xffffffffL))?3:4;}
             public boolean canStand(int c,int r) {
                 if(!world.tileExists(c,r)) return false;
                 if(!recovery && world.previewData!=null && world.previewData.surfaceMaterial(c,r)==3 && !world.previewData.onBridge(c,r) && (c!=world.characterColumn || r!=world.characterRow))return false;
