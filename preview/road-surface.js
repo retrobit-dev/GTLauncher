@@ -42,9 +42,9 @@
     return p;
   }
   function depth(material,blockHeight) {
-    return valid(material) && Number.isFinite(blockHeight) && blockHeight>0 ? blockHeight*(material==='water'?.5:.25) : 0;
+    return valid(material) && Number.isFinite(blockHeight) && blockHeight>0 ? blockHeight*(material==='water'?.75:.5) : 0;
   }
-  function bedDepth(material,blockHeight) {return material==='water' && Number.isFinite(blockHeight) && blockHeight>0 ? blockHeight*.625 : depth(material,blockHeight);}
+  function bedDepth(material,blockHeight) {return material==='water' && Number.isFinite(blockHeight) && blockHeight>0 ? blockHeight*.875 : depth(material,blockHeight);}
   function banks(connected={}) {
     const polygon=outline(connected),result=[];
     for(let i=0;i<polygon.length;i++) {
