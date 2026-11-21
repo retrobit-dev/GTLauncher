@@ -71,7 +71,7 @@ final class WorldStore {
 
     WorldStore(SharedPreferences prefs) { this(prefs,null); }
     WorldStore(SharedPreferences prefs,InventoryStore inventory) {
-        this.prefs=prefs;this.inventory=inventory;resetPlacedBridgesOnce();
+        this.prefs=prefs;this.inventory=inventory;resetPlacedBridgesOnce();upgradeBaseLayersOnce();
     }
     private void resetPlacedBridgesOnce() {
         final String marker="bridge_redesign_reset_v1",backup="worlds_before_bridge_redesign_v1";
@@ -86,6 +86,21 @@ final class WorldStore {
             }
             edit.putBoolean(marker,true).commit(); // backup, world and marker atomically
         } catch (Exception ignored) { /* Leave the original world untouched on failure. */ }
+    }
+
+    private void upgradeBaseLayersOnce() {
+        final String marker="grass_soil_base_migration_v1",backup="worlds_before_grass_soil_base_v1";
+        if(prefs.getBoolean(marker,false))return;
+        try {
+            list(); // Do not touch storage if any saved world is unreadable.
+            String original=prefs.getString(WORLDS_KEY,"[]"),updated=BaseTerrainMigration.upgrade(original);
+            SharedPreferences.Editor edit=prefs.edit();
+            if(!updated.equals(original)){
+                if(prefs.contains(backup) && !original.equals(prefs.getString(backup,null)))return;
+                edit.putString(backup,original).putString(WORLDS_KEY,updated);
+            }
+            edit.putBoolean(marker,true).commit(); // Original, updated world, marker in one transaction.
+        }catch(Exception ignored){/* Preserve original data on validation or backup failure. */}
     }
 
     private static String requiredString(JSONObject object, String key) throws JSONException {

@@ -2487,7 +2487,7 @@
         if (stack) for(let level=1;level<stack.length;level++) {
           if(!stack[level] || (buried && level<stack.length-1))continue;
           const raised={...tile,y:tile.y-level*BLOCK_HEIGHT};
-          if(tileVisible(raised,BLOCK_HEIGHT)){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawGrassTile(raised,palette,sunlight,stack[level],level,!!window.BaseTerrain?.isBaseLayer(stack,level),level<stack.length-1 && stack[level]===1 && !!window.BaseTerrain?.isBaseLayer(stack,level));ctx.restore();}
+          if(tileVisible(raised,BLOCK_HEIGHT)){ctx.save();ctx.globalAlpha*=(100-(blockOpacity.get(`${index}:${level}`)||0))/100;drawGrassTile(raised,palette,sunlight,stack[level],level,!!window.BaseTerrain?.isBaseLayer(stack,level),level<stack.length-1 && (stack[level]===1 || stack[level]===7) && !!window.BaseTerrain?.isBaseLayer(stack,level));ctx.restore();}
         }
         if(tileData[index]===3 && !ramps.has(index)) {
           const level=stack ? stack.length-1 : 0,topTile={...tile,y:tile.y-level*BLOCK_HEIGHT+WATER_SURFACE_DROP};

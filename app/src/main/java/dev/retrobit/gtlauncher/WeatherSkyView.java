@@ -2103,7 +2103,7 @@ public final class WeatherSkyView extends View {
         if(level==0)return true;
         if(terrain.height(c,r)<4)return false;
         for(int i=0;i<4;i++)if(terrain.block(c,r,i)!=2)return false;
-        return level<4 || (level==4 && terrain.height(c,r)>4 && terrain.block(c,r,4)==1);
+        return level<4 || (level==4 && terrain.height(c,r)>4 && (terrain.block(c,r,4)==1 || terrain.block(c,r,4)==7));
     }
     private void drawPortableTerrain(Canvas canvas, IslandPalette palette, IslandSunlight sunlight) {
         for(int diagonal=0;diagonal<ISLAND_GRID_SIZE*2-1;diagonal++) for(int row=0;row<ISLAND_GRID_SIZE;row++) {
@@ -2150,8 +2150,9 @@ public final class WeatherSkyView extends View {
                     }
                 }
                 boolean waterAbove=material==3 && level+1<height && worldTerrain.block(column,row,level+1)==3;
-                if(!waterAbove)drawSunlitIslandDiamond(canvas,x,y+(material==3?WATER_SURFACE_DROP:0),material==3 || baseLayer?hw:hw-0.05f,material==3 || baseLayer?hh:hh-0.025f,material==3 || baseLayer?0:1.4f,grassTop ? ((column+row+level)%2==0?palette.grassTileSoftFern:palette.grassTileFernSage) : fill,sunlight);
-                if(grassTop)drawGrassTopBorder(canvas,x,y,material==3 || baseLayer?hw:hw-.05f,material==3 || baseLayer?hh:hh-.025f,material==3 || baseLayer?0:1.4f,(column+row+level)%2==0?palette.grassTileSoftFern:palette.grassTileFernSage);
+                boolean coveredBaseGrass=material==7 && baseLayer && level<height-1;
+                if(!waterAbove)drawSunlitIslandDiamond(canvas,x,y+(material==3?WATER_SURFACE_DROP:0),material==3 || baseLayer?hw:hw-0.05f,material==3 || baseLayer?hh:hh-0.025f,material==3 || baseLayer?0:1.4f,grassTop && !coveredBaseGrass ? ((column+row+level)%2==0?palette.grassTileSoftFern:palette.grassTileFernSage) : fill,sunlight);
+                if(grassTop && !coveredBaseGrass)drawGrassTopBorder(canvas,x,y,material==3 || baseLayer?hw:hw-.05f,material==3 || baseLayer?hh:hh-.025f,material==3 || baseLayer?0:1.4f,(column+row+level)%2==0?palette.grassTileSoftFern:palette.grassTileFernSage);
                 if (material==3) {
                     canvas.restore();
                     // Solid exposed soil walls frame the water; shared water edges stay open.

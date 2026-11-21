@@ -209,3 +209,6 @@ pagar kayu dan data world tetap sama; kode Android diperiksa tetapi belum diuji
 pada perangkat.
 
 Editor region numbers are rendered in black at 25% opacity; the region boundary strokes are unchanged. The overlay is editor-only and does not alter world data.
+
+### Base terrain update
+New preview worlds copy the Base template `[2,2,2,2,7]` (four soil blocks, then grass-topped soil). Existing stored worlds are migrated once only where the first five blocks exactly match the previous `[2,2,2,2,1]` template. Added blocks, holes, edits to that prefix, opacity, objects and inventory are not rewritten. Without provenance, a manually made stack identical to the old template is indistinguishable from the original base and will also be converted; differently edited or older flat terrain is left alone. The preview keeps a downloadable snapshot of the original world data. Android independently backs up its private saved worlds and migrates recognized preview exports at startup; its backup has no recovery UI. World files imported after the one-time migration are kept as imported rather than silently rewritten. Browser and Android storage are separate.

@@ -5,6 +5,8 @@
   const BRIDGE_RESET_MARKER = 'gtlauncher.bridge-redesign-reset.v1';
   const BRIDGE_BACKUP = 'gtlauncher.worlds-before-bridge-redesign.v1';
   const HEIGHT_BACKUP = 'gtlauncher.worlds-before-five-blocks.v1';
+  const BASE_BACKUP = 'gtlauncher.worlds-before-grass-soil-base.v1';
+  const BASE_MARKER = 'gtlauncher.grass-soil-base-migration.v1';
   const BASE = Object.freeze({id: 'base', name: 'Base World', description: 'Dasar bersama untuk semua world.', color: null});
   const BUILT_INS = [BASE];
   const dialog = document.getElementById('world-dialog');
@@ -330,6 +332,24 @@
     } catch (_) { storageError='Home belum dapat diperbarui. Data lama tidak diubah; periksa ruang penyimpanan browser.'; return false; }
   }
   const homeUpgraded = upgradeHome25();
+  // Migrate only recognizable old base prefixes. A verified original snapshot
+  // is mandatory; no saved data changes if reading or backup fails.
+  function upgradeBaseLayers() {
+    if(storageError)return false;
+    try {
+      if(localStorage.getItem(BASE_MARKER)==='done')return false;
+      if(localStorage.getItem(KEY)!==loadedRaw)throw new Error('World changed in another tab');
+      const worlds=state.worlds.map(w=>window.BaseTerrain.upgradeWorld(w)),changed=worlds.some((w,i)=>w!==state.worlds[i]);
+      if(changed){
+        if(localStorage.getItem(BASE_BACKUP)===null)localStorage.setItem(BASE_BACKUP,loadedRaw);
+        if(localStorage.getItem(BASE_BACKUP)!==loadedRaw)throw new Error('Backup differs');
+        if(localStorage.getItem(KEY)!==loadedRaw)throw new Error('World changed in another tab');
+        const next={...state,worlds},raw=JSON.stringify(next);localStorage.setItem(KEY,raw);loadedRaw=raw;state=next;
+      }
+      localStorage.setItem(BASE_MARKER,'done');return changed;
+    } catch(_){storageError='Susunan dasar belum diperbarui; periksa penyimpanan. Data asli tidak sengaja ditimpa.';return false;}
+  }
+  const baseLayersUpgraded=upgradeBaseLayers();
 
   function activeWorld() { return BUILT_INS.find(world => world.id === state.activeId)
     || state.worlds.find(world => world.id === state.activeId) || BASE; }
@@ -576,6 +596,7 @@
     const active = activeWorld();
     activeLabel.textContent = storageError ? `World: ${displayName(active)} · Data bermasalah` : `World: ${displayName(active)}`;
     $('world-backup').hidden = !storageError && !state.worlds.some(w => [20,25,50,100].includes(w.gridSize));
+    try { $('world-backup-base').hidden = !localStorage.getItem(BASE_BACKUP); } catch (_) { $('world-backup-base').hidden = true; }
     try { $('world-backup-height').hidden = !localStorage.getItem(HEIGHT_BACKUP); } catch (_) { $('world-backup-height').hidden = true; }
     try { $('world-backup-bridge').hidden = !localStorage.getItem(BRIDGE_BACKUP); } catch (_) { $('world-backup-bridge').hidden = true; }
     try { $('world-backup-home').hidden = !Object.keys(localStorage).some(key => key.startsWith(HOME_BACKUP_PREFIX)); }
@@ -659,6 +680,11 @@
       announce('Cadangan data asli diunduh. Data di browser tidak diubah.');
     } catch (_) { announce('Cadangan tidak dapat dibaca dari penyimpanan browser.'); }
   });
+  $('world-backup-base').addEventListener('click', () => {
+    try {const raw=localStorage.getItem(BASE_BACKUP);if(!raw){announce('Cadangan dasar world tidak ditemukan.');return;}
+      const url=URL.createObjectURL(new Blob([raw],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='gtlauncher-sebelum-dasar-tanah-rumput.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);announce('Cadangan sebelum perubahan dasar world diunduh.');
+    } catch(_){announce('Cadangan dasar world tidak dapat dibaca.');}
+  });
   $('world-backup-height').addEventListener('click', () => {
     try {const raw=localStorage.getItem(HEIGHT_BACKUP);if(!raw){announce('Cadangan tinggi pulau tidak ditemukan.');return;}
       const url=URL.createObjectURL(new Blob([raw],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='gtlauncher-sebelum-lima-block.json';document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -681,7 +707,7 @@
       announce('Cadangan sebelum Home diperbarui diunduh.');
     } catch (_) { announce('Cadangan Home tidak dapat dibaca.'); }
   });
-  // Fresh, independently editable copies; never apply the template to existing worlds.
+  // Fresh, independently editable copies of the current Base template.
   function newBaseTerrain() {
     const base=window.BaseTerrain;
     if(!base || !Number.isInteger(base.SIZE) || typeof base.stack!=='function')return null;
@@ -878,7 +904,7 @@
       || Math.abs(character.column-column)+Math.abs(character.row-row)!==1
       || treeAt(world,column,row)
       || (house?.visible && column>=house.column && column<house.column+3 && row>=house.row && row<house.row+3)
-      || ![1,2].includes(world.tiles[row*size+column])) return false;
+      || ![1,2,7].includes(world.tiles[row*size+column])) return false;
     const index=row*size+column;
     const stacks=world.blockStacks ? world.blockStacks.map(x=>x.slice()) : world.tiles.map(t=>t?[t]:[]);
     stacks[index][stacks[index].length-1]=6;return updateBlockStacks(id,stacks,world.blockOpacity||[]);
@@ -886,6 +912,7 @@
   window.worldManager = Object.freeze({getActive: activeWorld, replaceRoads, baseStackAt: (column,row) => window.BaseTerrain?.stack(column,row) ?? null, replaceRamps, replaceBlockOpacity, replaceBridges, replaceObjectGroup, replaceCatalogObjects, getCharacter, updateCharacter, getHouse, updateHouse, moveHouse, replacePlayerHouse, replaceOrangeTrees, replaceFences, updateTiles, updateBlockStacks, tillTile});
   render();
   if (bridgesReset) announce('Jembatan lama dihapus. Cadangan world sebelum perubahan tersedia untuk diunduh.');
+  else if (baseLayersUpgraded) announce('Dasar world diperbarui. Cadangan sebelum perubahan tersedia untuk diunduh.');
   else if (homeUpgraded) announce('Home diperbarui menjadi 25×25. Cadangan sebelum perubahan tersedia untuk diunduh.');
   else if (storageError) announce(storageError);
 })();
