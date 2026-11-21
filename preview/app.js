@@ -1825,9 +1825,16 @@
     return {x: WIDTH / 2 + (p.column - p.row) * ISLAND_TILE_WIDTH / 2,
       y: islandTop + islandTileHeight / 2 + (p.column + p.row) * islandTileHeight / 2 - Math.max(0,elevation-1)*BLOCK_HEIGHT};
   }
+  function roadDepthAt(column,row) {
+    const world=window.worldManager?.getActive();
+    if(!Number.isInteger(column) || !Number.isInteger(row) || (world?.bridges||[]).some(b=>window.BridgeGeometry?.indexAt(b,{column,row})>=0))return 0;
+    const road=world?.roads?.find(r=>r.column===column && r.row===row);
+    return road ? window.RoadSurface?.depth(road.material,BLOCK_HEIGHT) || 0 : 0;
+  }
   function characterBridgeCentre(character) {
     const p=characterCentre(character),world=window.worldManager?.getActive();
     p.y-=window.BridgeGeometry?.riseAt(world?.bridges,character.column,character.row,BLOCK_HEIGHT)||0;
+    p.y+=Number.isFinite(character.roadDepth) ? character.roadDepth : roadDepthAt(character.column,character.row);
     return p;
   }
 
@@ -2471,7 +2478,7 @@
         if(road && window.RoadSurface) {
           const h=stack?.length || 1, p=characterCentre({column:tile.column,row:tile.row,blockHeight:h});
           const same=(...directions)=>{const n=directions.reduce((p,d)=>worldNeighbor(p.column,p.row,d),{column:tile.column,row:tile.row});return n.column>=0&&n.row>=0&&n.column<ISLAND_GRID_SIZE&&n.row<ISLAND_GRID_SIZE&&roads.get(n.row*ISLAND_GRID_SIZE+n.column)?.material===road.material && (stacks?.[n.row*ISLAND_GRID_SIZE+n.column]?.length || 1)===h;};
-          if(tileVisible(p,0))window.RoadSurface.draw(ctx,{...p,width:ISLAND_TILE_WIDTH,height:islandTileHeight,material:road.material,column:tile.column,row:tile.row,time:motionTime,direction:viewFacing(road.direction||'S'),connected:{N:same('N'),E:same('E'),S:same('S'),W:same('W'),NE:same('N','E'),SE:same('S','E'),SW:same('S','W'),NW:same('N','W')}});
+          if(tileVisible(p,0))window.RoadSurface.draw(ctx,{...p,width:ISLAND_TILE_WIDTH,height:islandTileHeight,blockHeight:BLOCK_HEIGHT,material:road.material,column:tile.column,row:tile.row,time:motionTime,direction:viewFacing(road.direction||'S'),connected:{N:same('N'),E:same('E'),S:same('S'),W:same('W'),NE:same('N','E'),SE:same('S','E'),SW:same('S','W'),NW:same('N','W')}});
         }
         const ramp=ramps.get(index),rampLevel=stack ? stack.length-1 : 0;
         if(ramp && tileVisible({...tile,y:tile.y-(rampLevel+1)*BLOCK_HEIGHT},BLOCK_HEIGHT)) {
@@ -3098,6 +3105,7 @@
     setObjectGroup(trees,fences) {editingTreeGroup=trees||[];editingFenceGroup=fences||[];if(REDUCED_MOTION)drawFrame();},
     setSelectedFence(f) {editingFenceSelection=f;if(REDUCED_MOTION)drawFrame();},
     surfaceHeight,
+    roadDepth: roadDepthAt,
     waterDepth,
     waterBorders,
     waterTopBorders,

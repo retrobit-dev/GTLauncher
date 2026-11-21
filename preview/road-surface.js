@@ -41,6 +41,19 @@
     if(connected.W && connected.S && !connected.SW)p.push([l+inset,b],[l+inset,b-inset],[l,b-inset]);else p.push([l,b]);
     return p;
   }
+  function depth(material,blockHeight) {
+    return valid(material) && Number.isFinite(blockHeight) && blockHeight>0 ? blockHeight*(material==='water'?.25:.125) : 0;
+  }
+  function bedDepth(material,blockHeight) {return material==='water' && Number.isFinite(blockHeight) && blockHeight>0 ? blockHeight*.375 : depth(material,blockHeight);}
+  function banks(connected={}) {
+    const polygon=outline(connected),result=[];
+    for(let i=0;i<polygon.length;i++) {
+      const a=polygon[i],b=polygon[(i+1)%polygon.length];
+      const shared=(a[0]===0 && b[0]===0 && connected.W) || (a[0]===1 && b[0]===1 && connected.E) || (a[1]===0 && b[1]===0 && connected.N) || (a[1]===1 && b[1]===1 && connected.S);
+      if(!shared)result.push([a,b]);
+    }
+    return result;
+  }
   // Transform flow coordinates with the current view-facing direction.
   function flowPoint(u,v,direction='S') {
     switch(direction){case 'N':return [1-u,1-v];case 'E':return [v,1-u];case 'W':return [1-v,u];default:return [u,v];}
@@ -50,13 +63,21 @@
     return [0,1,2,3].map(i=>{const v=((i*.27+phase)%1+1)%1;return [[.16,v],[.38,v-.025],[.63,v],[.84,v-.025]].map(([u,y])=>flowPoint(u,y,direction));});
   }
   function draw(ctx,options) {
-    const {x,y,width,height,material,column=0,row=0,time=0,connected={},direction='S'}=options;
+    const {x,y,width,height,material,column=0,row=0,time=0,connected={},direction='S',blockHeight=4}=options;
     if(!ctx || !valid(material) || ![x,y,width,height].every(Number.isFinite) || width<=0 || height<=0)return false;
     const hw=width/2,hh=height/2,project=(u,v)=>[x+(u-v)*hw,y+(u+v-1)*hh];
     const polygon=points=>{ctx.beginPath();points.forEach(([u,v],i)=>{const [px,py]=project(u,v);if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);});ctx.closePath();};
     const line=(coords,color,w=.55)=>{ctx.beginPath();coords.forEach(([u,v],i)=>{const [px,py]=project(u,v);if(!i)ctx.moveTo(px,py);else ctx.lineTo(px,py);});ctx.strokeStyle=color;ctx.lineWidth=w;ctx.stroke();};
     const dot=(u,v,color,w=1,h=.55)=>{const [px,py]=project(u,v);ctx.fillStyle=color;ctx.fillRect(px,py,w,h);};
-    const [base,light,dark]=palettes[material];ctx.save();polygon(outline(connected));ctx.fillStyle=base;ctx.fill();ctx.clip();
+    const [base,light,dark]=palettes[material],drop=depth(material,blockHeight),surfaceY=y+drop;
+    // Exposed cut banks; shared edges are open to the neighboring surface.
+    ctx.save();ctx.fillStyle=material==='water'?'#746c51':'#8a775e';
+    for(const [a,b] of banks(connected)) {const [ax,ay]=project(...a),[bx,by]=project(...b);ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.lineTo(bx,by+drop);ctx.lineTo(ax,ay+drop);ctx.closePath();ctx.fill();}
+    ctx.translate(0,surfaceY-y);polygon(outline(connected));ctx.clip();
+    if(material==='water'){
+      ctx.save();ctx.translate(0,bedDepth(material,blockHeight)-drop);polygon(outline(connected));ctx.fillStyle='#596f65';ctx.fill();ctx.restore();
+      ctx.save();ctx.globalAlpha*=.86;polygon(outline(connected));ctx.fillStyle=base;ctx.fill();ctx.restore();
+    } else {polygon(outline(connected));ctx.fillStyle=base;ctx.fill();}
     if(material==='stone'||material==='paving') {
       const rows=material==='stone'?3:4,cols=material==='stone'?3:4;
       for(let r=0;r<rows;r++)for(let c=-1;c<cols;c++){
@@ -78,5 +99,5 @@
     }
     ctx.restore();return true;
   }
-  return Object.freeze({materials,valid,isWater,validRecords,put,neighbors,outline,flowPoint,flowLines,draw});
+  return Object.freeze({materials,valid,isWater,validRecords,put,neighbors,outline,depth,bedDepth,banks,flowPoint,flowLines,draw});
 });

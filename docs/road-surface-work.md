@@ -41,3 +41,7 @@ persimpangan T, dan simpang empat, termasuk sudut diagonal yang belum terisi.
 Preview dan Android memperhatikan tetangga diagonal sejenis pada ketinggian
 yang sama. Ini hanya mengubah rendering; tidak menurunkan terrain atau
 mengubah data. Proyeksi isometrik membuat sudut 90° grid terlihat miring di layar.
+
+## Recessed surface rendering
+
+Road surfaces are rendered 1/8 of a block height below their supporting tile; river water is 1/4 below it, with a tinted riverbed drawn a further 1/8 block below the water. Banks are omitted at edges shared with the same material at the same height. This is a visual recess, not excavation of the stored block stack or a change to pathfinding. The player follows the road surface, interpolating between tiles, except on bridge tiles. The riverbed is a visual layer beneath translucent water, not a traversable extra terrain level. World serialization remains unchanged.

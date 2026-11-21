@@ -583,17 +583,22 @@ public final class WeatherSkyView extends View {
     private int footHeight(int column,int row) {return worldTerrain==null?1:column<0||row<0||column>=worldTerrain.size||row>=worldTerrain.size?0:worldTerrain.footHeight(column,row);}
     private float footElevationAt(int column,int row) {return ElevatedTerrainGeometry.elevation(footHeight(column,row),BLOCK_HEIGHT);}
     private float elevationAt(int column,int row) {return ElevatedTerrainGeometry.elevation(terrainHeight(column,row),BLOCK_HEIGHT);}
+    private float roadDropAt(int column,int row) {
+        if(worldTerrain!=null && worldTerrain.onBridge(column,row))return 0;
+        for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("road") && o.column==column && o.row==row)return RoadGeometry.depth(o.material,BLOCK_HEIGHT);
+        return 0;
+    }
     private float visualElevation() {
         String toRamp=worldTerrain==null || worldTerrain.onBridge(characterColumn,characterRow)?null:worldTerrain.rampDirection(characterColumn,characterRow);
-        float target=footElevationAt(characterColumn,characterRow)+(toRamp==null?0:BLOCK_HEIGHT*.5f);
+        float target=footElevationAt(characterColumn,characterRow)+(toRamp==null?0:BLOCK_HEIGHT*.5f)-roadDropAt(characterColumn,characterRow);
         if(!characterStepping)return target+bridgeVisualRise();
         String fromRamp=worldTerrain==null || worldTerrain.onBridge(stepFromColumn,stepFromRow)?null:worldTerrain.rampDirection(stepFromColumn,stepFromRow);
         if(fromRamp!=null || toRamp!=null) {
             String edge=characterColumn>stepFromColumn?"E":characterColumn<stepFromColumn?"W":characterRow>stepFromRow?"S":"N";
             double level=RampGeometry.stepHeight(footHeight(stepFromColumn,stepFromRow),fromRamp,footHeight(characterColumn,characterRow),toRamp,edge,stepProgress());
-            if(Double.isFinite(level))return (float)Math.max(0,(level-1)*BLOCK_HEIGHT)+bridgeVisualRise();
+            if(Double.isFinite(level))return (float)Math.max(0,(level-1)*BLOCK_HEIGHT)+bridgeVisualRise()-roadDropAt(stepFromColumn,stepFromRow)*(1-stepProgress())-roadDropAt(characterColumn,characterRow)*stepProgress();
         }
-        return footElevationAt(stepFromColumn,stepFromRow)*(1-stepProgress())+target*stepProgress()+bridgeVisualRise();
+        return (footElevationAt(stepFromColumn,stepFromRow)-roadDropAt(stepFromColumn,stepFromRow))*(1-stepProgress())+target*stepProgress()+bridgeVisualRise();
     }
     private float bridgeVisualRise() {
         return worldTerrain==null?0:BridgeGeometry.riseAt(worldTerrain.bridges,visualColumn(),visualRow(),BLOCK_HEIGHT);
@@ -975,7 +980,17 @@ public final class WeatherSkyView extends View {
                 float[] a=side==0?roadPoint(cx,cy,lo,1):roadPoint(cx,cy,1,lo),b=side==0?roadPoint(cx,cy,hi,1):roadPoint(cx,cy,1,hi);
                 Path band=new Path();band.moveTo(a[0],a[1]-1);band.lineTo(b[0],b[1]-1);band.lineTo(b[0],b[1]+ISLAND_GRASS_BAND_DEPTH);band.lineTo(a[0],a[1]+ISLAND_GRASS_BAND_DEPTH);band.close();paint.setColor(blend(base,Color.BLACK,side==0?.15:.23));canvas.drawPath(band,paint);
             }
-            Path surface=roadPath(cx,cy,outline,null);paint.setColor(base);canvas.drawPath(surface,paint);
+            float drop=RoadGeometry.depth(o.material,BLOCK_HEIGHT);
+            boolean north=sameRoad(o,o.column,o.row-1),east=sameRoad(o,o.column+1,o.row),south=sameRoad(o,o.column,o.row+1),west=sameRoad(o,o.column-1,o.row);
+            paint.setColor(water?0xff746c51:0xff8a775e);
+            for(int i=0;i<outline.length;i++){
+                float[] a=outline[i],b=outline[(i+1)%outline.length];if(RoadGeometry.sharedEdge(a,b,north,east,south,west))continue;
+                float[] p=roadPoint(cx,cy,a[0],a[1]),q=roadPoint(cx,cy,b[0],b[1]);Path wall=new Path();wall.moveTo(p[0],p[1]);wall.lineTo(q[0],q[1]);wall.lineTo(q[0],q[1]+drop);wall.lineTo(p[0],p[1]+drop);wall.close();canvas.drawPath(wall,paint);
+            }
+            cy+=drop;
+            Path surface=roadPath(cx,cy,outline,null);
+            if(water){int bedSave=canvas.save();canvas.clipPath(surface);paint.setColor(0xff596f65);canvas.drawPath(roadPath(cx,cy+RoadGeometry.bedDepth(o.material,BLOCK_HEIGHT)-drop,outline,null),paint);canvas.restoreToCount(bedSave);}
+            paint.setColor(base);if(water)paint.setAlpha(219);canvas.drawPath(surface,paint);paint.setAlpha(255);
             int save=canvas.save();canvas.clipPath(surface);String facing=o.edge==null?"S":o.edge;
             if(o.material.equals("stone") || o.material.equals("paving")) {
                 int count=o.material.equals("stone")?2:4;

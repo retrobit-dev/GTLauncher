@@ -7,6 +7,13 @@ import java.util.List;
 final class RoadGeometry {
     static final float INSET=.12f;
     interface Occupied { boolean has(int column,int row,boolean water); }
+    static float depth(String material,float blockHeight) {
+        return blockHeight*("water".equals(material)?.25f:.125f);
+    }
+    static float bedDepth(String material,float blockHeight) {return "water".equals(material)?blockHeight*.375f:depth(material,blockHeight);}
+    static boolean sharedEdge(float[] a,float[] b,boolean n,boolean e,boolean s,boolean w) {
+        return (a[0]==0 && b[0]==0 && w) || (a[0]==1 && b[0]==1 && e) || (a[1]==0 && b[1]==0 && n) || (a[1]==1 && b[1]==1 && s);
+    }
     static float[] rotate(float u,float v,String facing) {
         switch(facing){case "W":return new float[]{1-v,u};case "N":return new float[]{1-u,1-v};case "E":return new float[]{v,1-u};default:return new float[]{u,v};}
     }

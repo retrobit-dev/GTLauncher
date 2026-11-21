@@ -11,6 +11,7 @@ const assert=require('node:assert/strict'),{chromium}=require('playwright-core')
  await catalog('water');await tile(11,10);assert.equal(await page.evaluate(()=>worldManager.getActive().roads[1].material),'water');
  const unsafe=await page.evaluate(()=>{const w=worldManager.getActive();return worldManager.replaceRoads(w.id,w.roads,[...w.roads,{column:5,row:5,material:'water'}]);});assert.equal(unsafe,false);
  const painted=await page.evaluate(()=>{const old=CanvasRenderingContext2D.prototype.fill,colors=[];CanvasRenderingContext2D.prototype.fill=function(...args){colors.push(this.fillStyle);return old.apply(this,args);};try{sceneEditing.setGameplayDraft(null);}finally{CanvasRenderingContext2D.prototype.fill=old;}return colors;});assert(painted.includes('#468fb7'),'river is painted');assert(painted.includes('#8c8c84'),'stone is painted');
+ const levels=await page.evaluate(()=>[sceneEditing.roadDepth(10,10),sceneEditing.roadDepth(11,10),sceneEditing.roadDepth(9,10)]);assert.deepEqual(levels,[.5,1,0]);
  const path=await page.evaluate(()=>{let w=worldManager.getActive();return GameplayPath.find(w,{column:10,row:10},{column:11,row:10},null)});assert.equal(path,null);
  await page.reload({waitUntil:'load'});assert.equal(await page.evaluate(()=>worldManager.getActive().roads.length),2);
  await page.locator('#world-button').click();await page.locator('button[data-action="export"][data-id="roads"]').click();const data=JSON.parse(await page.locator('#world-export-json').inputValue());assert.equal(data.version,31);assert.equal(data.world.roads.length,2);

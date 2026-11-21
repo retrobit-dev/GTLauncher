@@ -10,6 +10,9 @@ public final class StoneRoadGeometryCheck {
    if(FenceMesh.faces(0,0,14,slope,true,j).stream().anyMatch(f->side(f.color)))throw new AssertionError("linked end face");
    if(FenceMesh.faces(0,0,14,slope,false).size()!=14)throw new AssertionError("wood geometry changed");
   }
+  if(RoadGeometry.depth("dirt",4)!=.5f || RoadGeometry.depth("water",4)!=1f || RoadGeometry.bedDepth("water",4)!=1.5f)throw new AssertionError("road depth");
+  if(!RoadGeometry.sharedEdge(new float[]{0,.1f},new float[]{0,.9f},false,false,false,true))throw new AssertionError("connected seam");
+  if(RoadGeometry.sharedEdge(new float[]{0,.1f},new float[]{0,.9f},false,false,false,false))throw new AssertionError("open bank");
   int[][] directions={{0,-1},{1,0},{0,1},{-1,0},{1,-1},{1,1},{-1,1},{-1,-1}};
   for(int mask=0;mask<256;mask++){
    final int flags=mask;float[][] polygon=RoadGeometry.outline(10,10,false,(x,y,w)->{for(int i=0;i<directions.length;i++)if(x==10+directions[i][0]&&y==10+directions[i][1])return (flags&(1<<i))!=0;return false;},20);
