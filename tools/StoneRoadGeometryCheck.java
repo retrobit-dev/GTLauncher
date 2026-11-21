@@ -10,7 +10,7 @@ public final class StoneRoadGeometryCheck {
    if(FenceMesh.faces(0,0,14,slope,true,j).stream().anyMatch(f->side(f.color)))throw new AssertionError("linked end face");
    if(FenceMesh.faces(0,0,14,slope,false).size()!=14)throw new AssertionError("wood geometry changed");
   }
-  if(RoadGeometry.depth("dirt",4)!=2f || RoadGeometry.depth("water",4)!=3f || RoadGeometry.bedDepth("water",4)!=3.5f)throw new AssertionError("road depth");
+  if(RoadGeometry.depth("dirt",4)!=0f || RoadGeometry.depth("water",4)!=0f || RoadGeometry.bedDepth("water",4)!=0f)throw new AssertionError("road depth");
   if(!RoadGeometry.sharedEdge(new float[]{0,.1f},new float[]{0,.9f},false,false,false,true))throw new AssertionError("connected seam");
   if(RoadGeometry.sharedEdge(new float[]{0,.1f},new float[]{0,.9f},false,false,false,false))throw new AssertionError("open bank");
   float[][] east=RoadGeometry.outline(10,10,false,(x,y,w)->x==11&&y==10,20),west=RoadGeometry.outline(11,10,false,(x,y,w)->x==10&&y==10,20);

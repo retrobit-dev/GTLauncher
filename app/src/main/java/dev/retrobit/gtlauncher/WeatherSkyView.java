@@ -978,24 +978,8 @@ public final class WeatherSkyView extends View {
             int light=Color.parseColor(o.material.equals("dirt")?"#ded0b2":o.material.equals("stone")?"#a6ada3":o.material.equals("sand")?"#f3d7a3":o.material.equals("gravel")?"#d2c8b3":o.material.equals("paving")?"#aaa18f":o.material.equals("asphalt")?"#747e75":"#a8c7bc");
             int dark=Color.parseColor(o.material.equals("dirt")?"#a99476":o.material.equals("stone")?"#899187":o.material.equals("sand")?"#bd9464":o.material.equals("gravel")?"#8e8575":o.material.equals("paving")?"#968d7d":o.material.equals("asphalt")?"#454d4a":"#588487");
             paint.setStyle(Paint.Style.FILL);paint.setAlpha(255);
-            // At the island front, continue the path down the visible grass rim.
-            for(int side=0;side<2;side++)if((side==0 && o.row==ISLAND_GRID_SIZE-1)||(side==1 && o.column==ISLAND_GRID_SIZE-1)) {
-                float lo=side==0?(sameRoad(o,o.column-1,o.row)||o.column==0?0:RoadGeometry.INSET):(sameRoad(o,o.column,o.row-1)||o.row==0?0:RoadGeometry.INSET);
-                float hi=side==0?(sameRoad(o,o.column+1,o.row)||o.column==ISLAND_GRID_SIZE-1?1:1-RoadGeometry.INSET):(sameRoad(o,o.column,o.row+1)||o.row==ISLAND_GRID_SIZE-1?1:1-RoadGeometry.INSET);
-                float[] a=side==0?roadPoint(cx,cy,lo,1):roadPoint(cx,cy,1,lo),b=side==0?roadPoint(cx,cy,hi,1):roadPoint(cx,cy,1,hi);
-                Path band=new Path();band.moveTo(a[0],a[1]-1);band.lineTo(b[0],b[1]-1);band.lineTo(b[0],b[1]+ISLAND_GRASS_BAND_DEPTH);band.lineTo(a[0],a[1]+ISLAND_GRASS_BAND_DEPTH);band.close();paint.setColor(blend(base,Color.BLACK,side==0?.15:.23));canvas.drawPath(band,paint);
-            }
-            float drop=RoadGeometry.depth(o.material,BLOCK_HEIGHT);
-            boolean north=sameRoad(o,o.column,o.row-1),east=sameRoad(o,o.column+1,o.row),south=sameRoad(o,o.column,o.row+1),west=sameRoad(o,o.column-1,o.row);
-            paint.setColor(water?0xff746c51:0xff8a775e);
-            for(int i=0;i<outline.length;i++){
-                float[] a=outline[i],b=outline[(i+1)%outline.length];if(RoadGeometry.sharedEdge(a,b,north,east,south,west))continue;
-                float[] p=roadPoint(cx,cy,a[0],a[1]),q=roadPoint(cx,cy,b[0],b[1]);Path wall=new Path();wall.moveTo(p[0],p[1]);wall.lineTo(q[0],q[1]);wall.lineTo(q[0],q[1]+drop);wall.lineTo(p[0],p[1]+drop);wall.close();canvas.drawPath(wall,paint);
-            }
-            cy+=drop;
             Path surface=roadPath(cx,cy,outline,null);
-            if(water){int bedSave=canvas.save();canvas.clipPath(surface);paint.setColor(0xff596f65);canvas.drawPath(roadPath(cx,cy+RoadGeometry.bedDepth(o.material,BLOCK_HEIGHT)-drop,outline,null),paint);canvas.restoreToCount(bedSave);}
-            paint.setColor(base);if(water)paint.setAlpha(219);canvas.drawPath(surface,paint);paint.setAlpha(255);
+            paint.setColor(base);canvas.drawPath(surface,paint);
             int save=canvas.save();canvas.clipPath(surface);String facing=o.edge==null?"S":o.edge;
             if(o.material.equals("stone") || o.material.equals("paving")) {
                 int count=o.material.equals("stone")?2:4;
@@ -1013,8 +997,7 @@ public final class WeatherSkyView extends View {
                 int count=o.material.equals("gravel")?13:7;
                 for(int i=0;i<count;i++) {float u=.08f+((i*37+o.column*13+o.row*7)%83)/100f,v=.08f+((i*61+o.column*5+o.row*17)%83)/100f;float[] uv=RoadGeometry.rotate(u,v,facing),xy=roadPoint(cx,cy,uv[0],uv[1]);paint.setColor(i%2==0?light:dark);canvas.drawRect(xy[0],xy[1],xy[0]+(count==13?1.5f:1.8f),xy[1]+.65f,paint);}
             }
-            canvas.restoreToCount(save);paint.setStyle(Paint.Style.STROKE);paint.setStrokeWidth(.55f);paint.setColor(water?0xff615743:0xff655642);paint.setAlpha(255);
-            for(int i=0;i<outline.length;i++) {float[] a=outline[i],b=outline[(i+1)%outline.length];if(RoadGeometry.sharedEdge(a,b,north,east,south,west))continue;float[] p=roadPoint(cx,cy-drop,a[0],a[1]),q=roadPoint(cx,cy-drop,b[0],b[1]);canvas.drawLine(p[0],p[1],q[0],q[1],paint);}
+            canvas.restoreToCount(save);
             paint.setStyle(Paint.Style.FILL);
         }
         // Cover only the common openings after both clipped surfaces are drawn.
@@ -1022,7 +1005,7 @@ public final class WeatherSkyView extends View {
         for(WorldStore.SurfaceObject o:worldSurfaces)if(o.type.equals("road")) {
             boolean water="water".equals(o.material);float cx=SCENE_WIDTH/2f+(o.column-o.row)*ISLAND_TILE_WIDTH/2f,cy=ISLAND_TOP+ISLAND_TILE_HEIGHT/2f+(o.column+o.row)*ISLAND_TILE_HEIGHT/2f-elevationAt(o.column,o.row)+RoadGeometry.depth(o.material,BLOCK_HEIGHT);
             float[][] a=RoadGeometry.outline(o.column,o.row,water,(c,r,w)->sameRoad(o,c,r),ISLAND_GRID_SIZE);
-            paint.setColor(water?0xff6e9899:roadBaseColor(o.material));
+            paint.setColor(roadBaseColor(o.material));
             for(int side=0;side<2;side++){int c=o.column+(side==0?1:0),r=o.row+(side==1?1:0);if(!sameRoad(o,c,r))continue;WorldStore.SurfaceObject other=roadLookup.get(roadKey(c,r));if(other==null)continue;
                 final WorldStore.SurfaceObject neighbor=other;float[][] b=RoadGeometry.outline(c,r,water,(x,y,w)->sameRoad(neighbor,x,y),ISLAND_GRID_SIZE);float[] span=RoadGeometry.sharedSpan(a,b,side==0);if(span==null)continue;
                 float[] p=side==0?roadPoint(cx,cy,1,span[0]):roadPoint(cx,cy,span[0],1),q=side==0?roadPoint(cx,cy,1,span[1]):roadPoint(cx,cy,span[1],1);canvas.drawLine(p[0],p[1],q[0],q[1],paint);

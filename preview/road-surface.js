@@ -41,10 +41,9 @@
     if(connected.W && connected.S && !connected.SW)p.push([l+inset,b],[l+inset,b-inset],[l,b-inset]);else p.push([l,b]);
     return p;
   }
-  function depth(material,blockHeight) {
-    return valid(material) && Number.isFinite(blockHeight) && blockHeight>0 ? blockHeight*(material==='water'?.75:.5) : 0;
-  }
-  function bedDepth(material,blockHeight) {return material==='water' && Number.isFinite(blockHeight) && blockHeight>0 ? blockHeight*.875 : depth(material,blockHeight);}
+  // Roads and rivers sit flush with their supporting block.
+  function depth() { return 0; }
+  function bedDepth() { return 0; }
   function banks(connected={}) {
     const polygon=outline(connected),result=[];
     for(let i=0;i<polygon.length;i++) {
@@ -64,7 +63,7 @@
     const spans=[];for(const x of interval(outline(a),1))for(const y of interval(outline(b),0)){const lo=Math.max(x[0],y[0]),hi=Math.min(x[1],y[1]);if(hi>lo)spans.push([lo,hi]);}
     return spans;
   }
-  function seamColor(material) {return material==='water'?'#498bac':palettes[material]?.[0];}
+  function seamColor(material) {return palettes[material]?.[0];}
   // Transform flow coordinates with the current view-facing direction.
   function flowPoint(u,v,direction='S') {
     switch(direction){case 'N':return [1-u,1-v];case 'E':return [v,1-u];case 'W':return [1-v,u];default:return [u,v];}
@@ -74,22 +73,16 @@
     return [0,1,2,3].map(i=>{const v=((i*.27+phase)%1+1)%1;return [[.16,v],[.38,v-.025],[.63,v],[.84,v-.025]].map(([u,y])=>flowPoint(u,y,direction));});
   }
   function draw(ctx,options) {
-    const {x,y,width,height,material,column=0,row=0,time=0,connected={},direction='S',blockHeight=4}=options;
+    const {x,y,width,height,material,column=0,row=0,time=0,connected={},direction='S'}=options;
     if(!ctx || !valid(material) || ![x,y,width,height].every(Number.isFinite) || width<=0 || height<=0)return false;
     const hw=width/2,hh=height/2,project=(u,v)=>[x+(u-v)*hw,y+(u+v-1)*hh];
     let patternMode=false;const mapped=(u,v)=>patternMode?flowPoint(u,v,direction):[u,v];
     const polygon=points=>{ctx.beginPath();points.forEach(([u,v],i)=>{const [px,py]=project(...mapped(u,v));if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);});ctx.closePath();};
     const line=(coords,color,w=.55)=>{ctx.beginPath();coords.forEach(([u,v],i)=>{const [px,py]=project(...mapped(u,v));if(!i)ctx.moveTo(px,py);else ctx.lineTo(px,py);});ctx.strokeStyle=color;ctx.lineWidth=w;ctx.stroke();};
     const dot=(u,v,color,w=1,h=.55)=>{const [px,py]=project(...mapped(u,v));ctx.fillStyle=color;ctx.fillRect(px,py,w,h);};
-    const [base,light,dark]=palettes[material],drop=depth(material,blockHeight),surfaceY=y+drop;
-    // Exposed cut banks; shared edges are open to the neighboring surface.
-    ctx.save();ctx.fillStyle=material==='water'?'#746c51':'#8a775e';
-    for(const [a,b] of banks(connected)) {const [ax,ay]=project(...a),[bx,by]=project(...b);ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.lineTo(bx,by+drop);ctx.lineTo(ax,ay+drop);ctx.closePath();ctx.fill();}
-    ctx.translate(0,surfaceY-y);polygon(outline(connected));ctx.clip();
-    if(material==='water'){
-      ctx.save();ctx.translate(0,bedDepth(material,blockHeight)-drop);polygon(outline(connected));ctx.fillStyle='#596f65';ctx.fill();ctx.restore();
-      ctx.save();ctx.globalAlpha*=.86;polygon(outline(connected));ctx.fillStyle=base;ctx.fill();ctx.restore();
-    } else {polygon(outline(connected));ctx.fillStyle=base;ctx.fill();}
+    const [base,light,dark]=palettes[material];
+    ctx.save();polygon(outline(connected));ctx.clip();
+    polygon(outline(connected));ctx.fillStyle=base;ctx.fill();
     patternMode=material!=='water';
     if(material==='stone'||material==='paving') {
       const rows=material==='stone'?3:4,cols=material==='stone'?3:4;
@@ -111,11 +104,7 @@
       else line([[.35,.28],[.43,.38],[.39,.46]],dark,.4);
     }
     ctx.restore();
-    // A subtle upper rim reinforces the real, shallow cut without increasing
-    // its geometric depth. Only exposed edges are outlined.
-    ctx.save();ctx.strokeStyle=material==='water'?'#615743':'#655642';ctx.lineWidth=.55;
-    for(const [a,b] of banks(connected)){const [ax,ay]=project(...a),[bx,by]=project(...b);ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();}
-    ctx.restore();return true;
+    return true;
   }
   return Object.freeze({materials,valid,isWater,validRecords,put,neighbors,outline,depth,bedDepth,banks,sharedSpan,seamColor,flowPoint,flowLines,draw});
 });
